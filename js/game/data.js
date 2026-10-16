@@ -1,26 +1,131 @@
-// 数字の定義（たたき台 docs/draft.md から）。段階2では戦士・剣・重装備・森のゴブリン3種だけ。
-// 遊んでみて直すときは、まずここの数字を変える。
+// 数字の定義（たたき台 docs/draft.md から）。遊んでみて直すときは、まずここの数字を変える。
+// 段階3：基本職5つ・武器・防具・スキル35・森の敵4種。
 var GameData = (function () {
   // 属性の名前（表示用）
-  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草" };
+  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", none: "なし" };
 
-  // 武器（ノーマル・アイテムレベル1）。reach は届く距離（ドット）、arc はふりの広さ（ラジアンの半分）
+  // 武器（ノーマル・アイテムレベル1）。reach＝届く距離（ドット）、arc＝ふりの広さ（左右それぞれのラジアン）
+  // shot：ふつうの攻撃が飛ぶもの（弓の矢、魔術師の系統の杖の魔法弾）
   var WEAPONS = {
-    sword: { name: "剣", element: "slash", patk: 8, matk: 0, wait: 0.6, reach: 18, arc: 1.05 }
+    sword:      { name: "剣",   element: "slash",  patk: 8,  matk: 0, wait: 0.6, reach: 18, arc: 1.05 },
+    greatsword: { name: "大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, reach: 22, arc: 1.4 },
+    axe:        { name: "斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, reach: 20, arc: 1.3 },
+    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 0.8, shot: { speed: 170, range: 150, stat: "p" } },
+    fist:       { name: "拳",   element: "strike", patk: 6,  matk: 0, wait: 0.4, reach: 14, arc: 0.9 },
+    // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離）、それ以外の職は近くをたたく（物攻・打）
+    staff:      { name: "杖",   element: "strike", patk: 4,  matk: 8, wait: 0.7, reach: 16, arc: 1.0,
+                  boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none" } }
   };
 
   // 防具
   var ARMORS = {
-    heavy: { name: "てつのよろい", pdef: 3, mdef: 0 }
+    heavy: { name: "重装備", pdef: 3, mdef: 0 },
+    light: { name: "軽装備", pdef: 2, mdef: 1 },
+    magic: { name: "魔法装備", pdef: 1, mdef: 3 }
   };
 
-  // 職業ごとのレベルアップの伸び（筋力・体力・魔力・知力）
+  // 職業。line＝系統（上級職ができたら、ここに上級職の名前を足す）
   var JOBS = {
-    warrior: { name: "戦士", growth: { str: 2.0, vit: 2.0, mag: 0.5, int: 0.5 } }
+    warrior: { name: "戦士",   weapons: ["sword", "greatsword", "axe"], armor: "heavy", color: "#5aa9ff",
+               growth: { str: 2.0, vit: 2.0, mag: 0.5, int: 0.5 } },
+    mage:    { name: "魔術師", weapons: ["staff"], armor: "magic", color: "#b48cf0",
+               growth: { str: 0.5, vit: 1.0, mag: 2.0, int: 1.5 } },
+    hunter:  { name: "狩人",   weapons: ["bow"], armor: "light", color: "#6fd08c",
+               growth: { str: 1.5, vit: 1.5, mag: 1.0, int: 1.0 } },
+    fighter: { name: "武術家", weapons: ["fist"], armor: "light", color: "#ff9a4d",
+               growth: { str: 2.0, vit: 1.5, mag: 0.5, int: 1.0 } },
+    priest:  { name: "僧侶",   weapons: ["staff"], armor: "magic", color: "#f2e6a0",
+               growth: { str: 1.0, vit: 1.5, mag: 1.5, int: 1.0 } }
   };
+  var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
+  // 系統：その職と、その職からつながる上級職・最上級職
+  var LINES = { warrior: ["warrior"], mage: ["mage"], hunter: ["hunter"], fighter: ["fighter"], priest: ["priest"] };
+
+  // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
+  // fx＝効果の並び。t の種類：
+  //   arc（前の扇）、around（まわり）、dash（踏みこむ）、shot（飛ばす）、rapid（何回も）、charge（ためる）、backstep（下がる）
+  //   heal（回復）、cure（状態異常を治す）、regen（少しずつ回復）、revive（復活）、buff（強くする）、zone（その場に残る）、rain（降らせる）
+  // stat：p＝物攻、m＝魔攻。elem：weapon＝武器の属性。status：{ type: poison/para/sleep/break, chance, dur }
+  var EDGE = ["sword", "greatsword", "axe"];
+  var HEAVY = ["greatsword", "axe"];
+  var SKILLS = [
+    // 戦士
+    { id: "w.spin",   job: "warrior", star: 1, name: "回転ぎり",   short: "回転",   cond: { weapons: EDGE }, mp: 6, ct: 4,
+      fx: [{ t: "around", stat: "p", mult: 1.2, radius: 26, elem: "weapon" }] },
+    { id: "w.focus",  job: "warrior", star: 2, name: "気合い",     short: "気合",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
+    { id: "w.rush",   job: "warrior", star: 3, name: "とっしん",   short: "突進",   cond: { weapons: EDGE }, mp: 7, ct: 6,
+      fx: [{ t: "dash", dist: 36 }, { t: "arc", stat: "p", mult: 1.5, elem: "weapon" }] },
+    { id: "w.power",  job: "warrior", star: 4, name: "ちからため", short: "力ため", cond: { line: "warrior" }, mp: 6, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.2, dur: 15 }] },
+    { id: "w.crush",  job: "warrior", star: 5, name: "かぶと割り", short: "割り",   cond: { weapons: HEAVY }, mp: 8, ct: 8,
+      fx: [{ t: "arc", stat: "p", mult: 1.8, elem: "strike", status: { type: "break", chance: 1, dur: 10 } }] },
+    { id: "w.guard",  job: "warrior", star: 6, name: "かたい守り", short: "守り",   cond: { line: "warrior" }, mp: 6, ct: 30,
+      fx: [{ t: "buff", stat: "pdef", pct: 0.3, dur: 10 }] },
+    { id: "w.quake",  job: "warrior", star: 7, name: "大地斬り",   short: "大地",   cond: { weapons: HEAVY }, mp: 14, ct: 15,
+      fx: [{ t: "arc", stat: "p", mult: 2.0, elem: "weapon", reach: 44, arc: 0.8 }] },
+    // 魔術師
+    { id: "m.fire",   job: "mage", star: 1, name: "ファイア",         short: "ファイア", cond: { line: "mage" }, mp: 5, ct: 2,
+      fx: [{ t: "shot", stat: "m", mult: 1.3, elem: "fire", speed: 150, range: 130, size: 3, color: "#ff8a3d" }] },
+    { id: "m.heal",   job: "mage", star: 2, name: "小さないやし",     short: "いやし",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
+    { id: "m.aqua",   job: "mage", star: 3, name: "アクア",           short: "アクア",   cond: { line: "mage" }, mp: 7, ct: 5,
+      fx: [{ t: "arc", stat: "m", mult: 1.0, elem: "water", reach: 36, arc: 0.7, push: 26, color: "#5aa9ff" }] },
+    { id: "m.sleep",  job: "mage", star: 4, name: "スリープ",         short: "スリープ", cond: { line: "mage" }, mp: 8, ct: 15,
+      fx: [{ t: "around", stat: "m", mult: 0, radius: 44, status: { type: "sleep", chance: 0.6, dur: 5 }, color: "#b48cf0" }] },
+    { id: "m.barrier",job: "mage", star: 5, name: "マジックバリア",   short: "バリア",   cond: { line: "mage" }, mp: 6, ct: 30,
+      fx: [{ t: "buff", stat: "mdef", pct: 0.3, dur: 10 }] },
+    { id: "m.wall",   job: "mage", star: 6, name: "フレイムウォール", short: "炎の壁",   cond: { line: "mage" }, mp: 12, ct: 12,
+      fx: [{ t: "zone", stat: "m", mult: 0.5, elem: "fire", dist: 28, radius: 18, dur: 3, tick: 0.5, color: "#ff8a3d" }] },
+    { id: "m.tidal",  job: "mage", star: 7, name: "タイダルウェーブ", short: "大波",     cond: { line: "mage" }, mp: 16, ct: 18,
+      fx: [{ t: "around", stat: "m", mult: 2.0, radius: 60, elem: "water", push: 20, color: "#5aa9ff" }] },
+    // 狩人
+    { id: "h.triple", job: "hunter", star: 1, name: "三本撃ち",   short: "三本",   cond: { weapons: ["bow"] }, mp: 5, ct: 3,
+      fx: [{ t: "shot", stat: "p", mult: 0.8, elem: "weapon", count: 3, spread: 0.28 }] },
+    { id: "h.aid",    job: "hunter", star: 2, name: "応急手当",   short: "手当",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
+    { id: "h.poison", job: "hunter", star: 3, name: "毒矢",       short: "毒矢",   cond: { weapons: ["bow"] }, mp: 5, ct: 6,
+      fx: [{ t: "shot", stat: "p", mult: 1.0, elem: "weapon", status: { type: "poison", chance: 0.7, dur: 10 }, color: "#9be36a" }] },
+    { id: "h.back",   job: "hunter", star: 4, name: "うしろとび", short: "うしろ", cond: { weapons: ["bow"] }, mp: 4, ct: 5,
+      fx: [{ t: "backstep", dist: 34 }, { t: "shot", stat: "p", mult: 1.0, elem: "weapon" }] },
+    { id: "h.para",   job: "hunter", star: 5, name: "しびれ矢",   short: "しびれ", cond: { weapons: ["bow"] }, mp: 6, ct: 8,
+      fx: [{ t: "shot", stat: "p", mult: 1.0, elem: "weapon", status: { type: "para", chance: 0.6, dur: 3 }, color: "#ffe066" }] },
+    { id: "h.aim",    job: "hunter", star: 6, name: "ねらい撃ち", short: "ねらい", cond: { weapons: ["bow"] }, mp: 8, ct: 8,
+      fx: [{ t: "charge", time: 1.0 }, { t: "shot", stat: "p", mult: 2.5, elem: "weapon", crit: 0.3, speed: 240, range: 200, size: 2 }] },
+    { id: "h.rain",   job: "hunter", star: 7, name: "矢の雨",     short: "矢の雨", cond: { weapons: ["bow"] }, mp: 14, ct: 15,
+      fx: [{ t: "rain", stat: "p", mult: 0.6, elem: "weapon", count: 5, dist: 56, radius: 26 }] },
+    // 武術家
+    { id: "f.combo",  job: "fighter", star: 1, name: "れんげき",         short: "連撃",   cond: { weapons: ["fist"] }, mp: 4, ct: 3,
+      fx: [{ t: "rapid", count: 3, interval: 0.09, hit: { t: "arc", stat: "p", mult: 0.6, elem: "weapon" } }] },
+    { id: "f.breath", job: "fighter", star: 2, name: "いきをととのえる", short: "呼吸",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
+    { id: "f.sweep",  job: "fighter", star: 3, name: "足ばらい",         short: "足ばらい", cond: { weapons: ["fist"] }, mp: 6, ct: 8,
+      fx: [{ t: "around", stat: "p", mult: 0.5, radius: 24, elem: "weapon", status: { type: "para", chance: 0.5, dur: 2 } }] },
+    { id: "f.stance", job: "fighter", star: 4, name: "気合いの構え",     short: "構え",   cond: { line: "fighter" }, mp: 6, ct: 30,
+      fx: [{ t: "buff", stat: "wait", pct: -0.3, dur: 10 }] },
+    { id: "f.punch",  job: "fighter", star: 5, name: "せいけん突き",     short: "突き",   cond: { weapons: ["fist"] }, mp: 7, ct: 6,
+      fx: [{ t: "arc", stat: "p", mult: 2.0, elem: "weapon", crit: 0.2 }] },
+    { id: "f.kick",   job: "fighter", star: 6, name: "とびげり",         short: "とびげり", cond: { weapons: ["fist"] }, mp: 6, ct: 6,
+      fx: [{ t: "dash", dist: 40 }, { t: "arc", stat: "p", mult: 1.5, elem: "weapon" }] },
+    { id: "f.barrage",job: "fighter", star: 7, name: "百れつけん",       short: "百れつ", cond: { weapons: ["fist"] }, mp: 15, ct: 18,
+      fx: [{ t: "rapid", count: 10, interval: 0.07, hit: { t: "arc", stat: "p", mult: 0.4, elem: "weapon" } }] },
+    // 僧侶
+    { id: "p.heal",   job: "priest", star: 1, name: "ヒール",           short: "ヒール", cond: { line: "priest" }, mp: 8, ct: 6,
+      fx: [{ t: "heal", pct: 0.25, party: true }] },
+    { id: "p.cure",   job: "priest", star: 2, name: "キュア",           short: "キュア", cond: { line: "priest" }, mp: 5, ct: 6,
+      fx: [{ t: "cure", party: true }] },
+    { id: "p.calm",   job: "priest", star: 3, name: "しずめの一撃",     short: "しずめ", cond: { weapons: ["staff"] }, mp: 6, ct: 6,
+      fx: [{ t: "arc", stat: "p", mult: 1.4, elem: "strike", status: { type: "sleep", chance: 0.3, dur: 5 } }] },
+    { id: "p.protect",job: "priest", star: 4, name: "まもりの祈り",     short: "まもり", cond: { line: "priest" }, mp: 8, ct: 30,
+      fx: [{ t: "buff", stat: "pdef", pct: 0.2, dur: 15, party: true }] },
+    { id: "p.regen",  job: "priest", star: 5, name: "リジェネ",         short: "リジェネ", cond: { line: "priest" }, mp: 10, ct: 20,
+      fx: [{ t: "regen", pct: 0.2, dur: 10, party: true }] },
+    { id: "p.revive", job: "priest", star: 6, name: "よみがえりの祈り", short: "よみがえり", cond: { line: "priest" }, mp: 20, ct: 0, once: true,
+      fx: [{ t: "revive", pct: 0.3 }] },
+    { id: "p.grand",  job: "priest", star: 7, name: "大いなるいやし",   short: "大いやし", cond: { line: "priest" }, mp: 20, ct: 40,
+      fx: [{ t: "heal", pct: 0.6, party: true }, { t: "cure", party: true }] }
+  ];
+  var SKILL = {};
+  SKILLS.forEach(function (s) { SKILL[s.id] = s; });
 
   // 森の敵（深さ1のとき）。res は属性ごとの倍率（1.5＝弱点、0.5＝半減、0＝無効。書いていない属性は1）
-  // kind：melee＝近づいて斬る、spear＝少し離れて突く、archer＝離れて矢を撃つ
+  // kind：melee＝近づいて斬る、spear＝少し離れて突く、archer＝離れて矢を撃つ、vine＝動かず、つるで打つ
   var ENEMIES = {
     goblin_sword: {
       name: "ゴブリンの剣士", kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2,
@@ -36,21 +141,64 @@ var GameData = (function () {
       name: "ゴブリンの弓兵", kind: "archer", hp: 36, patk: 7, pdef: 2, mdef: 2,
       res: { pierce: 1.5 }, speed: 32, r: 6,
       keepMin: 64, keepMax: 120, windup: 0.5, cooldown: 2.3, arrowSpeed: 120, color: "#8a9a52"
+    },
+    vine: {
+      name: "つる草の魔物", kind: "vine", hp: 36, patk: 7, pdef: 3, mdef: 4,
+      res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 7,
+      reach: 34, windup: 0.6, cooldown: 2.0, color: "#3f8a3a",
+      onHit: { type: "para", chance: 0.2, dur: 3 }
     }
   };
+
+  // 状態異常（docs/draft.md 1.7）
+  var STATUS = {
+    poison: { name: "毒", color: "#9be36a" },
+    para:   { name: "しびれ", color: "#ffe066" },
+    sleep:  { name: "眠り", color: "#b48cf0" },
+    "break": { name: "防御ダウン", color: "#ff9a4d" }
+  };
+
+  // 基礎パラメーター（レベル1はどれも10。上がるたびに職業の伸びを足す。小数は持ちこす）
+  function baseStats(job, level) {
+    var g = JOBS[job].growth;
+    return { str: 10 + g.str * (level - 1), vit: 10 + g.vit * (level - 1), mag: 10 + g.mag * (level - 1), int: 10 + g.int * (level - 1) };
+  }
 
   // 戦闘パラメーター（docs/draft.md 1.2）
   function combatStats(base, weapon, armor) {
     return {
-      hp: 30 + base.vit * 5,
-      mp: 10 + base.int * 2,
-      patk: base.str + weapon.patk,
-      pdef: base.str * 0.5 + armor.pdef,
-      matk: base.mag + weapon.matk,
-      mdef: base.mag * 0.5 + armor.mdef,
+      hp: Math.floor(30 + base.vit * 5),
+      mp: Math.floor(10 + base.int * 2),
+      patk: Math.floor(base.str + weapon.patk),
+      pdef: Math.floor(base.str * 0.5 + armor.pdef),
+      matk: Math.floor(base.mag + weapon.matk),
+      mdef: Math.floor(base.mag * 0.5 + armor.mdef),
       crit: 0.05
     };
   }
 
-  return { ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, JOBS: JOBS, ENEMIES: ENEMIES, combatStats: combatStats };
+  // 職の系統に入っているか
+  function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
+
+  // スキルの条件に合うか（合わないスキルはセットできない）
+  function canSet(skill, job, weapon) {
+    var c = skill.cond;
+    if (!c) return true;
+    if (c.weapons && c.weapons.indexOf(weapon) < 0) return false;
+    if (c.line && !inLine(job, c.line)) return false;
+    return true;
+  }
+  function condText(skill) {
+    var c = skill.cond;
+    if (!c) return "条件なし";
+    if (c.weapons) return c.weapons.map(function (w) { return WEAPONS[w].name; }).join("・") + "を装備";
+    if (c.line) return JOBS[c.line].name + "の系統";
+    return "";
+  }
+
+  return {
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
+    SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS,
+    baseStats: baseStats, combatStats: combatStats, inLine: inLine, canSet: canSet, condText: condText
+  };
 })();

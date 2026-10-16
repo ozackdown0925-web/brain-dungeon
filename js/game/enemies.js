@@ -1,4 +1,4 @@
-// 敵：ゴブリンの剣士・槍兵・弓兵の動きと攻撃、矢。
+// 敵：ゴブリンの剣士・槍兵・弓兵・つる草の魔物の動きと攻撃、矢、状態異常。
 // ふつうの攻撃は「当たる前提」の設計。攻撃の前には短い予告（構え）があるが、かわすことは求めない。
 var Enemies = (function () {
   var list = [];
@@ -11,20 +11,49 @@ var Enemies = (function () {
       hp: d.hp, maxHp: d.hp, patk: d.patk, pdef: d.pdef, mdef: d.mdef, res: d.res,
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
-      strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6
+      strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {}
     };
     list.push(e);
     return e;
   }
 
   function clear() { list.length = 0; arrows.length = 0; }
+
+  // 状態異常をかける（docs/draft.md 1.7。ボスはあとで：成功率×0.3・長さ半分）
+  function addStatus(e, type, dur) {
+    if (e.dead) return;
+    if (type === "poison") e.status.poison = { t: dur, tick: 2 };
+    else e.status[type] = { t: dur };
+    Battle.pop(e.x, e.y - 30, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);
+    if (type === "sleep" || type === "para") { if (e.state === "windup") { e.state = "recover"; e.t = 0.2; } }
+  }
+
+  function tickStatus(e, dt, onKill) {
+    var s = e.status;
+    if (s.poison) {
+      s.poison.tick -= dt;
+      if (s.poison.tick <= 0) {
+        s.poison.tick += 2;
+        var dmg = Math.max(1, Math.round(e.maxHp * 0.03));
+        e.hp -= dmg;
+        Battle.pop(e.x, e.y - 20, String(dmg), GameData.STATUS.poison.color, 9);
+        if (e.hp <= 0 && !e.dead) { e.dead = true; onKill(e); }
+      }
+      s.poison.t -= dt; if (s.poison.t <= 0) delete s.poison;
+    }
+    ["para", "sleep", "break"].forEach(function (k) { if (s[k]) { s[k].t -= dt; if (s[k].t <= 0) delete s[k]; } });
+  }
   function alive() { return list.filter(function (e) { return !e.dead; }); }
 
   // 毎フレーム：p はプレイヤー、hurt(e, amount元の攻撃力) はプレイヤーにダメージを与える関数
-  function update(dt, room, p, hurt) {
+  function update(dt, room, p, hurt, onKill) {
     list.forEach(function (e) {
       e.flash = Math.max(0, e.flash - dt);
+      e.lash = Math.max(0, (e.lash || 0) - dt);
       if (e.dead) { e.fade -= dt; return; }
+      tickStatus(e, dt, onKill);
+      if (e.dead) return;
+      if (e.status.sleep) return; // 眠っているあいだは何もしない
       var dx = p.x - e.x, dy = p.y - e.y;
       var dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
       var ux = dx / dist, uy = dy / dist;
@@ -48,12 +77,16 @@ var Enemies = (function () {
         if (gap > d.keep + 8) { mx = ux; my = uy; }
         else if (gap < d.keep - 6) { mx = -ux; my = -uy; }
         if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "vine") {
+        if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
+        else e.face = { x: ux, y: uy };
       } else if (d.kind === "archer") {
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
         else if (gap > d.keepMax) { mx = ux; my = uy; }
         else { mx = -uy * e.strafe * 0.5; my = ux * e.strafe * 0.5; }
         if (gap <= d.keepMax + 30 && e.cd <= 0) startWindup(e, ux, uy);
       }
+      if (e.status.para) { mx = 0; my = 0; } // しびれているあいだは動けない（攻撃はできる）
       if (e.state === "chase" || mx || my) {
         if (mx || my) {
           e.face = { x: mx, y: my };
@@ -107,6 +140,7 @@ var Enemies = (function () {
     }
     // 近い攻撃：構えたときの向きのまま。届けば当たる
     if (!p.down && gap <= d.reach + 2) hurt(e, p.x, p.y - 8);
+    if (d.kind === "vine") e.lash = 0.25;
   }
 
   function push(a, b, room) {
@@ -137,10 +171,20 @@ var Enemies = (function () {
         ctx.strokeStyle = "#c9ccd6"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + e.face.x * 16, y - 3 + e.face.y * 16); ctx.stroke();
       }
+      if (d.kind === "vine") {
+        var la = e.lash > 0 ? 1 : 0;
+        ctx.strokeStyle = "#2f6a2a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, y - 2);
+        ctx.lineTo(x + e.face.x * (8 + la * (d.reach + 2)), y - 2 + e.face.y * (8 + la * (d.reach + 2))); ctx.stroke();
+      }
       if (d.kind === "archer") {
         ctx.strokeStyle = "#a0703a"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.arc(x + e.face.x * 5, y - 3, 5, Math.atan2(e.face.y, e.face.x) - 1.2, Math.atan2(e.face.y, e.face.x) + 1.2); ctx.stroke();
       }
+      // 状態異常の印
+      var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
+      if (marks.length && !e.dead) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 7, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
+      if (e.status.sleep && !e.dead) Render.text("Zz", x + 7, y - 20, { size: 7, color: "#b48cf0" });
       // 構え（予告）
       if (e.state === "windup" && !e.dead) {
         Render.text("！", x, y - 24 - bob, { size: 9, align: "center", bold: true, color: "#ffd24a" });
@@ -164,5 +208,5 @@ var Enemies = (function () {
     });
   }
 
-  return { spawn: spawn, clear: clear, alive: alive, list: list, update: update, draw: draw };
+  return { spawn: spawn, clear: clear, alive: alive, list: list, update: update, draw: draw, addStatus: addStatus };
 })();
