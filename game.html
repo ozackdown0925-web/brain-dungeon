@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=3">
+<link rel="stylesheet" href="css/game.css?v=4">
 </head>
 <body>
 <div id="stage">
@@ -41,16 +41,36 @@
       <h2>一時停止</h2>
       <p>メニューは、このあと作ります（段階5）。</p>
       <button type="button" id="resumeBtn" class="btn">つづける</button>
+      <div class="test">
+        <h3>テスト用の設定（段階3だけ。キャラクリと拠点は段階5で作る）</h3>
+        <p class="note">職業・武器・スキル1〜3を選べます。スキルは、条件（職業の系統・装備している武器）に合うものだけ選べます。</p>
+        <div id="testPanel"></div>
+        <div class="test-foot">
+          <label>レベル <select id="testLevel"></select></label>
+          <button type="button" id="testApply" class="btn">この設定ではじめから</button>
+        </div>
+        <p id="testNote" class="note warn"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="choose" hidden>
+    <div class="panel">
+      <h2 id="chooseTitle"></h2>
+      <p id="chooseLead"></p>
+      <div id="chooseList"></div>
     </div>
   </div>
 </div>
 
-<script src="js/game/input.js?v=3"></script>
-<script src="js/game/render.js?v=3"></script>
-<script src="js/game/world.js?v=3"></script>
-<script src="js/game/data.js?v=3"></script>
-<script src="js/game/battle.js?v=3"></script>
-<script src="js/game/enemies.js?v=3"></script>
-<script src="js/game/core.js?v=3"></script>
+<script src="js/game/input.js?v=4"></script>
+<script src="js/game/render.js?v=4"></script>
+<script src="js/game/world.js?v=4"></script>
+<script src="js/game/data.js?v=4"></script>
+<script src="js/game/battle.js?v=4"></script>
+<script src="js/game/enemies.js?v=4"></script>
+<script src="js/game/party.js?v=4"></script>
+<script src="js/game/skills.js?v=4"></script>
+<script src="js/game/core.js?v=4"></script>
 </body>
 </html>
