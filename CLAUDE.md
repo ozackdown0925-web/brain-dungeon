@@ -24,7 +24,7 @@ GitHub Pages（このリポジトリ ozackdown0925-web/brain-dungeon、**公開*
 
 ## ファイル
 
-- `index.html`（入口）・`drill.html`（毎日4問）・`editor.html`（問題エディタ）・`config.js`（GAS の URL。鍵は書かない）。
+- `index.html`（入口）・`drill.html`（知恵の試練＝毎日4問）・`editor.html`（問題エディタ）・`config.js`（GAS の URL。鍵は書かない）。
 - `js/api.js`（GAS とのやりとりと鍵の記憶）・`js/drillcore.js`＋`css/drillcore.css`（問題の表示と採点・図への書きこみ）・`css/theme.css`（色と文字）。
 - `gas/Code.gs`（データの窓口）。窓口の一覧と反映の手順は `gas/設定手順.md`。`gas/*.html` は GAS が配る旧画面（iPad の切りかえが終わったら消す）。
 - 手元確認：`py tools/make_preview.py` で `_preview_*.html` を作る（問題は成績管理フォルダから読む。コミットしない）。
