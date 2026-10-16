@@ -93,7 +93,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
   <header class="top">
     <div>
       <h1>知恵の試練</h1>
-      <div class="date" id="today"></div>
+      <div class="date"><span id="today"></span> <span id="who" hidden>（保護者）</span></div>
     </div>
     <div class="streak" id="streak" hidden>連続 <b id="streakNum">0</b> 日</div>
   </header>
@@ -216,6 +216,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     var day = days[today] || { date: today, items: {} };
     day.items[subject] = record; days[today] = day;
     var body = Object.assign({ date: today, subject: subject }, record);
+    body._k = key; // どの鍵（どのプレイヤー）の答えかを控えに残す
     var list = readPending(); list.push(body); writePending(list);
     flushPending();
   }
@@ -231,7 +232,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
         return p.then(function () {
           return send(rec, failed ? 0 : 2).then(function (ok) {
             if (ok) writePending(readPending().filter(function (r) { return !sameRec(r, rec); }));
-            else failed = true;
+            if (!ok) failed = true;
           });
         });
       }, Promise.resolve()).then(function () {
@@ -241,10 +242,13 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     });
     return writeChain;
   }
+  // 戻り値：true（送れた）・false（あとで送り直す）・"drop"（その鍵はもう使えないので捨てる）
   function send(rec, tries) {
-    return BDApi.call("saveAnswer", { record: rec }, key).then(function () { return true; }, function (err) {
-      if (err.kind === "forbidden" || tries <= 0) return false;
-      return new Promise(function (r) { setTimeout(r, 2000); }).then(function () { return send(rec, tries - 1); });
+    var r = {}; Object.keys(rec).forEach(function (k) { if (k !== "_k") r[k] = rec[k]; });
+    return BDApi.call("saveAnswer", { record: r }, rec._k || key).then(function () { return true; }, function (err) {
+      if (err.kind === "forbidden") return "drop";
+      if (tries <= 0) return false;
+      return new Promise(function (done) { setTimeout(done, 2000); }).then(function () { return send(rec, tries - 1); });
     });
   }
   function showNotice(text) { var n = $("notice"); n.textContent = text; n.hidden = !text; }
@@ -430,9 +434,9 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     var qs = BDApi.call("drillQuestions", {}, key);
     var rs = BDApi.call("history", {}, key);
     qs.then(function (q) {
-      return rs.then(function (r) { return { q: q.questions, r: r.records, fail: false }; }, function () { return { q: q.questions, r: [], fail: true }; });
+      return rs.then(function (r) { showPlayer(r.player); return { q: q.questions, r: r.records, fail: false }; }, function () { return { q: q.questions, r: [], fail: true }; });
     }).then(function (got) {
-      start(got.q, got.r.concat(readPending()), got.fail ? "記録を読みこめませんでした。問題は解けますが、前の記録が表に出ないことがあります。" : (window.BD_MOCK ? "プレビュー表示です。ここで解いた結果は保存されません。" : ""));
+      start(got.q, got.r.concat(readPending().filter(function (x) { return (x._k || key) === key; })), got.fail ? "記録を読みこめませんでした。問題は解けますが、前の記録が表に出ないことがあります。" : (window.BD_MOCK ? "プレビュー表示です。ここで解いた結果は保存されません。" : ""));
       if (readPending().length) flushPending();
     }, function (err) {
       if (err.kind === "forbidden") { BDApi.clearKey("player"); key = ""; showLogin("鍵が変わったようです。新しいプレイヤー用の鍵を入れてください。"); return; }
@@ -440,6 +444,9 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
       showNotice("問題を読みこめませんでした。インターネットにつながっているか確認して、開き直してください。（" + err.message + "）");
     });
   }
+
+  // 保護者の鍵で開いたときは、見出しの横に「（保護者）」と出す（記録は子どもとは別）
+  function showPlayer(p) { $("who").hidden = p !== "parent"; }
 
   // ---------- 鍵の入力（最初の1回だけ） ----------
   function showLogin(msg) {
