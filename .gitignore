@@ -1,0 +1,15 @@
+# 鍵・個人用メモ（絶対にコミットしない）
+*.key
+*鍵*
+記録の読み出し先.txt
+config.local.js
+.clasprc.json
+
+# 塾の教材・成績データ（このリポジトリには置かない）
+*.pdf
+成績データ.json
+
+# 作業用
+node_modules/
+.DS_Store
+Thumbs.db
