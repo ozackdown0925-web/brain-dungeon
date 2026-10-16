@@ -4,7 +4,10 @@
 (function () {
   var view = Render.view;
   var room = World.testRoom();
-  var SPEED = 72; // 1秒に進むドット数
+  var SPEED = 52;       // 1秒に進むドット数（保護者の感想で 72 → 52 に下げた）
+  var ACCEL_TIME = 0.12; // 止まっている状態から、この秒数をかけて全速になる
+  var TURN_TIME = 0.15;  // 大きく向きを変える（ほぼ反対を押す）ときは、この秒数その場で振り返ってから動く
+  var TURN_ANGLE = 1.9;  // これより大きく向きが変わったら「振り返り」（ラジアン。約110度）
   var A = Party.actor;
   A.x = 6 * World.TILE; A.y = 11 * World.TILE;
 
@@ -81,13 +84,24 @@
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
     var a = Input.axis();
+    A.turn = Math.max(0, (A.turn || 0) - dt);
     if (Math.abs(a.x) > 0.05 || Math.abs(a.y) > 0.05) {
       var len = Math.sqrt(a.x * a.x + a.y * a.y);
-      if (!asleep && A.busy <= 0) A.face = { x: a.x / len, y: a.y / len };
-      if (!asleep && !para && A.busy <= 0) {
-        room.move(A, a.x * SPEED * dt, a.y * SPEED * dt);
-        A.walk += dt * 8;
+      var nx = a.x / len, ny = a.y / len;
+      if (!asleep && A.busy <= 0) {
+        // ほぼ反対を押したら、その場で振り返ってから動き出す（すぐ反対へ走って敵にぶつからないように）
+        var diff = Math.abs(Math.atan2(ny, nx) - Math.atan2(A.face.y, A.face.x));
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff > TURN_ANGLE) { A.turn = TURN_TIME; A.move = 0; }
+        A.face = { x: nx, y: ny };
       }
+      if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
+        A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
+        room.move(A, a.x * SPEED * A.move * dt, a.y * SPEED * A.move * dt);
+        A.walk += dt * 8 * A.move;
+      }
+    } else {
+      A.move = 0;
     }
     if (!asleep && A.busy <= 0) {
       if (Input.held("attack") && A.wait <= 0) Combat.normalAttack(c);
