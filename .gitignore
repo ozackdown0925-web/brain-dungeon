@@ -13,3 +13,10 @@ config.local.js
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Claude Code の作業用
+.claude/worktrees/
+
+# 成績管理フォルダの場所など、手元だけのメモ（フォルダ名に子どもの名前が入る）
+CLAUDE.local.md
+*.local.txt

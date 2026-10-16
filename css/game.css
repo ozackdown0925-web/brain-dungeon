@@ -1,0 +1,143 @@
+/* Brain Dungeon：ゲーム画面
+   iPadOS 16 の Safari で動くこと。画面いっぱいの Canvas と、その上に重ねる iPad 用のボタン。 */
+:root {
+  --bg: #0b0d13;
+  --fg: #ece7da;
+  --muted: #a3a8bd;
+  --gold: #f2c14e;
+  --life: #ef5b5b;
+  --mana: #5aa9ff;
+  --btn: rgba(36, 42, 61, 0.55);
+  --btn-line: rgba(236, 231, 218, 0.35);
+  --btn-on: rgba(242, 193, 78, 0.55);
+}
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+}
+#stage {
+  position: fixed;
+  inset: 0;
+}
+#screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+[hidden] { display: none !important; }
+
+/* ---------- iPad 用のボタン ---------- */
+#touch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#touch > * { pointer-events: auto; }
+
+#dpad {
+  position: absolute;
+  left: calc(24px + env(safe-area-inset-left, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  background: var(--btn);
+  border: 2px solid var(--btn-line);
+  touch-action: none;
+}
+.dpad-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 12px solid transparent;
+  opacity: 0.6;
+}
+.dpad-arrow.up { left: 72px; top: 8px; border-bottom-color: var(--fg); }
+.dpad-arrow.down { left: 72px; bottom: 8px; border-top-color: var(--fg); }
+.dpad-arrow.left { top: 72px; left: 8px; border-right-color: var(--fg); }
+.dpad-arrow.right { top: 72px; right: 8px; border-left-color: var(--fg); }
+#dpadKnob {
+  position: absolute;
+  left: 59px;
+  top: 59px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(236, 231, 218, 0.25);
+  border: 2px solid var(--gold);
+  pointer-events: none;
+}
+
+#buttons {
+  position: absolute;
+  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: 236px;
+  height: 200px;
+}
+.btn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+  background: var(--btn);
+  border: 2px solid var(--btn-line);
+  border-radius: 50%;
+  padding: 0;
+  touch-action: none;
+  cursor: pointer;
+}
+.btn.on { background: var(--btn-on); border-color: var(--gold); }
+#buttons .btn { position: absolute; width: 64px; height: 64px; }
+#buttons .attack { right: 0; bottom: 0; width: 100px; height: 100px; font-size: 18px; border-color: var(--life); }
+#buttons [data-act="skill1"] { right: 112px; bottom: 0; }
+#buttons [data-act="skill2"] { right: 100px; bottom: 72px; }
+#buttons [data-act="skill3"] { right: 30px; bottom: 112px; }
+#buttons [data-act="switch"] { right: 172px; bottom: 136px; width: 56px; height: 56px; font-size: 13px; }
+#buttons .skill { border-color: var(--mana); }
+#menuBtn {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  width: auto;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* ---------- 重ねる画面 ---------- */
+#rotate, #pause {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 13, 0.88);
+  text-align: center;
+  font-size: 20px;
+  padding: 16px;
+}
+.panel {
+  background: #1c2030;
+  border: 1px solid #343b55;
+  border-radius: 12px;
+  padding: 20px 28px;
+  max-width: 420px;
+}
+.panel h2 { margin: 0 0 8px; color: var(--gold); font-size: 22px; }
+.panel p { margin: 0 0 16px; font-size: 15px; color: var(--muted); }
+.panel .btn { border-radius: 8px; padding: 10px 24px; }
