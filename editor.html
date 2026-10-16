@@ -461,7 +461,7 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
   function renderPreview() {
     var pv = $("pv"); if (!cur) { pv.textContent = ""; return; }
     pv.dataset.s = cur.subject;
-    DrillCore.renderQuestion(pv, clone(cur), { imageLoader: loadImage, reviewNote: "（ドリルでは3日後にもう一度出ます）", extraMeta: [cur.enabled === false ? "出題しない" : ""] .filter(Boolean) });
+    DrillCore.renderQuestion(pv, clone(cur), { imageLoader: loadImage, reviewNote: "（ドリルでは、正解するまでまた出ます）", extraMeta: [cur.enabled === false ? "出題しない" : ""] .filter(Boolean) });
   }
   $("retry").addEventListener("click", renderPreview);
 

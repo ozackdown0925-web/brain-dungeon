@@ -19,7 +19,7 @@ window.BD_MOCK = (function () {
     check: function () { return { role: "admin" }; },
     drillQuestions: function () { return { questions: copy(Q.filter(function (q) { return q.enabled !== false; })) }; },
     questions: function () { return { questions: copy(Q) }; },
-    history: function () { return { records: window.PREVIEW_RECORDS || [] }; },
+    history: function () { var r = []; try { r = JSON.parse(localStorage.getItem("preview-records") || "[]"); } catch (e) {} return { records: r }; }, // 試したい記録は localStorage の preview-records に入れる
     image: function (b) { return { src: IMG[b.id] || null }; },
     saveAnswer: function () { return {}; },
     saveQuestion: function (b) { return { question: b.question }; },

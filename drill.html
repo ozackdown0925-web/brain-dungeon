@@ -139,7 +139,6 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
 <script>
 (function () {
   var SUBJECTS = DrillCore.SUBJECTS;
-  var REVIEW_AFTER_DAYS = 3;
   var $ = function (id) { return document.getElementById(id); };
   var key = BDApi.getKey("player");
   var PENDING_STORE = "bd-drill-pending";   // まだ送れていない答え（電波がないときなど）
@@ -148,7 +147,6 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
   function pad(n) { return String(n).padStart(2, "0"); }
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function parseYmd(s) { var a = s.split("-").map(Number); return new Date(a[0], a[1] - 1, a[2]); }
-  function daysBetween(a, b) { return Math.round((parseYmd(b) - parseYmd(a)) / 86400000); }
   var WD = ["日", "月", "火", "水", "木", "金", "土"];
   var today = ymd(new Date());
 
@@ -174,32 +172,34 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
   // ---------- 今日の問題を選ぶ ----------
   function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function itemOf(subject) { return days[today] && days[today].items && days[today].items[subject]; }
+  // 今日より前の記録から、問題ごとの「正解した回数」と「最後に解いたときの正誤」を数える
   function historyFor(subject) {
-    var last = {};
+    var h = {};
     Object.keys(days).sort().forEach(function (d) {
       if (d >= today) return;
       var it = days[d].items && days[d].items[subject];
-      if (it && it.qid) last[it.qid] = { date: d, correct: !!it.correct };
+      if (!it || !it.qid) return;
+      var x = h[it.qid] || (h[it.qid] = { ok: 0, lastCorrect: false });
+      if (it.correct) x.ok++;
+      x.lastCorrect = !!it.correct;
     });
-    return last;
+    return h;
   }
+  // 教科ごとに1問。①正解した回数が少ないほど先（まだ解いていない・まちがえた問題は0回）
+  // ②同じならテストでまちがえた問題・正答率の高い問題（priority）③同じなら日によって変える。
+  // まちがえた問題は正解するまで0回のままなので、次の日にまた出ることがある。
   function choose(subject) {
     var t = itemOf(subject);
     if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
     var pool = Q.filter(function (q) { return q.subject === subject; });
     if (!pool.length) return null;
-    var last = historyFor(subject);
-    var due = pool.filter(function (q) { var l = last[q.id]; return l && !l.correct && daysBetween(l.date, today) >= REVIEW_AFTER_DAYS; })
-      .sort(function (a, b) { return last[a.id].date < last[b.id].date ? -1 : 1; });
-    if (due.length) return { qid: due[0].id, review: true };
-    // まだ解いていない問題：①テストでまちがえた問題 ②正答率の高い問題 の順。同じ順位なら日によって変える
-    var unseen = pool.filter(function (q) { return !last[q.id]; });
-    if (unseen.length) {
-      unseen.sort(function (a, b) { return priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
-      return { qid: unseen[0].id, review: false };
-    }
-    var oldest = pool.slice().sort(function (a, b) { return last[a.id].date < last[b.id].date ? -1 : last[a.id].date > last[b.id].date ? 1 : priority(b) - priority(a); });
-    return { qid: oldest[0].id, review: false };
+    var h = historyFor(subject);
+    function okCount(q) { return h[q.id] ? h[q.id].ok : 0; }
+    var sorted = pool.slice().sort(function (a, b) {
+      return okCount(a) - okCount(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today);
+    });
+    var q = sorted[0];
+    return { qid: q.id, review: !!(h[q.id] && !h[q.id].lastCorrect) }; // 前にまちがえた問題には「復習」の印
   }
   // 問題の正答率（小問の平均。正答率がなければ50とみなす）
   function rateOf(q) {
@@ -269,7 +269,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     var done = SUBJECTS.filter(function (s) { return itemOf(s.key); }).length;
     var ok = SUBJECTS.filter(function (s) { return itemOf(s.key) && itemOf(s.key).correct; }).length;
     $("donebox").hidden = done < SUBJECTS.length;
-    $("doneScore").textContent = SUBJECTS.length + "問中 " + ok + "問 正解。まちがえた問題は" + REVIEW_AFTER_DAYS + "日後にもう一度出ます。";
+    $("doneScore").textContent = SUBJECTS.length + "問中 " + ok + "問 正解。まちがえた問題は、また出ます。";
   }
   var shownKey = "";
   function renderQuestion(force) {
@@ -286,7 +286,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     DrillCore.renderQuestion(holder, q, {
       imageLoader: loadImage, saved: saved, review: pick.review,
       extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
-      reviewNote: REVIEW_AFTER_DAYS + "日後にもう一度出ます。",
+      reviewNote: "まちがえた問題は、また出ます。",
       onFinish: function (res) {
         var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
         saveAnswer(current, rec);
