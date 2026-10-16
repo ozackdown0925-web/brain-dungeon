@@ -1,7 +1,7 @@
 """手元確認用のプレビューを作る（GAS にはつながない。解いても保存されない）。
 
 使い方: py tools/make_preview.py [テストID ...]   例: py tools/make_preview.py k6
-- 問題と画像は成績管理フォルダの drill/content/out/<テストID>.json から読む（塾の教材なのでリポジトリには入れない）。
+- 問題と画像は成績管理フォルダ（場所は tools/grade_dir.local.txt）の drill/content/out/<テストID>.json から読む（塾の教材なのでリポジトリには入れない）。
 - できるファイル：_preview_data.js・_preview_drill.html・_preview_editor.html（.gitignore 済み。コミットしない）。
 - ブラウザで _preview_drill.html を開くと、本物の GAS の代わりに中の問題で動く。
 """
@@ -9,7 +9,8 @@ import json, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = Path(r"<成績管理フォルダ>\drill\content\out")
+# 成績管理フォルダの場所は tools/grade_dir.local.txt に1行で書く（フォルダ名に子どもの名前が入るのでコミットしない）
+LOCAL = Path(__file__).resolve().parent / "grade_dir.local.txt"
 
 MOCK = """
 window.BD_MOCK = (function () {
@@ -31,6 +32,9 @@ window.BD_MOCK = (function () {
 
 
 def main():
+    if not LOCAL.exists():
+        sys.exit(f"{LOCAL.name} がありません。成績管理フォルダの場所を1行で書いて保存してください。")
+    OUT_DIR = Path(LOCAL.read_text(encoding="utf-8").strip()) / "drill" / "content" / "out"
     tids = sys.argv[1:] or sorted(p.stem for p in OUT_DIR.glob("*.json"))
     qs, imgs = [], {}
     for tid in tids:

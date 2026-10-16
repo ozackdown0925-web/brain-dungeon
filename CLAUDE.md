@@ -35,8 +35,9 @@ GitHub Pages（このリポジトリ ozackdown0925-web/brain-dungeon、**公開*
 | 場所 | やること |
 |---|---|
 | このリポジトリ `C:\Users\ozack\code\brain-dungeon` | 画面（ゲーム・ドリル・エディタ）と GAS の窓口のコード。GitHub Pages への公開。 |
-| 成績管理フォルダ `<成績管理フォルダ>`（別の Claude Code セッション） | テスト結果の取りこみと分析（`成績データ.json`）、テストPDFから問題を作ること（`drill\content`）、問題の取りこみ（`upload.py`・`mark_misses.py`）。 |
+| 成績管理フォルダ（別の Claude Code セッション。場所は `CLAUDE.local.md`） | テスト結果の取りこみと分析（`成績データ.json`）、テストPDFから問題を作ること（`drill\content`）、問題の取りこみ（`upload.py`・`mark_misses.py`）。 |
 
+- 成績管理フォルダの場所は、フォルダ名に子どもの名前が入っているので、コミットしない `CLAUDE.local.md`（リポジトリの一番上）と `tools/grade_dir.local.txt` にだけ書く。
 - **このリポジトリに入れないもの**：成績データ、テストのPDF、問題の切り抜き画像・問題データ（塾の教材なので公開リポジトリに置かない。問題と画像はスプレッドシートとGoogleドライブにだけ置く）、子どもの名前、鍵、GASのURLを含む個人用メモ。
 - 問題の形式・出題のしくみ・図への書きこみの詳細は、成績管理フォルダの `CLAUDE.md`「毎日4問ドリル」の節が元になっている。ここを変えるときは両方の CLAUDE.md をそろえる。
 - 成績管理フォルダの `upload.py`・`mark_misses.py` は GAS の `doPost`（action=import など）を使う。窓口の形を変えるときは、それらが壊れないようにする（変える場合は成績管理側のセッションに伝える）。
