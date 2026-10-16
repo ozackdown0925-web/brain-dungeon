@@ -13,3 +13,10 @@ config.local.js
 node_modules/
 .DS_Store
 Thumbs.db
+
+# 手元確認用のプレビュー（塾の問題が入るのでコミットしない）
+_preview*
+
+# 成績管理フォルダの場所など、手元だけのメモ（フォルダ名に子どもの名前が入る）
+CLAUDE.local.md
+*.local.txt

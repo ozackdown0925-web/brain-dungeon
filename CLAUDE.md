@@ -23,13 +23,21 @@ GitHub Pages（このリポジトリ ozackdown0925-web/brain-dungeon、**公開*
 - **セーブ**：区切り（拠点に戻る・ステージを終える・問題を解く）でスプレッドシートに保存し、iPad 内（localStorage）にも控えを持つ。インターネットにつながらないときは遊べないようにする（2026-10-17 決定。iPad 内の控えは、送りそこねたときの予備）。
 - **GAS のコードもこのリポジトリで管理**し、clasp でPCから反映する（`gas/` フォルダ）。
 
+## ファイル
+
+- `index.html`（入口）・`drill.html`（知恵の試練＝毎日4問）・`editor.html`（問題エディタ）・`config.js`（GAS の URL。鍵は書かない）。
+- `js/api.js`（GAS とのやりとりと鍵の記憶）・`js/drillcore.js`＋`css/drillcore.css`（問題の表示と採点・図への書きこみ）・`css/theme.css`（色と文字）。
+- `gas/Code.gs`（データの窓口）。窓口の一覧と反映の手順は `gas/設定手順.md`。`gas/*.html` は GAS が配る旧画面（iPad の切りかえが終わったら消す）。
+- 手元確認：`py tools/make_preview.py` で `_preview_*.html` を作る（問題は成績管理フォルダから読む。コミットしない）。
+
 ## 成績管理フォルダとの役割分担
 
 | 場所 | やること |
 |---|---|
 | このリポジトリ `C:\Users\ozack\code\brain-dungeon` | 画面（ゲーム・ドリル・エディタ）と GAS の窓口のコード。GitHub Pages への公開。 |
-| 成績管理フォルダ `<成績管理フォルダ>`（別の Claude Code セッション） | テスト結果の取りこみと分析（`成績データ.json`）、テストPDFから問題を作ること（`drill\content`）、問題の取りこみ（`upload.py`・`mark_misses.py`）。 |
+| 成績管理フォルダ（別の Claude Code セッション。場所は `CLAUDE.local.md`） | テスト結果の取りこみと分析（`成績データ.json`）、テストPDFから問題を作ること（`drill\content`）、問題の取りこみ（`upload.py`・`mark_misses.py`）。 |
 
+- 成績管理フォルダの場所は、フォルダ名に子どもの名前が入っているので、コミットしない `CLAUDE.local.md`（リポジトリの一番上）と `tools/grade_dir.local.txt` にだけ書く。
 - **このリポジトリに入れないもの**：成績データ、テストのPDF、問題の切り抜き画像・問題データ（塾の教材なので公開リポジトリに置かない。問題と画像はスプレッドシートとGoogleドライブにだけ置く）、子どもの名前、鍵、GASのURLを含む個人用メモ。
 - 問題の形式・出題のしくみ・図への書きこみの詳細は、成績管理フォルダの `CLAUDE.md`「毎日4問ドリル」の節が元になっている。ここを変えるときは両方の CLAUDE.md をそろえる。
 - 成績管理フォルダの `upload.py`・`mark_misses.py` は GAS の `doPost`（action=import など）を使う。窓口の形を変えるときは、それらが壊れないようにする（変える場合は成績管理側のセッションに伝える）。
