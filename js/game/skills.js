@@ -65,12 +65,45 @@ var Combat = (function () {
     });
   }
 
+  // ---------- 自動で狙う（飛ぶ攻撃） ----------
+  // range より近い敵のうち、いちばん近い敵（向きに関係なく）。いなければ null
+  function autoTarget(range) {
+    var a = A(), best = null, bd = 0;
+    Enemies.alive().forEach(function (e) {
+      var dx = e.x - a.x, dy = e.y - a.y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > range + e.r) return;
+      if (!best || d < bd) { best = e; bd = d; }
+    });
+    return best;
+  }
+  // いちばん近い敵の方を向いて、その向き（角度）を返す。敵がいなければ今の向き
+  function aimAt(range) {
+    var a = A(), t = autoTarget(range);
+    if (t) {
+      var dx = t.x - a.x, dy = t.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      a.face = { x: dx / d, y: dy / d };
+    }
+    return Math.atan2(a.face.y, a.face.x);
+  }
+  // ふつうの攻撃が飛ぶ武器なら、その届く距離（飛ばない武器は 0）
+  function shotRange(c) {
+    var w = GameData.WEAPONS[c.weapon];
+    if (w.shot) return w.shot.range;
+    if (w.bolt && GameData.inLine(c.job, w.boltFor)) return w.bolt.range;
+    return 0;
+  }
+  // 今のキャラが狙っている敵（印を出すため）
+  function targetFor(c) {
+    var r = shotRange(c);
+    return r ? autoTarget(r) : null;
+  }
+
   // ---------- ふつうの攻撃 ----------
   function normalAttack(c) {
     var a = A();
     var w = GameData.WEAPONS[c.weapon];
     a.wait = w.wait * Party.eff(c, "wait");
-    var ang = Math.atan2(a.face.y, a.face.x);
+    var ang = shotRange(c) ? aimAt(shotRange(c)) : Math.atan2(a.face.y, a.face.x);
     if (w.shot) { addShot(c, { stat: "p", mult: 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }, ang); return; }
     if (w.bolt && GameData.inLine(c.job, w.boltFor)) {
       addShot(c, { stat: "m", mult: 1, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff" }, ang);
@@ -128,12 +161,14 @@ var Combat = (function () {
       case "dash":
       case "backstep":
         var dir = f.t === "dash" ? 1 : -1, go = f.dist;
+        if (dir < 0) aimAt(150); // 下がるときは、いちばん近い敵の方を向いてから、その反対へ
         // 踏みこむときは、前にいる敵の手前で止まる（通りぬけない）
         if (dir > 0) { var front = nearestInFront(f.dist + 20, 0.6); if (front) go = Math.max(0, Math.min(go, front.dist - front.e.r - a.r - 4)); }
         hooks.room.move(a, a.face.x * go * dir, a.face.y * go * dir);
         a.inv = Math.max(a.inv, 0.2);
         break;
       case "shot":
+        ang = aimAt(f.range || 150); // いちばん近い敵へ向けて飛ばす
         var n = f.count || 1, spread = f.spread || 0;
         for (var k = 0; k < n; k++) addShot(c, f, ang + (k - (n - 1) / 2) * spread);
         break;
@@ -246,6 +281,13 @@ var Combat = (function () {
   // ---------- 描画 ----------
   function draw(cam) {
     var ctx = Render.ctx, a = A();
+    // 飛ぶ攻撃で狙っている敵の上に、小さな印
+    var tg = targetFor(Party.current());
+    if (tg) {
+      var tx = Math.round(tg.x - cam.x), ty = Math.round(tg.y - cam.y) - 26;
+      ctx.fillStyle = "#ffd24a";
+      ctx.beginPath(); ctx.moveTo(tx - 3, ty); ctx.lineTo(tx + 3, ty); ctx.lineTo(tx, ty + 4); ctx.closePath(); ctx.fill();
+    }
     zones.forEach(function (zn) {
       ctx.globalAlpha = 0.35 + 0.2 * Math.sin(zn.t * 20);
       ctx.fillStyle = zn.f.color;
@@ -280,5 +322,5 @@ var Combat = (function () {
     });
   }
 
-  return { hooks: hooks, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear };
 })();
