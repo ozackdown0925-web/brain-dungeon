@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>問題エディタ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/drillcore.css">
+<style>
+/* レイアウト：作業台。左に問題の一覧、中央に編集フォーム、右に子どもが見る画面のプレビュー。 */
+body { font-size: 15px; }
+.app { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1fr); gap: 14px; padding-inline: 16px; padding-block: 12px 40px; max-width: 1700px; margin: 0 auto; align-items: start; }
+@media (max-width: 1200px) { .app { grid-template-columns: 260px minmax(0, 1fr); } .preview { grid-column: 2; } }
+@media (max-width: 760px) { .app { grid-template-columns: minmax(0, 1fr); } .preview { grid-column: auto; } }
+header.bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+header.bar h1 { font-family: var(--font-display); font-size: 1.4rem; margin: 0; }
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 14px; min-width: 0; display: grid; gap: 10px; }
+.panel h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0; }
+.list { position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow: auto; }
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.filters .full { grid-column: 1 / -1; }
+.qlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.qlist button { appearance: none; width: 100%; text-align: left; font: inherit; border: 1px solid var(--rule); border-left: 5px solid var(--c); background: var(--paper); color: var(--ink); border-radius: 8px; padding: 6px 8px; cursor: pointer; display: grid; gap: 1px; }
+.qlist button[aria-current="true"] { border-color: var(--c); background: var(--sheet); box-shadow: 0 0 0 2px var(--c) inset; }
+.qlist .t1 { font-weight: 700; font-size: 0.9rem; }
+.qlist .t2 { font-size: 0.8rem; color: var(--ink-soft); }
+.qlist .off { color: var(--ng); font-weight: 700; }
+label.f { display: grid; gap: 3px; font-size: 0.85rem; color: var(--ink-soft); }
+label.f.inline { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 0.95rem; }
+input[type=text], input[type=number], select, textarea { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 8px; width: 100%; min-width: 0; }
+textarea { resize: vertical; min-height: 4.5em; line-height: 1.6; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.btn { appearance: none; font: inherit; font-weight: 700; border-radius: 8px; padding: 7px 14px; cursor: pointer; border: 2px solid var(--c); background: var(--c); color: var(--sheet); }
+.btn.ghost { background: transparent; color: var(--c); }
+.btn.small { padding: 3px 9px; font-size: 0.85rem; }
+.btn.danger { --c: var(--ng); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row.end { justify-content: flex-end; }
+.sep { flex: 1; }
+.part { border: 1px solid var(--rule); border-left: 5px solid var(--c); border-radius: 10px; padding: 10px; display: grid; gap: 8px; background: var(--paper); }
+.part .head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.part .head b { font-family: var(--font-display); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumb { width: 150px; border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); padding: 4px; display: grid; gap: 4px; }
+.thumb img { width: 100%; height: 90px; object-fit: contain; background: #fff; border-radius: 4px; }
+.thumb .ph { height: 90px; display: grid; place-items: center; font-size: 0.8rem; color: var(--ink-soft); }
+.drop { border: 2px dashed var(--rule); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; color: var(--ink-soft); }
+.drop.over { border-color: var(--c); color: var(--c); }
+.status { font-size: 0.9rem; }
+.status.err { color: var(--ng); font-weight: 700; }
+.status.ok { color: var(--ok); }
+.banner { background: var(--ng-bg); border-radius: 8px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.preview .card { border-top: 6px solid var(--c); border-radius: var(--radius); border: 1px solid var(--rule); border-top-width: 6px; border-top-color: var(--c); padding: 14px 16px; background: var(--sheet); }
+.login { max-width: 420px; margin: 60px auto; }
+.help { font-size: 0.82rem; color: var(--ink-soft); margin: 0; }
+details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
+</style>
+<script src="config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/drillcore.js"></script>
+</head>
+<body>
+<div id="login" class="panel login" hidden>
+  <h2>問題エディタ</h2>
+  <p class="help">管理用の鍵を入れてください。Apps Script で setup を実行したときの「管理用の鍵」です。</p>
+  <form id="loginForm" class="row">
+    <input type="text" id="keyInput" autocomplete="off" placeholder="管理用の鍵" style="flex:1">
+    <button class="btn" type="submit">ひらく</button>
+  </form>
+  <p class="status err" id="loginMsg" hidden></p>
+</div>
+
+<div id="app" class="app" hidden>
+  <header class="bar">
+    <h1>問題エディタ</h1>
+    <div class="row">
+      <span class="status" id="status"></span>
+      <button class="btn ghost" type="button" id="newBtn">新しい問題</button>
+    </div>
+  </header>
+
+  <aside class="panel list" aria-label="問題の一覧">
+    <div class="filters">
+      <select id="fSubject" aria-label="教科"><option value="">すべての教科</option></select>
+      <select id="fState" aria-label="状態"><option value="">すべて</option><option value="on">出題する</option><option value="off">出題しない</option><option value="miss">テストでまちがえた</option></select>
+      <select id="fSource" class="full" aria-label="出典"><option value="">すべての出典</option></select>
+      <input type="text" id="fText" class="full" placeholder="ことばでさがす（ID・単元・問題文・答え）">
+    </div>
+    <p class="help" id="count"></p>
+    <ul class="qlist" id="qlist"></ul>
+  </aside>
+
+  <section class="panel" aria-label="編集">
+    <div class="banner" id="dirtyBanner" hidden>
+      <span>保存していない変更があります。</span>
+      <button class="btn small" type="button" id="bannerSave">保存する</button>
+      <button class="btn small ghost danger" type="button" id="bannerDiscard">変更を捨てる</button>
+    </div>
+    <div id="form"></div>
+  </section>
+
+  <section class="panel preview" aria-label="プレビュー">
+    <div class="row"><h2>プレビュー（子どもが見る画面）</h2><span class="sep"></span><button class="btn ghost small" type="button" id="retry">もう一度解く</button></div>
+    <div class="card" id="pv"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var key = "";
+  var all = [];          // すべての問題
+  var cur = null;        // 編集中の問題（コピー）
+  var curOrig = "";      // 保存済みの内容（変更の判定用）
+  var isNew = false;
+  var localImg = {};     // 画像ID -> dataURL（アップロード直後のもの）
+  var imgCache = {};
+
+  // GAS の窓口を呼ぶ。失敗したときはエラーの文を返す（画面に出す）
+  function call(action, params) {
+    return BDApi.call(action, params, key).catch(function (err) { throw err.message; });
+  }
+  function loadImage(id) {
+    if (localImg[id]) return Promise.resolve(localImg[id]);
+    if (!imgCache[id]) {
+      imgCache[id] = call("image", { id: id }).then(function (r) { return r.src; });
+      imgCache[id].catch(function () { delete imgCache[id]; });
+    }
+    return imgCache[id];
+  }
+  function setStatus(t, kind) { var s = $("status"); s.textContent = t || ""; s.className = "status" + (kind ? " " + kind : ""); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function button(cls, text, fn) { var b = el("button", cls, text); b.type = "button"; b.addEventListener("click", fn); return b; }
+  function splitList(s) { return String(s || "").split(/[、,，\/\n]/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function joinList(a) { return DrillCore.asList(a).join("、"); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // ---------- ログイン ----------
+  function tryKey(k) {
+    return BDApi.call("check", {}, k).catch(function (err) { throw err.message; }).then(function (r) {
+      if (r.role !== "admin") throw "これはプレイヤー用の鍵です。管理用の鍵を入れてください";
+      key = k; BDApi.setKey("admin", k);
+      $("login").hidden = true; $("app").hidden = false;
+      return reload();
+    });
+  }
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var k = $("keyInput").value.trim(); if (!k) return;
+    tryKey(k).catch(function (err) { var m = $("loginMsg"); m.textContent = String(err); m.hidden = false; });
+  });
+
+  // ---------- 一覧 ----------
+  function reload(selectId) {
+    setStatus("読みこみ中…");
+    return call("questions").then(function (r) {
+      all = (r.questions || []).sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+      fillFilters(); renderList(); setStatus("問題 " + all.length + " 件");
+      var want = selectId || (cur && cur.id);
+      var hit = all.filter(function (q) { return q.id === want; })[0] || all[0];
+      if (hit && !isNew) open(hit); else if (!hit) newQuestion();
+    }).catch(function (e) { setStatus(String(e), "err"); });
+  }
+  function testOf(q) { return String(q.source || "").split(" ")[0] || "（出典なし）"; }
+  function fillFilters() {
+    var fs = $("fSubject"); if (fs.options.length === 1) DrillCore.SUBJECTS.forEach(function (s) { var o = el("option", null, s.name); o.value = s.key; fs.append(o); });
+    var src = $("fSource"); var keep = src.value; src.length = 1;
+    var seen = {}; all.forEach(function (q) { seen[testOf(q)] = true; });
+    Object.keys(seen).sort().forEach(function (t) { var o = el("option", null, t); o.value = t; src.append(o); });
+    src.value = keep;
+  }
+  function matches(q) {
+    var s = $("fSubject").value, st = $("fState").value, src = $("fSource").value, t = $("fText").value.trim();
+    if (s && q.subject !== s) return false;
+    if (st === "on" && q.enabled === false) return false;
+    if (st === "off" && q.enabled !== false) return false;
+    if (st === "miss" && !q.testMiss) return false;
+    if (src && testOf(q) !== src) return false;
+    if (t && JSON.stringify(q).indexOf(t) < 0) return false;
+    return true;
+  }
+  function renderList() {
+    var ul = $("qlist"); ul.textContent = "";
+    var shown = all.filter(matches);
+    $("count").textContent = shown.length + " 件を表示（全 " + all.length + " 件）";
+    shown.forEach(function (q) {
+      var li = el("li"); var b = el("button"); b.type = "button"; b.dataset.s = q.subject;
+      b.setAttribute("aria-current", String(!!(cur && cur.id === q.id && !isNew)));
+      var t1 = el("span", "t1", (q.source || q.id));
+      var t2 = el("span", "t2", DrillCore.subjectName(q.subject) + "・" + (q.unit || "単元なし") + "・小問" + DrillCore.asList(q.parts).length);
+      b.append(t1, t2);
+      if (q.enabled === false) b.append(el("span", "t2 off", "出題しない"));
+      if (q.testMiss) b.append(el("span", "t2", "テストでまちがえた"));
+      b.addEventListener("click", function () { guard(function () { open(q); }); });
+      li.append(b); ul.append(li);
+    });
+  }
+  ["fSubject", "fState", "fSource"].forEach(function (id) { $(id).addEventListener("change", renderList); });
+  $("fText").addEventListener("input", renderList);
+
+  // ---------- 変更の管理 ----------
+  function dirty() { return cur && JSON.stringify(cur) !== curOrig; }
+  var pendingAction = null;
+  function guard(fn) {
+    if (!dirty()) return fn();
+    pendingAction = fn; $("dirtyBanner").hidden = false; $("dirtyBanner").scrollIntoView({ block: "nearest" });
+  }
+  $("bannerSave").addEventListener("click", function () { save().then(function (ok) { if (ok && pendingAction) { var f = pendingAction; pendingAction = null; $("dirtyBanner").hidden = true; f(); } }); });
+  $("bannerDiscard").addEventListener("click", function () { $("dirtyBanner").hidden = true; var f = pendingAction; pendingAction = null; curOrig = JSON.stringify(cur); if (f) f(); });
+  window.addEventListener("beforeunload", function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+  function open(q) { isNew = false; cur = clone(q); delete cur.updatedAt; curOrig = JSON.stringify(cur); renderForm(); renderList(); renderPreview(); }
+  function newQuestion(base) {
+    isNew = true;
+    var subject = (base && base.subject) || $("fSubject").value || "math";
+    cur = base ? clone(base) : { subject: subject, unit: "", source: "", text: "", images: [], parts: [{ label: "", prompt: "", type: "number", answer: "" }], explanation: "", explainImages: [], enabled: true };
+    cur.id = "q" + Date.now().toString(36);
+    delete cur.updatedAt;
+    curOrig = "";
+    renderForm(); renderList(); renderPreview();
+  }
+  $("newBtn").addEventListener("click", function () { guard(function () { newQuestion(); }); });
+
+  function save() {
+    if (!cur) return Promise.resolve(false);
+    if (!cur.id) { setStatus("IDを入れてください", "err"); return Promise.resolve(false); }
+    if (isNew && all.some(function (q) { return q.id === cur.id; })) { setStatus("同じIDの問題がもうあります。IDを変えてください", "err"); return Promise.resolve(false); }
+    setStatus("保存中…");
+    return call("saveQuestion", { question: cur }).then(function (r) {
+      var saved = r.question;
+      var i = -1; all.forEach(function (q, k) { if (q.id === cur.id) i = k; });
+      if (i >= 0) all[i] = saved || clone(cur); else all.push(saved || clone(cur));
+      all.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+      isNew = false; curOrig = JSON.stringify(cur);
+      $("dirtyBanner").hidden = true;
+      fillFilters(); renderList(); renderForm();
+      setStatus("保存しました（" + new Date().toLocaleTimeString() + "）", "ok");
+      return true;
+    }).catch(function (e) { setStatus("保存できませんでした：" + e, "err"); return false; });
+  }
+
+  // ---------- 画像の欄 ----------
+  function imageField(title, list, onChange) {
+    var wrap = el("div"); wrap.style.display = "grid"; wrap.style.gap = "6px";
+    wrap.append(el("span", "help", title));
+    var thumbs = el("div", "thumbs"); wrap.append(thumbs);
+    function paint() {
+      thumbs.textContent = "";
+      list.forEach(function (id, i) {
+        var t = el("div", "thumb"); var ph = el("div", "ph", "読みこみ中…"); t.append(ph);
+        loadImage(id).then(function (src) { var im = document.createElement("img"); im.src = src; im.alt = ""; ph.replaceWith(im); }, function () { ph.textContent = "読みこめません"; });
+        var r = el("div", "row");
+        r.append(button("btn ghost small", "↑", function () { if (i > 0) { list.splice(i - 1, 0, list.splice(i, 1)[0]); paint(); onChange(); } }));
+        r.append(button("btn ghost small", "↓", function () { if (i < list.length - 1) { list.splice(i + 1, 0, list.splice(i, 1)[0]); paint(); onChange(); } }));
+        r.append(button("btn ghost small danger", "外す", function () { list.splice(i, 1); paint(); onChange(); }));
+        t.append(r); thumbs.append(t);
+      });
+    }
+    paint();
+    var drop = el("div", "drop", "画像をここにドラッグ、またはここをクリックしてから Ctrl+V で貼り付け　");
+    drop.tabIndex = 0;
+    var file = document.createElement("input"); file.type = "file"; file.accept = "image/*"; file.multiple = true;
+    file.addEventListener("change", function () { Array.prototype.forEach.call(file.files, upload); file.value = ""; });
+    drop.append(file);
+    drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", function () { drop.classList.remove("over"); });
+    drop.addEventListener("drop", function (e) { e.preventDefault(); drop.classList.remove("over"); Array.prototype.forEach.call(e.dataTransfer.files, upload); });
+    drop.addEventListener("paste", function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      Array.prototype.forEach.call(items, function (it) { if (it.type.indexOf("image") === 0) upload(it.getAsFile()); });
+    });
+    wrap.append(drop);
+    function upload(f) {
+      if (!f || f.type.indexOf("image") !== 0) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        setStatus("画像をアップロード中…");
+        call("uploadImage", { dataUrl: rd.result, name: f.name || "image" }).then(function (r) {
+          var id = r.id;
+          localImg[id] = rd.result; list.push(id); paint(); onChange(); setStatus("画像を追加しました（保存すると反映されます）", "ok");
+        }).catch(function (e) { setStatus("画像を追加できませんでした：" + e, "err"); });
+      };
+      rd.readAsDataURL(f);
+    }
+    return wrap;
+  }
+
+  // ---------- 編集フォーム ----------
+  var pvTimer = 0;
+  function changed() {
+    $("dirtyBanner").hidden = true;
+    clearTimeout(pvTimer); pvTimer = setTimeout(renderPreview, 250);
+    setStatus(dirty() ? "未保存の変更あり" : "");
+  }
+  function field(label, value, onInput, opts) {
+    opts = opts || {};
+    var l = el("label", "f"); l.append(el("span", null, label));
+    var i = opts.multiline ? document.createElement("textarea") : document.createElement("input");
+    if (!opts.multiline) i.type = opts.type || "text";
+    i.value = value == null ? "" : value;
+    if (opts.placeholder) i.placeholder = opts.placeholder;
+    if (opts.readOnly) i.readOnly = true;
+    if (opts.rows) i.rows = opts.rows;
+    i.addEventListener("input", function () { onInput(i.value); changed(); });
+    l.append(i);
+    if (opts.help) l.append(el("span", "help", opts.help));
+    return l;
+  }
+  function select(label, options, value, onChange) {
+    var l = el("label", "f"); l.append(el("span", null, label));
+    var s = document.createElement("select");
+    options.forEach(function (o) { var op = el("option", null, o.name); op.value = o.key; s.append(op); });
+    s.value = value;
+    s.addEventListener("change", function () { onChange(s.value); changed(); });
+    l.append(s); return l;
+  }
+
+  function renderForm() {
+    var f = $("form"); f.textContent = ""; f.dataset.s = cur.subject;
+    var top = el("div", "row");
+    top.append(el("h2", null, isNew ? "新しい問題" : "問題を編集"), el("span", "sep"));
+    top.append(button("btn", "保存", save));
+    top.append(button("btn ghost", "複製して新しい問題に", function () { guard(function () { newQuestion(cur); }); }));
+    if (!isNew) top.append(button("btn ghost danger", "削除", askDelete));
+    f.append(top);
+    var del = el("div", "banner"); del.hidden = true; del.id = "delBanner";
+    del.append(el("span", null, "この問題を削除します。記録は残りますが、問題は元に戻せません。出題を止めるだけなら「出題する」のチェックを外してください。"));
+    del.append(button("btn small danger", "削除する", doDelete), button("btn small ghost", "やめる", function () { del.hidden = true; }));
+    f.append(del);
+
+    var g = el("div", "grid2");
+    g.append(field("ID", cur.id, function (v) { cur.id = v.trim(); }, { readOnly: !isNew, help: isNew ? "英数字。あとから変えられません" : "" }));
+    var en = el("label", "f inline"); var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = cur.enabled !== false;
+    cb.addEventListener("change", function () { cur.enabled = cb.checked; changed(); }); en.append(cb, document.createTextNode("出題する"));
+    var tm = el("label", "f inline"); var cb2 = document.createElement("input"); cb2.type = "checkbox"; cb2.checked = !!cur.testMiss;
+    cb2.addEventListener("change", function () { cur.testMiss = cb2.checked; changed(); }); tm.append(cb2, document.createTextNode("テストでまちがえた（先に出す）"));
+    var flags = el("div"); flags.style.display = "grid"; flags.append(en, tm);
+    g.append(flags);
+    g.append(select("教科", DrillCore.SUBJECTS, cur.subject, function (v) { cur.subject = v; f.dataset.s = v; }));
+    g.append(field("単元", cur.unit, function (v) { cur.unit = v; }, { placeholder: "例：場合の数・樹形図" }));
+    f.append(g);
+    f.append(field("出典", cur.source, function (v) { cur.source = v; }, { placeholder: "例：組分け第6回 算数 2(3)", help: "最初の空白までがテスト名として一覧の絞りこみに使われます" }));
+    f.append(field("問題文（図だけで分かるときは空でよい）", cur.text, function (v) { cur.text = v; }, { multiline: true, rows: 3 }));
+    cur.images = cur.images || [];
+    f.append(imageField("問題の図（元のテストを切り抜いた画像など。上から順に表示）", cur.images, changed));
+
+    var ph = el("div", "row"); ph.append(el("h2", null, "答えの欄（小問）"));
+    f.append(ph);
+    cur.parts = cur.parts || [];
+    cur.parts.forEach(function (p, i) { f.append(partEditor(p, i)); });
+    var addRow = el("div", "row"); f.append(addRow);
+    addRow.append(button("btn ghost", "＋ 小問を追加", function () { cur.parts.push({ label: "(" + (cur.parts.length + 1) + ")", prompt: "", type: "choice", options: ["ア", "イ", "ウ", "エ"], answer: "" }); renderForm(); changed(); }));
+
+    f.append(field("解説（答え合わせのあとに表示）", cur.explanation, function (v) { cur.explanation = v; }, { multiline: true, rows: 3 }));
+    cur.explainImages = cur.explainImages || [];
+    f.append(imageField("解説の図", cur.explainImages, changed));
+    var bottom = el("div", "row end"); bottom.append(button("btn", "保存", save)); f.append(bottom);
+  }
+
+  function partEditor(p, i) {
+    var box = el("div", "part"); box.dataset.s = cur.subject;
+    var head = el("div", "head");
+    head.append(el("b", null, "小問 " + (i + 1)), el("span", "sep"));
+    head.append(button("btn ghost small", "↑", function () { if (i > 0) { cur.parts.splice(i - 1, 0, cur.parts.splice(i, 1)[0]); renderForm(); changed(); } }));
+    head.append(button("btn ghost small", "↓", function () { if (i < cur.parts.length - 1) { cur.parts.splice(i + 1, 0, cur.parts.splice(i, 1)[0]); renderForm(); changed(); } }));
+    head.append(button("btn ghost small danger", "この小問を消す", function () { cur.parts.splice(i, 1); renderForm(); changed(); }));
+    box.append(head);
+    var g = el("div", "grid2");
+    g.append(field("番号（例：(1)、問2）", p.label, function (v) { p.label = v; }));
+    g.append(select("答えの形", DrillCore.TYPES, p.type || "number", function (v) {
+      p.type = v;
+      if ((v === "choice" || v === "multi" || v === "order") && !DrillCore.asList(p.options).length) p.options = ["ア", "イ", "ウ", "エ"];
+      if (v === "fraction" && (typeof p.answer !== "object" || Array.isArray(p.answer))) p.answer = { w: "", n: "", d: "" };
+      if (v !== "fraction" && p.answer && typeof p.answer === "object" && !Array.isArray(p.answer)) p.answer = "";
+      renderForm();
+    }));
+    box.append(g);
+    box.append(field("指示・問いかけ（図の中にあれば空でよい）", p.prompt, function (v) { p.prompt = v; }, { multiline: true, rows: 2 }));
+    box.append(answerEditor(p));
+    var g2 = el("div", "grid2");
+    if (p.type === "number" || p.type === "text" || p.type === "fraction")
+      g2.append(field("単位（答えの右に表示）", p.suffix, function (v) { p.suffix = v; }, { placeholder: "例：cm、通り、度" }));
+    g2.append(field("正答率（%）", p.rate, function (v) { p.rate = v === "" ? "" : Number(v); }, { type: "number" }));
+    box.append(g2);
+    p.images = p.images || [];
+    var det = document.createElement("details"); if (p.images.length) det.open = true;
+    det.append(el("summary", null, "この小問だけの図（あれば）"));
+    det.append(imageField("", p.images, changed));
+    box.append(det);
+    return box;
+  }
+
+  function answerEditor(p) {
+    var t = p.type || "number";
+    var wrap = el("div"); wrap.style.display = "grid"; wrap.style.gap = "6px";
+    if (t === "number") {
+      wrap.append(field("正解（別の書き方も正解にするときは「、」で区切る）", joinList(p.answer), function (v) { var a = splitList(v); p.answer = a.length > 1 ? a : (a[0] || ""); }, { placeholder: "例：12" }));
+    } else if (t === "fraction") {
+      var a = p.answer && typeof p.answer === "object" ? p.answer : (p.answer = { w: "", n: "", d: "" });
+      var g = el("div", "grid3");
+      g.append(field("整数の部分（なければ空）", a.w, function (v) { a.w = v.trim(); }));
+      g.append(field("分子", a.n, function (v) { a.n = v.trim(); }));
+      g.append(field("分母", a.d, function (v) { a.d = v.trim(); }));
+      wrap.append(g, el("p", "help", "帯分数の形で、約分した答えを入れます。子どもは同じ3つの欄に入力します。"));
+    } else if (t === "text") {
+      wrap.append(field("正解（「、」で区切ると、どれでも正解）", joinList(p.answer), function (v) { p.answer = splitList(v); }, { placeholder: "例：盛岡市、盛岡" }));
+      wrap.append(field("ひらがな等でも○にする答え（「漢字でも書こう」と表示）", joinList(p.alt), function (v) { p.alt = splitList(v); }, { placeholder: "例：もりおかし、もりおか" }));
+      wrap.append(el("p", "help", "ひらがなとカタカナ、全角と半角、空白は区別しません。"));
+    } else if (t === "choice" || t === "multi" || t === "order") {
+      wrap.append(field("選択肢（「、」で区切る）", joinList(p.options), function (v) { p.options = splitList(v); refresh(); }, { placeholder: "ア、イ、ウ、エ" }));
+      var ans = el("div"); wrap.append(ans);
+      function refresh() {
+        ans.textContent = "";
+        var opts = DrillCore.asList(p.options);
+        if (t === "choice") {
+          ans.append(select("正解", [{ key: "", name: "（選ぶ）" }].concat(opts.map(function (o) { return { key: o, name: o }; })), DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v; }));
+        } else if (t === "multi") {
+          var r = el("div", "row"); r.append(el("span", "help", "正解（すべて選ぶ）："));
+          var cur2 = DrillCore.asList(p.answer);
+          opts.forEach(function (o) {
+            var l = el("label", "f inline"); var c = document.createElement("input"); c.type = "checkbox"; c.checked = cur2.indexOf(o) >= 0;
+            c.addEventListener("change", function () { var s = DrillCore.asList(p.answer).filter(function (x) { return x !== o; }); if (c.checked) s.push(o); p.answer = opts.filter(function (x) { return s.indexOf(x) >= 0; }); changed(); });
+            l.append(c, document.createTextNode(o)); r.append(l);
+          });
+          ans.append(r);
+        } else {
+          ans.append(field("正解の順番（「、」で区切る）", joinList(p.answer), function (v) { p.answer = splitList(v); }, { placeholder: "例：ウ、ア、イ" }));
+        }
+      }
+      refresh();
+    } else if (t === "kanji") {
+      wrap.append(field("正解の漢字", DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v.trim(); }));
+      wrap.append(el("p", "help", "子どもはメモに書き、答えを見て自分で○×をつけます。"));
+    } else {
+      wrap.append(field("模範解答", DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v; }, { multiline: true, rows: 3 }));
+      wrap.append(el("p", "help", "子どもは書いたあと模範解答と比べて、自分で○×をつけます。"));
+    }
+    return wrap;
+  }
+
+  function askDelete() { $("delBanner").hidden = false; }
+  function doDelete() {
+    var id = cur.id;
+    setStatus("削除中…");
+    call("deleteQuestion", { id: id }).then(function () {
+      all = all.filter(function (q) { return q.id !== id; });
+      curOrig = JSON.stringify(cur); cur = null;
+      fillFilters(); renderList();
+      var next = all.filter(matches)[0] || all[0];
+      if (next) open(next); else newQuestion();
+      setStatus("削除しました", "ok");
+    }).catch(function (e) { setStatus("削除できませんでした：" + e, "err"); });
+  }
+
+  // ---------- プレビュー ----------
+  function renderPreview() {
+    var pv = $("pv"); if (!cur) { pv.textContent = ""; return; }
+    pv.dataset.s = cur.subject;
+    DrillCore.renderQuestion(pv, clone(cur), { imageLoader: loadImage, reviewNote: "（ドリルでは3日後にもう一度出ます）", extraMeta: [cur.enabled === false ? "出題しない" : ""] .filter(Boolean) });
+  }
+  $("retry").addEventListener("click", renderPreview);
+
+  // ---------- 起動 ----------
+  function showLogin(msg) { $("login").hidden = false; var m = $("loginMsg"); m.textContent = msg || ""; m.hidden = !msg; }
+  var saved = BDApi.getKey("admin");
+  if (window.BD_MOCK) saved = "preview";
+  if (!BDApi.hasUrl()) showLogin("config.js に GAS の URL が入っていません。");
+  else if (saved) tryKey(saved).catch(function (err) { if (String(err).indexOf("鍵") >= 0) BDApi.clearKey("admin"); showLogin(String(err)); });
+  else showLogin("");
+})();
+</script>
+</body>
+</html>

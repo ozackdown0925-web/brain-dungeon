@@ -1,0 +1,47 @@
+/* 色と文字（ドリルとエディタで共通）。教科の色は学校のノートの色分けに合わせる。 */
+:root {
+  --paper: #f5f8fb;
+  --sheet: #ffffff;
+  --ink: #1d2733;
+  --ink-soft: #5a6878;
+  --rule: #d6e0ea;
+  --grid: #e3ebf3;
+  --math: #2a64c9;
+  --japanese: #c8412c;
+  --science: #23875a;
+  --social: #b8740f;
+  --ok: #23875a;
+  --ng: #c8412c;
+  --ok-bg: #e5f4ec;
+  --ng-bg: #fbe9e6;
+  --pen: #1d2733;
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --radius: 14px;
+  --c: var(--math);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121820; --sheet: #1a222c; --ink: #e6edf4; --ink-soft: #9fb0c2; --rule: #2c3846; --grid: #232e3a;
+    --math: #6f9ef0; --japanese: #ef7a65; --science: #5cc28d; --social: #e3a84a;
+    --ok: #5cc28d; --ng: #ef7a65; --ok-bg: #173226; --ng-bg: #3a1e1a; --pen: #e6edf4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121820; --sheet: #1a222c; --ink: #e6edf4; --ink-soft: #9fb0c2; --rule: #2c3846; --grid: #232e3a;
+  --math: #6f9ef0; --japanese: #ef7a65; --science: #5cc28d; --social: #e3a84a;
+  --ok: #5cc28d; --ng: #ef7a65; --ok-bg: #173226; --ng-bg: #3a1e1a; --pen: #e6edf4;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--paper); color: var(--ink); margin: 0; }
+body { font-family: var(--font-body); font-size: 17px; line-height: 1.7; }
+[data-s="math"] { --c: var(--math); }
+[data-s="japanese"] { --c: var(--japanese); }
+[data-s="science"] { --c: var(--science); }
+[data-s="social"] { --c: var(--social); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--c); outline-offset: 2px; }
+.muted { color: var(--ink-soft); font-size: 0.9rem; margin: 0; }
+.notice { font-size: 0.9rem; color: var(--ink-soft); background: var(--sheet); border: 1px dashed var(--rule); border-radius: 10px; padding: 8px 12px; }

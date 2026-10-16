@@ -13,3 +13,6 @@ config.local.js
 node_modules/
 .DS_Store
 Thumbs.db
+
+# 手元確認用のプレビュー（塾の問題が入るのでコミットしない）
+_preview*
