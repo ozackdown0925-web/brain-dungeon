@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Brain Dungeon</title>
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="screen" aria-label="ゲームの画面"></canvas>
+
+  <!-- iPad 用のボタン（タッチできる端末だけ表示） -->
+  <div id="touch" hidden>
+    <div id="dpad" aria-label="十字キー">
+      <div class="dpad-arrow up"></div>
+      <div class="dpad-arrow down"></div>
+      <div class="dpad-arrow left"></div>
+      <div class="dpad-arrow right"></div>
+      <div id="dpadKnob"></div>
+    </div>
+    <div id="buttons">
+      <button type="button" class="btn skill" data-act="skill1">スキル1</button>
+      <button type="button" class="btn skill" data-act="skill2">スキル2</button>
+      <button type="button" class="btn skill" data-act="skill3">スキル3</button>
+      <button type="button" class="btn attack" data-act="attack">攻撃</button>
+      <button type="button" class="btn small" data-act="switch">切替</button>
+    </div>
+    <button type="button" id="menuBtn" class="btn small" data-act="menu">メニュー</button>
+  </div>
+
+  <div id="rotate" hidden>
+    <p>iPad を横向きにしてね</p>
+  </div>
+
+  <div id="pause" hidden>
+    <div class="panel">
+      <h2>一時停止</h2>
+      <p>メニューは、このあと作ります（段階5）。</p>
+      <button type="button" id="resumeBtn" class="btn">つづける</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/game/input.js"></script>
+<script src="js/game/render.js"></script>
+<script src="js/game/world.js"></script>
+<script src="js/game/core.js"></script>
+</body>
+</html>
