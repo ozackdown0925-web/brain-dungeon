@@ -4,11 +4,14 @@ var Enemies = (function () {
   var list = [];
   var arrows = [];
 
-  function spawn(type, x, y) {
+  // depth：強さの深さ（docs/draft.md 2。深さ d で HP ×(1＋0.12×(d−1))、攻撃 ×(1＋0.10×(d−1))）。省くと1。
+  function spawn(type, x, y, depth) {
     var d = GameData.ENEMIES[type];
+    var k = Math.max(0, (depth || 1) - 1);
+    var hp = Math.round(d.hp * (1 + 0.12 * k)), patk = Math.round(d.patk * (1 + 0.10 * k) * 10) / 10;
     var e = {
       type: type, def: d, x: x, y: y, r: d.r,
-      hp: d.hp, maxHp: d.hp, patk: d.patk, pdef: d.pdef, mdef: d.mdef, res: d.res,
+      hp: hp, maxHp: hp, patk: patk, pdef: d.pdef, mdef: d.mdef, res: d.res,
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
       strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {}
@@ -114,7 +117,7 @@ var Enemies = (function () {
       ar.life -= dt;
       ar.x += ar.vx * dt; ar.y += ar.vy * dt;
       var tx = Math.floor(ar.x / World.TILE), ty = Math.floor(ar.y / World.TILE);
-      var hitWall = room.tile(tx, ty) === "#";
+      var hitWall = room.blocksShot(tx, ty);
       var ddx = ar.x - p.x, ddy = ar.y - p.y;
       if (!p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y); arrows.splice(k, 1); continue; }
       if (hitWall || ar.life <= 0) arrows.splice(k, 1);

@@ -158,3 +158,16 @@ html, body {
 .test select { font: inherit; font-size: 14px; color: #ece7da; background: #242a3d; border: 1px solid #343b55; border-radius: 6px; padding: 6px; max-width: 100%; }
 .test-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
 .test-foot .btn { border-radius: 8px; padding: 10px 16px; }
+
+/* 段階4：メニューの地図、テスト用の設定の入力欄 */
+.mapbox { margin-top: 14px; text-align: center; }
+.mapbox h3 { font-size: 15px; margin: 0 0 8px; color: #f2c14e; }
+.mapbox canvas { display: block; margin: 0 auto 8px; image-rendering: pixelated; }
+.mapbox .note { font-size: 13px; color: #a3a8bd; margin: 0 0 4px; }
+.key { display: inline-block; width: 12px; height: 9px; margin: 0 4px 0 8px; vertical-align: middle; }
+.key.cur { background: #f2c14e; }
+.key.start { background: #5aa9ff; }
+.key.exit { background: #ef5b5b; }
+.key.seen { background: #5e7a52; }
+.test input[type="text"] { font: inherit; font-size: 14px; color: #ece7da; background: #242a3d; border: 1px solid #343b55; border-radius: 6px; padding: 6px; }
+.test-foot label { font-size: 14px; }
