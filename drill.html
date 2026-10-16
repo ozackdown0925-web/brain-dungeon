@@ -172,34 +172,31 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
   // ---------- 今日の問題を選ぶ ----------
   function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function itemOf(subject) { return days[today] && days[today].items && days[today].items[subject]; }
-  // 今日より前の記録から、問題ごとの「正解した回数」と「最後に解いたときの正誤」を数える
+  // 今日より前に、問題ごとに「正解した回数」と「解いた回数」を数える
   function historyFor(subject) {
     var h = {};
-    Object.keys(days).sort().forEach(function (d) {
+    Object.keys(days).forEach(function (d) {
       if (d >= today) return;
       var it = days[d].items && days[d].items[subject];
       if (!it || !it.qid) return;
-      var x = h[it.qid] || (h[it.qid] = { ok: 0, lastCorrect: false });
-      if (it.correct) x.ok++;
-      x.lastCorrect = !!it.correct;
+      var x = h[it.qid] || (h[it.qid] = { ok: 0, tries: 0 });
+      x.tries++; if (it.correct) x.ok++;
     });
     return h;
   }
-  // 教科ごとに1問。①正解した回数が少ないほど先（まだ解いていない・まちがえた問題は0回）
-  // ②同じならテストでまちがえた問題・正答率の高い問題（priority）③同じなら日によって変える。
-  // まちがえた問題は正解するまで0回のままなので、次の日にまた出ることがある。
+  // 出題の順番：①正解した回数が少ない問題（まだ解いていない問題と、まちがえただけの問題はどちらも0回）
+  // ②同じ回数なら priority（テストでまちがえた問題＋正答率）の高い順 ③それも同じなら日によって変える
+  // まちがえた問題は正解するまで回数が増えないので、次の日にまた出ることがある
   function choose(subject) {
     var t = itemOf(subject);
     if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
     var pool = Q.filter(function (q) { return q.subject === subject; });
     if (!pool.length) return null;
     var h = historyFor(subject);
-    function okCount(q) { return h[q.id] ? h[q.id].ok : 0; }
-    var sorted = pool.slice().sort(function (a, b) {
-      return okCount(a) - okCount(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today);
-    });
-    var q = sorted[0];
-    return { qid: q.id, review: !!(h[q.id] && !h[q.id].lastCorrect) }; // 前にまちがえた問題には「復習」の印
+    function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
+    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
+    var top = pool[0], th = h[top.id];
+    return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }
   // 問題の正答率（小問の平均。正答率がなければ50とみなす）
   function rateOf(q) {
@@ -269,7 +266,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     var done = SUBJECTS.filter(function (s) { return itemOf(s.key); }).length;
     var ok = SUBJECTS.filter(function (s) { return itemOf(s.key) && itemOf(s.key).correct; }).length;
     $("donebox").hidden = done < SUBJECTS.length;
-    $("doneScore").textContent = SUBJECTS.length + "問中 " + ok + "問 正解。まちがえた問題は、また出ます。";
+    $("doneScore").textContent = SUBJECTS.length + "問中 " + ok + "問 正解。まちがえた問題は、正解するまでまた出てきます。";
   }
   var shownKey = "";
   function renderQuestion(force) {
@@ -286,7 +283,7 @@ ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
     DrillCore.renderQuestion(holder, q, {
       imageLoader: loadImage, saved: saved, review: pick.review,
       extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
-      reviewNote: "まちがえた問題は、また出ます。",
+      reviewNote: "正解するまで、また出てきます。",
       onFinish: function (res) {
         var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
         saveAnswer(current, rec);
