@@ -121,6 +121,7 @@ var Base = (function () {
     rb.hidden = !hist.length;
     rb.onclick = function () {
       if (!hist.length) return;
+      if (!Parent.checkPin()) return; // 保護者の暗証番号（決めてあれば）
       if (!window.confirm("いちばん新しいセーブ（" + hist[0].label + "：" + hist[0].summary + "）にもどしますか？")) return;
       if (GameState.restore(0)) { createEl.hidden = true; showBase(null); }
     };
@@ -174,7 +175,6 @@ var Base = (function () {
     fillSelect("testLevel", [1, 5, 10, 20, 50, 100], g.party[0].level, function (n) { return "Lv" + n; });
     fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
-    fillHistory();
     document.getElementById("testUnlimited").checked = GameState.unlimited();
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
@@ -259,33 +259,13 @@ var Base = (function () {
     if (b.id === "gate") { WorldMap.open(); return; } // 森の門 → ワールドマップ
     Town.open(b.id);
   });
+  document.getElementById("parentBtn").addEventListener("click", function () { Parent.open(); });
   townCanvas.addEventListener("mousemove", function (ev) {
     var b = buildingAt(ev), id = b ? b.id : null;
     townCanvas.style.cursor = b ? "pointer" : "default";
     if (id !== hover) { hover = id; drawTown(); }
   });
   window.addEventListener("resize", function () { if (!baseEl.hidden) drawTown(); });
-
-  // セーブの復元（最近の10回分）。段階6で、暗証番号つきの保護者画面へ移す
-  function fillHistory() {
-    var box = document.getElementById("historyList"); if (!box) return;
-    box.textContent = "";
-    var list = GameState.history();
-    if (!list.length) { box.appendChild(el("p", "note", "まだ控えがない")); return; }
-    list.forEach(function (h) {
-      var row = el("div", "item-line");
-      var d = new Date(h.at);
-      row.appendChild(el("span", "item-name", (d.getMonth() + 1) + "/" + d.getDate() + " " + d.getHours() + ":" + ("0" + d.getMinutes()).slice(-2) + "　" + h.label));
-      row.appendChild(el("span", "item-extra", h.summary));
-      var b = el("button", "btn small-btn", "このセーブにもどす"); b.type = "button";
-      b.onclick = function () {
-        if (!window.confirm("この時のセーブにもどします。今のセーブは、上の一覧に残っている時点までもどります。よいですか？")) return;
-        if (GameState.restore(h.index)) { showBase(null); document.getElementById("baseNote").textContent = "セーブを復元した"; }
-      };
-      row.appendChild(b);
-      box.appendChild(row);
-    });
-  }
 
   function range(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
   function fillSelect(id, values, cur, label) {
@@ -300,17 +280,22 @@ var Base = (function () {
   }
 
   // trial：知恵の試練の結果 { correct, subjects }。テスト用の出発（trial なし）は、テスト用の正解数を使い、加護はなし
-  function depart(floor, trial) {
+  // 冒険の時間：ふだんは保護者画面で決めた時間、テスト用の出発はテスト用の設定の時間
+  // try：試しモード（保護者画面）{ minutes, correct, subjects }。記録にもセーブにも残らない
+  function depart(floor, trial, tryOpt) {
     readTestSettings();
+    if (trial) Adventure.settings.minutes = GameState.parent().minutes;
+    if (tryOpt) { Adventure.settings.minutes = tryOpt.minutes; GameState.beginTry(); }
     baseEl.hidden = true;
     Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
+      tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true } :
       trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
   }
 
   // 冒険から拠点にもどる
   function returnFrom(result) {
     var report = GameState.applyAdventure(result);
-    showBase({ result: result, people: report });
+    showBase({ result: result, people: report, note: result.tryMode ? "試しモードだったので、出発する前のセーブにもどした（記録にもセーブにも残らない）。" : "" });
   }
 
   // もどったときの知らせ
@@ -319,7 +304,7 @@ var Base = (function () {
     var r = rep.result;
     box.appendChild(el("h3", "", r.cleared ? "森の " + r.floor + " 階をクリアして、拠点にもどった" : "拠点にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
-    box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
+    if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");
       d.appendChild(el("b", "", p.name + "（経験値 +" + p.exp + "）"));
@@ -346,5 +331,5 @@ var Base = (function () {
     showCreate();
   });
 
-  return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart };
+  return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart, el: el };
 })();

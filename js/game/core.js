@@ -80,7 +80,7 @@
     });
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
     GameState.setAdventure({
-      state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test,
+      state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
       timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, keyTaken: keyTaken, hasKey: !!dg.hasKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown,
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
@@ -122,7 +122,8 @@
   // 控えから、拠点で受け取る結果を作る（日付が変わっていたとき・やめたとき）
   function resultFromSnapshot(a, kind) {
     return { exp: a.run.exp, mastery: a.run.mastery, gold: a.run.gold, mat: a.run.mat, items: a.run.got, title: a.run.title,
-             floor: a.floor, cleared: false, boss: a.floor === 7 || a.floor === 14, kills: a.run.byType, kind: kind, test: !!a.test };
+             floor: a.floor, cleared: false, boss: a.floor === 7 || a.floor === 14, kills: a.run.byType, kind: kind, test: !!a.test, tryMode: !!a.tryMode,
+             correct: a.correct || 0, subjects: a.subjects || [] };
   }
 
   // 部屋に入る。fromDir は入ってきた道の向き（n/s/w/e）、null なら部屋のまんなか（入口の部屋）。
@@ -516,7 +517,9 @@
     // 手に入れたもの
     Render.text(run.gold + "G　鉄" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
     if (dg.hasKey) Render.text("鍵を持っている", 7, y + 19, { size: 6, color: "#ffe066" });
-    if (trial.subjects.length) Render.text("加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・"), 7, y + (dg.hasKey ? 28 : 19), { size: 6, color: "#b6e3ff" });
+    var yy = y + (dg.hasKey ? 28 : 19);
+    if (trial.subjects.length) { Render.text("加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・"), 7, yy, { size: 6, color: "#b6e3ff" }); yy += 9; }
+    if (trial.tryMode) Render.text("試しモード（記録に残らない）", 7, yy, { size: 6, color: "#ffb36b" });
 
     // 上のまんなか：階層と残り時間（残り1分で赤くなり、点滅する）
     var tl = Math.ceil(run.timeLeft), mm = Math.floor(tl / 60), ss = tl % 60;
@@ -660,11 +663,12 @@
     var tl = Math.ceil(run.timeLeft);
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
-      "知恵の試練の正解 " + settings.correct + "問" + (trial.test ? "（テスト用の出発）" : "") +
+      "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "") +
         (trial.subjects.length ? "　加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・") : ""),
       run.title ? "称号「" + run.title + "」を手に入れた！（称号の棚は段階5の図鑑に作ります）" : "",
       "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉄 " + run.mat.iron + "　魔石 " + run.mat.stone,
       "経験値 " + Party.members().map(function (m, i) { return m.name + " +" + Math.round(run.exp[i]); }).join("　"),
+      trial.tryMode ? "試しモードなので、拾った物も経験値も持ち帰らない（記録にもセーブにも残らない）。" :
       kind === "clear" ? "拾った物と経験値を持って、拠点にもどろう。" : "拾った物と経験値は持ち帰れるが、階層は進まない。"
     ];
     var lead = document.getElementById("chooseLead"); lead.textContent = "";
@@ -686,7 +690,8 @@
     }
     var result = {
       exp: run.exp.slice(), mastery: run.mastery.slice(), gold: run.gold, mat: run.mat, items: run.got.slice(),
-      title: run.title || null, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind, test: !!trial.test
+      title: run.title || null, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind, test: !!trial.test, tryMode: !!trial.tryMode,
+      correct: settings.correct, subjects: trial.subjects
     };
     GameState.setAdventure({ state: "finished", result: result }); // 「拠点にもどる」を押す前に閉じても、次に開いたとき受け取れる
     button("拠点にもどる", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
@@ -703,7 +708,7 @@
     },
     // 途中で閉じた冒険の続き（その階層の入口から）
     resume: function (a) {
-      trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test };
+      trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode };
       settings.correct = a.correct; startFloor(a.floor, a.seed, a); updateButtons(true);
     },
     resultFromSnapshot: resultFromSnapshot

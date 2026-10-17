@@ -308,3 +308,17 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 /* 段階5-3：続きから、セーブの復元 */
 #createRestore { display: block; margin: 4px auto 0; }
 .test-sub { font-size: 14px; color: var(--gold); margin: 12px 0 4px; }
+
+/* 段階6-2：保護者画面 */
+.parent-entry { text-align: right; margin: 4px 0; }
+.pin-box { text-align: center; padding: 16px 0; }
+.pin-box input { font-size: 24px; width: 6em; text-align: center; letter-spacing: 0.3em; padding: 6px; border-radius: 8px; border: 1px solid #4a5170; background: #12151f; color: #ece7da; margin: 4px; }
+.pp { border-top: 1px solid #2c3249; padding: 10px 0 14px; }
+.pp h3 { font-size: 16px; color: var(--gold); margin: 0 0 6px; }
+.pp-week { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 15px; }
+.pp-week label { display: inline-flex; align-items: center; gap: 4px; }
+.pp input[type="date"] { font-size: 15px; padding: 4px; }
+.log-day { padding: 6px 0; border-top: 1px solid #2c3249; font-size: 14px; }
+.log-day b { color: var(--gold); margin-right: 8px; }
+.log-line { padding-left: 1em; }
+.ok { color: #6fd08c; } .ng { color: #ef8b8b; }

@@ -90,8 +90,11 @@ var WorldMap = (function () {
     if (!s) return;
     if (s.kind === "base") { close(); return; }
     if (!s.open) { showNote("まだ行けない場所。森の主をたおすと、道が開けるかも…？"); return; }
-    // 出発できるのは1日2回（テスト用の設定で外せる）
-    if (GameState.adventuredToday() && !GameState.unlimited()) { showNote("今日の冒険は、もう終わったよ。また明日！"); return; }
+    // 休みの日と、1日に出発できる回数（保護者画面で決める。テスト用の設定で外せる）
+    if (!GameState.unlimited()) {
+      if (GameState.restToday()) { toRestTrial(); return; } // 休みの日：知恵の試練だけ
+      if (GameState.adventuredToday()) { showNote("今日の冒険は、もう終わったよ。また明日！"); return; }
+    }
     showFloors(s);
   });
   cv.addEventListener("mousemove", function (ev) {
@@ -128,6 +131,17 @@ var WorldMap = (function () {
     dlg.hidden = true;
     el.hidden = true;
     Trial.open(floor, function (res) { Base.depart(floor, res); });
+  }
+
+  // 休みの日（保護者画面で決める）：ダンジョンは閉じていて、知恵の試練だけ解ける（段階6-2）
+  function toRestTrial() {
+    dlg.hidden = true;
+    el.hidden = true;
+    Trial.open(0, function (res) {
+      GameState.logRest(res);
+      Base.showBase(null);
+      document.getElementById("baseNote").textContent = "今日はお休みの日。知恵の試練、おつかれさま！ ダンジョンはまた明日。";
+    }, { rest: true });
   }
 
   return { open: open, close: close };

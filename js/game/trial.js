@@ -20,7 +20,7 @@ var Trial = (function () {
   var key = "", mock = false, today = "";
   var Q = [], byId = {}, days = {}, picks = {}, current = "math", ready = false, shownKey = "";
   var writeChain = Promise.resolve();
-  var onDone = null, floorNo = 1;
+  var onDone = null, floorNo = 1, rest = false;
 
   function pad(n) { return ("0" + n).slice(-2); }
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -28,8 +28,9 @@ var Trial = (function () {
 
   // ---------- ひらく ----------
   // floor：挑む階、done(result)：扉が開いたとき（result：{ correct, subjects }）
-  function open(floor, done) {
-    floorNo = floor; onDone = done; today = ymd(new Date());
+  // opts.rest：休みの日（ダンジョンは閉じていて、知恵の試練だけ解く。段階6-2）
+  function open(floor, done, opts) {
+    floorNo = floor; onDone = done; today = ymd(new Date()); rest = !!(opts && opts.rest);
     // ためしの問題を使うのは、config.js に GAS の URL が入っていないときだけ
     // （BDApi.hasUrl() は、偽の窓口を一度入れると true になるので使わない）
     mock = !(window.BD_CONFIG && window.BD_CONFIG.gasUrl);
@@ -37,7 +38,10 @@ var Trial = (function () {
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
-    $("trialSub").textContent = "森の " + floor + " 階へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
+    $("trialSub").textContent = rest ? "今日はお休みの日。ダンジョンは閉じているけれど、知恵の試練は解けるよ。" :
+      "森の " + floor + " 階へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
+    document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
+    $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;
     $("trialLogin").hidden = true;
     $("trialBody").hidden = false;
@@ -227,8 +231,8 @@ var Trial = (function () {
     $("trialProgress").textContent = r.total ? "解いた問い " + r.solved + " / " + r.total : "";
     if (!r.all) { box.hidden = true; return; }
     $("trialDoneText").textContent = "正解 " + r.correct + " / " + r.total + "。" +
-      (r.correct ? "加護：" + r.subjects.map(function (s) { return BLESS[s].name + "（" + BLESS[s].text + "）"; }).join("・") + "。" : "加護はなし。") +
-      "正解が多いほど、宝箱がよくなり、クリア報酬がふえる。";
+      (rest ? "" : r.correct ? "加護：" + r.subjects.map(function (s) { return BLESS[s].name + "（" + BLESS[s].text + "）"; }).join("・") + "。" : "加護はなし。") +
+      (rest ? "今日はお休みの日なので、ダンジョンはまた明日。" : "正解が多いほど、宝箱がよくなり、クリア報酬がふえる。");
     $("trialGo").onclick = function () {
       close();
       if (onDone) onDone({ correct: r.correct, subjects: r.subjects });
