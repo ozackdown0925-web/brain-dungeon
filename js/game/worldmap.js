@@ -66,10 +66,10 @@ var WorldMap = (function () {
       ctx.font = "bold 8px \"Hiragino Maru Gothic ProN\", \"Hiragino Sans\", \"Yu Gothic\", sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       var label = s.kind === "dungeon" && s.open ? s.name + "（" + reached() + "/" + s.floors + "階）" : s.name;
-      var tw = ctx.measureText(label).width + 6, ly = s.y + 12;
+      var tw = Furi.width(ctx, label) + 6, ly = s.y + 12, rh = Furi.has(label) ? Furi.rubyHeight(8) : 0;   // ふりがなの分だけ札を上にのばす
       var lx = Math.max(tw / 2 + 2, Math.min(MW - tw / 2 - 2, s.x));   // 名前の札が地図からはみ出さないように
-      r(lx - tw / 2, ly, tw, 11, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.78)");
-      ctx.fillStyle = lit ? "#1a1408" : s.open === false ? "#a3a8bd" : "#ece7da"; ctx.fillText(label, lx, ly + 1.5);
+      r(lx - tw / 2, ly - rh, tw, 11 + rh, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.78)");
+      ctx.fillStyle = lit ? "#1a1408" : s.open === false ? "#a3a8bd" : "#ece7da"; Furi.draw(ctx, label, lx, ly + 1.5, 8);
     });
   }
   function reached() { return GameState.get().progress.deepest; }

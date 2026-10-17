@@ -45,10 +45,10 @@ var Render = (function () {
     ctx.textBaseline = opt.baseline || "top";
     if (opt.shadow !== false) {
       ctx.fillStyle = "rgba(0,0,0,0.7)";
-      ctx.fillText(str, x + 1, y + 1);
+      Furi.draw(ctx, str, x + 1, y + 1, opt.size || 10);
     }
     ctx.fillStyle = opt.color || "#ece7da";
-    ctx.fillText(str, x, y);
+    Furi.draw(ctx, str, x, y, opt.size || 10);   // 小4までに習わない漢字には、ふりがなをつける（furigana.js）
   }
 
   window.addEventListener("resize", resize);
