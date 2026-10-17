@@ -146,6 +146,26 @@ var Enemies = (function () {
     if (d.kind === "vine") e.lash = 0.25;
   }
 
+  // キャラを動かす。生きている敵にめりこむ方向には進めない（すり抜けない）。
+  // 横と縦を別々に動かすので、敵のわきはすべるように回りこめる。離れる方向にはいつでも動ける。
+  function moveBlocked(room, p, dx, dy) {
+    var live = alive();
+    function stepAxis(ax, d) {
+      if (d === 0) return;
+      var ox = p.x, oy = p.y;
+      room.move(p, ax === "x" ? d : 0, ax === "y" ? d : 0);
+      for (var i = 0; i < live.length; i++) {
+        var e = live[i], min = e.r + p.r;
+        var nx = p.x - e.x, ny = p.y - e.y, bx = ox - e.x, by = oy - e.y;
+        var nd = nx * nx + ny * ny, bd = bx * bx + by * by;
+        if (nd < min * min && nd < bd) { p.x = ox; p.y = oy; return; } // 近づいてめりこむなら、動かない
+      }
+    }
+    // 大きく動くとき（うしろとびなど）に敵を飛びこえないよう、4ドットずつに分けて動かす
+    var n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+    for (var k = 0; k < n; k++) { stepAxis("x", dx / n); stepAxis("y", dy / n); }
+  }
+
   function push(a, b, room) {
     var dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + b.r;
     if (dist >= min) return;
@@ -211,5 +231,5 @@ var Enemies = (function () {
     });
   }
 
-  return { spawn: spawn, clear: clear, alive: alive, list: list, update: update, draw: draw, addStatus: addStatus };
+  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, list: list, update: update, draw: draw, addStatus: addStatus };
 })();
