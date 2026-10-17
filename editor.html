@@ -59,6 +59,9 @@ textarea { resize: vertical; min-height: 4.5em; line-height: 1.6; }
 .login { max-width: 420px; margin: 60px auto; }
 .help { font-size: 0.82rem; color: var(--ink-soft); margin: 0; }
 details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
+.sound-panel { position: fixed; inset: 40px auto auto 50%; transform: translateX(-50%); width: min(560px, 94vw); z-index: 30; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+.sound-panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sound-panel li { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 </style>
 <script src="config.js?v=2"></script>
 <script src="js/api.js?v=2"></script>
@@ -76,12 +79,25 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
   <p class="status err" id="loginMsg" hidden></p>
 </div>
 
+<div id="soundPanel" class="panel sound-panel" hidden>
+  <div class="row"><h2>音（ドライブに置く素材）</h2><span class="sep"></span><button class="btn ghost small" type="button" id="soundClose">閉じる</button></div>
+  <p class="help">曲単体での配布が禁止されている素材（音楽の卵など）は、公開リポジトリに置かずに、ここからドライブに置きます。ゲームはプレイヤー用の鍵で受け取ります。名前はゲームの sound.js の「gas:名前」と同じにしてください（英数字と _ - . だけ）。同じ名前で取りこむと入れかわります。</p>
+  <ul id="soundList"></ul>
+  <div class="row">
+    <input type="text" id="soundName" placeholder="名前（例：michinarini.mp3）" autocomplete="off" spellcheck="false">
+    <input type="file" id="soundFile" accept="audio/mpeg,.mp3">
+    <button class="btn small" type="button" id="soundUp">取りこむ</button>
+  </div>
+  <p class="status" id="soundMsg"></p>
+</div>
+
 <div id="app" class="app" hidden>
   <header class="bar">
     <h1>問題エディタ</h1>
     <div class="row">
       <span class="status" id="status"></span>
       <button class="btn ghost" type="button" id="newBtn">新しい問題</button>
+      <button class="btn ghost small" type="button" id="soundBtn" title="配布が禁止されている音の素材を、ドライブに置く">音</button>
       <button class="btn ghost small" type="button" id="logoutBtn" title="このブラウザが覚えている鍵を消す">鍵を入れ直す</button>
     </div>
   </header>
@@ -233,6 +249,45 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
     renderForm(); renderList(); renderPreview();
   }
   $("newBtn").addEventListener("click", function () { guard(function () { newQuestion(); }); });
+
+  // ---------- 音（ドライブに置く素材） ----------
+  function soundMsg(t, kind) { var m = $("soundMsg"); m.textContent = t || ""; m.className = "status" + (kind ? " " + kind : ""); }
+  function loadSounds() {
+    var ul = $("soundList"); ul.textContent = ""; soundMsg("読みこみ中…");
+    call("sounds", {}).then(function (r) {
+      soundMsg((r.sounds || []).length ? "" : "まだ音はありません");
+      (r.sounds || []).forEach(function (sd) {
+        var li = el("li");
+        li.appendChild(el("span", "", sd.name + "（" + Math.round(sd.size / 1024) + "KB・" + String(sd.updated || "").slice(0, 10) + "）"));
+        li.appendChild(button("btn ghost small danger", "消す", function () {
+          if (!window.confirm(sd.name + " を消しますか？（ドライブのごみ箱に入ります）")) return;
+          call("deleteSound", { name: sd.name }).then(loadSounds, function (m) { soundMsg(m, "err"); });
+        }));
+        ul.appendChild(li);
+      });
+    }, function (m) { soundMsg(m, "err"); });
+  }
+  $("soundBtn").addEventListener("click", function () { $("soundPanel").hidden = false; loadSounds(); });
+  $("soundClose").addEventListener("click", function () { $("soundPanel").hidden = true; });
+  $("soundFile").addEventListener("change", function () {
+    var f = $("soundFile").files[0];
+    if (f && !$("soundName").value) $("soundName").value = f.name.replace(/[^A-Za-z0-9_.-]/g, "_");
+  });
+  $("soundUp").addEventListener("click", function () {
+    var f = $("soundFile").files[0], name = $("soundName").value.trim();
+    if (!f) { soundMsg("ファイルを選んでください", "err"); return; }
+    if (!/^[A-Za-z0-9_.-]{1,60}$/.test(name)) { soundMsg("名前は英数字と _ - . だけにしてください", "err"); return; }
+    if (f.size > 8 * 1024 * 1024) { soundMsg("大きすぎます（8MB まで）", "err"); return; }
+    var rd = new FileReader();
+    rd.onload = function () {
+      soundMsg("取りこみ中…（少し時間がかかります）");
+      call("uploadSound", { name: name, dataUrl: rd.result }).then(function (r) {
+        soundMsg(r.name + " を取りこみました（" + Math.round(r.size / 1024) + "KB）", "ok");
+        $("soundFile").value = ""; $("soundName").value = ""; loadSounds();
+      }, function (m) { soundMsg(m, "err"); });
+    };
+    rd.readAsDataURL(f);
+  });
 
   function save() {
     if (!cur) return Promise.resolve(false);
