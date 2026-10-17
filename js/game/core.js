@@ -51,6 +51,7 @@
     run = newRun();
     if (resume) applyResume(resume);
     enterRoom(dg.start, null);
+    prerender(dg);
     if (resume) say("森の " + floor + " 階　続きから（入口にもどった）");
     else say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
     saveTimer = 0;
@@ -127,6 +128,17 @@
   }
 
   // 部屋に入る。fromDir は入ってきた道の向き（n/s/w/e）、null なら部屋のまんなか（入口の部屋）。
+  // 階のほかの部屋の絵も、少しずつ先に描いておく（部屋を移るときに止まらないように。1回に1部屋）
+  function prerender(d) {
+    var keys = Object.keys(d.cells);
+    (function next() {
+      if (d !== dg || !keys.length) return;
+      var c = d.cells[keys.shift()];
+      if (c && c.room) Tiles.canvasFor(c.room);
+      setTimeout(next, 30);
+    })();
+  }
+
   function enterRoom(k, fromDir) {
     curKey = k;
     var c = dg.cells[k];

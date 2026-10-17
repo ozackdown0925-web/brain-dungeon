@@ -55,6 +55,7 @@ var World = (function () {
   Room.prototype.setTile = function (tx, ty, ch) {
     var r = this.rows[ty];
     this.rows[ty] = r.substring(0, tx) + ch + r.substring(tx + 1);
+    this.ver = (this.ver || 0) + 1;   // 絵を描き直す印
   };
   // 矢や魔法が止まるところ：岩の壁と木（水の上は飛んでいける）
   Room.prototype.blocksShot = function (tx, ty) {
@@ -99,52 +100,13 @@ var World = (function () {
     return dx !== 0 ? x + moved : y + moved;
   };
 
-  var COLORS = {
-    "#": { top: "#4a5240", face: "#2f3529" },
-    ".": { a: "#3b4a2f", b: "#384629" },
-    "*": { a: "#2f5a2a", b: "#2a5025" },
-    "~": { a: "#26506e", b: "#2b5878" },
-    ":": { a: "#4a4a32", b: "#45452e" },
-    "=": { a: "#7a5a34", b: "#6e5030" }
-  };
-
-  // 見えている範囲のタイルだけを描く
+  // 見えている範囲だけを写す。部屋の絵は tiles.js が1回だけ描いて覚えておく（段階7-2a）
   Room.prototype.draw = function (cam, view) {
-    var tx0 = Math.max(0, Math.floor(cam.x / TILE)), tx1 = Math.min(this.w - 1, Math.floor((cam.x + view.w) / TILE));
-    var ty0 = Math.max(0, Math.floor(cam.y / TILE)), ty1 = Math.min(this.h - 1, Math.floor((cam.y + view.h) / TILE));
-    for (var ty = ty0; ty <= ty1; ty++) {
-      for (var tx = tx0; tx <= tx1; tx++) {
-        var t = this.tile(tx, ty);
-        var sx = tx * TILE - cam.x, sy = ty * TILE - cam.y;
-        if (t === "V") {
-          // つる（ボスの部屋に入ると道をふさぐ）
-          Render.rect(sx, sy, TILE, TILE, "#1f3a1c");
-          Render.rect(sx + 2, sy, 3, TILE, "#3f7a32"); Render.rect(sx + 9, sy, 3, TILE, "#2f6a2a");
-          Render.rect(sx, sy + 5, TILE, 2, "#4d8a3c"); Render.rect(sx + 5, sy + 11, 6, 2, "#4d8a3c");
-        } else if (t === "L") {
-          // 鍵のかかった扉（仮の絵）：木の扉に金の錠
-          Render.rect(sx, sy, TILE, TILE, "#6e4a26");
-          Render.rect(sx, sy + 3, TILE, 1, "#4e3418"); Render.rect(sx, sy + 12, TILE, 1, "#4e3418");
-          Render.rect(sx + 6, sy + 6, 4, 4, "#f2c14e"); Render.rect(sx + 7, sy + 8, 2, 2, "#3a2a10");
-        } else if (t === "#") {
-          Render.rect(sx, sy, TILE, TILE, COLORS["#"].face);
-          if (!this.solidAt(tx, ty + 1) || ty === this.h - 1) Render.rect(sx, sy, TILE, 4, COLORS["#"].top);
-        } else {
-          var c = COLORS[t === "T" ? "." : t] || COLORS["."];
-          Render.rect(sx, sy, TILE, TILE, (tx + ty) % 2 ? c.a : c.b);
-          if (t === "*") { Render.rect(sx + 3, sy + 9, 2, 4, "#4d8a3c"); Render.rect(sx + 9, sy + 5, 2, 4, "#4d8a3c"); }
-          if (t === "~") Render.rect(sx + 2, sy + 6, 6, 1, "#4f86a8");
-          if (t === "=") { Render.rect(sx, sy + 4, TILE, 1, "#4e3820"); Render.rect(sx, sy + 10, TILE, 1, "#4e3820"); }
-          if (t === "T") {
-            // 木（仮の絵）：みき＋まるい葉
-            Render.rect(sx + 6, sy + 9, 4, 6, "#5a3d22");
-            Render.rect(sx + 2, sy + 2, 12, 9, "#1f4a22");
-            Render.rect(sx + 4, sy + 1, 8, 2, "#2a5e2b");
-            Render.rect(sx + 4, sy + 4, 3, 2, "#3a7a37");
-          }
-        }
-      }
-    }
+    var cv = Tiles.canvasFor(this), ctx = Render.ctx;
+    var cx = Math.round(cam.x), cy = Math.round(cam.y);
+    var sx = Math.max(0, cx), sy = Math.max(0, cy);
+    var w = Math.min(this.pxW, cx + view.w + 1) - sx, h = Math.min(this.pxH, cy + view.h + 1) - sy;
+    if (w > 0 && h > 0) ctx.drawImage(cv, sx, sy, w, h, sx - cx, sy - cy, w, h);
   };
 
   return { TILE: TILE, Room: Room, testRoom: function () { return new Room(TEST_ROOM); } };
