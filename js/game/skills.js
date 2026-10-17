@@ -164,7 +164,7 @@ var Combat = (function () {
         if (dir < 0) aimAt(150); // 下がるときは、いちばん近い敵の方を向いてから、その反対へ
         // 踏みこむときは、前にいる敵の手前で止まる（通りぬけない）
         if (dir > 0) { var front = nearestInFront(f.dist + 20, 0.6); if (front) go = Math.max(0, Math.min(go, front.dist - front.e.r - a.r - 4)); }
-        hooks.room.move(a, a.face.x * go * dir, a.face.y * go * dir);
+        Enemies.moveBlocked(hooks.room, a, a.face.x * go * dir, a.face.y * go * dir); // 敵はすり抜けない
         a.inv = Math.max(a.inv, 0.2);
         break;
       case "shot":

@@ -125,7 +125,7 @@
       }
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
-        room.move(A, a.x * SPEED * A.move * dt, a.y * SPEED * A.move * dt);
+        Enemies.moveBlocked(room, A, a.x * SPEED * A.move * dt, a.y * SPEED * A.move * dt); // 敵はすり抜けない
         A.walk += dt * 8 * A.move;
       }
     } else {
