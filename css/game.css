@@ -304,3 +304,7 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .screen.trial { display: flex; align-items: center; justify-content: center; background: linear-gradient(#2a2440, #14101e); }
 .screen.trial .panel { text-align: center; max-width: 520px; }
 .btn.quit { display: block; margin: 8px auto 0; border-color: var(--life); }
+
+/* 段階5-3：続きから、セーブの復元 */
+#createRestore { display: block; margin: 4px auto 0; }
+.test-sub { font-size: 14px; color: var(--gold); margin: 12px 0 4px; }

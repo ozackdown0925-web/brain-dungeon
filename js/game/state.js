@@ -5,7 +5,9 @@ var GameState = (function () {
   var STAR_NEED = 40;  // 基本職：★1つに必要な熟練度
   var MAX_STAR = 7;    // 基本職の★の数（スキルの数と同じ）
   var MAX_LEVEL = 100;
-  var SAVE_KEY = "brain-dungeon-save-v1"; // iPad の中の控え（段階5-3で、GAS へのセーブと再開・復元を足す）
+  var SAVE_KEY = "brain-dungeon-save-v1";       // iPad の中の控え（こまめに書きかえる）
+  var HISTORY_KEY = "brain-dungeon-history-v1"; // セーブの復元用：区切り（拠点にもどる・はじめる）ごとに最近の10回分
+  var HISTORY_MAX = 10;
 
   var game = null;
 
@@ -22,6 +24,7 @@ var GameState = (function () {
   function upgrade(g) {
     g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; learnSkills(h); });
     if (!g.items) g.items = { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 };
+    if (!g.today) g.today = { date: todayStr(), adventure: null };
     return g;
   }
 
@@ -33,10 +36,12 @@ var GameState = (function () {
       items: { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [] },
       titles: [],
-      book: { monsters: {}, items: [] }
+      book: { monsters: {}, items: [] },
+      today: { date: todayStr(), adventure: null }
     };
     game.party.forEach(function (h) { learnSkills(h); });
     save();
+    pushHistory("はじめた");
     return game;
   }
 
@@ -100,7 +105,10 @@ var GameState = (function () {
       if (r.boss && game.progress.bosses.indexOf(r.floor) < 0) game.progress.bosses.push(r.floor);
     }
     if (lost) report.push({ name: "倉庫", lines: ["倉庫がいっぱいで、装備を " + lost + "個 持ち帰れなかった"], exp: 0 });
+    game.today = { date: todayStr(), adventure: null }; // その日の冒険は終わり（「1日1回」は段階6）
     save();
+    pushHistory(r.cleared ? "森の" + r.floor + "階をクリア" : "森の" + r.floor + "階から帰った");
+    Remote.send("adventureEnd", { floor: r.floor, kind: r.kind, cleared: !!r.cleared });
     return report;
   }
 
@@ -306,6 +314,54 @@ var GameState = (function () {
     save();
   }
 
+  // ---------- 冒険の途中（段階5-3） ----------
+  // 今日の日付（端末の時計。iPad の日本時間）
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+  }
+  // ダンジョンの中の様子を控える（state："playing" 遊んでいる／"finished" 終わったが、まだ拠点にもどっていない）
+  function setAdventure(a) {
+    if (!game) return;
+    game.today = { date: game.today && game.today.adventure && game.today.adventure.state === "playing" ? game.today.date : todayStr(), adventure: a };
+    save();
+  }
+  function adventure() { return game && game.today ? game.today.adventure : null; }
+  function adventureDate() { return game && game.today ? game.today.date : null; }
+
+  // ---------- セーブの復元（最近の10回分） ----------
+  function readHistory() {
+    try { var s = localStorage.getItem(HISTORY_KEY); return s ? JSON.parse(s) : []; } catch (e) { return []; }
+  }
+  function pushHistory(label) {
+    if (!game) return;
+    var list = readHistory();
+    list.unshift({ at: new Date().toISOString(), label: label, data: JSON.stringify(game) });
+    if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch (e) { /* 入りきらなければ、そのまま */ }
+  }
+  function history() {
+    return readHistory().map(function (h, i) {
+      var g = null; try { g = JSON.parse(h.data); } catch (e) { /* こわれた控えは見せるだけ */ }
+      return { index: i, at: h.at, label: h.label, summary: g ? g.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + g.gold + "G　" + g.progress.deepest + "階まで" : "読めない控え" };
+    });
+  }
+  function restore(index) {
+    var h = readHistory()[index];
+    if (!h) return false;
+    try { game = upgrade(JSON.parse(h.data)); } catch (e) { return false; }
+    game.today = { date: todayStr(), adventure: null };
+    save();
+    return true;
+  }
+
+  // ---------- GAS へのつなぎ口（GAS ができたらここをつなぐ。今は何もしない） ----------
+  // 送るもの：区切りごとのセーブ（階層に入るとき・冒険が終わったとき）と、冒険の記録（docs/draft.md 5）。
+  var Remote = {
+    enabled: false,
+    send: function (kind, info) { if (!this.enabled) return; /* 段階6以降：fetch で GAS の doPost へ（text/plain・JSON） */ }
+  };
+
   // ---------- iPad の中の控え ----------
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (e) { /* 保存できない端末では、そのまま遊ぶ */ }
@@ -318,6 +374,7 @@ var GameState = (function () {
     return null;
   }
   function wipe() {
+    // セーブの復元の控え（HISTORY_KEY）は消さない：うっかり消したときに、もどせるように
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* なにもしない */ }
     game = null;
   }
@@ -325,6 +382,8 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe,
+    todayStr: todayStr, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    history: history, restore: restore, Remote: Remote,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, setSkill: setSkill, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
