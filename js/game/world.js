@@ -1,5 +1,5 @@
-// 部屋：タイル（16×16）の並びと、壁とのぶつかり判定。
-// 段階1では、歩いて確かめるための仮の部屋を1つだけ置く。部屋の型とつなぎ方は段階4で作る。
+// 部屋：タイル（16×16）の並びと、壁とのぶつかり判定、描画。
+// 部屋の型は rooms.js、つなぎ方は dungeon.js（段階4）。
 var World = (function () {
   var TILE = 16;
 
@@ -37,13 +37,29 @@ var World = (function () {
     this.pxW = this.w * TILE;
     this.pxH = this.h * TILE;
   }
+  // : は、となりの部屋への道（dungeon.js がまわりの壁にあける）。道の外側（部屋の外）も少しだけ歩けるので、そこまで進むと部屋を移る。
   Room.prototype.tile = function (tx, ty) {
-    if (ty < 0 || ty >= this.h || tx < 0 || tx >= this.w) return "#";
+    if (ty < 0 || ty >= this.h || tx < 0 || tx >= this.w) {
+      var cx = Math.max(0, Math.min(this.w - 1, tx)), cy = Math.max(0, Math.min(this.h - 1, ty));
+      if (this.rows[cy].charAt(cx) === ":" && Math.abs(tx - cx) + Math.abs(ty - cy) <= 2) return ":";
+      return "#";
+    }
     return this.rows[ty].charAt(tx);
   };
+  // 通れないところ：岩の壁・木・水
   Room.prototype.solidAt = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "~";
+    return t === "#" || t === "~" || t === "T";
+  };
+  // 矢や魔法が止まるところ：岩の壁と木（水の上は飛んでいける）
+  Room.prototype.blocksShot = function (tx, ty) {
+    var t = this.tile(tx, ty);
+    return t === "#" || t === "T";
+  };
+  // 敵が部屋の外に出ないようにする
+  Room.prototype.keepInside = function (e) {
+    e.x = Math.max(e.r + 1, Math.min(this.pxW - e.r - 1, e.x));
+    e.y = Math.max(e.r + 1, Math.min(this.pxH - e.r - 1, e.y));
   };
   // 四角（x, y は左上、w, h は大きさ）が壁にかかっているか
   Room.prototype.hitsWall = function (x, y, w, h) {
@@ -82,7 +98,9 @@ var World = (function () {
     "#": { top: "#4a5240", face: "#2f3529" },
     ".": { a: "#3b4a2f", b: "#384629" },
     "*": { a: "#2f5a2a", b: "#2a5025" },
-    "~": { a: "#26506e", b: "#2b5878" }
+    "~": { a: "#26506e", b: "#2b5878" },
+    ":": { a: "#4a4a32", b: "#45452e" },
+    "=": { a: "#7a5a34", b: "#6e5030" }
   };
 
   // 見えている範囲のタイルだけを描く
@@ -97,14 +115,23 @@ var World = (function () {
           Render.rect(sx, sy, TILE, TILE, COLORS["#"].face);
           if (!this.solidAt(tx, ty + 1) || ty === this.h - 1) Render.rect(sx, sy, TILE, 4, COLORS["#"].top);
         } else {
-          var c = COLORS[t] || COLORS["."];
+          var c = COLORS[t === "T" ? "." : t] || COLORS["."];
           Render.rect(sx, sy, TILE, TILE, (tx + ty) % 2 ? c.a : c.b);
           if (t === "*") { Render.rect(sx + 3, sy + 9, 2, 4, "#4d8a3c"); Render.rect(sx + 9, sy + 5, 2, 4, "#4d8a3c"); }
           if (t === "~") Render.rect(sx + 2, sy + 6, 6, 1, "#4f86a8");
+          if (t === "=") { Render.rect(sx, sy + 4, TILE, 1, "#4e3820"); Render.rect(sx, sy + 10, TILE, 1, "#4e3820"); }
+          if (t === "T") {
+            // 木（仮の絵）：みき＋まるい葉
+            Render.rect(sx + 6, sy + 9, 4, 6, "#5a3d22");
+            Render.rect(sx + 2, sy + 2, 12, 9, "#1f4a22");
+            Render.rect(sx + 4, sy + 1, 8, 2, "#2a5e2b");
+            Render.rect(sx + 4, sy + 4, 3, 2, "#3a7a37");
+          }
         }
       }
     }
   };
 
   return { TILE: TILE, Room: Room, testRoom: function () { return new Room(TEST_ROOM); } };
+  // testRoom：段階1〜3の仮の部屋（今は使っていない。くらべるために残す）
 })();

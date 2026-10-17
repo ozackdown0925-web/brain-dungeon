@@ -265,7 +265,7 @@ var Combat = (function () {
         if (dx * dx + dy * dy <= (e.r + s.size + 1) * (e.r + s.size + 1)) hit = e;
       });
       if (hit) { hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy); shots.splice(i, 1); continue; }
-      if (room.tile(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) === "#" || s.life <= 0) shots.splice(i, 1);
+      if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) shots.splice(i, 1);
     }
     for (var z = zones.length - 1; z >= 0; z--) {
       var zn = zones[z];

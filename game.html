@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=6">
+<link rel="stylesheet" href="css/game.css?v=7">
 </head>
 <body>
 <div id="stage">
@@ -39,14 +39,24 @@
   <div id="pause" hidden>
     <div class="panel">
       <h2>一時停止</h2>
-      <p>メニューは、このあと作ります（段階5）。</p>
+      <p>装備などのメニューは、段階5で作ります。</p>
       <button type="button" id="resumeBtn" class="btn">つづける</button>
+      <div class="mapbox">
+        <h3>地図</h3>
+        <canvas id="bigMap"></canvas>
+        <p class="note"><span class="key cur"></span>いまいる部屋　<span class="key start"></span>入口　<span class="key exit"></span>出口　<span class="key seen"></span>通った部屋</p>
+        <p id="floorInfo" class="note"></p>
+      </div>
       <div class="test">
-        <h3>テスト用の設定（段階3だけ。キャラクリと拠点は段階5で作る）</h3>
+        <h3>テスト用の設定（キャラクリと拠点は段階5、知恵の試練は段階6で作る）</h3>
         <p class="note">職業・武器・スキル1〜3を選べます。スキルは、条件（職業の系統・装備している武器）に合うものだけ選べます。</p>
         <div id="testPanel"></div>
         <div class="test-foot">
           <label>レベル <select id="testLevel"></select></label>
+          <label>階層 <select id="testFloor"></select></label>
+          <label>知恵の試練の正解数（仮） <select id="testCorrect"></select></label>
+          <label>冒険の時間 <select id="testMinutes"></select></label>
+          <label>seed <input id="testSeed" type="text" inputmode="numeric" placeholder="空なら毎回ちがう" size="10"></label>
           <button type="button" id="testApply" class="btn">この設定ではじめから</button>
         </div>
         <p id="testNote" class="note warn"></p>
@@ -63,14 +73,16 @@
   </div>
 </div>
 
-<script src="js/game/input.js?v=6"></script>
-<script src="js/game/render.js?v=6"></script>
-<script src="js/game/world.js?v=6"></script>
-<script src="js/game/data.js?v=6"></script>
-<script src="js/game/battle.js?v=6"></script>
-<script src="js/game/enemies.js?v=6"></script>
-<script src="js/game/party.js?v=6"></script>
-<script src="js/game/skills.js?v=6"></script>
-<script src="js/game/core.js?v=6"></script>
+<script src="js/game/input.js?v=7"></script>
+<script src="js/game/render.js?v=7"></script>
+<script src="js/game/world.js?v=7"></script>
+<script src="js/game/rooms.js?v=7"></script>
+<script src="js/game/dungeon.js?v=7"></script>
+<script src="js/game/data.js?v=7"></script>
+<script src="js/game/battle.js?v=7"></script>
+<script src="js/game/enemies.js?v=7"></script>
+<script src="js/game/party.js?v=7"></script>
+<script src="js/game/skills.js?v=7"></script>
+<script src="js/game/core.js?v=7"></script>
 </body>
 </html>
