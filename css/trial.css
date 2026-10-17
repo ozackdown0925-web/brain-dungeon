@@ -41,15 +41,24 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
 .tdone h3 { margin: 0 0 4px; color: #f2c14e; }
 .tdone p { margin: 0 0 8px; font-size: 14px; }
 .tdone .dq-btn { --c: #b8740f; }
-.tpage { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
-@media (max-width: 860px) { .tpage { grid-template-columns: 1fr; } }
+/* 左の上に問い、左の下にメモ、右に答え（右はスクロールしても見えたまま） */
+.tpage { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-areas: "q a" "m a"; gap: 10px; align-items: start; }
+#trialCard { grid-area: q; }
+#trialAnswer { grid-area: a; position: -webkit-sticky; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.tpage .memo { grid-area: m; }
+#trialAnswer:empty { display: none; }
+/* ゲームは横向きで遊ぶので、スマホの横向きでも左右に並べる。とてもせまい画面（縦向きなど）だけ1列に */
+@media (max-width: 600px) {
+  .tpage { grid-template-columns: 1fr; grid-template-areas: "q" "a" "m"; }
+  #trialAnswer { position: static; max-height: none; }
+}
 .qcard { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-top: 6px solid var(--c); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 12px; min-width: 0; font-size: 17px; line-height: 1.7; }
 .memo { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: var(--radius); padding: 8px; display: grid; gap: 6px; min-width: 0; }
 .mbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .mbar .label { font-weight: 700; color: var(--ink-soft); margin-right: auto; }
 .tool { appearance: none; font: inherit; font-size: 0.9rem; border: 2px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 12px; min-height: 38px; cursor: pointer; }
 .tool[aria-pressed="true"] { border-color: var(--ink); font-weight: 700; }
-.canvasbox { position: relative; width: 100%; height: 420px; border-radius: 10px; overflow: hidden; border: 1px solid var(--rule);
+.canvasbox { position: relative; width: 100%; height: 340px; border-radius: 10px; overflow: hidden; border: 1px solid var(--rule);
   background: #fff repeating-linear-gradient(0deg, transparent 0 27px, #e3ebf3 27px 28px); }
 .canvasbox canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 @media (max-height: 500px) { .canvasbox { height: 260px; } }
