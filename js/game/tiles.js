@@ -327,10 +327,22 @@ var Tiles = (function () {
       return platM[gy * W + gx] === 1;
     }
     // 南のふち（草と岩の面のさかい目）の高さ：ゆるく波打たせる
-    function rimY(gx, ty3) { return ty3 * T + 1 + Math.round(noise(gx / 7, ty3, 82) * 5); }
+    // 横どなりの高台が下へ続いているタイル（でっぱり）は、ふちを下げて上の草を広くする（となりのタイルとはなめらかにつなぐ）
+    function rimOff(tx3, ty3) {
+      if (!isRock(tx3, ty3) || isRock(tx3, ty3 + 1)) return 0;
+      return (isRock(tx3 - 1, ty3) && isRock(tx3 - 1, ty3 + 1)) || (isRock(tx3 + 1, ty3) && isRock(tx3 + 1, ty3 + 1)) ? 5 : 0;
+    }
+    function rimY(gx, ty3) {
+      var u = (gx + 0.5) / T - 0.5, t0 = Math.floor(u), f = smooth(u - t0);
+      var a = rimOff(t0, ty3), b = rimOff(t0 + 1, ty3);
+      // となりが岩の面でないときは、そのタイルの値をそのまま使う
+      if (!isRock(t0, ty3) || isRock(t0, ty3 + 1)) a = b;
+      if (!isRock(t0 + 1, ty3) || isRock(t0 + 1, ty3 + 1)) b = a;
+      return ty3 * T + 1 + Math.round(noise(gx / 7, ty3, 82) * 5 + a * (1 - f) + b * f);
+    }
     // 岩の面がある列か（ふちの少し上の行で、台地が続いているか）
     function faceCol(gx, ty3) {
-      if (gx < 0 || gx >= W || !isRock(Math.floor(gx / T), ty3)) return false;
+      if (gx < 0 || gx >= W || !isRock(Math.floor(gx / T), ty3) || isRock(Math.floor(gx / T), ty3 + 1)) return false;
       return platM[(ty3 * T + 1) * W + gx] === 1;
     }
     // 岩の面の下のはし（でこぼこ）
