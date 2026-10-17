@@ -20,11 +20,23 @@ var Enemies = (function () {
     return e;
   }
 
-  function clear() { list.length = 0; arrows.length = 0; }
+  function clear() { list.length = 0; arrows.length = 0; Bosses.clear(); }
+
+  // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
+  function addArrow(e, angle, speed, opts) {
+    arrows.push({ x: e.x + Math.cos(angle) * (e.r + 2), y: e.y + Math.sin(angle) * (e.r + 2), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                  life: 2.6, from: e, opts: opts || null });
+  }
 
   // 状態異常をかける（docs/draft.md 1.7。ボスはあとで：成功率×0.3・長さ半分）
   function addStatus(e, type, dur) {
     if (e.dead) return;
+    // ボスには効きにくい：成功率×0.3、長さ半分（docs/draft.md 1.7）
+    if (Bosses.isBoss(e)) {
+      if (Math.random() >= 0.3) { Battle.pop(e.x, e.y - 30, "効かない", "#a3a8bd", 8); return; }
+      dur = dur / 2;
+      if (type === "sleep" || type === "para") Bosses.interrupt(e);
+    }
     if (type === "poison") e.status.poison = { t: dur, tick: 2 };
     else e.status[type] = { t: dur };
     Battle.pop(e.x, e.y - 30, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);
@@ -49,14 +61,19 @@ var Enemies = (function () {
   function alive() { return list.filter(function (e) { return !e.dead; }); }
 
   // 毎フレーム：p はプレイヤー、hurt(e, amount元の攻撃力) はプレイヤーにダメージを与える関数
+  var api = { spawn: function (t, x, y, depth) { return spawn(t, x, y, depth); }, alive: function () { return alive(); },
+              addArrow: function (e, a, s, o) { addArrow(e, a, s, o); } };
   function update(dt, room, p, hurt, onKill) {
     list.forEach(function (e) {
       e.flash = Math.max(0, e.flash - dt);
       e.lash = Math.max(0, (e.lash || 0) - dt);
+      e.sweep = Math.max(0, (e.sweep || 0) - dt);
+      e.pollenFx = Math.max(0, (e.pollenFx || 0) - dt);
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
       if (e.status.sleep) return; // 眠っているあいだは何もしない
+      if (Bosses.isBoss(e)) { Bosses.update(e, dt, room, p, hurt, api); return; }
       var dx = p.x - e.x, dy = p.y - e.y;
       var dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
       var ux = dx / dist, uy = dy / dist;
@@ -102,11 +119,14 @@ var Enemies = (function () {
       }
     });
 
-    // 敵どうし・プレイヤーと重ならないように押し合う
+    Bosses.updateHazards(dt, p, hurt);
+
+    // 敵どうし・プレイヤーと重ならないように押し合う（ボスは押されない）
     var live = alive();
     for (var i = 0; i < live.length; i++) {
       var a = live[i];
       for (var j = i + 1; j < live.length; j++) push(a, live[j], room);
+      if (Bosses.isBoss(a)) continue;
       var dx = a.x - p.x, dy = a.y - p.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + p.r;
       if (dist < min) room.move(a, dx / dist * (min - dist), dy / dist * (min - dist));
     }
@@ -119,7 +139,7 @@ var Enemies = (function () {
       var tx = Math.floor(ar.x / World.TILE), ty = Math.floor(ar.y / World.TILE);
       var hitWall = room.blocksShot(tx, ty);
       var ddx = ar.x - p.x, ddy = ar.y - p.y;
-      if (!p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y); arrows.splice(k, 1); continue; }
+      if (!p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y, ar.opts); arrows.splice(k, 1); continue; }
       if (hitWall || ar.life <= 0) arrows.splice(k, 1);
     }
 
@@ -170,20 +190,35 @@ var Enemies = (function () {
     var dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + b.r;
     if (dist >= min) return;
     var s = (min - dist) / 2;
+    var ab = Bosses.isBoss(a), bb = Bosses.isBoss(b);
+    if (ab) { room.move(b, dx / dist * s * 2, dy / dist * s * 2); return; }
+    if (bb) { room.move(a, -dx / dist * s * 2, -dy / dist * s * 2); return; }
     room.move(a, -dx / dist * s, -dy / dist * s);
     room.move(b, dx / dist * s, dy / dist * s);
   }
 
   // ---------- 描画（仮の絵） ----------
+  var clock = 0;
   function draw(cam) {
     var ctx = Render.ctx;
+    clock += 1 / 60;
+    Bosses.drawHazards(cam, clock);
     list.forEach(function (e) {
       var x = Math.round(e.x - cam.x), y = Math.round(e.y - cam.y);
       var d = e.def;
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       var bob = Math.sin(e.walk) > 0 ? 1 : 0;
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       var body = e.flash > 0 ? "#ffffff" : d.color;
+      if (e.type === "wolf_pup") {
+        var fx = e.face.x < 0 ? -1 : 1;
+        Render.rect(x - 7, y - 4 - bob, 14, 7, body); Render.rect(x + fx * 5 - 3, y - 9 - bob, 6, 6, body);
+        Render.rect(x + fx * 7 - 1, y - 7 - bob, 2, 2, "#ef5b5b");
+        if (!e.dead && e.hp < e.maxHp) { Render.rect(x - 8, y - 14 - bob, 16, 2, "#2a2f42"); Render.rect(x - 8, y - 14 - bob, Math.round(16 * e.hp / e.maxHp), 2, "#ef5b5b"); }
+        if (e.state === "windup" && !e.dead) Render.text("！", x, y - 22 - bob, { size: 9, align: "center", bold: true, color: "#ffd24a" });
+        return;
+      }
       Render.rect(x - 5, y - 6 - bob, 10, 10, body);
       Render.rect(x - 4, y - 11 - bob, 8, 6, e.flash > 0 ? "#ffffff" : "#9bbf5a");
       Render.rect(x - 3 + Math.round(e.face.x * 2), y - 9 - bob, 2, 2, "#c0392b");
@@ -225,6 +260,7 @@ var Enemies = (function () {
     ctx.globalAlpha = 1;
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
+      if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
       var len = Math.sqrt(a.vx * a.vx + a.vy * a.vy);
       ctx.strokeStyle = "#e8d8b0"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();

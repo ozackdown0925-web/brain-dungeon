@@ -180,3 +180,6 @@ html, body {
 .key.locked { background: #c0782e; height: 4px; }
 #chooseLead .got-head { margin-top: 10px; color: #f2c14e; }
 #chooseLead .got { font-size: 14px; }
+
+/* 段階4-3：ボスの前後の文章 */
+#chooseLead .story { font-size: 16px; color: #ece7da; line-height: 1.7; }

@@ -4,7 +4,7 @@
 var Dungeon = (function () {
   var GRID_W = 5, GRID_H = 4;   // 部屋をならべるマス目（地図の大きさ）
   var MAIN_ROOMS = 5;           // 入口から出口までの部屋の数
-  var BOSS_FLOORS = [7, 14];    // ボスの階層（段階4-3で作る。それまでは、ふつうの階層と同じ）
+  var BOSS_FLOORS = [7, 14];    // ボスの階層：決まった形（入口 → 敵の部屋 → ボスの部屋）
   var DIRS = {
     n: { dx: 0, dy: -1, back: "s" }, s: { dx: 0, dy: 1, back: "n" },
     w: { dx: -1, dy: 0, back: "e" }, e: { dx: 1, dy: 0, back: "w" }
@@ -163,6 +163,7 @@ var Dungeon = (function () {
 
   // ---------- 階層を作る ----------
   function generate(floor, seed) {
+    if (BOSS_FLOORS.indexOf(floor) >= 0) return generateBoss(floor, seed);
     var rnd = rng(seed);
     var lay = layout(rnd);
     var cells = {};
@@ -196,6 +197,36 @@ var Dungeon = (function () {
     };
     placeThings(dg, floor, seed);
     return dg;
+  }
+
+  // ---------- ボスの階層（段階4-3） ----------
+  // 決まった形：入口の部屋 → 敵のいる部屋 → ボスの部屋（地図のまんなかの段に横ならび）。鍵・罠・ふつうの宝箱はない。
+  function generateBoss(floor, seed) {
+    var rnd = rng(seed);
+    var info = GameData.BOSSES[floor];
+    var cells = {};
+    var mid = Math.floor(rnd() * ForestRooms.length);
+    if (mid === 0) mid = 1; // 入口の部屋（ひろば）とちがう型にする
+    var plan = [
+      { x: 1, y: 1, kind: "start", tpl: ForestRooms[0], doors: ["e"] },
+      { x: 2, y: 1, kind: "room", tpl: ForestRooms[mid], doors: ["w", "e"] },
+      { x: 3, y: 1, kind: "exit", tpl: BossRoom, doors: ["w"] }
+    ];
+    plan.forEach(function (p) {
+      var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
+      c.room = buildRoom(p.tpl, p.doors);
+      c.center = centerSpot(c.room);
+      c.enemies = p.kind === "room" ? placeEnemies(rnd, c.room, c.doors, floor) : [];
+      cells[key(p.x, p.y)] = c;
+    });
+    var bc = cells[key(3, 1)];
+    // ボスは部屋のまんなか（入ってすぐ見えるように）
+    bc.enemies = [{ type: info.enemy, tx: 0, ty: 0, x: bc.center.x + 10, y: bc.center.y, dead: false, boss: true }];
+    bc.bossCell = true;
+    return {
+      floor: floor, seed: seed, cells: cells, start: key(1, 1), exit: key(3, 1), boss: true, bossInfo: info,
+      bossDown: false, bossMet: false, lock: null, hasKey: false
+    };
   }
 
   // ---------- 鍵と扉・宝箱・罠（段階4-2） ----------

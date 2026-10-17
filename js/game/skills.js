@@ -26,7 +26,7 @@ var Combat = (function () {
     }
     if (spec.status && Math.random() < spec.status.chance) Enemies.addStatus(e, spec.status.type, spec.status.dur);
     var push = spec.push === undefined ? 3 : spec.push;
-    if (push && hooks.room) {
+    if (push && hooks.room && !(e.def && e.def.boss)) { // ボスは押し返されない
       var dx = e.x - ox, dy = e.y - oy, d = Math.sqrt(dx * dx + dy * dy) || 1;
       hooks.room.move(e, dx / d * push, dy / d * push);
     }

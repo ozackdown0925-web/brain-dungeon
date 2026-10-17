@@ -147,6 +147,39 @@ var GameData = (function () {
       res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 7,
       reach: 34, windup: 0.6, cooldown: 2.0, color: "#3f8a3a",
       onHit: { type: "para", chance: 0.2, dur: 3 }
+    },
+    // 大オオカミが遠ぼえで呼ぶ。速いが弱い
+    wolf_pup: {
+      name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
+      res: { slash: 1.5 }, speed: 44, r: 5,
+      reach: 12, windup: 0.35, cooldown: 1.3, color: "#8a8f9a"
+    },
+    // ボス（段階4-3）。HP はたたき台 docs/draft.md 2 のまま。物攻・物防・魔防は、たたき台にないので仮の数字（遊んでみて直す）
+    wolf_boss: {
+      name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 13, pdef: 6, mdef: 4,
+      res: { slash: 1.5, fire: 1.5 }, speed: 34, r: 12,
+      reach: 18, windup: 0.5, cooldown: 1.4, color: "#6e7280",
+      chargeWarn: 1.5, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 7, howlEvery: 16
+    },
+    tree_boss: {
+      name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 18, pdef: 7, mdef: 5,
+      res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 18,
+      reach: 40, windup: 0.6, cooldown: 1.6, color: "#5a3d22",
+      rootWarn: 2.0, rootMult: 3.0, rootEvery: 10, rootEveryHalf: 6, pollenEvery: 12, pollenRadius: 80, seedSpeed: 110
+    }
+  };
+
+  // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
+  var BOSSES = {
+    7: {
+      enemy: "wolf_boss", title: "群れをしずめし者",
+      before: ["森の奥から、低いうなり声がひびいてくる。", "群れの長、大オオカミが道をふさいでいる。", "「ここから先へは、通さぬ……！」"],
+      after: ["大オオカミは、静かに森の奥へ去っていった。", "子オオカミたちも、そのあとを追っていく。", "森の道が、また少し先へ開けた。"]
+    },
+    14: {
+      enemy: "tree_boss", title: "森の解放者",
+      before: ["森のいちばん深いところに、古い大木が立っている。", "根が地面をゆらし、大木がゆっくりと目を開いた。", "森をおおう霧は、この大木から出ていたのだ！"],
+      after: ["大木の魔物は、ふつうの古い木にもどった。", "森をおおっていた霧が晴れ、木もれ日がさしこむ。", "森は、ふたたび静けさをとりもどした。"]
     }
   };
 
@@ -198,7 +231,7 @@ var GameData = (function () {
 
   return {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
-    SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS,
+    SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, canSet: canSet, condText: condText
   };
 })();
