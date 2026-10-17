@@ -1,5 +1,6 @@
 // ゲームの流れ：毎フレームの更新と描画、一時停止、横向きの案内。
-// 段階4-1（階層の形）：seed でつないだ森の部屋を通って、出口をめざす。残り時間と地図つき。
+// 段階4（ダンジョン）：seed でつないだ森の部屋を通って、出口をめざす。残り時間と地図つき。
+// 4-2：鍵と扉、罠（毒の沼・落とし穴。一部は踏むまで見えない）、宝箱、敵が落とすゴールドと素材。
 // 職業・武器・スキル・レベル・階層・冒険の時間などは、一時停止の画面の「テスト用の設定」で変えられる（キャラクリと拠点は段階5で作る）。
 (function () {
   var view = Render.view;
@@ -22,7 +23,11 @@
   var testLevel = 1;
   // テスト用の設定（段階4）。correct は知恵の試練の正解数の仮の値（段階6で本物の結果に置きかえる。段階4-2で宝箱のレア度に使う）
   var settings = { floor: 1, correct: 2, minutes: 5, seed: "" };
-  var run = { timeLeft: 300, kills: 0, over: false, fade: 0 };
+  var run = newRun();
+  function newRun() {
+    return { timeLeft: settings.minutes * 60, kills: 0, over: false, fade: 0, entry: null,
+             gold: 0, clearGold: 0, mat: { iron: 0, stone: 0 }, got: [], swampCd: 0, lockMsg: 0, inPit: false };
+  }
   function buildParty() {
     Party.setup(setup.map(function (s) { return Party.makeChar(s.name, s.job, s.weapon, testLevel, s.skills.slice()); }));
   }
@@ -42,7 +47,7 @@
     dg = Dungeon.generate(floor, seed || Dungeon.newSeed());
     Party.resetAll();
     A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
-    run = { timeLeft: settings.minutes * 60, kills: 0, over: false, fade: 0 };
+    run = newRun();
     enterRoom(dg.start, null);
     say("森の " + floor + " 階　出口をめざそう！" + (dg.boss ? "（ボスは段階4-3で作ります）" : ""));
   }
@@ -57,6 +62,8 @@
     Enemies.clear(); Combat.clear();
     var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: c.center.x, y: c.center.y + 20, face: { x: 0, y: 1 } };
     A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0;
+    run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
+    run.inPit = false;
     A.inv = 0.6; // 部屋に入った直後は少しだけ無敵
     // たおした敵はもどらない。まだいる敵は、もとの場所に HP 満タンでいる。
     var lv = 0;
@@ -82,6 +89,11 @@
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
     if (e.slot) e.slot.dead = true;
+    // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
+    var drop = Loot.enemyDrop(e.type, dg.floor);
+    run.gold += drop.gold;
+    Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
+    if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
   };
 
   // 画面に出ているキャラがダメージを受ける（e は攻撃した敵）
@@ -160,6 +172,9 @@
     var out = Dungeon.leftRoom(room, A);
     if (out) { enterRoom(Dungeon.neighbor(dg, curKey, out), Dungeon.DIRS[out].back); return; }
 
+    // 鍵・宝箱・鍵の扉・罠
+    if (checkThings(dt)) return;
+
     // 出口：入るとクリア
     if (curKey === dg.exit) {
       var ex = dg.cells[curKey].center, edx = A.x - ex.x, edy = A.y - ex.y;
@@ -174,6 +189,76 @@
     updateButtons(false);
   }
 
+  // 部屋の中の物にふれたか。部屋の入口にもどされたら true
+  function checkThings(dt) {
+    var c = dg.cells[curKey], T = World.TILE;
+    run.swampCd = Math.max(0, run.swampCd - dt);
+    run.lockMsg = Math.max(0, run.lockMsg - dt);
+    function near(x, y, r) { var dx = A.x - x, dy = A.y - y; return dx * dx + dy * dy < r * r; }
+
+    if (c.key && !c.key.taken && near(c.key.x, c.key.y, 12)) {
+      c.key.taken = true; dg.hasKey = true;
+      say("鍵を手に入れた！ 鍵のかかった扉をさがそう");
+      Battle.pop(A.x, A.y - 30, "鍵", "#ffe066", 9);
+    }
+    c.chests.forEach(function (b) {
+      if (b.opened || !near(b.x, b.y, 14)) return;
+      b.opened = true;
+      var got = Loot.chest(dg.floor, settings.correct, b.rare);
+      run.got.push(got.equip);
+      run.gold += got.gold;
+      Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
+      var R = Loot.RARITY[got.equip.r];
+      say("宝箱：" + R.name + "の " + got.equip.name + " を手に入れた！");
+      Battle.pop(b.x, b.y - 22, R.name + "！", R.color, 10);
+      Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
+    });
+    // 鍵のかかった扉：鍵を持っていれば、近づくと開く
+    if (dg.lock && !dg.lock.open && curKey === dg.lock.parent) {
+      var dt3 = Dungeon.doorTiles(room.w, room.h, dg.lock.dir), mid = dt3[1];
+      if (near(mid.x * T + 8, mid.y * T + 8, 26)) {
+        if (dg.hasKey) {
+          dg.lock.open = true; dg.hasKey = false;
+          dt3.forEach(function (p) { room.setTile(p.x, p.y, ":"); });
+          say("鍵で扉を開けた！");
+        } else if (run.lockMsg <= 0) {
+          say("鍵がかかっている。どこかの部屋に鍵があるはず");
+          run.lockMsg = 3;
+        }
+      }
+    }
+    // 罠：立っているタイルで調べる
+    var tx = Math.floor(A.x / T), ty = Math.floor(A.y / T), onPit = false;
+    for (var i = 0; i < c.traps.length; i++) {
+      var t = c.traps[i];
+      if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
+      if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); }
+      var ch = Party.current();
+      if (t.type === "swamp") {
+        if (!ch.status.poison && run.swampCd <= 0) {
+          Party.addStatus(ch, "poison", 8);
+          run.swampCd = 1.5;
+          say("毒の沼だ！");
+        }
+      } else {
+        onPit = true;
+        if (!run.inPit) {
+          // 落とし穴：少しダメージ（最大HPの10%。これで倒れることはない）＋部屋の入口へ（2026-10-17 決定）
+          var dmg = Math.max(1, Math.round(ch.stats.hp * 0.1));
+          ch.hp = Math.max(1, ch.hp - dmg);
+          A.x = run.entry.x; A.y = run.entry.y; A.face = run.entry.face; A.move = 0;
+          A.inv = Math.max(A.inv, 0.6);
+          run.fade = 0.3;
+          say("落とし穴に落ちた！ 部屋の入口にもどされた");
+          Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
+          return true;
+        }
+      }
+    }
+    run.inPit = onPit;
+    return false;
+  }
+
   // 部屋が画面より大きいときは、キャラについていく。小さいときは、部屋を画面のまんなかに置く。
   function updateCamera() {
     if (room.pxW <= view.w) cam.x = -Math.round((view.w - room.pxW) / 2);
@@ -186,6 +271,7 @@
   function draw() {
     Render.begin();
     room.draw(cam, view);
+    drawThings();
     if (curKey === dg.exit) drawExit();
     Enemies.draw(cam);
     drawActor();
@@ -193,6 +279,40 @@
     Battle.draw(cam);
     drawHud();
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
+  }
+
+  // 罠・宝箱・鍵（仮の絵）
+  function drawThings() {
+    var c = dg.cells[curKey], T = World.TILE;
+    c.traps.forEach(function (t) {
+      if (t.hidden && !t.found) return;
+      var x = t.tx * T - cam.x, y = t.ty * T - cam.y;
+      if (t.type === "pit") {
+        Render.rect(x + 1, y + 1, T - 2, T - 2, "#5a4630");
+        Render.rect(x + 3, y + 3, T - 6, T - 6, "#0b0906");
+      } else {
+        Render.rect(x, y, t.w * T, t.h * T, "rgba(120,60,140,0.75)");
+        var b = Math.floor(glow * 2) % 3;
+        Render.rect(x + 6 + b * 5, y + 8, 3, 3, "#c89ae0");
+        Render.rect(x + 18 - b * 3, y + 20, 2, 2, "#c89ae0");
+      }
+    });
+    c.chests.forEach(function (b) {
+      var x = Math.round(b.x - cam.x), y = Math.round(b.y - cam.y);
+      var trim = b.rare ? "#f2c14e" : "#c9a060";
+      if (b.opened) {
+        Render.rect(x - 7, y - 3, 14, 9, "#4a3018"); Render.rect(x - 7, y - 8, 14, 4, "#6e4a26"); Render.rect(x - 6, y - 2, 12, 3, "#140c04");
+      } else {
+        Render.rect(x - 7, y - 6, 14, 12, "#8a5a2a"); Render.rect(x - 7, y - 1, 14, 2, trim);
+        Render.rect(x - 1, y - 2, 3, 4, trim); Render.rect(x - 7, y - 6, 14, 1, "#a8743a");
+        if (b.rare) { var s = 0.5 + 0.5 * Math.sin(glow * 5); Render.rect(x + 7, y - 10, 2, 2, "rgba(255,240,160," + s.toFixed(2) + ")"); }
+      }
+    });
+    if (c.key && !c.key.taken) {
+      var kx = Math.round(c.key.x - cam.x), ky = Math.round(c.key.y - cam.y - 2 - Math.sin(glow * 3) * 2);
+      Render.rect(kx - 5, ky - 3, 5, 5, "#ffe066"); Render.rect(kx - 4, ky - 2, 3, 3, "#3a3010");
+      Render.rect(kx, ky - 1, 7, 2, "#ffe066"); Render.rect(kx + 4, ky + 1, 2, 2, "#ffe066");
+    }
   }
 
   // 出口（仮の絵）：光るまるい門
@@ -240,6 +360,9 @@
     });
     var sc = Party.switchCd();
     Render.text(sc > 0 ? "切りかえ あと" + sc.toFixed(1) + "秒" : "切りかえ OK", 7, y + 1, { size: 6, color: sc > 0 ? "#a3a8bd" : "#6fd08c" });
+    // 手に入れたもの
+    Render.text(run.gold + "G　鉄" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
+    if (dg.hasKey) Render.text("鍵を持っている", 7, y + 19, { size: 6, color: "#ffe066" });
 
     // 上のまんなか：階層と残り時間（残り1分で赤くなり、点滅する）
     var tl = Math.ceil(run.timeLeft), mm = Math.floor(tl / 60), ss = tl % 60;
@@ -361,15 +484,25 @@
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
     var titles = { clear: "森の " + dg.floor + " 階をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…" };
     document.getElementById("chooseTitle").textContent = titles[kind];
+    if (kind === "clear") { run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold; }
     var tl = Math.ceil(run.timeLeft);
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
       "知恵の試練の正解（テスト用の仮の値） " + settings.correct + "問",
+      "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉄 " + run.mat.iron + "　魔石 " + run.mat.stone,
       kind === "clear" ? "本番では、拾った物と経験値を持って拠点にもどり、次の日は次の階層へ（拠点とセーブは段階5）。"
         : "本番では、その日の冒険はここで終わり。拾った物と経験値は持ち帰れるが、階層は進まない。"
     ];
     var lead = document.getElementById("chooseLead"); lead.textContent = "";
     lines.forEach(function (t) { var d = document.createElement("div"); d.textContent = t; lead.appendChild(d); });
+    // 手に入れた装備（拠点とセーブは段階5。今は見せるだけ）
+    if (run.got.length) {
+      var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（段階5で拠点ができるまでは、見るだけ）"; lead.appendChild(h);
+      run.got.forEach(function (it) {
+        var d2 = document.createElement("div"); d2.className = "got"; d2.style.color = Loot.RARITY[it.r].color;
+        d2.textContent = Loot.describe(it); lead.appendChild(d2);
+      });
+    }
     var box = document.getElementById("chooseList"); box.textContent = "";
     function button(label, fn) {
       var b = document.createElement("button");
@@ -408,6 +541,9 @@
     Dungeon.drawMap(ctx, dg, 0, 0, cw, ch, gap, curKey);
     document.getElementById("floorInfo").textContent =
       "森 " + dg.floor + "階　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
+    var w = Loot.rarityWeights(settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
+    document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
+      Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";
   }
 
   function option(sel, value, text, selected) {

@@ -1,0 +1,93 @@
+// 手に入るもの：宝箱の中身（装備＋素材＋ゴールド）と、敵が落とすもの（ゴールドと素材）。数字は docs/draft.md 1.4〜1.5、2、4。
+// 拾った装備は、拠点とセーブ（段階5）ができるまでは、冒険の終わりに一覧で見せるだけ。
+// iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
+var Loot = (function () {
+  // レア度（draft 1.5）
+  var RARITY = [
+    { name: "ノーマル", color: "#ece7da", mult: 1.00, buff: [0, 1], debuff: [0, 1] },
+    { name: "レア", color: "#5aa9ff", mult: 1.15, buff: [1, 2], debuff: [0, 1] },
+    { name: "エピック", color: "#b48cf0", mult: 1.30, buff: [2, 2], debuff: [0, 1] },
+    { name: "レジェンド", color: "#f2c14e", mult: 1.50, buff: [2, 2], debuff: [0, 0] }
+  ];
+  var STAT_NAMES = { patk: "物攻", pdef: "物防", matk: "魔攻", mdef: "魔防", hp: "HP", mp: "MP" };
+  var STATS = ["patk", "pdef", "matk", "mdef", "hp", "mp"];
+  // レジェンドの特別な効果（名前だけ。効き目は段階5で装備できるようになってから）
+  var SPECIALS = ["会心が出やすい", "MPの回復が速い", "Wait Time が短い", "毒にならない"];
+  var MATERIALS = { iron: "鉄", stone: "魔石" };
+
+  function between(r) { return r[0] + Math.floor(Math.random() * (r[1] - r[0] + 1)); }
+
+  // 宝箱のレア度の出やすさ（draft 1.5、決定）：0問 ノーマル60・レア30・エピック9・レジェンド1、正解1問ごとに −8・＋4・＋3・＋1
+  function rarityWeights(correct, rareOrBetter) {
+    var c = Math.max(0, Math.min(4, correct || 0));
+    var w = [60 - 8 * c, 30 + 4 * c, 9 + 3 * c, 1 + c];
+    if (rareOrBetter) w[0] = 0; // 鍵の部屋の宝箱：レア以上が必ず出る（2026-10-17 決定）
+    return w;
+  }
+  function rollRarity(correct, rareOrBetter) {
+    var w = rarityWeights(correct, rareOrBetter), sum = w[0] + w[1] + w[2] + w[3], r = Math.random() * sum;
+    for (var i = 0; i < 4; i++) { if (r < w[i]) return i; r -= w[i]; }
+    return 3;
+  }
+
+  // 装備を1つ作る。ilv＝拾った階層の深さ
+  function makeEquip(ilv, correct, rareOrBetter) {
+    var r = rollRarity(correct, rareOrBetter), R = RARITY[r];
+    var isWeapon = Math.random() < 0.6;
+    var base = isWeapon ? pick(Object.keys(GameData.WEAPONS)) : pick(Object.keys(GameData.ARMORS));
+    var def = isWeapon ? GameData.WEAPONS[base] : GameData.ARMORS[base];
+    var k = (1 + 0.08 * (ilv - 1)) * R.mult;
+    var item = {
+      slot: isWeapon ? "weapon" : "armor", base: base, r: r, ilv: ilv, plus: 0, buff: [], debuff: [], sp: null,
+      name: def.name
+    };
+    if (isWeapon) { item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k); }
+    else { item.pdef = Math.round(def.pdef * k); item.mdef = Math.round(def.mdef * k); }
+    var size = Math.round(2 + ilv * 0.5);
+    var used = [];
+    function addMod(list) {
+      var s = pick(STATS.filter(function (x) { return used.indexOf(x) < 0; }));
+      used.push(s); list.push([s, size]);
+    }
+    for (var i = between(R.buff); i > 0; i--) addMod(item.buff);
+    for (var j = between(R.debuff); j > 0; j--) addMod(item.debuff);
+    if (r === 3) item.sp = pick(SPECIALS);
+    return item;
+  }
+
+  // 装備を1行で書く（例：「レア 剣 Lv3  物攻11（物攻+3・魔防−3）」）
+  function describe(item) {
+    var main = item.slot === "weapon"
+      ? (item.patk ? "物攻" + item.patk : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + item.matk : "")
+      : "物防" + item.pdef + "・魔防" + item.mdef;
+    var mods = item.buff.map(function (b) { return STAT_NAMES[b[0]] + "+" + b[1]; })
+      .concat(item.debuff.map(function (d) { return STAT_NAMES[d[0]] + "−" + d[1]; }));
+    if (item.sp) mods.push(item.sp);
+    return RARITY[item.r].name + " " + item.name + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
+  }
+
+  // 宝箱の中身（いつも装備1つ＋素材＋ゴールド）。ゴールド 20＋5×d（draft 4）
+  function chest(floor, correct, rareOrBetter) {
+    var mat = {};
+    var n = 1 + Math.floor(Math.random() * 2) + (rareOrBetter ? 1 : 0);
+    for (var i = 0; i < n; i++) { var m = Math.random() < 0.6 ? "iron" : "stone"; mat[m] = (mat[m] || 0) + 1; }
+    return { equip: makeEquip(floor, correct, rareOrBetter), gold: 20 + 5 * floor, mat: mat };
+  }
+
+  // 敵が落とすもの：ゴールド 3＋d、素材は30%で1つ（ゴブリン → 鉄、つる草の魔物 → 魔石）（draft 2）
+  function enemyDrop(type, floor) {
+    var drop = { gold: 3 + floor, mat: null };
+    if (Math.random() < 0.3) drop.mat = type === "vine" ? "stone" : "iron";
+    return drop;
+  }
+
+  // クリア報酬のゴールド：(30＋10×d)×(1＋0.25×正解数)（draft 4・1.6）
+  function clearGold(floor, correct) { return Math.round((30 + 10 * floor) * (1 + 0.25 * (correct || 0))); }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  return {
+    RARITY: RARITY, MATERIALS: MATERIALS, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
+    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold
+  };
+})();
