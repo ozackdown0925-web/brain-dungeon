@@ -17,11 +17,17 @@ var GameData = (function () {
                   boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none" } }
   };
 
-  // 防具
+  // 防具（ノーマル・アイテムレベル1）。宝箱・お店・鍛冶屋で手に入るもの（2026-10-17 案H：重装備は物理に、魔法装備は魔法に強い）
   var ARMORS = {
-    heavy: { name: "重装備", pdef: 3, mdef: 0 },
-    light: { name: "軽装備", pdef: 2, mdef: 1 },
-    magic: { name: "魔法装備", pdef: 1, mdef: 3 }
+    heavy: { name: "重装備", pdef: 4, mdef: 1 },
+    light: { name: "軽装備", pdef: 3, mdef: 2 },
+    magic: { name: "魔法装備", pdef: 2, mdef: 4 }
+  };
+  // はじめから持っている防具：ふつうの防具より弱い（はじめの手ごたえ「約20回当たると倒れる」を保つため）
+  var STARTER_ARMORS = {
+    heavy: { name: "古い重装備", pdef: 3, mdef: 0 },
+    light: { name: "古い軽装備", pdef: 2, mdef: 1 },
+    magic: { name: "古い魔法装備", pdef: 1, mdef: 3 }
   };
 
   // 職業。line＝系統（上級職ができたら、ここに上級職の名前を足す）
@@ -147,6 +153,39 @@ var GameData = (function () {
       res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 7,
       reach: 34, windup: 0.6, cooldown: 2.0, color: "#3f8a3a",
       onHit: { type: "para", chance: 0.2, dur: 3 }
+    },
+    // 大オオカミが遠ぼえで呼ぶ。速いが弱い
+    wolf_pup: {
+      name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
+      res: { slash: 1.5 }, speed: 44, r: 5,
+      reach: 12, windup: 0.35, cooldown: 1.3, color: "#8a8f9a"
+    },
+    // ボス（段階4-3）。HP はたたき台 docs/draft.md 2 のまま。物攻・物防・魔防は、たたき台にないので仮の数字（遊んでみて直す）
+    wolf_boss: {
+      name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 13, pdef: 6, mdef: 4,
+      res: { slash: 1.5, fire: 1.5 }, speed: 34, r: 12,
+      reach: 18, windup: 0.5, cooldown: 1.4, color: "#6e7280",
+      chargeWarn: 1.5, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 7, howlEvery: 16
+    },
+    tree_boss: {
+      name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 18, pdef: 7, mdef: 5,
+      res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 18,
+      reach: 40, windup: 0.6, cooldown: 1.6, color: "#5a3d22",
+      rootWarn: 2.0, rootMult: 3.0, rootEvery: 10, rootEveryHalf: 6, pollenEvery: 12, pollenRadius: 80, seedSpeed: 110
+    }
+  };
+
+  // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
+  var BOSSES = {
+    7: {
+      enemy: "wolf_boss", title: "群れをしずめし者",
+      before: ["森の奥から、低いうなり声がひびいてくる。", "群れの長、大オオカミが道をふさいでいる。", "「ここから先へは、通さぬ……！」"],
+      after: ["大オオカミは、静かに森の奥へ去っていった。", "子オオカミたちも、そのあとを追っていく。", "森の道が、また少し先へ開けた。"]
+    },
+    14: {
+      enemy: "tree_boss", title: "森の解放者",
+      before: ["森のいちばん深いところに、古い大木が立っている。", "根が地面をゆらし、大木がゆっくりと目を開いた。", "森をおおう霧は、この大木から出ていたのだ！"],
+      after: ["大木の魔物は、ふつうの古い木にもどった。", "森をおおっていた霧が晴れ、木もれ日がさしこむ。", "森は、ふたたび静けさをとりもどした。"]
     }
   };
 
@@ -165,9 +204,10 @@ var GameData = (function () {
   }
 
   // 戦闘パラメーター（docs/draft.md 1.2）
-  function combatStats(base, weapon, armor) {
+  // level：HP に (レベル−1)×3 を足す（2026-10-17 案H。深い階層でも打たれ強さが下がりすぎないように。Lv1 では 0）
+  function combatStats(base, weapon, armor, level) {
     return {
-      hp: Math.floor(30 + base.vit * 5),
+      hp: Math.floor(30 + base.vit * 5 + ((level || 1) - 1) * 3),
       mp: Math.floor(10 + base.int * 2),
       patk: Math.floor(base.str + weapon.patk),
       pdef: Math.floor(base.str * 0.5 + armor.pdef),
@@ -197,8 +237,8 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
-    SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
+    SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, canSet: canSet, condText: condText
   };
 })();

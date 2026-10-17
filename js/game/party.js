@@ -26,7 +26,8 @@ var Party = (function () {
   function recalc(c) {
     var J = GameData.JOBS[c.job];
     c.base = GameData.baseStats(c.job, c.level);
-    c.stats = GameData.combatStats(c.base, GameData.WEAPONS[c.weapon], GameData.ARMORS[J.armor]);
+    // 防具は、装備のしくみ（段階5）ができるまでは、はじめから持っている防具
+    c.stats = GameData.combatStats(c.base, GameData.WEAPONS[c.weapon], GameData.STARTER_ARMORS[J.armor], c.level);
   }
 
   // バフをふくめた値。stat：patk/pdef/matk/mdef/crit/wait（wait は倍率）

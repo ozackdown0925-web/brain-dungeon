@@ -1,6 +1,7 @@
 // ゲームの流れ：毎フレームの更新と描画、一時停止、横向きの案内。
 // 段階4（ダンジョン）：seed でつないだ森の部屋を通って、出口をめざす。残り時間と地図つき。
 // 4-2：鍵と扉、罠（毒の沼・落とし穴。一部は踏むまで見えない）、宝箱、敵が落とすゴールドと素材。
+// 4-3：7階と14階はボスの階層（入口 → 敵の部屋 → ボスの部屋）。ボスをたおすと宝箱と出口が現れる。
 // 職業・武器・スキル・レベル・階層・冒険の時間などは、一時停止の画面の「テスト用の設定」で変えられる（キャラクリと拠点は段階5で作る）。
 (function () {
   var view = Render.view;
@@ -49,7 +50,7 @@
     A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
     run = newRun();
     enterRoom(dg.start, null);
-    say("森の " + floor + " 階　出口をめざそう！" + (dg.boss ? "（ボスは段階4-3で作ります）" : ""));
+    say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
   }
 
   // 部屋に入る。fromDir は入ってきた道の向き（n/s/w/e）、null なら部屋のまんなか（入口の部屋）。
@@ -60,6 +61,7 @@
     room = c.room;
     Combat.hooks.room = room;
     Enemies.clear(); Combat.clear();
+    boss = null;
     var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: c.center.x, y: c.center.y + 20, face: { x: 0, y: 1 } };
     A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0;
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
@@ -68,13 +70,63 @@
     // たおした敵はもどらない。まだいる敵は、もとの場所に HP 満タンでいる。
     var lv = 0;
     Party.members().forEach(function (m) { lv += m.level; });
-    var depth = Dungeon.enemyDepth(dg.floor, lv / Party.members().length);
+    var avg = lv / Party.members().length;
+    var depth = Dungeon.enemyDepth(dg.floor, avg);
+    // ボスの強さは決まった数字。レベルが高すぎるときだけ、ふつうの敵と同じく少し強くする
+    var bossDepth = 1 + Math.max(0, avg - (1 + 0.7 * (dg.floor - 1))) / 2;
     c.enemies.forEach(function (slot) {
       if (slot.dead) return;
-      var e = Enemies.spawn(slot.type, slot.x, slot.y, depth);
+      var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
       e.slot = slot;
+      if (slot.boss) { e.face = { x: -1, y: 0 }; boss = e; }
     });
     run.fade = 0.3;
+    // ボスの部屋：入るとつるが道をふさぎ、短い文章が出る
+    if (c.bossCell && !dg.bossDown) {
+      setDoor(c, "w", "V");
+      if (!dg.bossMet) {
+        dg.bossMet = true;
+        showStory(GameData.ENEMIES[dg.bossInfo.enemy].name, dg.bossInfo.before, "たたかう！", function () { say("つるが道をふさいだ！"); });
+      }
+    }
+  }
+  var boss = null; // 今の部屋のボス（いなければ null）
+
+  function setDoor(c, dir, ch) {
+    Dungeon.doorTiles(c.room.w, c.room.h, dir).forEach(function (p) { c.room.setTile(p.x, p.y, ch); });
+  }
+
+  // 短い文章（ボスの前後）。読んでいるあいだはゲームが止まる
+  function showStory(title, lines, label, then) {
+    choosing = true; Input.releaseAll();
+    document.getElementById("chooseTitle").textContent = title;
+    var lead = document.getElementById("chooseLead"); lead.textContent = "";
+    lines.forEach(function (t) { var d = document.createElement("div"); d.className = "story"; d.textContent = t; lead.appendChild(d); });
+    var box = document.getElementById("chooseList"); box.textContent = "";
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "btn wide"; b.textContent = label;
+    b.addEventListener("click", function () { choosing = false; chooseEl.hidden = true; updateButtons(true); if (then) then(); });
+    box.appendChild(b);
+    chooseEl.hidden = false;
+  }
+
+  // ボスをたおした：子オオカミは逃げ、つるが消え、ごほうびの宝箱（レア以上）2つと出口が現れる
+  function bossDefeated(e) {
+    dg.bossDown = true; boss = null;
+    Bosses.bossDown();
+    Enemies.alive().forEach(function (o) { if (o.type === "wolf_pup") { o.dead = true; o.fade = 0.4; } });
+    var c = dg.cells[curKey];
+    setDoor(c, "w", ":");
+    c.chests.push({ x: c.center.x - 60, y: c.center.y - 22, opened: false, rare: true });
+    c.chests.push({ x: c.center.x - 60, y: c.center.y + 22, opened: false, rare: true });
+    // ボスのごほうび：素材5つ・ゴールド（たたき台にない数なので仮：100＋10×階層）・称号
+    for (var i = 0; i < 5; i++) run.mat[Math.random() < 0.6 ? "iron" : "stone"]++;
+    var g = 100 + 10 * dg.floor;
+    run.gold += g;
+    run.title = dg.bossInfo.title;
+    Battle.pop(e.x, e.y - 40, "+" + g + "G", "#f2c14e", 9);
+    var after = dg.bossInfo.after.concat(["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
+    showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
   }
 
   function finishedCells() {
@@ -89,6 +141,8 @@
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
     if (e.slot) e.slot.dead = true;
+    if (e.def.boss) { bossDefeated(e); return; }
+    if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
     var drop = Loot.enemyDrop(e.type, dg.floor);
     run.gold += drop.gold;
@@ -97,15 +151,23 @@
   };
 
   // 画面に出ているキャラがダメージを受ける（e は攻撃した敵）
-  function hurtActive(e) {
+  // opts：{ mult（攻撃の倍率）, big（かわす大技）, noDamage（ダメージなし）, status（{ type, chance, dur }）}
+  function hurtActive(e, x, y, opts) {
     if (choosing || A.inv > 0) return;
+    opts = opts || {};
     var c = Party.current();
-    var res = Battle.damage(e.patk, Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });
+    if (opts.noDamage) {
+      if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
+      return;
+    }
+    var res = Battle.damage(e.patk * (opts.mult || 1), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
-    A.inv = 0.35;
+    if (opts.big) Battle.pop(A.x, A.y - 40, "大ダメージ！", "#ef5b5b", 9);
+    A.inv = opts.big ? 0.8 : 0.35;
     var fell = Party.hurtActive(res.amount);
-    if (!fell && e.def.onHit && Math.random() < e.def.onHit.chance) Party.addStatus(c, e.def.onHit.type, e.def.onHit.dur);
+    var st = opts.status || e.def.onHit;
+    if (!fell && st && Math.random() < st.chance) Party.addStatus(c, st.type, st.dur);
     if (fell) {
       tally.downs++;
       if (Party.allDown()) finish("wipe"); else showChoose(c);
@@ -176,7 +238,7 @@
     if (checkThings(dt)) return;
 
     // 出口：入るとクリア
-    if (curKey === dg.exit) {
+    if (curKey === dg.exit && (!dg.boss || dg.bossDown)) {
       var ex = dg.cells[curKey].center, edx = A.x - ex.x, edy = A.y - ex.y;
       if (edx * edx + edy * edy < 10 * 10) { finish("clear"); return; }
     }
@@ -272,7 +334,7 @@
     Render.begin();
     room.draw(cam, view);
     drawThings();
-    if (curKey === dg.exit) drawExit();
+    if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
     drawActor();
     Combat.draw(cam);
@@ -386,7 +448,16 @@
       Render.text("受けた攻撃 " + tally.hitsTaken + "回　たおれた " + tally.downs + "回", tx, ty + 9, { size: 7, align: "right", color: "#a3a8bd" });
     }
 
-    if (message.t > 0) Render.text(message.text, view.w / 2, 34, { size: 9, align: "center", bold: true });
+    // ボスの HP（画面の上に大きく）
+    var my2 = 34;
+    if (boss && !boss.dead) {
+      var bw = Math.min(220, view.w - 260);
+      Render.rect(view.w / 2 - bw / 2 - 3, 29, bw + 6, 17, "rgba(10,12,18,0.72)");
+      Render.text(boss.def.name, view.w / 2, 30, { size: 7, align: "center", bold: true, color: "#ffb0a8" });
+      bar(view.w / 2 - bw / 2, 39, bw, 5, boss.hp / boss.maxHp, "#ef5b5b");
+      my2 = 50;
+    }
+    if (message.t > 0) Render.text(message.text, view.w / 2, my2, { size: 9, align: "center", bold: true });
 
     // PC：スキルの名前と、使えるまでの時間
     if (!Input.isTouch) {
@@ -489,12 +560,13 @@
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
       "知恵の試練の正解（テスト用の仮の値） " + settings.correct + "問",
+      run.title ? "称号「" + run.title + "」を手に入れた！（称号の棚は段階5の図鑑に作ります）" : "",
       "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉄 " + run.mat.iron + "　魔石 " + run.mat.stone,
       kind === "clear" ? "本番では、拾った物と経験値を持って拠点にもどり、次の日は次の階層へ（拠点とセーブは段階5）。"
         : "本番では、その日の冒険はここで終わり。拾った物と経験値は持ち帰れるが、階層は進まない。"
     ];
     var lead = document.getElementById("chooseLead"); lead.textContent = "";
-    lines.forEach(function (t) { var d = document.createElement("div"); d.textContent = t; lead.appendChild(d); });
+    lines.forEach(function (t) { if (!t) return; var d = document.createElement("div"); d.textContent = t; lead.appendChild(d); });
     // 手に入れた装備（拠点とセーブは段階5。今は見せるだけ）
     if (run.got.length) {
       var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（段階5で拠点ができるまでは、見るだけ）"; lead.appendChild(h);
@@ -652,7 +724,7 @@
       actor: A, cam: cam, tally: tally, setup: setup, settings: settings,
       room: function () { return room; }, dungeon: function () { return dg; }, cur: function () { return curKey; }, run: function () { return run; },
       step: function (dt) { if (!paused && !choosing) update(dt); draw(); Input.endFrame(); },
-      start: startFloor, enter: enterRoom,
+      start: startFloor, enter: enterRoom, boss: function () { return boss; },
       rebuild: function (lv) { testLevel = lv || 1; buildParty(); startFloor(settings.floor); },
       state: function () { return { paused: paused, choosing: choosing }; }
     };
