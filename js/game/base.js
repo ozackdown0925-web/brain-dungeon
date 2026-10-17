@@ -100,7 +100,9 @@ var Base = (function () {
     var g = GameState.get();
     createEl.hidden = true;
     baseEl.hidden = false;
+    var tools = GameState.TOOL_ORDER.filter(function (k) { return g.items[k] > 0; }).map(function (k) { return GameState.TOOLS[k].name + g.items[k]; });
     document.getElementById("baseMoney").textContent = g.gold + "G　鉄 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
+      (tools.length ? "　道具：" + tools.join("・") : "") +
       (g.titles.length ? "　称号：" + g.titles.join("・") : "");
 
     // 仲間
@@ -114,10 +116,12 @@ var Base = (function () {
       var need = GameState.expNeed(h.level);
       info.appendChild(el("div", "hero-lv", "Lv " + h.level + (h.level < GameState.MAX_LEVEL ? "　次のレベルまで " + (need - h.exp) : "（いちばん上）")));
       var bar = el("div", "bar"); var fill = el("div", "bar-fill"); fill.style.width = Math.round(h.exp / need * 100) + "%"; bar.appendChild(fill); info.appendChild(bar);
-      var s = GameData.combatStats(h.base, GameData.WEAPONS[GameState.starterWeapon(h.job)], GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor], h.level);
+      var s = GameState.heroStats(h);
       info.appendChild(el("div", "hero-stats", "HP " + s.hp + "　MP " + s.mp + "　物攻 " + s.patk + "　物防 " + s.pdef + "　魔攻 " + s.matk + "　魔防 " + s.mdef));
       var m = h.mastery[h.job] || 0;
       info.appendChild(el("div", "hero-stats", "熟練度 " + m + (st < GameState.MAX_STAR ? "（次の★まで " + ((st + 1) * GameState.STAR_NEED - m) + "）" : "（極めた！）")));
+      info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : "はじめの" + GameData.WEAPONS[GameState.starterWeapon(h.job)].name) +
+        "　防具：" + (h.equip.armor ? Loot.describe(h.equip.armor) : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name)));
       info.appendChild(el("div", "hero-skills", "スキル：" + h.set.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") +
         (h.learned.length ? "" : "（★1 になると覚える）")));
       card.appendChild(info);
@@ -138,9 +142,12 @@ var Base = (function () {
     document.getElementById("goAgain").disabled = deepest < 1;
     document.getElementById("goAgain").onclick = function () { depart(Number(sel.value) || 1); };
 
-    // メニュー（段階5-2で作る）
+    // メニュー：装備・お店・鍛冶屋・倉庫は 5-2①、ほかは 5-2②で作る
+    var OPEN = { "装備": "equip", "お店": "shop", "鍛冶屋": "smith", "倉庫": "storage" };
     Array.prototype.forEach.call(document.querySelectorAll("#baseMenu .btn"), function (b) {
-      b.onclick = function () { document.getElementById("baseNote").textContent = "「" + b.textContent + "」は段階5-2で作ります"; };
+      var name = b.textContent;
+      b.onclick = OPEN[name] ? function () { Town.open(OPEN[name]); }
+        : function () { document.getElementById("baseNote").textContent = "「" + name + "」は段階5-2②で作ります"; };
     });
     document.getElementById("baseNote").textContent = "";
 

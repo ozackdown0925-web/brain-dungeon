@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=12">
+<link rel="stylesheet" href="css/game.css?v=13">
 </head>
 <body>
 <div id="stage">
@@ -41,6 +41,11 @@
       <h2>一時停止</h2>
       <p>メニューを開いているあいだは、敵も時間も止まります。</p>
       <button type="button" id="resumeBtn" class="btn">つづける</button>
+      <div class="toolbox">
+        <h3>道具</h3>
+        <div id="toolList" class="tool-list"></div>
+        <p id="toolNote" class="note"></p>
+      </div>
       <div class="mapbox">
         <h3>地図</h3>
         <canvas id="bigMap"></canvas>
@@ -49,6 +54,19 @@
         <p id="floorInfo" class="note"></p>
         <p id="chestInfo" class="note"></p>
       </div>
+    </div>
+  </div>
+
+  <!-- 段階5-2①：拠点のメニュー（装備・倉庫・お店・鍛冶屋） -->
+  <div id="town" class="screen town" hidden>
+    <div class="panel wide-panel">
+      <div class="town-head">
+        <button type="button" id="townBack" class="btn small-btn">← 拠点にもどる</button>
+        <h2 id="townTitle"></h2>
+      </div>
+      <p id="townMoney" class="money"></p>
+      <p id="townNote" class="note town-note"></p>
+      <div id="townBody"></div>
     </div>
   </div>
 
@@ -116,21 +134,22 @@
   </div>
 </div>
 
-<script src="js/game/input.js?v=12"></script>
-<script src="js/game/render.js?v=12"></script>
-<script src="js/game/world.js?v=12"></script>
-<script src="js/game/rooms.js?v=12"></script>
-<script src="js/game/dungeon.js?v=12"></script>
-<script src="js/game/loot.js?v=12"></script>
-<script src="js/game/data.js?v=12"></script>
-<script src="js/game/state.js?v=12"></script>
-<script src="js/game/faces.js?v=12"></script>
-<script src="js/game/battle.js?v=12"></script>
-<script src="js/game/enemies.js?v=12"></script>
-<script src="js/game/bosses.js?v=12"></script>
-<script src="js/game/party.js?v=12"></script>
-<script src="js/game/skills.js?v=12"></script>
-<script src="js/game/base.js?v=12"></script>
-<script src="js/game/core.js?v=12"></script>
+<script src="js/game/input.js?v=13"></script>
+<script src="js/game/render.js?v=13"></script>
+<script src="js/game/world.js?v=13"></script>
+<script src="js/game/rooms.js?v=13"></script>
+<script src="js/game/dungeon.js?v=13"></script>
+<script src="js/game/loot.js?v=13"></script>
+<script src="js/game/data.js?v=13"></script>
+<script src="js/game/state.js?v=13"></script>
+<script src="js/game/faces.js?v=13"></script>
+<script src="js/game/battle.js?v=13"></script>
+<script src="js/game/enemies.js?v=13"></script>
+<script src="js/game/bosses.js?v=13"></script>
+<script src="js/game/party.js?v=13"></script>
+<script src="js/game/skills.js?v=13"></script>
+<script src="js/game/town.js?v=13"></script>
+<script src="js/game/base.js?v=13"></script>
+<script src="js/game/core.js?v=13"></script>
 </body>
 </html>

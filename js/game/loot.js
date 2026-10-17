@@ -55,6 +55,15 @@ var Loot = (function () {
     return item;
   }
 
+  // バフ・デバフだけを作りなおす（鍛冶屋の引き直し）
+  function rerollMods(r, ilv) {
+    var R = RARITY[r], size = Math.round(2 + ilv * 0.5), used = [], out = { buff: [], debuff: [] };
+    function addMod(list) { var s = pick(STATS.filter(function (x) { return used.indexOf(x) < 0; })); used.push(s); list.push([s, size]); }
+    for (var i = between(R.buff); i > 0; i--) addMod(out.buff);
+    for (var j = between(R.debuff); j > 0; j--) addMod(out.debuff);
+    return out;
+  }
+
   // 装備を1行で書く（例：「レア 剣 Lv3  物攻11（物攻+3・魔防−3）」）
   function describe(item) {
     var main = item.slot === "weapon"
@@ -63,7 +72,11 @@ var Loot = (function () {
     var mods = item.buff.map(function (b) { return STAT_NAMES[b[0]] + "+" + b[1]; })
       .concat(item.debuff.map(function (d) { return STAT_NAMES[d[0]] + "−" + d[1]; }));
     if (item.sp) mods.push(item.sp);
-    return RARITY[item.r].name + " " + item.name + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
+    var k = 1 + 0.05 * (item.plus || 0);
+    main = item.slot === "weapon"
+      ? (item.patk ? "物攻" + Math.round(item.patk * k) : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + Math.round(item.matk * k) : "")
+      : "物防" + Math.round(item.pdef * k) + "・魔防" + Math.round(item.mdef * k);
+    return RARITY[item.r].name + " " + item.name + (item.plus ? "＋" + item.plus : "") + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
   }
 
   // 宝箱の中身（いつも装備1つ＋素材＋ゴールド）。ゴールド 20＋5×d（draft 4）
@@ -88,6 +101,6 @@ var Loot = (function () {
 
   return {
     RARITY: RARITY, MATERIALS: MATERIALS, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
-    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold
+    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, STAT_NAMES: STAT_NAMES
   };
 })();

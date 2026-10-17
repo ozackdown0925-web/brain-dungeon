@@ -616,7 +616,43 @@
     paused = on;
     pauseEl.hidden = !on;
     Input.releaseAll();
-    if (on) drawBigMap();
+    if (on) { drawBigMap(); buildTools(); }
+  }
+
+  // メニューの道具：お店で買った薬を使う（段階5-2①）
+  function buildTools() {
+    var g = GameState.get(), box = document.getElementById("toolList"); box.textContent = "";
+    var c = Party.current();
+    var note = document.getElementById("toolNote");
+    function add(label, ok, fn) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "btn small-btn"; b.textContent = label;
+      b.disabled = !ok;
+      b.addEventListener("click", function () { fn(); buildTools(); updateButtons(true); });
+      box.appendChild(b);
+    }
+    var have = GameState.TOOL_ORDER.filter(function (k) { return g.items[k] > 0; });
+    if (!have.length) { note.textContent = "道具を持っていない（拠点のお店で買える）"; return; }
+    note.textContent = "いま戦っている " + c.name + " に使う（復活薬は、たおれた仲間に）";
+    have.forEach(function (k) {
+      var t = GameState.TOOLS[k], n = " ×" + g.items[k];
+      if (k === "potion") {
+        add(t.name + n, c.hp < c.stats.hp, function () {
+          GameState.useTool(k); c.hp = Math.min(c.stats.hp, c.hp + Math.round(c.stats.hp * 0.4)); note.textContent = c.name + "の HP が回復した";
+        });
+      } else if (k === "revive") {
+        var downs = Party.members().filter(function (m) { return m.down; });
+        if (!downs.length) add(t.name + n + "（たおれた仲間がいない）", false, function () {});
+        downs.forEach(function (m) {
+          add(t.name + n + " → " + m.name, true, function () {
+            GameState.useTool(k); m.down = false; m.hp = Math.max(1, Math.round(m.stats.hp * 0.3)); note.textContent = m.name + "が復活した！";
+          });
+        });
+      } else {
+        add(t.name + n, !!c.status[t.cures], function () {
+          GameState.useTool(k); delete c.status[t.cures]; note.textContent = c.name + "の" + GameData.STATUS[t.cures].name + "が治った";
+        });
+      }
+    });
   }
 
   // メニューの大きな地図
