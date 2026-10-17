@@ -66,7 +66,9 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
-    function kind(tx, ty) {
+    // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
+    var KB = 2, KW = w + KB * 2, kindGrid = [];
+    function kindRaw(tx, ty) {
       var t = tile(tx, ty);
       if (t === "#") {
         if (tx < 0 || ty < 0 || tx >= w || ty >= h) return "forest";
@@ -81,6 +83,11 @@ var Tiles = (function () {
       if (t === "V") return "vine";
       return "ground";
     }
+    for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
+    function kind(tx, ty) {
+      if (tx < -KB || ty < -KB || tx >= w + KB || ty >= h + KB) return "forest";
+      return kindGrid[(ty + KB) * KW + tx + KB];
+    }
     // 1点ごとの「その種類の中か」：タイルのまんなかの値（中＝1・外＝0）を、なめらかにつないで 0.5 で切る。
     // まっすぐなさかい目はタイルの境目のまま、角はななめに丸くなる。jit で少しゆらす
     function field(test, gx, gy) {
@@ -90,7 +97,34 @@ var Tiles = (function () {
       fx = smooth(fx); fy = smooth(fy);
       return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
     }
+    // inside の答えを、種類ごとに部屋全体ぶん覚えておく（test 関数に名前 test.key をつけたものだけ）
+    var masks = {};
     function inside(gx, gy, test, jit, seed) {
+      if (test.key && gx >= 0 && gy >= 0 && gx < W && gy < H) {
+        var mk = test.key + "|" + jit + "|" + seed, m = masks[mk];
+        if (!m) { m = masks[mk] = new Int8Array(W * H); }
+        var idx = gy * W + gx, v0 = m[idx];
+        if (v0) return v0 > 0;
+        var r = insideRaw(gx, gy, test, jit, seed);
+        m[idx] = r ? 1 : -1;
+        return r;
+      }
+      return insideRaw(gx, gy, test, jit, seed);
+    }
+    // タイルのまわり8マスが全部「中」なら 1、全部「外」なら -1、まざっていれば 0（覚えておく）
+    var uni = {};
+    function uniform(test, tx, ty) {
+      var key3 = (test.key || "") + "|" + tx + "," + ty;
+      if (test.key && uni[key3] !== undefined) return uni[key3];
+      var me0 = test(tx, ty), res = me0 ? 1 : -1;
+      for (var qy = -1; qy <= 1 && res; qy++) for (var qx = -1; qx <= 1; qx++) if (test(tx + qx, ty + qy) !== me0) { res = 0; break; }
+      if (test.key) uni[key3] = res;
+      return res;
+    }
+    function insideRaw(gx, gy, test, jit, seed) {
+      // 速く決まるとき：まわり8マスが全部同じなら、中か外かはすぐわかる
+      var qtx = Math.floor(gx / T), qty = Math.floor(gy / T), u = uniform(test, qtx, qty);
+      if (u !== 0) return u > 0;
       if (!test(Math.floor(gx / T), Math.floor(gy / T)) && field(test, gx, gy) < 0.5) return false;
       var th = 0.5 + (jit ? (noise(gx / 3, gy / 3, seed || 0) - 0.5) * jit : 0);
       return field(test, gx, gy) >= th;
@@ -98,12 +132,17 @@ var Tiles = (function () {
     function edgeOf(gx, gy, test, jit, seed) {
       return !inside(gx - 1, gy, test, jit, seed) || !inside(gx + 1, gy, test, jit, seed) || !inside(gx, gy - 1, test, jit, seed) || !inside(gx, gy + 1, test, jit, seed);
     }
-    function isK(name) { return function (tx, ty) { return kind(tx, ty) === name; }; }
+    function isK(name) { var f = function (tx, ty) { return kind(tx, ty) === name; }; f.key = name; return f; }
 
     // ---------- 1. 地面（どこにもまず草の地面を敷く） ----------
     // 道：部屋の出入口のまわりは土
     var doors = [];
     for (var ty = 0; ty < h; ty++) for (var tx = 0; tx < w; tx++) if (tile(tx, ty) === ":" || tile(tx, ty) === "L" || tile(tx, ty) === "V") doors.push([tx * T + 8, ty * T + 8]);
+    // 出入口から遠いタイルは、計算しないで「道ではない」とする
+    var nearTiles = {};
+    doors.forEach(function (d0) { var dtx = Math.floor(d0[0] / T), dty = Math.floor(d0[1] / T); for (var a1 = -3; a1 <= 3; a1++) for (var b1 = -3; b1 <= 3; b1++) nearTiles[(dtx + a1) + "," + (dty + b1)] = 1; });
+    var nearCache = {};
+    function nearDoor(gx, gy) { var key2 = Math.floor(gx / T) + "," + Math.floor(gy / T); return !!nearTiles[key2]; }
     function pathAmount(gx, gy) {
       var best = 99;
       for (var d = 0; d < doors.length; d++) {
@@ -118,7 +157,7 @@ var Tiles = (function () {
       // さかい目だけ市松もようでまぜる
       if (Math.abs(n - 0.36) < 0.025 || Math.abs(n - 0.66) < 0.025) c = (x + y) % 2 ? GRASS[n < 0.5 ? 1 : 2] : GRASS[n < 0.5 ? 2 : 3];
       // 道（土）
-      var pa = doors.length ? pathAmount(x, y) : 99;
+      var pa = doors.length && nearDoor(x, y) ? pathAmount(x, y) : 99;
       var lim = 22 + noise(x / 4, y / 4, 3) * 10;
       if (pa < lim) {
         var dv = dither(noise(x / 5, y / 5, 4), x, y);
@@ -133,7 +172,7 @@ var Tiles = (function () {
       if (kk !== "ground" && kk !== "path") continue;
       for (var s = 0; s < 3; s++) {
         var r0 = hash(tx, ty, 10 + s), px = tx * T + Math.floor(hash(tx, ty, 20 + s) * 13) + 1, py = ty * T + Math.floor(hash(tx, ty, 30 + s) * 12) + 2;
-        var onDirt = pathAmount(px, py) < 22;
+        var onDirt = nearDoor(px, py) && pathAmount(px, py) < 22;
         if (r0 < 0.45 && !onDirt) {        // 草の葉（V の形）
           put(px, py, GRASS[4]); put(px + 2, py, GRASS[4]); put(px + 1, py + 1, GRASS[3]); put(px, py + 1, GRASS[0]); put(px + 2, py + 1, GRASS[0]);
         } else if (r0 < 0.53 && !onDirt) { // 花
@@ -147,6 +186,7 @@ var Tiles = (function () {
 
     // ---------- 2. 水（北の岸は土の段、ほかの岸は細いふち） ----------
     var isWater = function (tx, ty) { var k2 = kind(tx, ty); return k2 === "water" || k2 === "bridge"; };
+    isWater.key = "water+bridge";
     for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
       if (!inside(x, y, isWater, 0.3, 21)) continue;
       // 北の岸からの深さ（上が水でないところから下へ何点か）
@@ -189,14 +229,15 @@ var Tiles = (function () {
 
     // ---------- 3. 影（木・しげみ・がけの南と東の地面を暗く） ----------
     function solidKind(k3) { return k3 === "tree" || k3 === "forest" || k3 === "rock" || k3 === "lock" || k3 === "vine"; }
-    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
-      var tx2 = Math.floor(x / T), ty2 = Math.floor(y / T), k4 = kind(tx2, ty2);
+    for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
+      var k4 = kind(tx, ty);
       if (k4 !== "ground" && k4 !== "path" && k4 !== "tall") continue;
-      var ly = y - ty2 * T, lx = x - tx2 * T;
-      var shade = false;
-      if (solidKind(kind(tx2, ty2 - 1)) && ly < 4 + (hash(x, 0, 8) < 0.5 ? 1 : 0)) shade = true;
-      if (solidKind(kind(tx2 - 1, ty2)) && lx < 2) shade = true;
-      if (shade) put(x, y, dark(get(x, y), 0.62));
+      var nUp = solidKind(kind(tx, ty - 1)), nLf = solidKind(kind(tx - 1, ty));
+      if (!nUp && !nLf) continue;
+      for (var ly = 0; ly < T; ly++) for (var lx = 0; lx < T; lx++) {
+        var x5 = tx * T + lx, y5 = ty * T + ly;
+        if ((nUp && ly < 4 + (hash(x5, 0, 8) < 0.5 ? 1 : 0)) || (nLf && lx < 2)) put(x5, y5, dark(get(x5, y5), 0.62));
+      }
     }
 
     // ---------- 4. 草むら：暗い下地の上に、草の束（3〜5本の葉）をたくさん立てる ----------
@@ -268,32 +309,32 @@ var Tiles = (function () {
     // 葉のかたまり：丸い葉の山をならべる。手前（下）の山ほど前。山ごとに左上が明るく、山の境目は暗い
     function crowns(list, palette, bright) {
       list.sort(function (p1, p2) { return p1[1] - p2[1]; });
-      var own = {};
+      var own = new Int16Array(W * H).fill(-1);
+      function o(ax, ay) { return ax < 0 || ay < 0 || ax >= W || ay >= H ? -2 : own[ay * W + ax]; }
       list.forEach(function (cr, idx) {
         var r = cr[2];
-        for (var yy = Math.floor(cr[1] - r); yy <= cr[1] + r; yy++) for (var xx = Math.floor(cr[0] - r); xx <= cr[0] + r; xx++) {
+        for (var yy = Math.floor(cr[1] - r - 1); yy <= cr[1] + r + 1; yy++) for (var xx = Math.floor(cr[0] - r - 1); xx <= cr[0] + r + 1; xx++) {
+          if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
           var dx = xx + 0.5 - cr[0], dy = yy + 0.5 - cr[1];
           var rr = r + (noise(xx / 2.5, yy / 2.5, 27) - 0.5) * 2.2;
-          if (dx * dx + dy * dy <= rr * rr) own[xx + "," + yy] = idx;
+          if (dx * dx + dy * dy <= rr * rr) own[yy * W + xx] = idx;
         }
       });
-      Object.keys(own).forEach(function (kk2) {
-        var pp = kk2.split(","), xx = +pp[0], yy = +pp[1];
-        if (xx < 0 || yy < 0 || xx >= W || yy >= H) return;
-        var cr = list[own[kk2]];
-        var o = function (ax, ay) { return own[ax + "," + ay]; };
-        if (o(xx - 1, yy) === undefined || o(xx + 1, yy) === undefined || o(xx, yy - 1) === undefined || o(xx, yy + 1) === undefined) { put(xx, yy, OUT); return; }
-        // 前の山との境目（上や左の点が、もっと前の山のもの）→ 暗い
-        var me = own[kk2];
-        if (o(xx, yy + 1) > me || o(xx + 1, yy) > me) { put(xx, yy, palette[0]); return; }
+      for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) {
+        var me = own[yy * W + xx];
+        if (me < 0) continue;
+        var cr = list[me];
+        var l1 = o(xx - 1, yy), r1 = o(xx + 1, yy), u1 = o(xx, yy - 1), d1 = o(xx, yy + 1);
+        if (l1 === -1 || r1 === -1 || u1 === -1 || d1 === -1) { put(xx, yy, OUT); continue; }
+        // 前の山との境目 → 暗い
+        if (d1 > me || r1 > me) { put(xx, yy, palette[0]); continue; }
         var dx = (xx + 0.5 - cr[0]) / cr[2], dy = (yy + 0.5 - cr[1]) / cr[2];
         var lit = -dx * 0.5 - dy * 0.85 + bright;
-        // 小さな葉のつぶ
         var gx3 = ((xx + (Math.floor(yy / 3) % 2) * 2) % 4), gy3 = yy % 3;
         if (gx3 === 0 && gy3 === 0) lit += 0.35; else if (gx3 === 2 && gy3 === 2) lit -= 0.3;
         var li = lit > 0.55 ? 4 : lit > 0.15 ? 3 : lit > -0.35 ? 2 : 1;
         put(xx, yy, palette[li]);
-      });
+      }
     }
     // みき（木のかたまりの下のはし）
     var isTree = isK("tree");
@@ -370,8 +411,8 @@ var Tiles = (function () {
 
   // 部屋ごとに覚えておく（扉を開けるなどでタイルが変わったら、描き直す）
   function canvasFor(room) {
-    var sig = room.rows.join("|");
-    if (!room._tilesCanvas || room._tilesSig !== sig) { room._tilesCanvas = render(room); room._tilesSig = sig; }
+    var ver = room.ver || 0;
+    if (!room._tilesCanvas || room._tilesVer !== ver) { room._tilesCanvas = render(room); room._tilesVer = ver; }
     return room._tilesCanvas;
   }
 
