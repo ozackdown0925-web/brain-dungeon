@@ -2,7 +2,8 @@
 // 段階4（ダンジョン）：seed でつないだ森の部屋を通って、出口をめざす。残り時間と地図つき。
 // 4-2：鍵と扉、罠（毒の沼・落とし穴。一部は踏むまで見えない）、宝箱、敵が落とすゴールドと素材。
 // 4-3：7階と14階はボスの階層（入口 → 敵の部屋 → ボスの部屋）。ボスをたおすと宝箱と出口が現れる。
-// 職業・武器・スキル・レベル・階層・冒険の時間などは、一時停止の画面の「テスト用の設定」で変えられる（キャラクリと拠点は段階5で作る）。
+// 段階5-1：拠点（base.js）から出発し、冒険が終わると拠点にもどる。経験値・熟練度・拾った物は、もどったときにまとめて入る（state.js）。
+// テスト用の設定（正解数・冒険の時間・seed・レベル）は、拠点の画面にある。
 (function () {
   var view = Render.view;
   var room = null;          // 今いる部屋
@@ -15,24 +16,15 @@
   var A = Party.actor;
   A.x = 6 * World.TILE; A.y = 11 * World.TILE;
 
-  // ---------- テスト用のパーティ ----------
-  var setup = [
-    { name: "アレン", job: "warrior", weapon: "sword",  skills: ["w.spin", "w.rush", "w.focus"] },
-    { name: "ミラ",   job: "mage",    weapon: "staff",  skills: ["m.fire", "m.aqua", "m.sleep"] },
-    { name: "ロイ",   job: "hunter",  weapon: "bow",    skills: ["h.triple", "h.poison", "h.para"] }
-  ];
-  var testLevel = 1;
-  // テスト用の設定（段階4）。correct は知恵の試練の正解数の仮の値（段階6で本物の結果に置きかえる。段階4-2で宝箱のレア度に使う）
+  // テスト用の設定（拠点の画面で変える）。correct は知恵の試練の正解数の仮の値（段階6で本物の結果に置きかえる）
   var settings = { floor: 1, correct: 2, minutes: 5, seed: "" };
   var run = newRun();
   function newRun() {
     return { timeLeft: settings.minutes * 60, kills: 0, over: false, fade: 0, entry: null,
-             gold: 0, clearGold: 0, mat: { iron: 0, stone: 0 }, got: [], swampCd: 0, lockMsg: 0, inPit: false };
+             gold: 0, clearGold: 0, mat: { iron: 0, stone: 0 }, got: [], swampCd: 0, lockMsg: 0, inPit: false,
+             exp: [0, 0, 0], mastery: [0, 0, 0], byType: {} };
   }
-  function buildParty() {
-    Party.setup(setup.map(function (s) { return Party.makeChar(s.name, s.job, s.weapon, testLevel, s.skills.slice()); }));
-  }
-  buildParty();
+  var active = false; // ダンジョンにいるあいだ true（拠点にいるあいだは止める）
 
   var cam = { x: 0, y: 0 };
   var paused = false, choosing = false;
@@ -46,7 +38,10 @@
   function startFloor(floor, seed) {
     settings.floor = floor;
     dg = Dungeon.generate(floor, seed || Dungeon.newSeed());
+    Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
     Party.resetAll();
+    active = true; paused = false; choosing = false;
+    pauseEl.hidden = true; chooseEl.hidden = true;
     A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
     run = newRun();
     enterRoom(dg.start, null);
@@ -60,7 +55,7 @@
     c.visited = true;
     room = c.room;
     Combat.hooks.room = room;
-    Enemies.clear(); Combat.clear();
+    Enemies.clear(); Combat.clear(); Battle.clear();
     boss = null;
     var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: c.center.x, y: c.center.y + 20, face: { x: 0, y: 1 } };
     A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0;
@@ -141,6 +136,16 @@
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
     if (e.slot) e.slot.dead = true;
+    run.byType[e.type] = (run.byType[e.type] || 0) + 1;
+    // 経験値と熟練度：倒れていない3人に同じだけ（docs/draft.md 1.1：1体 2＋0.6×深さ、熟練度 1。ボスは10体分）
+    if (!e.summoned) {
+      var k = e.def.boss ? 10 : 1;
+      Party.members().forEach(function (m, i) {
+        if (m.down) return;
+        run.exp[i] += (2 + 0.6 * dg.floor) * k;
+        run.mastery[i] += k;
+      });
+    }
     if (e.def.boss) { bossDefeated(e); return; }
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
@@ -555,21 +560,26 @@
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
     var titles = { clear: "森の " + dg.floor + " 階をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…" };
     document.getElementById("chooseTitle").textContent = titles[kind];
-    if (kind === "clear") { run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold; }
+    if (kind === "clear") {
+      run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold;
+      // クリア報酬：経験値 (20＋5×深さ)×(1＋0.25×正解数)、熟練度 10（倒れていない仲間に）
+      var ce = (20 + 5 * dg.floor) * (1 + 0.25 * settings.correct);
+      Party.members().forEach(function (m, i) { if (!m.down) { run.exp[i] += ce; run.mastery[i] += 10; } });
+    }
     var tl = Math.ceil(run.timeLeft);
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
       "知恵の試練の正解（テスト用の仮の値） " + settings.correct + "問",
       run.title ? "称号「" + run.title + "」を手に入れた！（称号の棚は段階5の図鑑に作ります）" : "",
       "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉄 " + run.mat.iron + "　魔石 " + run.mat.stone,
-      kind === "clear" ? "本番では、拾った物と経験値を持って拠点にもどり、次の日は次の階層へ（拠点とセーブは段階5）。"
-        : "本番では、その日の冒険はここで終わり。拾った物と経験値は持ち帰れるが、階層は進まない。"
+      "経験値 " + Party.members().map(function (m, i) { return m.name + " +" + Math.round(run.exp[i]); }).join("　"),
+      kind === "clear" ? "拾った物と経験値を持って、拠点にもどろう。" : "拾った物と経験値は持ち帰れるが、階層は進まない。"
     ];
     var lead = document.getElementById("chooseLead"); lead.textContent = "";
     lines.forEach(function (t) { if (!t) return; var d = document.createElement("div"); d.textContent = t; lead.appendChild(d); });
     // 手に入れた装備（拠点とセーブは段階5。今は見せるだけ）
     if (run.got.length) {
-      var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（段階5で拠点ができるまでは、見るだけ）"; lead.appendChild(h);
+      var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（倉庫に入る。装備の付けかえは段階5-2）"; lead.appendChild(h);
       run.got.forEach(function (it) {
         var d2 = document.createElement("div"); d2.className = "got"; d2.style.color = Loot.RARITY[it.r].color;
         d2.textContent = Loot.describe(it); lead.appendChild(d2);
@@ -582,11 +592,19 @@
       b.addEventListener("click", function () { choosing = false; chooseEl.hidden = true; fn(); updateButtons(true); });
       box.appendChild(b);
     }
-    if (kind === "clear" && dg.floor < 14) button("次の階層（" + (dg.floor + 1) + "階）へ（テスト）", function () { startFloor(dg.floor + 1); });
-    button("同じ階層をもう一度（テスト・新しいつなぎ方）", function () { startFloor(dg.floor); });
-    button("同じつなぎ方でもう一度（テスト）", function () { startFloor(dg.floor, dg.seed); });
+    var result = {
+      exp: run.exp.slice(), mastery: run.mastery.slice(), gold: run.gold, mat: run.mat, items: run.got.slice(),
+      title: run.title || null, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind
+    };
+    button("拠点にもどる", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
     chooseEl.hidden = false;
   }
+
+  // 拠点から呼ぶ：出発する
+  window.Adventure = {
+    settings: settings,
+    start: function (floor, seed) { startFloor(floor, seed); updateButtons(true); }
+  };
 
   // ---------- 一時停止とテスト用の設定 ----------
   var pauseEl = document.getElementById("pause");
@@ -598,7 +616,7 @@
     paused = on;
     pauseEl.hidden = !on;
     Input.releaseAll();
-    if (on) { drawBigMap(); buildTestPanel(); }
+    if (on) drawBigMap();
   }
 
   // メニューの大きな地図
@@ -618,89 +636,14 @@
       Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";
   }
 
-  function option(sel, value, text, selected) {
-    var o = document.createElement("option"); o.value = value; o.textContent = text; if (selected) o.selected = true; sel.appendChild(o);
-  }
-  function buildTestPanel() {
-    var box = document.getElementById("testPanel"); box.textContent = "";
-    var lv = document.getElementById("testLevel"); lv.textContent = "";
-    [1, 5, 10, 20].forEach(function (l) { option(lv, l, "Lv" + l, l === testLevel); });
-    var fl = document.getElementById("testFloor"); fl.textContent = "";
-    for (var f = 1; f <= 14; f++) option(fl, f, f + "階" + (Dungeon.BOSS_FLOORS.indexOf(f) >= 0 ? "（ボス）" : ""), f === settings.floor);
-    var co = document.getElementById("testCorrect"); co.textContent = "";
-    for (var n = 0; n <= 4; n++) option(co, n, n + "問", n === settings.correct);
-    var mi = document.getElementById("testMinutes"); mi.textContent = "";
-    [1, 3, 5, 10].forEach(function (m) { option(mi, m, m + "分", m === settings.minutes); });
-    document.getElementById("testSeed").value = settings.seed;
-    setup.forEach(function (s, idx) {
-      var row = document.createElement("div"); row.className = "test-row";
-      var name = document.createElement("span"); name.className = "test-name"; name.textContent = s.name; row.appendChild(name);
-      var job = document.createElement("select");
-      GameData.JOB_ORDER.forEach(function (j) { option(job, j, GameData.JOBS[j].name, j === s.job); });
-      var weapon = document.createElement("select");
-      var skills = [document.createElement("select"), document.createElement("select"), document.createElement("select")];
-      function fillWeapons() {
-        weapon.textContent = "";
-        GameData.JOBS[s.job].weapons.forEach(function (w) { option(weapon, w, GameData.WEAPONS[w].name, w === s.weapon); });
-      }
-      function fillSkills() {
-        skills.forEach(function (sel, i) {
-          sel.textContent = "";
-          option(sel, "", "（なし）", !s.skills[i]);
-          GameData.SKILLS.forEach(function (sk) {
-            if (!GameData.canSet(sk, s.job, s.weapon)) return; // 条件に合わないスキルはセットできない
-            option(sel, sk.id, GameData.JOBS[sk.job].name + "★" + sk.star + " " + sk.name, sk.id === s.skills[i]);
-          });
-        });
-      }
-      // 職業や武器を変えて条件に合わなくなったスキルは外す
-      function dropInvalid() {
-        var removed = [];
-        s.skills = s.skills.map(function (id) {
-          if (id && !GameData.canSet(GameData.SKILL[id], s.job, s.weapon)) { removed.push(GameData.SKILL[id].name); return null; }
-          return id;
-        });
-        if (removed.length) document.getElementById("testNote").textContent = s.name + "：「" + removed.join("」「") + "」は条件に合わなくなったので外しました";
-      }
-      job.addEventListener("change", function () {
-        s.job = job.value;
-        if (GameData.JOBS[s.job].weapons.indexOf(s.weapon) < 0) s.weapon = GameData.JOBS[s.job].weapons[0];
-        fillWeapons(); dropInvalid(); fillSkills();
-      });
-      weapon.addEventListener("change", function () { s.weapon = weapon.value; dropInvalid(); fillSkills(); });
-      skills.forEach(function (sel, i) {
-        sel.addEventListener("change", function () {
-          var v = sel.value || null;
-          if (v) s.skills = s.skills.map(function (id, k) { return k !== i && id === v ? null : id; }); // 同じスキルは1つだけ
-          s.skills[i] = v; fillSkills();
-        });
-      });
-      fillWeapons(); fillSkills();
-      row.appendChild(job); row.appendChild(weapon);
-      skills.forEach(function (sel) { row.appendChild(sel); });
-      box.appendChild(row);
-    });
-    document.getElementById("testNote").textContent = "";
-  }
-  document.getElementById("testApply").addEventListener("click", function () {
-    testLevel = Number(document.getElementById("testLevel").value) || 1;
-    settings.correct = Number(document.getElementById("testCorrect").value) || 0;
-    settings.minutes = Number(document.getElementById("testMinutes").value) || 5;
-    settings.seed = String(document.getElementById("testSeed").value || "").replace(/[^0-9]/g, "");
-    buildParty(); tally.kills = 0; tally.swingsToKill = 0; tally.hitsTaken = 0; tally.downs = 0;
-    startFloor(Number(document.getElementById("testFloor").value) || 1, settings.seed ? Number(settings.seed) : 0);
-    setPaused(false); updateButtons(true);
-  });
-
   function checkRotate() {
     var portrait = window.innerHeight > window.innerWidth;
     rotateEl.hidden = !(Input.isTouch && portrait);
   }
   window.addEventListener("resize", checkRotate);
   checkRotate();
-  document.addEventListener("visibilitychange", function () { if (document.hidden && !paused) setPaused(true); });
-  startFloor(1);
-  updateButtons(true);
+  document.addEventListener("visibilitychange", function () { if (document.hidden && active && !paused && !choosing) setPaused(true); });
+  Base.boot();
 
   // ---------- 毎フレーム ----------
   var last = 0;
@@ -711,8 +654,8 @@
     if (fps.t >= 0.5) { fps.value = Math.round(fps.n / fps.t); fps.n = 0; fps.t = 0; }
     glow += dt;
     if (run.fade > 0) run.fade = Math.max(0, run.fade - dt);
-    if (!paused && !choosing && rotateEl.hidden) update(dt);
-    draw();
+    if (active && !paused && !choosing && rotateEl.hidden) update(dt);
+    if (dg) draw(); else Render.begin();
     Input.endFrame();
     requestAnimationFrame(frame);
   }
@@ -721,11 +664,11 @@
   // ?debug=1 のときだけ、確かめるために中を見たり1フレームずつ進めたりできるようにする
   if (debug) {
     window.__game = {
-      actor: A, cam: cam, tally: tally, setup: setup, settings: settings,
+      actor: A, cam: cam, tally: tally, settings: settings,
       room: function () { return room; }, dungeon: function () { return dg; }, cur: function () { return curKey; }, run: function () { return run; },
       step: function (dt) { if (!paused && !choosing) update(dt); draw(); Input.endFrame(); },
       start: startFloor, enter: enterRoom, boss: function () { return boss; },
-      rebuild: function (lv) { testLevel = lv || 1; buildParty(); startFloor(settings.floor); },
+      rebuild: function (lv) { GameState.setLevelForTest(lv || 1); startFloor(settings.floor); },
       state: function () { return { paused: paused, choosing: choosing }; }
     };
   }

@@ -14,18 +14,24 @@ var Party = (function () {
     inv: 0, busy: 0 // busy：ためている・踏みこんでいるあいだは動けない
   };
 
-  function makeChar(name, job, weapon, level, skills) {
-    var c = { name: name, job: job, weapon: weapon, level: level || 1, skills: skills || [null, null, null] };
+  function makeChar(name, job, weapon, level, skills, hero) {
+    var c = { name: name, job: job, weapon: weapon, level: level || 1, skills: skills || [null, null, null], hero: hero || null, face: hero ? hero.face : 0 };
     c.ct = {}; c.used = {}; c.buffs = []; c.regens = []; c.status = {}; c.down = false;
     recalc(c);
     c.hp = c.stats.hp; c.mp = c.stats.mp;
     return c;
   }
 
-  // 職業・武器・レベルから能力を計算しなおす
+  // 拠点の仲間（GameState の hero）から、冒険に出るキャラを作る。武器は、装備のしくみ（段階5-2）ができるまでは、職業のはじめの武器
+  function fromHero(h) {
+    var c = makeChar(h.name, h.job, GameState.starterWeapon(h.job), h.level, h.set.slice(), h);
+    return c;
+  }
+
+  // 職業・武器・レベルから能力を計算しなおす。hero があれば、その能力（職業を変えながら育った値）を使う
   function recalc(c) {
     var J = GameData.JOBS[c.job];
-    c.base = GameData.baseStats(c.job, c.level);
+    c.base = c.hero ? c.hero.base : GameData.baseStats(c.job, c.level);
     // 防具は、装備のしくみ（段階5）ができるまでは、はじめから持っている防具
     c.stats = GameData.combatStats(c.base, GameData.WEAPONS[c.weapon], GameData.STARTER_ARMORS[J.armor], c.level);
   }
@@ -121,7 +127,7 @@ var Party = (function () {
   }
 
   return {
-    actor: actor, makeChar: makeChar, recalc: recalc, eff: eff, setup: setup, current: current,
+    actor: actor, makeChar: makeChar, fromHero: fromHero, recalc: recalc, eff: eff, setup: setup, current: current,
     members: function () { return members; }, activeIndex: function () { return active; },
     canSwitch: canSwitch, switchNext: switchNext, switchTo: switchTo, switchCd: function () { return switchCd; },
     tick: tick, addStatus: addStatus, cure: cure, hurtActive: hurtActive, allDown: allDown, resetAll: resetAll
