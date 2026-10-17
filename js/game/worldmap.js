@@ -24,6 +24,7 @@ var WorldMap = (function () {
   var hover = null;
 
   function open() {
+    Sound.bgm("world");
     el.hidden = false; dlg.hidden = true;
     document.getElementById("base").hidden = true;
     document.getElementById("worldTitle").textContent = REGION.name;

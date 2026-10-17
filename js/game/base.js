@@ -143,6 +143,7 @@ var Base = (function () {
   // ---------- 拠点 ----------
   // report：冒険からもどったときの知らせ（なければ null）
   function showBase(report) {
+    Sound.bgm("town");
     var g = GameState.get();
     createEl.hidden = true;
     baseEl.hidden = false;

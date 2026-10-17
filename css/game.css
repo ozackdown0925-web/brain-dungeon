@@ -330,3 +330,21 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .net-screen[hidden] { display: none; }
 .net-screen .panel { max-width: 460px; text-align: center; }
 .net-screen p { font-size: 17px; line-height: 1.6; }
+
+/* 段階7-1：タイトル画面と音の設定 */
+.title-screen { position: fixed; inset: 0; z-index: 60; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: radial-gradient(ellipse at 50% 30%, #2a1838 0%, #0d0814 70%); color: #ece7da; padding: 12px 16px 24px; }
+.title-screen[hidden] { display: none; }
+.title-wrap { max-width: 900px; margin: 0 auto; text-align: center; }
+#titleArt { display: block; margin: 0 auto; border-radius: 10px; border: 2px solid #4a3060; image-rendering: pixelated; box-shadow: 0 0 30px rgba(255,58,74,0.15); }
+.title-logo { margin: 12px 0 4px; font-size: clamp(28px, 6vw, 46px); letter-spacing: 0.08em; color: #f2c14e; text-shadow: 0 2px 0 #7a4a10, 0 0 16px rgba(242,193,78,0.45); }
+.title-logo span { display: block; font-size: 0.42em; letter-spacing: 0.4em; color: #cfc6e0; text-shadow: none; margin-top: 2px; }
+.title-story { max-width: 640px; margin: 4px auto 10px; text-align: left; font-size: 15px; line-height: 1.7; color: #e4dcf0; }
+.title-story p { margin: 0 0 4px; }
+.sound-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0 0; }
+.parent-entry.sound-row { justify-content: flex-end; }
+@media (max-height: 559px) and (orientation: landscape) {
+  .title-wrap { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; max-width: none; }
+  .title-logo { margin-top: 0; font-size: 28px; }
+  .title-story { font-size: 14px; line-height: 1.6; }
+}

@@ -33,6 +33,7 @@ var Trial = (function () {
   // floor：挑む階、done(result)：扉が開いたとき（result：{ correct, subjects }）
   // opts.rest：休みの日（ダンジョンは閉じていて、知恵の試練だけ解く。段階6-2）
   function open(floor, done, opts) {
+    Sound.bgm("trial");
     floorNo = floor; onDone = done; today = ymd(new Date()); rest = !!(opts && opts.rest);
     round = Math.max(1, (opts && opts.round) || 1);
     // 新しい試練になったら、メモを白紙にする
