@@ -20,3 +20,6 @@ Thumbs.db
 # 成績管理フォルダの場所など、手元だけのメモ（フォルダ名に子どもの名前が入る）
 CLAUDE.local.md
 *.local.txt
+
+# clasp（GAS のスクリプトID。手元だけに置く）
+.clasp.json
