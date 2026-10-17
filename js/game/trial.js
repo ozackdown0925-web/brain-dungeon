@@ -182,16 +182,19 @@ var Trial = (function () {
     });
   }
   function renderQuestion() {
-    var card = $("trialCard"); card.dataset.s = current; screen.dataset.s = current;
-    if (!ready) { card.textContent = ""; card.appendChild(el("p", "muted", "問いを用意しています…")); shownKey = ""; return; }
+    // 左に問い（問題文・図）、右に答えの欄（2026-10-17：問題が長くても、答えの欄がいつも見えるように）
+    var card = $("trialCard"), ansBox = $("trialAnswer");
+    card.dataset.s = current; ansBox.dataset.s = current; screen.dataset.s = current;
+    if (!ready) { card.textContent = ""; ansBox.textContent = ""; card.appendChild(el("p", "muted", "問いを用意しています…")); shownKey = ""; return; }
     var pick = picks[current], q = pick && byId[pick.qid];
-    if (!q) { card.textContent = ""; card.appendChild(el("p", "muted", "この教科の問題がまだありません。ほかの教科を解こう。")); shownKey = ""; return; }
+    if (!q) { card.textContent = ""; ansBox.textContent = ""; card.appendChild(el("p", "muted", "この教科の問題がまだありません。ほかの教科を解こう。")); shownKey = ""; return; }
     var saved = itemOf(current) || null;
     var k = current + "|" + q.id + "|" + (saved ? "done" : "open");
     if (k === shownKey) return; // 入力中の答えを消さない
     shownKey = k;
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
     DrillCore.renderQuestion(holder, q, {
+      answerRoot: ansBox,
       imageLoader: loadImage, saved: saved, review: pick.review,
       extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
       reviewNote: "正解するまで、また出てきます。",
@@ -199,10 +202,10 @@ var Trial = (function () {
         var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
         saveAnswer(current, rec);
         shownKey = current + "|" + q.id + "|done";
-        renderTabs(); renderDone(); appendNext(card);
+        renderTabs(); renderDone(); appendNext(ansBox);
       }
     });
-    if (saved) appendNext(card);
+    if (saved) appendNext(ansBox);
   }
   function appendNext(card) {
     var nextS = SUBJECTS.filter(function (s) { return picks[s.key] && !itemOf(s.key); })[0];

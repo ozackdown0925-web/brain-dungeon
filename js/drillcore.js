@@ -306,6 +306,9 @@
     if (q.text) wrap.append(el("p", "dq-text", q.text));
     if (asList(q.images).length) wrap.append(images(q.images, opts.imageLoader));
 
+    // opts.answerRoot：答えの欄（と答え合わせ・解説）を、問題とは別の場所に出すとき（知恵の試練。2026-10-17）
+    var ans = wrap;
+    if (opts.answerRoot) { opts.answerRoot.textContent = ""; ans = el("div", "dq"); opts.answerRoot.append(ans); }
     var parts = asList(q.parts);
     var saved = opts.saved || null;
     var savedParts = saved && Array.isArray(saved.parts) ? saved.parts : [];
@@ -323,10 +326,10 @@
       if (asList(p.images).length) box.append(images(p.images, opts.imageLoader));
       var w = widget(p, update); ws.push(w); box.append(w.node);
       var mk = el("div"); marks.push(mk); box.append(mk);
-      partBoxes.push(box); wrap.append(box);
+      partBoxes.push(box); ans.append(box);
     });
-    if (!parts.length) wrap.append(el("p", "dq-note", "この問題には答えの欄がありません。"));
-    wrap.append(action);
+    if (!parts.length) ans.append(el("p", "dq-note", "この問題には答えの欄がありません。"));
+    ans.append(action);
 
     var checkBtn = btn("dq-btn", "答え合わせ", check);
     function update() {
