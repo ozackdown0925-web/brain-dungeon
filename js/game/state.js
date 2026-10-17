@@ -106,7 +106,8 @@ var GameState = (function () {
     }
     if (lost) report.push({ name: "倉庫", lines: ["倉庫がいっぱいで、装備を " + lost + "個 持ち帰れなかった"], exp: 0 });
     game.today = { date: todayStr(), adventure: null };
-    if (!r.test) game.lastAdventure = todayStr(); // 出発できるのは1日1回（テスト用の出発は数えない）
+    // 出発できるのは1日2回（テスト用の出発は数えない）
+    if (!r.test) { game.adventureCount = { date: todayStr(), n: adventuresToday() + 1 }; game.lastAdventure = todayStr(); }
     save();
     pushHistory(r.cleared ? "森の" + r.floor + "階をクリア" : "森の" + r.floor + "階から帰った");
     Remote.send("adventureEnd", { floor: r.floor, kind: r.kind, cleared: !!r.cleared });
@@ -330,8 +331,16 @@ var GameState = (function () {
   function adventure() { return game && game.today ? game.today.adventure : null; }
   function adventureDate() { return game && game.today ? game.today.date : null; }
 
-  // 今日もう冒険したか（1日1回）。テスト用に外せる（この端末だけ。段階6-2で保護者画面の「試しモード」に）
-  function adventuredToday() { return !!game && game.lastAdventure === todayStr(); }
+  // 1日に出発できる回数。テスト用に外せる（この端末だけ。段階6-2で保護者画面の「試しモード」に）
+  var DAILY_LIMIT = 2;
+  // 今日もう何回冒険したか（拠点にもどった回数で数える）
+  function adventuresToday() {
+    if (!game) return 0;
+    var c = game.adventureCount;
+    if (c && c.date === todayStr()) return c.n || 0;
+    return game.lastAdventure === todayStr() ? 1 : 0; // 1日1回だったころのセーブ
+  }
+  function adventuredToday() { return adventuresToday() >= DAILY_LIMIT; }
   function unlimited() { try { return localStorage.getItem("bd-test-unlimited") === "1"; } catch (e) { return false; } }
   function setUnlimited(on) { try { if (on) localStorage.setItem("bd-test-unlimited", "1"); else localStorage.removeItem("bd-test-unlimited"); } catch (e) { /* そのまま */ } }
 
@@ -388,7 +397,7 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe,
-    todayStr: todayStr, adventuredToday: adventuredToday, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, DAILY_LIMIT: DAILY_LIMIT, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, Remote: Remote,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,

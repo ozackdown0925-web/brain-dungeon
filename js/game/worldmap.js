@@ -90,7 +90,7 @@ var WorldMap = (function () {
     if (!s) return;
     if (s.kind === "base") { close(); return; }
     if (!s.open) { showNote("まだ行けない場所。森の主をたおすと、道が開けるかも…？"); return; }
-    // 出発できるのは1日1回（テスト用の設定で外せる）
+    // 出発できるのは1日2回（テスト用の設定で外せる）
     if (GameState.adventuredToday() && !GameState.unlimited()) { showNote("今日の冒険は、もう終わったよ。また明日！"); return; }
     showFloors(s);
   });
