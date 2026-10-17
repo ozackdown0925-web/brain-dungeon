@@ -1,5 +1,7 @@
 // 音（段階7-1）：BGM と効果音。Web Audio で鳴らす（iPad の Safari でも音量を変えられ、効果音がおくれないように）。
 // ・音のファイルは assets/sound/ に置き、下の FILES に名前を書く。ファイルがまだない音は鳴らさない（何も起きない）。
+// ・配布が禁止されている素材（音楽の卵など）は公開リポジトリに置かない。Googleドライブに置き、FILES に "gas:名前" と書くと、
+//   プレイヤー用の鍵で GAS から受け取る。1回受け取ったら、この端末の中（Cache Storage）に覚えておく（2026-10-18 決定）。
 // ・iPad の Safari は、画面にさわるまで音を鳴らせない。はじめてさわったときに鳴らす準備をする（unlock）。
 // ・BGM と効果音は、それぞれ設定で消せる（この端末だけ。localStorage）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。OGG は iPadOS 16 で鳴らないので、mp3 にして置く。
@@ -10,7 +12,8 @@ var Sound = (function () {
   var FILES = {
     // NOT JAM MUSIC PACK 2（CC0）。OGG と WAV を mp3 にした（docs/credits.md）
     bgm: {
-      title: "bgm_lich_king_ascendant.mp3", town: "bgm_lazy_river_rally.mp3", world: "bgm_rainy_foothills.mp3",
+      // タイトル・村・ワールドマップは、音楽の卵（ontama-m.com）の曲。曲単体の配布が禁止なので、GAS から受け取る（docs/credits.md）
+      title: "gas:izanai.mp3", town: "gas:michinarini.mp3", world: "gas:boukensyanoayumi.mp3",
       trial: "bgm_crystal_caverns.mp3", dungeon: "bgm_leading_the_charge.mp3", boss: "bgm_locrian_chipdoom.mp3"
     },
     se: {
@@ -24,8 +27,11 @@ var Sound = (function () {
     }
   };
   // BGM のくり返しの長さ（秒。もとの OGG の長さ）。mp3 にすると終わりに少し無音がつくので、ここでくり返す
+  // GAS から受け取れないとき（鍵を入れる前・つながらないとき）に代わりに鳴らす曲（公開リポジトリの NOT JAM の曲）
+  var FALLBACK = { title: "bgm_lich_king_ascendant.mp3", town: "bgm_lazy_river_rally.mp3", world: "bgm_rainy_foothills.mp3" };
+  var FALLBACK_LOOP = { title: 37.317, town: 38.519, world: 36.364 };
   var LOOP = {
-    title: 37.317, town: 38.519, world: 36.364, trial: 33.391, dungeon: 78.367, boss: 117.736
+    trial: 33.391, dungeon: 78.367, boss: 117.736
   };
   var VOL = { bgm: 0.45, se: 0.8 };
 
@@ -64,13 +70,42 @@ var Sound = (function () {
   });
 
   // ---------- 読みこみ ----------
+  // GAS から受け取る音：まず端末の中（Cache Storage）を見て、なければ GAS にたのんで、受け取ったら覚える
+  var CACHE = "bd-sound-v1";
+  function base64ToBuffer(b64) {
+    var bin = atob(b64), n = bin.length, out = new Uint8Array(n);
+    for (var i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+  function fromGas(name) {
+    var url = "/__bd_sound/" + name;   // Cache Storage の中だけで使う名前（本当にはない URL）
+    var hasCache = !!(window.caches && window.caches.open);
+    function ask() {
+      var key = window.BDApi ? BDApi.getKey("player") : "";
+      if (!key) return Promise.reject(new Error("no key"));
+      return BDApi.call("sound", { name: name }, key).then(function (r) {
+        var buf = base64ToBuffer(r.data);
+        if (hasCache) {
+          var copy = buf.slice(0);   // 鳴らす準備（decode）で buf は使えなくなるので、覚える分は先に写しておく
+          caches.open(CACHE).then(function (c) { return c.put(url, new Response(copy, { headers: { "Content-Type": r.mime || "audio/mpeg" } })); })["catch"](function () { /* 覚えられなくても鳴らす */ });
+        }
+        return buf;
+      });
+    }
+    if (!hasCache) return ask();
+    return caches.open(CACHE).then(function (c) { return c.match(url); }).then(function (res) {
+      return res ? res.arrayBuffer() : ask();
+    }, function () { return ask(); });
+  }
+
   function load(file) {
     if (buffers[file]) return Promise.resolve(buffers[file]);
     if (loading[file]) return loading[file];
-    loading[file] = fetch(DIR + file).then(function (r) {
+    var got = file.indexOf("gas:") === 0 ? fromGas(file.slice(4)) : fetch(DIR + file).then(function (r) {
       if (!r.ok) throw new Error("no file");
       return r.arrayBuffer();
-    }).then(function (data) {
+    });
+    loading[file] = got.then(function (data) {
       return new Promise(function (ok, ng) { ctx.decodeAudioData(data, ok, ng); }); // 古い Safari でも動く形
     }).then(function (buf) { buffers[file] = buf; return buf; }, function (e) { delete loading[file]; throw e; });
     return loading[file];
@@ -98,10 +133,12 @@ var Sound = (function () {
     var file = FILES.bgm[name];
     if (!file) return;
     bgmName = name;
-    load(file).then(function (buf) {
+    var fb = FALLBACK[name];
+    load(file).then(null, function (e) { if (fb) return load(fb); throw e; }).then(function (buf) {
       if (bgmWant !== name || bgmSrc || !settings.bgm) return;
       var s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;
-      if (LOOP[name] && LOOP[name] < buf.duration) { s.loopStart = 0; s.loopEnd = LOOP[name]; }
+      var lp = LOOP[name] || (buf === buffers[fb] ? FALLBACK_LOOP[name] : 0);
+      if (lp && lp < buf.duration) { s.loopStart = 0; s.loopEnd = lp; }
       s.connect(bgmGain); s.start(0);
       bgmSrc = s;
     }, function () { bgmName = ""; });

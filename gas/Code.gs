@@ -23,6 +23,7 @@ const QUESTION_SHEET = '問題';
 const QUESTION_HEADERS = ['ID', '有効', '教科', '単元', '出典', '更新日時', 'データ'];
 const SUBJECTS = ['math', 'japanese', 'science', 'social'];
 const IMAGE_FOLDER_NAME = '毎日4問ドリル 画像';
+const SOUND_FOLDER_NAME = 'Brain Dungeon の音（配布禁止の素材）';
 // ゲーム（段階G-1）
 const SAVE_SHEET = 'セーブ';
 const SAVE_HEADERS = ['プレイヤー', '保存日時', '版', '大きさ', 'データ（右の列へ続く）'];
@@ -135,6 +136,8 @@ const PLAYER_ACTIONS = {
   adventures: function (p, role, player) { return { adventures: readAdventures_(player) }; },
   pinStatus: function () { return pinStatus_(); },
   pinCheck: function (p) { return pinCheck_(String(p.pin || '')); },
+  // 音（配布が禁止されている素材は、公開リポジトリに置かずにここから渡す。2026-10-18）
+  sound: function (p) { return getSound_(String(p.name || '')); },
 };
 const ADMIN_ACTIONS = {
   questions: function () { return { questions: readQuestions_(false) }; },
@@ -142,6 +145,9 @@ const ADMIN_ACTIONS = {
   deleteQuestion: function (p) { adminDeleteQuestion(p.key, String(p.id || '')); return {}; },
   uploadImage: function (p) { return { id: adminUploadImage(p.key, p.dataUrl, p.name) }; },
   export: function (p) { return { records: readRecords_(p.player || DEFAULT_PLAYER) }; },
+  sounds: function () { return { sounds: listSounds_() }; },
+  uploadSound: function (p) { return uploadSound_(String(p.name || ''), p.dataUrl); },
+  deleteSound: function (p) { deleteSound_(String(p.name || '')); return {}; },
 };
 
 function api_(action, p) {
@@ -479,6 +485,53 @@ function getQuestionSheet_() {
     sheet.getRange('A:G').setNumberFormat('@');
   }
   return sheet;
+}
+
+// ---------- 音（段階7。配布が禁止されている素材をドライブに置き、鍵のある端末にだけ渡す） ----------
+// 名前は英数字・_・-・. だけ（例：michinarini.mp3）。同じ名前で取りこむと、前のファイルはごみ箱へ
+function soundName_(name) {
+  if (!/^[A-Za-z0-9_.-]{1,60}$/.test(name)) throw new Error('音の名前は英数字と _ - . だけにしてください');
+  return name;
+}
+function getSoundFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SOUND_FOLDER');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (err) { /* 消されていたら作り直す */ }
+  }
+  const folder = DriveApp.createFolder(SOUND_FOLDER_NAME);
+  props.setProperty('SOUND_FOLDER', folder.getId());
+  return folder;
+}
+function findSound_(name) {
+  const it = getSoundFolder_().getFilesByName(soundName_(name));
+  return it.hasNext() ? it.next() : null;
+}
+function getSound_(name) {
+  const file = findSound_(name);
+  if (!file) throw new Error('音がありません：' + name);
+  const blob = file.getBlob();
+  return { name: name, mime: blob.getContentType(), size: file.getSize(), updated: file.getLastUpdated().toISOString(), data: Utilities.base64Encode(blob.getBytes()) };
+}
+function listSounds_() {
+  const out = [];
+  const it = getSoundFolder_().getFiles();
+  while (it.hasNext()) { const f = it.next(); out.push({ name: f.getName(), size: f.getSize(), updated: f.getLastUpdated().toISOString() }); }
+  out.sort((a, b) => a.name < b.name ? -1 : 1);
+  return out;
+}
+function uploadSound_(name, dataUrl) {
+  soundName_(name);
+  const m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl || '');
+  if (!m) throw new Error('音のファイルを読みこめませんでした');
+  const old = findSound_(name);
+  if (old) old.setTrashed(true);
+  const file = getSoundFolder_().createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], name));
+  return { name: name, size: file.getSize() };
+}
+function deleteSound_(name) {
+  const file = findSound_(name);
+  if (file) file.setTrashed(true);
 }
 
 function getImageFolder_() {
