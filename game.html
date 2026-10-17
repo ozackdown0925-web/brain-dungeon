@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=16">
+<link rel="stylesheet" href="css/game.css?v=17">
+<link rel="stylesheet" href="css/drillcore.css?v=17">
+<link rel="stylesheet" href="css/trial.css?v=17">
 </head>
 <body>
 <div id="stage">
@@ -89,11 +91,43 @@
       </div>
     </div>
   </div>
-  <div id="trialScreen" class="screen trial" hidden>
-    <div class="panel">
-      <h2>知恵の試練</h2>
-      <p id="trialText"></p>
-      <button type="button" id="trialGo" class="btn big">扉が開いた！ ダンジョンへ</button>
+  <!-- 段階6-1：知恵の試練（ドリルと同じ部品 js/drillcore.js で問題を出す） -->
+  <div id="trialScreen" class="screen temple" hidden data-s="math">
+    <div class="temple-wrap">
+      <header class="temple-head">
+        <button type="button" id="trialBack" class="btn small-btn">← 拠点にもどる</button>
+        <h2>知恵の試練</h2>
+        <p id="trialSub"></p>
+      </header>
+      <div id="trialNotice" class="notice" hidden></div>
+      <div id="trialLogin" class="tlogin" hidden>
+        <p>はじめに「プレイヤー用の鍵」を入れてください。この iPad が覚えるので、次からは入れなくてよくなります。</p>
+        <input class="dq-in" type="text" id="trialKey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="プレイヤー用の鍵" aria-label="プレイヤー用の鍵">
+        <button class="dq-btn" type="button" id="trialLoginGo">はじめる</button>
+        <p id="trialLoginMsg" class="err"></p>
+      </div>
+      <div id="trialBody">
+        <nav id="trialTabs" class="ttabs" aria-label="教科"></nav>
+        <p id="trialProgress" class="tprogress"></p>
+        <div id="trialDone" class="tdone" hidden>
+          <h3>4つの問いに答えた！ 扉が開いた</h3>
+          <p id="trialDoneText"></p>
+          <button type="button" id="trialGo" class="dq-btn">ダンジョンへ</button>
+        </div>
+        <main class="tpage">
+          <article id="trialCard" class="qcard" aria-live="polite"></article>
+          <aside class="memo" aria-label="メモ">
+            <div class="mbar">
+              <span class="label">メモ</span>
+              <button class="tool" type="button" id="memoPen" aria-pressed="true">えんぴつ</button>
+              <button class="tool" type="button" id="memoRed" aria-pressed="false">赤</button>
+              <button class="tool" type="button" id="memoErase" aria-pressed="false">消しゴム</button>
+              <button class="tool" type="button" id="memoClear">ぜんぶ消す</button>
+            </div>
+            <div class="canvasbox" id="trialMemoBox"></div>
+          </aside>
+        </main>
+      </div>
     </div>
   </div>
 
@@ -135,7 +169,8 @@
       <details class="test">
         <summary>テスト用の設定（保護者むけ）</summary>
         <div class="test-foot">
-          <label>知恵の試練の正解数（仮） <select id="testCorrect"></select></label>
+          <label>テスト用の出発の正解数 <select id="testCorrect"></select></label>
+          <label><input type="checkbox" id="testUnlimited"> 1日1回をはずす（この端末だけ）</label>
           <label>冒険の時間 <select id="testMinutes"></select></label>
           <label>seed <input id="testSeed" type="text" inputmode="numeric" placeholder="空なら毎回ちがう" size="10"></label>
         </div>
@@ -165,23 +200,28 @@
   </div>
 </div>
 
-<script src="js/game/input.js?v=16"></script>
-<script src="js/game/render.js?v=16"></script>
-<script src="js/game/world.js?v=16"></script>
-<script src="js/game/rooms.js?v=16"></script>
-<script src="js/game/dungeon.js?v=16"></script>
-<script src="js/game/loot.js?v=16"></script>
-<script src="js/game/data.js?v=16"></script>
-<script src="js/game/state.js?v=16"></script>
-<script src="js/game/faces.js?v=16"></script>
-<script src="js/game/battle.js?v=16"></script>
-<script src="js/game/enemies.js?v=16"></script>
-<script src="js/game/bosses.js?v=16"></script>
-<script src="js/game/party.js?v=16"></script>
-<script src="js/game/skills.js?v=16"></script>
-<script src="js/game/town.js?v=16"></script>
-<script src="js/game/worldmap.js?v=16"></script>
-<script src="js/game/base.js?v=16"></script>
-<script src="js/game/core.js?v=16"></script>
+<script src="config.js?v=17"></script>
+<script src="js/api.js?v=17"></script>
+<script src="js/drillcore.js?v=17"></script>
+<script src="js/game/input.js?v=17"></script>
+<script src="js/game/render.js?v=17"></script>
+<script src="js/game/world.js?v=17"></script>
+<script src="js/game/rooms.js?v=17"></script>
+<script src="js/game/dungeon.js?v=17"></script>
+<script src="js/game/loot.js?v=17"></script>
+<script src="js/game/data.js?v=17"></script>
+<script src="js/game/state.js?v=17"></script>
+<script src="js/game/faces.js?v=17"></script>
+<script src="js/game/battle.js?v=17"></script>
+<script src="js/game/enemies.js?v=17"></script>
+<script src="js/game/bosses.js?v=17"></script>
+<script src="js/game/party.js?v=17"></script>
+<script src="js/game/skills.js?v=17"></script>
+<script src="js/game/town.js?v=17"></script>
+<script src="js/game/trial-mock.js?v=17"></script>
+<script src="js/game/trial.js?v=17"></script>
+<script src="js/game/worldmap.js?v=17"></script>
+<script src="js/game/base.js?v=17"></script>
+<script src="js/game/core.js?v=17"></script>
 </body>
 </html>

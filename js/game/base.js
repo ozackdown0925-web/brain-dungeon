@@ -175,6 +175,7 @@ var Base = (function () {
     fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
     fillHistory();
+    document.getElementById("testUnlimited").checked = GameState.unlimited();
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
 
@@ -298,10 +299,12 @@ var Base = (function () {
     st.seed = String(document.getElementById("testSeed").value || "").replace(/[^0-9]/g, "");
   }
 
-  function depart(floor) {
+  // trial：知恵の試練の結果 { correct, subjects }。テスト用の出発（trial なし）は、テスト用の正解数を使い、加護はなし
+  function depart(floor, trial) {
     readTestSettings();
     baseEl.hidden = true;
-    Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0);
+    Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
+      trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
   }
 
   // 冒険から拠点にもどる
@@ -330,6 +333,7 @@ var Base = (function () {
   }
 
   // テスト用のボタン
+  document.getElementById("testUnlimited").addEventListener("change", function (e) { GameState.setUnlimited(e.target.checked); });
   document.getElementById("testLevelApply").addEventListener("click", function () {
     GameState.setLevelForTest(Number(document.getElementById("testLevel").value) || 1);
     showBase(null);

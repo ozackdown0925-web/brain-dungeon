@@ -1,0 +1,57 @@
+/* 知恵の試練（段階6-1）：神殿の飾り。問題の部分は css/drillcore.css（ドリルと同じ）。
+   drillcore.css が使う色の名前（--paper・--ink など）をここで決める（ドリルの css/theme.css と同じ色。問題は明るい紙に）。 */
+:root {
+  --paper: #f5f8fb; --sheet: #ffffff; --ink: #1d2733; --ink-soft: #5a6878; --rule: #d6e0ea;
+  --math: #2a64c9; --japanese: #c8412c; --science: #23875a; --social: #b8740f;
+  --ok: #23875a; --ng: #c8412c; --ok-bg: #e5f4ec; --ng-bg: #fbe9e6; --pen: #1d2733;
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+  --radius: 14px; --c: var(--math);
+}
+[data-s="math"] { --c: var(--math); }
+[data-s="japanese"] { --c: var(--japanese); }
+[data-s="science"] { --c: var(--science); }
+[data-s="social"] { --c: var(--social); }
+.muted { color: var(--ink-soft); font-size: 0.9rem; margin: 0; }
+
+/* 入力欄は文字を選べるように（iPad の Safari で、まわりの user-select:none があると入力できないことがあるため） */
+input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text; }
+
+/* 神殿の飾り（仮の絵。段階7で差しかえ） */
+.screen.temple {
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.35) 0, rgba(0,0,0,0) 8%, rgba(0,0,0,0) 92%, rgba(0,0,0,0.35) 100%),
+    repeating-linear-gradient(90deg, #3a3550 0 46px, #34304a 46px 50px),
+    linear-gradient(#2a2440, #14101e);
+  color: #ece7da;
+  padding: 10px;
+}
+.temple-wrap { max-width: 1100px; margin: 0 auto; }
+.temple-head { text-align: center; position: relative; padding: 6px 0 4px; border-bottom: 3px double #b89a4a; margin-bottom: 8px; }
+.temple-head h2 { margin: 0; color: #f2c14e; font-size: 24px; letter-spacing: 0.2em; text-shadow: 0 0 10px rgba(242,193,78,0.5); }
+.temple-head p { margin: 4px 0 0; font-size: 14px; color: #cfc6e0; }
+.temple-head #trialBack { position: absolute; left: 0; top: 4px; }
+.screen.temple .notice { font-size: 0.9rem; color: var(--ink-soft); background: var(--sheet); border: 1px dashed var(--rule); border-radius: 10px; padding: 8px 12px; margin: 6px 0; }
+.ttabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ttab { appearance: none; font: inherit; display: grid; gap: 2px; padding: 6px 4px; border-radius: 10px; border: 2px solid #5a5070; background: #241f36; color: #ece7da; cursor: pointer; }
+.ttab .tname { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--c); filter: brightness(1.35); }
+.ttab .tstate { font-size: 0.8rem; color: #cfc6e0; }
+.ttab.sel { border-color: var(--c); box-shadow: inset 0 -4px 0 var(--c); background: #2e2846; }
+.tprogress { text-align: center; font-size: 13px; color: #cfc6e0; margin: 4px 0; }
+.tdone { text-align: center; background: linear-gradient(#4a3a14, #2a2008); border: 2px solid #f2c14e; border-radius: 12px; padding: 10px 14px; margin: 6px 0 10px; }
+.tdone h3 { margin: 0 0 4px; color: #f2c14e; }
+.tdone p { margin: 0 0 8px; font-size: 14px; }
+.tdone .dq-btn { --c: #b8740f; }
+.tpage { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+@media (max-width: 860px) { .tpage { grid-template-columns: 1fr; } }
+.qcard { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-top: 6px solid var(--c); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 12px; min-width: 0; font-size: 17px; line-height: 1.7; }
+.memo { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: var(--radius); padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.mbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mbar .label { font-weight: 700; color: var(--ink-soft); margin-right: auto; }
+.tool { appearance: none; font: inherit; font-size: 0.9rem; border: 2px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 12px; min-height: 38px; cursor: pointer; }
+.tool[aria-pressed="true"] { border-color: var(--ink); font-weight: 700; }
+.canvasbox { position: relative; width: 100%; height: 420px; border-radius: 10px; overflow: hidden; border: 1px solid var(--rule);
+  background: #fff repeating-linear-gradient(0deg, transparent 0 27px, #e3ebf3 27px 28px); }
+.canvasbox canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+@media (max-height: 500px) { .canvasbox { height: 260px; } }
+.tlogin { background: var(--sheet); color: var(--ink); border-radius: var(--radius); padding: 14px; display: grid; gap: 10px; max-width: 520px; margin: 10px auto; }
+.tlogin .err { color: var(--ng); font-weight: 700; margin: 0; }

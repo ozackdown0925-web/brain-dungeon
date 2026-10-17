@@ -1,5 +1,5 @@
 // ワールドマップ（段階5-2②）：地方の地図の上に、拠点とダンジョンが点在する（ロマサガ2の地図のイメージ。保護者の案）。
-// 流れ：拠点 →（森の門）→ ワールドマップ → ダンジョンを選ぶ → 何階に挑むか → 知恵の試練（段階6。今は仮の画面）→ ダンジョン。
+// 流れ：拠点 →（森の門）→ ワールドマップ → ダンジョンを選ぶ → 何階に挑むか → 知恵の試練（trial.js）→ ダンジョン。
 // 終わったら（クリア・時間切れ・全滅・メニューでやめる）、いつも拠点にもどる。
 // 地図の絵は仮（段階7で差しかえ）。地方はこれから増える（森の地方が最初）。
 // 部屋の当たり判定の World（world.js）とは別もの：こちらは WorldMap。
@@ -90,6 +90,8 @@ var WorldMap = (function () {
     if (!s) return;
     if (s.kind === "base") { close(); return; }
     if (!s.open) { showNote("まだ行けない場所。森の主をたおすと、道が開けるかも…？"); return; }
+    // 出発できるのは1日1回（テスト用の設定で外せる）
+    if (GameState.adventuredToday() && !GameState.unlimited()) { showNote("今日の冒険は、もう終わったよ。また明日！"); return; }
     showFloors(s);
   });
   cv.addEventListener("mousemove", function (ev) {
@@ -121,18 +123,11 @@ var WorldMap = (function () {
     dlg.hidden = false;
   }
 
-  // ---------- 知恵の試練（段階6で作る。今は仮の画面） ----------
+  // ---------- 知恵の試練（段階6-1）----------
   function toTrial(floor) {
     dlg.hidden = true;
     el.hidden = true;
-    var c = Adventure.settings.correct;
-    document.getElementById("trialText").textContent =
-      "ここで、その日の4問（算数・国語・理科・社会）を解きます（段階6で作ります）。今は、テスト用の正解数（" + c + "問）を使います。";
-    document.getElementById("trialGo").onclick = function () {
-      trialEl.hidden = true;
-      Base.depart(floor);
-    };
-    trialEl.hidden = false;
+    Trial.open(floor, function (res) { Base.depart(floor, res); });
   }
 
   return { open: open, close: close };

@@ -1,0 +1,308 @@
+// 知恵の試練（段階6-1）：ゲームの中の「毎日4問」。算数・国語・理科・社会を1問ずつ解くと、ダンジョンの扉が開く。
+// 問題の表示と答え合わせ・図への書きこみは、ドリルと同じ部品（js/drillcore.js）。GAS とのやりとりは js/api.js。
+// 出題のルール（CLAUDE.md・docs/game-design.md）：教科ごとに、①正解した回数が少ない問題が先、②同じなら優先度
+//   （テストでまちがえた問題（正答率30%未満は除く）→ 正答率の高い問題）、③それも同じなら日によって変える。3日後の復習はしない。
+// GAS の URL が空のあいだは「ためしの問題」（trial-mock.js）で動く。
+// iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
+var Trial = (function () {
+  var SUBJECTS = DrillCore.SUBJECTS;
+  var PENDING_STORE = "bd-drill-pending"; // まだ送れていない答え（ドリルと同じ置き場所）
+  // 正解した教科の加護（その日の冒険だけ）：docs/game-design.md 2（決定）
+  var BLESS = {
+    math: { name: "算数", text: "物攻＋10%" }, japanese: { name: "国語", text: "魔攻＋10%" },
+    science: { name: "理科", text: "物防・魔防＋10%" }, social: { name: "社会", text: "HP・MP＋10%" }
+  };
+
+  var screen = document.getElementById("trialScreen");
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  var key = "", mock = false, today = "";
+  var Q = [], byId = {}, days = {}, picks = {}, current = "math", ready = false, shownKey = "";
+  var writeChain = Promise.resolve();
+  var onDone = null, floorNo = 1;
+
+  function pad(n) { return ("0" + n).slice(-2); }
+  function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function notice(t) { var n = $("trialNotice"); n.textContent = t || ""; n.hidden = !t; }
+
+  // ---------- ひらく ----------
+  // floor：挑む階、done(result)：扉が開いたとき（result：{ correct, subjects }）
+  function open(floor, done) {
+    floorNo = floor; onDone = done; today = ymd(new Date());
+    // ためしの問題を使うのは、config.js に GAS の URL が入っていないときだけ
+    // （BDApi.hasUrl() は、偽の窓口を一度入れると true になるので使わない）
+    mock = !(window.BD_CONFIG && window.BD_CONFIG.gasUrl);
+    if (mock) TrialMock.install();
+    key = BDApi.getKey("player");
+    screen.hidden = false;
+    ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
+    $("trialSub").textContent = "森の " + floor + " 階へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
+    $("trialDone").hidden = true;
+    $("trialLogin").hidden = true;
+    $("trialBody").hidden = false;
+    ready = false; shownKey = ""; current = "math";
+    renderAll();
+    if (!mock && !key) { showLogin(""); return; }
+    load();
+  }
+  function close() { screen.hidden = true; }
+  $("trialBack").addEventListener("click", function () { close(); Base.showBase(null); });
+
+  // インターネットにつながらないときは遊べない（記録とセーブがいつもそろうように）
+  function offline(msg) {
+    notice("インターネットにつないでね。つないだら「もう一度」を押してください。" + (msg ? "（" + msg + "）" : ""));
+    var b = el("button", "dq-btn small", "もう一度"); b.type = "button"; b.addEventListener("click", load);
+    $("trialNotice").appendChild(document.createTextNode(" ")); $("trialNotice").appendChild(b);
+  }
+
+  function load() {
+    notice(mock ? "ためしの問題です（GAS につなぐと、本物の問題になります）。" : "問題を読みこんでいます…");
+    if (!mock && navigator.onLine === false) { offline(""); return; }
+    var qs = BDApi.call("drillQuestions", {}, key);
+    var rs = BDApi.call("history", {}, key);
+    qs.then(function (q) {
+      return rs.then(function (r) { return { q: q.questions, r: r.records }; });
+    }).then(function (got) {
+      start(got.q, got.r.concat(readPending().filter(function (x) { return (x._k || key) === key; })));
+      notice(mock ? "ためしの問題です（GAS につなぐと、本物の問題になります）。" : "");
+      if (readPending().length) flushPending();
+    }, function (err) {
+      if (err.kind === "forbidden") { BDApi.clearKey("player"); key = ""; showLogin("鍵が変わったようです。新しいプレイヤー用の鍵を入れてください。"); return; }
+      offline(err.message);
+    });
+  }
+
+  function start(questions, records) {
+    Q = (questions || []).filter(function (q) { return q && q.id && q.enabled !== false; });
+    byId = {}; Q.forEach(function (q) { byId[q.id] = q; });
+    days = {};
+    (records || []).forEach(function (r) {
+      if (!r || !r.date || !r.subject) return;
+      var d = days[r.date] || (days[r.date] = { date: r.date, items: {} });
+      d.items[r.subject] = r;
+    });
+    ready = true;
+    SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); });
+    // まだ解いていない教科から
+    var first = SUBJECTS.filter(function (s) { return picks[s.key] && !itemOf(s.key); })[0];
+    current = first ? first.key : "math";
+    renderAll();
+  }
+
+  // ---------- 出題（ドリルと同じルール） ----------
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function itemOf(subject) { return days[today] && days[today].items && days[today].items[subject]; }
+  function historyFor(subject) {
+    var h = {};
+    Object.keys(days).forEach(function (d) {
+      if (d >= today) return;
+      var it = days[d].items && days[d].items[subject];
+      if (!it || !it.qid) return;
+      var x = h[it.qid] || (h[it.qid] = { ok: 0, tries: 0 });
+      x.tries++; if (it.correct) x.ok++;
+    });
+    return h;
+  }
+  function rateOf(q) {
+    var r = DrillCore.asList(q.parts).map(function (p) { return Number(p.rate); }).filter(function (v) { return isFinite(v) && v > 0; });
+    if (!r.length) return 50;
+    return r.reduce(function (s, v) { return s + v; }, 0) / r.length;
+  }
+  function priority(q) { var r = rateOf(q); return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0); }
+  function choose(subject) {
+    var t = itemOf(subject);
+    if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
+    var pool = Q.filter(function (q) { return q.subject === subject; });
+    if (!pool.length) return null;
+    var h = historyFor(subject);
+    function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
+    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
+    var top = pool[0], th = h[top.id];
+    return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
+  }
+
+  // ---------- 記録（送れないときは iPad の中に控えて、あとで送る） ----------
+  function saveAnswer(subject, record) {
+    var day = days[today] || { date: today, items: {} };
+    day.items[subject] = record; days[today] = day;
+    var body = Object.assign({ date: today, subject: subject }, record);
+    body._k = key;
+    var list = readPending(); list.push(body); writePending(list);
+    flushPending();
+  }
+  function readPending() { try { var v = JSON.parse(localStorage.getItem(PENDING_STORE) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+  function writePending(list) { try { if (list.length) localStorage.setItem(PENDING_STORE, JSON.stringify(list)); else localStorage.removeItem(PENDING_STORE); } catch (e) { /* そのまま */ } }
+  function sameRec(a, b) { return a.date === b.date && a.subject === b.subject && a.answeredAt === b.answeredAt; }
+  function flushPending() {
+    writeChain = writeChain.then(function () {
+      var list = readPending(), failed = false;
+      return list.reduce(function (p, rec) {
+        return p.then(function () {
+          return send(rec, failed ? 0 : 2).then(function (ok) {
+            if (ok) writePending(readPending().filter(function (r) { return !sameRec(r, rec); }));
+            if (!ok) failed = true;
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        if (failed) notice("記録をまだ送れていません。この iPad に控えてあるので、インターネットにつながったときに送られます。");
+      });
+    });
+    return writeChain;
+  }
+  function send(rec, tries) {
+    var r = {}; Object.keys(rec).forEach(function (k) { if (k !== "_k") r[k] = rec[k]; });
+    return BDApi.call("saveAnswer", { record: r }, rec._k || key).then(function () { return true; }, function (err) {
+      if (err.kind === "forbidden") return "drop";
+      if (tries <= 0) return false;
+      return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return send(rec, tries - 1); });
+    });
+  }
+
+  // ---------- 図の読みこみ ----------
+  var imgCache = {};
+  function loadImage(id) {
+    if (!imgCache[id]) {
+      imgCache[id] = BDApi.call("image", { id: id }, key).then(function (r) { return r.src; });
+      imgCache[id].catch(function () { delete imgCache[id]; });
+    }
+    return imgCache[id];
+  }
+
+  // ---------- 画面 ----------
+  function renderAll() { renderTabs(); renderQuestion(); showMemo(current); renderDone(); }
+  function renderTabs() {
+    var nav = $("trialTabs"); nav.textContent = "";
+    SUBJECTS.forEach(function (s) {
+      var it = itemOf(s.key), none = ready && !picks[s.key];
+      var b = el("button", "ttab" + (s.key === current ? " sel" : "")); b.type = "button"; b.dataset.s = s.key;
+      b.appendChild(el("span", "tname", s.name));
+      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : "× ざんねん"));
+      b.addEventListener("click", function () { current = s.key; renderAll(); });
+      nav.appendChild(b);
+    });
+  }
+  function renderQuestion() {
+    var card = $("trialCard"); card.dataset.s = current; screen.dataset.s = current;
+    if (!ready) { card.textContent = ""; card.appendChild(el("p", "muted", "問いを用意しています…")); shownKey = ""; return; }
+    var pick = picks[current], q = pick && byId[pick.qid];
+    if (!q) { card.textContent = ""; card.appendChild(el("p", "muted", "この教科の問題がまだありません。ほかの教科を解こう。")); shownKey = ""; return; }
+    var saved = itemOf(current) || null;
+    var k = current + "|" + q.id + "|" + (saved ? "done" : "open");
+    if (k === shownKey) return; // 入力中の答えを消さない
+    shownKey = k;
+    var holder = el("div"); card.textContent = ""; card.appendChild(holder);
+    DrillCore.renderQuestion(holder, q, {
+      imageLoader: loadImage, saved: saved, review: pick.review,
+      extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
+      reviewNote: "正解するまで、また出てきます。",
+      onFinish: function (res) {
+        var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
+        saveAnswer(current, rec);
+        shownKey = current + "|" + q.id + "|done";
+        renderTabs(); renderDone(); appendNext(card);
+      }
+    });
+    if (saved) appendNext(card);
+  }
+  function appendNext(card) {
+    var nextS = SUBJECTS.filter(function (s) { return picks[s.key] && !itemOf(s.key); })[0];
+    if (!nextS) return;
+    var b = el("button", "dq-btn", "次の問い（" + nextS.name + "）へ"); b.type = "button";
+    b.addEventListener("click", function () { current = nextS.key; renderAll(); screen.scrollTop = 0; });
+    card.appendChild(b);
+  }
+
+  // 4問（問題のある教科ぜんぶ）を解き終えたか
+  function result() {
+    var list = SUBJECTS.filter(function (s) { return picks[s.key]; });
+    var solved = list.filter(function (s) { return itemOf(s.key); });
+    var correct = list.filter(function (s) { var it = itemOf(s.key); return it && it.correct; }).map(function (s) { return s.key; });
+    return { all: list.length > 0 && solved.length === list.length, solved: solved.length, total: list.length, correct: correct.length, subjects: correct };
+  }
+  function renderDone() {
+    var box = $("trialDone");
+    if (!ready) { box.hidden = true; return; }
+    var r = result();
+    $("trialProgress").textContent = r.total ? "解いた問い " + r.solved + " / " + r.total : "";
+    if (!r.all) { box.hidden = true; return; }
+    $("trialDoneText").textContent = "正解 " + r.correct + " / " + r.total + "。" +
+      (r.correct ? "加護：" + r.subjects.map(function (s) { return BLESS[s].name + "（" + BLESS[s].text + "）"; }).join("・") + "。" : "加護はなし。") +
+      "正解が多いほど、宝箱がよくなり、クリア報酬がふえる。";
+    $("trialGo").onclick = function () {
+      close();
+      if (onDone) onDone({ correct: r.correct, subjects: r.subjects });
+    };
+    box.hidden = false;
+  }
+
+  // ---------- 鍵（GAS につないだとき、最初の1回だけ） ----------
+  function showLogin(msg) {
+    $("trialBody").hidden = true; $("trialLogin").hidden = false;
+    $("trialLoginMsg").textContent = msg || "";
+    notice("");
+  }
+  $("trialLoginGo").addEventListener("click", function () {
+    var k = $("trialKey").value.trim(); if (!k) return;
+    $("trialLoginGo").disabled = true;
+    BDApi.call("check", {}, k).then(function () {
+      key = k; BDApi.setKey("player", k); $("trialKey").value = "";
+      $("trialLogin").hidden = true; $("trialBody").hidden = false;
+      load();
+    }, function (err) {
+      showLogin(err.kind === "forbidden" ? "鍵がちがいます。もう一度たしかめてください。" : "つながりませんでした。インターネットを確認してください。（" + err.message + "）");
+    }).then(function () { $("trialLoginGo").disabled = false; });
+  });
+
+  // ---------- メモ（教科ごとに1枚） ----------
+  var canvases = {}, memo = { color: "pen", erase: false };
+  function makeCanvas(subject) {
+    var c = el("canvas"); c.dataset.s = subject; $("trialMemoBox").appendChild(c); canvases[subject] = c;
+    var drawing = false, lastX = 0, lastY = 0, ctx = c.getContext("2d");
+    function pos(e) { var r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    function style(ev) {
+      var pr = ev.pressure && ev.pointerType === "pen" ? ev.pressure : 0.5;
+      ctx.globalCompositeOperation = memo.erase ? "destination-out" : "source-over";
+      ctx.strokeStyle = ctx.fillStyle = memo.color === "red" ? "#c8412c" : "#1d2733";
+      ctx.lineWidth = memo.erase ? 22 : 1.4 + pr * 2.6;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+    }
+    c.addEventListener("pointerdown", function (e) { drawing = true; try { c.setPointerCapture(e.pointerId); } catch (x) { /* そのまま */ } var p = pos(e); lastX = p[0]; lastY = p[1]; style(e); ctx.beginPath(); ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill(); });
+    c.addEventListener("pointermove", function (e) {
+      if (!drawing) return;
+      var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      evs.forEach(function (ev) { var p = pos(ev); style(ev); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p[0], p[1]); ctx.stroke(); lastX = p[0]; lastY = p[1]; });
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { c.addEventListener(t, function () { drawing = false; }); });
+    fit(c);
+    return c;
+  }
+  function fit(c) {
+    var box = $("trialMemoBox"), dpr = window.devicePixelRatio || 1;
+    var w = Math.round(box.clientWidth * dpr), h = Math.round(box.clientHeight * dpr);
+    if (!w || !h || (c.width === w && c.height === h)) return;
+    var old = null;
+    if (c.width) { old = document.createElement("canvas"); old.width = c.width; old.height = c.height; old.getContext("2d").drawImage(c, 0, 0); }
+    c.width = w; c.height = h;
+    var ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (old) ctx.drawImage(old, 0, 0, old.width / dpr, old.height / dpr);
+  }
+  function showMemo(subject) {
+    if (screen.hidden) return;
+    SUBJECTS.forEach(function (s) { var c = canvases[s.key] || makeCanvas(s.key); c.hidden = s.key !== subject; });
+    fit(canvases[subject]);
+  }
+  function setTool(which) {
+    memo.erase = which === "eraser"; if (!memo.erase) memo.color = which === "red" ? "red" : "pen";
+    $("memoPen").setAttribute("aria-pressed", String(which === "pen"));
+    $("memoRed").setAttribute("aria-pressed", String(which === "red"));
+    $("memoErase").setAttribute("aria-pressed", String(which === "eraser"));
+  }
+  $("memoPen").addEventListener("click", function () { setTool("pen"); });
+  $("memoRed").addEventListener("click", function () { setTool("red"); });
+  $("memoErase").addEventListener("click", function () { setTool("eraser"); });
+  $("memoClear").addEventListener("click", function () { var c = canvases[current]; if (c) { var x = c.getContext("2d"); x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); x.restore(); } });
+  window.addEventListener("resize", function () { var c = canvases[current]; if (c && !screen.hidden) fit(c); });
+
+  return { open: open, close: close, BLESS: BLESS };
+})();
