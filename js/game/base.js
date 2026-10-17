@@ -1,5 +1,5 @@
 // 拠点とキャラクリ（段階5-1）。
-// はじめて遊ぶとき：3人の名前・職業・顔を決める。そのあとは拠点の画面から出発し、冒険が終わると拠点にもどる。
+// はじめて遊ぶとき：3人の名前・職業・顔を決める。そのあとは拠点の「森の門」からワールドマップへ出て（worldmap.js）、冒険が終わると拠点にもどる。
 // 拠点のメニュー（装備・お店・鍛冶屋・転職・スキル・倉庫・図鑑・遊び方）は段階5-2で作る。
 // 「1日1回」と「知恵の試練を解いてから出発」は段階6。それまでは何回でも出発できる。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -128,20 +128,6 @@ var Base = (function () {
       pbox.appendChild(card);
     });
 
-    // 出発
-    var deepest = g.progress.deepest;
-    var next = Math.min(FLOORS, deepest + 1);
-    var go = document.getElementById("goNext");
-    go.textContent = deepest >= FLOORS ? "森の主をたおした！ 好きな階層へ" : "森の " + next + " 階へ出発" + (next === 7 || next === 14 ? "（ボス）" : "");
-    go.disabled = deepest >= FLOORS;
-    go.onclick = function () { depart(next); };
-    var sel = document.getElementById("goAgainFloor"); sel.textContent = "";
-    for (var f = 1; f <= Math.max(1, deepest); f++) {
-      var o = el("option", "", f + "階" + (f === 7 || f === 14 ? "（ボス）" : "")); o.value = f; if (f === deepest) o.selected = true; sel.appendChild(o);
-    }
-    document.getElementById("goAgain").disabled = deepest < 1;
-    document.getElementById("goAgain").onclick = function () { depart(Number(sel.value) || 1); };
-
     // 町の絵（建物を押すと開く）
     drawTown();
     document.getElementById("baseNote").textContent = "";
@@ -152,7 +138,7 @@ var Base = (function () {
     fillSelect("testMinutes", [1, 3, 5, 10], st2.minutes, function (n) { return n + "分"; });
     document.getElementById("testSeed").value = st2.seed;
     fillSelect("testLevel", [1, 5, 10, 20, 50, 100], g.party[0].level, function (n) { return "Lv" + n; });
-    fillSelect("testFloor", range(1, FLOORS), next, function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
+    fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
@@ -234,12 +220,7 @@ var Base = (function () {
   townCanvas.addEventListener("click", function (ev) {
     var b = buildingAt(ev);
     if (!b) return;
-    if (b.id === "gate") {
-      var d = document.getElementById("departBox");
-      d.scrollIntoView({ behavior: "smooth", block: "center" });
-      d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash");
-      return;
-    }
+    if (b.id === "gate") { WorldMap.open(); return; } // 森の門 → ワールドマップ
     Town.open(b.id);
   });
   townCanvas.addEventListener("mousemove", function (ev) {
@@ -304,5 +285,5 @@ var Base = (function () {
     showCreate();
   });
 
-  return { boot: boot, returnFrom: returnFrom, showBase: showBase };
+  return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart };
 })();

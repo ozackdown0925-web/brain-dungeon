@@ -568,7 +568,7 @@
   function finish(kind) {
     if (run.over) return;
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
-    var titles = { clear: "森の " + dg.floor + " 階をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…" };
+    var titles = { clear: "森の " + dg.floor + " 階をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
     document.getElementById("chooseTitle").textContent = titles[kind];
     if (kind === "clear") {
       run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold;
@@ -620,6 +620,12 @@
   var pauseEl = document.getElementById("pause");
   var rotateEl = document.getElementById("rotate");
   document.getElementById("resumeBtn").addEventListener("click", function () { setPaused(false); });
+  // メニューから冒険をやめる：時間切れと同じ（拾った物と経験値は持ち帰り、階層は進まない）（2026-10-17 決定）
+  document.getElementById("quitBtn").addEventListener("click", function () {
+    if (!window.confirm("冒険をやめて拠点にもどりますか？（拾った物と経験値は持ち帰れるけれど、階層は進みません）")) return;
+    setPaused(false);
+    finish("quit");
+  });
   window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape")) setPaused(false); });
 
   function setPaused(on) {
