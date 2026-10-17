@@ -323,29 +323,35 @@ var Tiles = (function () {
       if (gx < 0 || gy < 0 || gx >= W || gy >= H) return false;
       var tx3 = Math.floor(gx / T), ty3 = Math.floor(gy / T);
       if (!isRock(tx3, ty3)) return false;
-      if (!isRock(tx3, ty3 + 1) && gy - ty3 * T >= 3) return false;
+      if (!isRock(tx3, ty3 + 1) && gy >= rimY(gx, ty3)) return false;
       return platM[gy * W + gx] === 1;
     }
+    // 南のふち（草と岩の面のさかい目）の高さ：ゆるく波打たせる
+    function rimY(gx, ty3) { return ty3 * T + 1 + Math.round(noise(gx / 7, ty3, 82) * 5); }
+    // 岩の面がある列か（ふちの少し上の行で、台地が続いているか）
+    function faceCol(gx, ty3) {
+      if (gx < 0 || gx >= W || !isRock(Math.floor(gx / T), ty3)) return false;
+      return platM[(ty3 * T + 1) * W + gx] === 1;
+    }
     // 岩の面の下のはし（でこぼこ）
-    function faceBottom(gx, ty3) { return ty3 * T + 12 + Math.round(noise(gx / 6, ty3, 81) * 3 + noise(gx / 2.5, ty3, 61) * 1.5); }
+    function faceBottom(gx, ty3) { return rimY(gx, ty3) + 9 + Math.round(noise(gx / 6, ty3, 81) * 2 + noise(gx / 2.5, ty3, 61) * 1.5); }
     for (y = 0; y < H + T; y++) for (x = 0; x < W; x++) {
       var tx3 = Math.floor(x / T), ty3 = Math.floor(y / T);
       // 岩の面は、南のはしのタイルから下へ少しはみ出してよい
       var faceTy = isRock(tx3, ty3) && !isRock(tx3, ty3 + 1) ? ty3 : (isRock(tx3, ty3 - 1) && !isRock(tx3, ty3)) ? ty3 - 1 : -1;
       if (y >= H) break;
       var c4 = null;
-      if (faceTy >= 0 && y - faceTy * T >= 3) {
+      if (faceTy >= 0 && faceCol(x, faceTy) && y >= rimY(x, faceTy)) {
         // ---- 岩の面：丸い岩をつみ重ねた形。上のふちから草が垂れる ----
-        if (!plateau(x, faceTy * T + 2)) continue;
         // 両はしは、下のはしを丸く上げる（岩の面が丸みをおびて見える）
         var dL = 0, dR = 0;
-        while (dL < 5 && plateau(x - dL - 1, faceTy * T + 2)) dL++;
-        while (dR < 5 && plateau(x + dR + 1, faceTy * T + 2)) dR++;
+        while (dL < 5 && faceCol(x - dL - 1, faceTy)) dL++;
+        while (dR < 5 && faceCol(x + dR + 1, faceTy)) dR++;
         var endD = Math.min(dL, dR);
         var fb = faceBottom(x, faceTy) - (endD < 4 ? [4, 2, 1, 0][endD] : 0);
         if (y > fb) continue;
-        var ly3 = y - faceTy * T;
-        var left = !plateau(x - 1, faceTy * T + 2), right = !plateau(x + 1, faceTy * T + 2);
+        var ly3 = y - rimY(x, faceTy) + 3;   // 3 が岩の面の上のはし（ふちに沿って石の段も波打つ）
+        var left = !faceCol(x - 1, faceTy), right = !faceCol(x + 1, faceTy);
         // 岩のかたまり：行ごとに幅のちがう岩（4〜8点）をならべ、岩ごとにかげをつける
         var rowR = Math.floor((ly3 - 3) / 4), lyR = (ly3 - 3) % 4, cxR = 0, lxR = 0, wR = 6;
         var sx0 = (faceTy * 13 + rowR * 5) % 7, blk = Math.floor((x + sx0) / 24), pos = blk * 24;
@@ -362,7 +368,7 @@ var Tiles = (function () {
         if (hash(cxR, rowR + faceTy * 7, 63) < 0.3 && shadeR === 2) shadeR = 1;
         if (hash(cxR, rowR + faceTy * 7, 63) > 0.85 && shadeR === 2) shadeR = 3;
         // 下ほど暗い
-        if (ly3 > 10 && shadeR > 1) shadeR -= 1;
+        if (ly3 > 9 && shadeR > 1) shadeR -= 1;
         if (dR < 3 && shadeR > 1) shadeR -= 1;           // 東のはしは暗い
         if (dL < 2 && shadeR > 0 && shadeR < 3) shadeR += 1;  // 西のはしは明るい
         c4 = ROCK[shadeR];
