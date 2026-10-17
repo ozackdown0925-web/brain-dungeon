@@ -125,14 +125,20 @@ var Dungeon = (function () {
   }
 
   // ---------- 敵の置き方 ----------
-  // 1部屋に2〜4体（docs/game-design.md 3.8）。ゴブリンの部隊が多く、ときどきつる草の魔物がまざる。
-  function enemyCount(rnd, floor) {
-    if (floor <= 3) return 2 + (rnd() < 0.5 ? 1 : 0);
-    if (floor <= 10) return 2 + Math.floor(rnd() * 3);
-    return 3 + (rnd() < 0.5 ? 1 : 0);
+  // 1部屋に4〜6体（平均5体）。入口の部屋にもいる（2026-10-17 保護者の感想で、2〜4体から増やした）。
+  // ゴブリンの部隊が多く、ときどきつる草の魔物がまざる。
+  function enemyCount(rnd, floor) { return 4 + Math.floor(rnd() * 3); }
+
+  // 敵1体あたりのごほうび（経験値・熟練度・ゴールド・素材の出る確率）の倍率。
+  // 敵を増やす前と、1階層でもらえる合計が同じになるようにする：前の1階層の平均（1〜3階 13.5体・4〜10階 16.2体・11階〜 18.7体）÷ 今の平均（約32体）
+  var ENEMIES_PER_FLOOR = 32;
+  function rewardScale(floor) {
+    var before = floor <= 3 ? 13.5 : floor <= 10 ? 16.2 : 18.7;
+    return before / ENEMIES_PER_FLOOR;
   }
   var SQUAD = ["goblin_sword", "goblin_spear", "goblin_archer"];
-  function placeEnemies(rnd, room, doors, floor) {
+  // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
+  function placeEnemies(rnd, room, doors, floor, avoid) {
     var n = enemyCount(rnd, floor), types = [];
     for (var i = 0; i < n; i++) types.push(SQUAD[i % 3]);
     if (rnd() < 0.35) types[types.length - 1] = "vine";
@@ -148,7 +154,9 @@ var Dungeon = (function () {
     }
     var spots = [];
     for (var y = 2; y < room.h - 2; y++) for (var x = 2; x < room.w - 2; x++) {
-      if (passable(room.tile(x, y)) && room.tile(x, y) !== ":" && farFromDoors(x, y, 7)) spots.push({ x: x, y: y });
+      if (!passable(room.tile(x, y)) || room.tile(x, y) === ":" || !farFromDoors(x, y, 7)) continue;
+      if (avoid && (x - avoid.x) * (x - avoid.x) + (y - avoid.y) * (y - avoid.y) < 9 * 9) continue; // スタート地点から9マス以上はなす
+      spots.push({ x: x, y: y });
     }
     if (!spots.length) return [];
     var anchor = pick(rnd, spots), out = [];
@@ -188,7 +196,7 @@ var Dungeon = (function () {
       c.room = buildRoom(ForestRooms[c.tpl], c.doors);
       c.name = ForestRooms[c.tpl].name;
       c.center = centerSpot(c.room);
-      c.enemies = c.kind === "start" ? [] : placeEnemies(rnd, c.room, c.doors, floor);
+      c.enemies = placeEnemies(rnd, c.room, c.doors, floor, c.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null);
       c.visited = false;
     });
     var dg = {
@@ -216,7 +224,7 @@ var Dungeon = (function () {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
       c.room = buildRoom(p.tpl, p.doors);
       c.center = centerSpot(c.room);
-      c.enemies = p.kind === "room" ? placeEnemies(rnd, c.room, c.doors, floor) : [];
+      c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null);
       cells[key(p.x, p.y)] = c;
     });
     var bc = cells[key(3, 1)];
@@ -394,6 +402,6 @@ var Dungeon = (function () {
 
   return {
     generate: generate, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
-    enemyDepth: enemyDepth, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS, BOSS_FLOORS: BOSS_FLOORS
+    enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS, BOSS_FLOORS: BOSS_FLOORS
   };
 })();
