@@ -300,40 +300,103 @@ var Tiles = (function () {
 
     // ---------- 5. 岩のがけ（部屋の中の壁） ----------
     var isRock = isK("rock");
-    // がけの上の草（角は丸い）。南のはしのタイルは、上5点が草で、その下が岩の面
+    // 高台：上は草の台地。タイルごとの丸をつなげて角を大きく丸める（岩のタイルの外へは出さない）。
+    // 南のはしのタイルは、上3点が草で、その下が岩の面
+    var platM = new Uint8Array(W * H);
+    for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
+      if (!isRock(tx, ty)) continue;
+      var nbR = (isRock(tx - 1, ty) ? 1 : 0) + (isRock(tx + 1, ty) ? 1 : 0) + (isRock(tx, ty - 1) ? 1 : 0) + (isRock(tx, ty + 1) ? 1 : 0);
+      var radR = nbR >= 4 ? 13 : nbR === 3 ? 11 : 9.5;
+      // 角のタイルは、丸の中心を内側へずらして、角を大きく丸める
+      var pcx = tx * T + 8 + ((isRock(tx + 1, ty) ? 1 : 0) - (isRock(tx - 1, ty) ? 1 : 0)) * (nbR <= 2 ? 3 : 0);
+      var pcy = ty * T + 8 + ((isRock(tx, ty + 1) ? 1 : 0) - (isRock(tx, ty - 1) ? 1 : 0)) * (nbR <= 2 ? 3 : 0);
+      if (nbR <= 2) radR = 10.5;
+      for (y = ty * T - T; y < ty * T + 2 * T; y++) for (x = tx * T - T; x < tx * T + 2 * T; x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H || !isRock(Math.floor(x / T), Math.floor(y / T))) continue;
+        var ddx = x + 0.5 - pcx, ddy = y + 0.5 - pcy, rr = radR + (noise(x / 3, y / 3, 60) - 0.5) * 2.4;
+        if (ddx * ddx + ddy * ddy <= rr * rr) platM[y * W + x] = 1;
+      }
+    }
     function plateau(gx, gy) {
+      if (gx < 0 || gy < 0 || gx >= W || gy >= H) return false;
       var tx3 = Math.floor(gx / T), ty3 = Math.floor(gy / T);
       if (!isRock(tx3, ty3)) return false;
-      var face = !isRock(tx3, ty3 + 1);
-      if (face && gy - ty3 * T >= 5) return false;
-      // 南のはしのタイルの横の広がりは、そのすぐ上（ふち）の行で決める
-      return inside(gx, face ? Math.min(gy, ty3 * T + 3) : gy, isRock, 0, 0);
+      if (!isRock(tx3, ty3 + 1) && gy - ty3 * T >= 3) return false;
+      return platM[gy * W + gx] === 1;
     }
-    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    // 岩の面の下のはし（でこぼこ）
+    function faceBottom(gx, ty3) { return ty3 * T + 13 + Math.round(noise(gx / 3, ty3, 61) * 2.5); }
+    for (y = 0; y < H + T; y++) for (x = 0; x < W; x++) {
       var tx3 = Math.floor(x / T), ty3 = Math.floor(y / T);
-      if (!isRock(tx3, ty3)) continue;
-      var ly3 = y - ty3 * T, lx3 = x - tx3 * T;
-      var faceTile = !isRock(tx3, ty3 + 1), c4;
-      if (faceTile && ly3 >= 5) {
-        // 岩の面：横に長い石を積む。横の広がりは上の草と同じ
-        if (!plateau(x, ty3 * T + 4)) continue;
-        var row = Math.floor((ly3 - 5) / 4), off = (row % 2) * 4 + Math.floor(hash(tx3, row, 12) * 3);
-        var sx2 = (x + off) % 7, sy2 = (ly3 - 5) % 4;
-        c4 = sy2 === 0 ? ROCK[3] : sy2 === 3 ? ROCK[0] : sx2 === 0 ? ROCK[0] : sx2 === 1 ? ROCK[3] : ROCK[2];
-        if (sx2 > 4 && sy2 > 1) c4 = ROCK[1];
-        if (ly3 >= T - 2) c4 = ly3 === T - 1 ? OUT : ROCK[0];
-        if (!plateau(x - 1, ty3 * T + 4) || !plateau(x + 1, ty3 * T + 4)) c4 = OUT;
-      } else {
-        if (!plateau(x, y)) continue;
-        var tv = noise(x / 7, y / 7, 13);
-        c4 = tv < 0.4 ? GRASS[2] : tv < 0.8 ? GRASS[3] : GRASS[4];
-        var up = plateau(x, y - 1), lf = plateau(x - 1, y), rt = plateau(x + 1, y), dn = plateau(x, y + 1);
-        if (!up || !lf || !rt) c4 = OUT;
-        else if (!plateau(x, y - 2) || !plateau(x - 2, y)) c4 = GRASS[4];
-        if (!dn) c4 = OUT;                         // がけのふち
-        else if (!plateau(x, y + 2)) c4 = GRASS[1];
+      // 岩の面は、南のはしのタイルから下へ少しはみ出してよい
+      var faceTy = isRock(tx3, ty3) && !isRock(tx3, ty3 + 1) ? ty3 : (isRock(tx3, ty3 - 1) && !isRock(tx3, ty3)) ? ty3 - 1 : -1;
+      if (y >= H) break;
+      var c4 = null;
+      if (faceTy >= 0 && y - faceTy * T >= 3) {
+        // ---- 岩の面：丸い岩をつみ重ねた形。上のふちから草が垂れる ----
+        if (!plateau(x, faceTy * T + 2)) continue;
+        // 両はしは、下のはしを丸く上げる（岩の面が丸みをおびて見える）
+        var dL = 0, dR = 0;
+        while (dL < 5 && plateau(x - dL - 1, faceTy * T + 2)) dL++;
+        while (dR < 5 && plateau(x + dR + 1, faceTy * T + 2)) dR++;
+        var endD = Math.min(dL, dR);
+        var fb = faceBottom(x, faceTy) - (endD < 4 ? [4, 2, 1, 0][endD] : 0);
+        if (y > fb) continue;
+        var ly3 = y - faceTy * T;
+        var left = !plateau(x - 1, faceTy * T + 2), right = !plateau(x + 1, faceTy * T + 2);
+        // 岩のかたまり：行ごとに幅のちがう岩（4〜8点）をならべ、岩ごとにかげをつける
+        var rowR = Math.floor((ly3 - 3) / 4), lyR = (ly3 - 3) % 4, cxR = 0, lxR = 0, wR = 6;
+        var sx0 = (faceTy * 13 + rowR * 5) % 7, blk = Math.floor((x + sx0) / 24), pos = blk * 24;
+        for (var st = 0; st < 8; st++) {
+          wR = 4 + Math.floor(hash(blk * 8 + st, rowR + faceTy * 31, 62) * 5);
+          if (pos + wR > blk * 24 + 24 || st === 7) wR = blk * 24 + 24 - pos;
+          if (x + sx0 < pos + wR) { cxR = blk * 8 + st; lxR = x + sx0 - pos; break; }
+          pos += wR;
+        }
+        var shadeR = 2;
+        if (lxR === 0 || lyR === 3) shadeR = 0;               // すきま
+        else if (lyR === 0 || lxR === 1) shadeR = 3;          // 光が当たる面
+        else if (lxR === wR - 1) shadeR = 1;
+        if (hash(cxR, rowR + faceTy * 7, 63) < 0.3 && shadeR === 2) shadeR = 1;
+        if (hash(cxR, rowR + faceTy * 7, 63) > 0.85 && shadeR === 2) shadeR = 3;
+        // 下ほど暗い
+        if (ly3 > 10 && shadeR > 1) shadeR -= 1;
+        if (dR < 3 && shadeR > 1) shadeR -= 1;           // 東のはしは暗い
+        if (dL < 2 && shadeR > 0 && shadeR < 3) shadeR += 1;  // 西のはしは明るい
+        c4 = ROCK[shadeR];
+        if (y === fb || left || right || (y === fb - 1 && endD < 4 && hash(x, y, 74) < 0.5)) c4 = y === fb || left || right ? OUT : c4;
+        // 草が垂れる
+        var drip = Math.floor(hash(x, faceTy, 64) * 4) - 1;
+        if (ly3 - 3 < drip) c4 = ly3 - 3 === drip - 1 ? GRASS[1] : GRASS[2];
+        else if (ly3 - 3 === Math.max(0, drip)) c4 = ROCK[0];   // 草の下の影
+        if (ly3 === 3 && !left && !right) c4 = drip > 0 ? GRASS[2] : OUT;
+        put(x, y, c4);
+        // 下のはしに小石
+        if (y === fb && hash(x, faceTy, 65) < 0.12) { put(x, y + 1, ROCK[2]); put(x + 1, y + 1, ROCK[1]); put(x, y + 2, OUT); }
+        continue;
       }
+      if (!isRock(tx3, ty3) || !plateau(x, y)) continue;
+      // ---- 台地の上：地面と同じ点もようで、少し明るい ----
+      var n8 = noise(x / 14, y / 14, 1) * 0.55 + noise(x / 4.5, y / 4.5, 2) * 0.45;
+      var gv8 = dither(n8, x, y);
+      c4 = gv8 < 0.3 ? GRASS[2] : gv8 < 0.72 ? GRASS[3] : GRASS[4];
+      if (hash(x, y, 66) < 0.03) c4 = GRASS[4]; else if (hash(x, y - 1, 66) < 0.03) c4 = GRASS[1];
+      var up = plateau(x, y - 1), lf = plateau(x - 1, y), rt = plateau(x + 1, y), dn = plateau(x, y + 1);
+      if (!up || !lf || !rt || !dn) c4 = OUT;
+      else if (!plateau(x, y - 2) || !plateau(x - 2, y)) c4 = GRASS[4];        // 北と西のふちは明るい
+      else if (!plateau(x + 2, y)) c4 = GRASS[1];                              // 東のふちは暗い
+      else if (!plateau(x, y + 2)) c4 = GRASS[2];
       put(x, y, c4);
+    }
+    // 台地の上にも草の葉と花
+    for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
+      if (!isRock(tx, ty)) continue;
+      for (var s9 = 0; s9 < 2; s9++) {
+        var px9 = tx * T + 2 + Math.floor(hash(tx, ty, 67 + s9) * 11), py9 = ty * T + 2 + Math.floor(hash(tx, ty, 69 + s9) * (isRock(tx, ty + 1) ? 12 : 1));
+        if (!plateau(px9 - 1, py9) || !plateau(px9 + 3, py9 + 2) || !plateau(px9, py9 - 1)) continue;
+        if (hash(tx, ty, 71 + s9) < 0.75) { put(px9, py9, GRASS[4]); put(px9 + 2, py9, GRASS[4]); put(px9 + 1, py9 + 1, GRASS[3]); put(px9, py9 + 1, GRASS[1]); put(px9 + 2, py9 + 1, GRASS[1]); }
+        else { put(px9, py9, FLOWER[Math.floor(hash(tx, ty, 73) * 3)]); put(px9 + 1, py9 + 1, GRASS[1]); }
+      }
     }
 
     // ---------- 6. 木と、森のしげみ ----------
