@@ -12,8 +12,8 @@ var Sound = (function () {
   var FILES = {
     // NOT JAM MUSIC PACK 2（CC0）。OGG と WAV を mp3 にした（docs/credits.md）
     bgm: {
-      // タイトルと村は、音楽の卵（ontama-m.com）の曲。曲単体の配布が禁止なので、GAS から受け取る（docs/credits.md）
-      title: "gas:izanai.mp3", town: "gas:michinarini.mp3", world: "bgm_rainy_foothills.mp3",
+      // タイトル・村・ワールドマップは、音楽の卵（ontama-m.com）の曲。曲単体の配布が禁止なので、GAS から受け取る（docs/credits.md）
+      title: "gas:izanai.mp3", town: "gas:michinarini.mp3", world: "gas:boukensyanoayumi.mp3",
       trial: "bgm_crystal_caverns.mp3", dungeon: "bgm_leading_the_charge.mp3", boss: "bgm_locrian_chipdoom.mp3"
     },
     se: {
@@ -28,10 +28,10 @@ var Sound = (function () {
   };
   // BGM のくり返しの長さ（秒。もとの OGG の長さ）。mp3 にすると終わりに少し無音がつくので、ここでくり返す
   // GAS から受け取れないとき（鍵を入れる前・つながらないとき）に代わりに鳴らす曲（公開リポジトリの NOT JAM の曲）
-  var FALLBACK = { title: "bgm_lich_king_ascendant.mp3", town: "bgm_lazy_river_rally.mp3" };
-  var FALLBACK_LOOP = { title: 37.317, town: 38.519 };
+  var FALLBACK = { title: "bgm_lich_king_ascendant.mp3", town: "bgm_lazy_river_rally.mp3", world: "bgm_rainy_foothills.mp3" };
+  var FALLBACK_LOOP = { title: 37.317, town: 38.519, world: 36.364 };
   var LOOP = {
-    world: 36.364, trial: 33.391, dungeon: 78.367, boss: 117.736
+    trial: 33.391, dungeon: 78.367, boss: 117.736
   };
   var VOL = { bgm: 0.45, se: 0.8 };
 
