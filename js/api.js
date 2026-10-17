@@ -6,7 +6,13 @@
   var STORE = { player: "bd-key-player", admin: "bd-key-admin" };
   var TIMEOUT_MS = 30000;
 
-  function gasUrl() { return (window.BD_CONFIG && window.BD_CONFIG.gasUrl) || ""; }
+  // GAS の URL：はじめて開いたときに入れて、このブラウザの中（localStorage）に覚えたものを使う（公開リポジトリに URL を書かないため。G-2）
+  var URL_STORE = "bd-gas-url";
+  function gasUrl() {
+    var u = "";
+    try { u = localStorage.getItem(URL_STORE) || ""; } catch (e) { u = ""; }
+    return u || (window.BD_CONFIG && window.BD_CONFIG.gasUrl) || "";
+  }
 
   function getKey(kind) { try { return localStorage.getItem(STORE[kind]) || ""; } catch (e) { return ""; } }
   function setKey(kind, v) { try { localStorage.setItem(STORE[kind], v); } catch (e) {} }
@@ -29,7 +35,7 @@
         var out = fn(body); out.ok = true; resolve(out);
       });
     }
-    if (!gasUrl()) return Promise.reject(fail("config.js に GAS の URL が入っていません", "server"));
+    if (!gasUrl()) return Promise.reject(fail("GAS の URL が入っていません", "server"));
 
     var ctrl = window.AbortController ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS) : 0;

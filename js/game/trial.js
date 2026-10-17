@@ -2,7 +2,7 @@
 // 問題の表示と答え合わせ・図への書きこみは、ドリルと同じ部品（js/drillcore.js）。GAS とのやりとりは js/api.js。
 // 出題のルール（CLAUDE.md・docs/game-design.md）：教科ごとに、①正解した回数が少ない問題が先、②同じなら優先度
 //   （テストでまちがえた問題（正答率30%未満は除く）→ 正答率の高い問題）、③それも同じなら日によって変える。3日後の復習はしない。
-// GAS の URL が空のあいだは「ためしの問題」（trial-mock.js）で動く。
+// 問題と記録は GAS から（つなぎ先は sync.js。G-2 で「ためしの問題」はなくした）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Trial = (function () {
   var SUBJECTS = DrillCore.SUBJECTS;
@@ -17,7 +17,7 @@ var Trial = (function () {
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-  var key = "", mock = false, today = "";
+  var key = "", today = "";
   var Q = [], byId = {}, days = {}, picks = {}, current = "math", ready = false, shownKey = "";
   var writeChain = Promise.resolve();
   var onDone = null, floorNo = 1, rest = false;
@@ -31,10 +31,6 @@ var Trial = (function () {
   // opts.rest：休みの日（ダンジョンは閉じていて、知恵の試練だけ解く。段階6-2）
   function open(floor, done, opts) {
     floorNo = floor; onDone = done; today = ymd(new Date()); rest = !!(opts && opts.rest);
-    // ためしの問題を使うのは、config.js に GAS の URL が入っていないときだけ
-    // （BDApi.hasUrl() は、偽の窓口を一度入れると true になるので使わない）
-    mock = !(window.BD_CONFIG && window.BD_CONFIG.gasUrl);
-    if (mock) TrialMock.install();
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
@@ -43,11 +39,10 @@ var Trial = (function () {
     document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;
-    $("trialLogin").hidden = true;
     $("trialBody").hidden = false;
     ready = false; shownKey = ""; current = "math";
     renderAll();
-    if (!mock && !key) { showLogin(""); return; }
+    if (!key) { close(); Sync.reconnect(""); return; }
     load();
   }
   function close() { screen.hidden = true; }
@@ -61,18 +56,18 @@ var Trial = (function () {
   }
 
   function load() {
-    notice(mock ? "ためしの問題です（GAS につなぐと、本物の問題になります）。" : "問題を読みこんでいます…");
-    if (!mock && navigator.onLine === false) { offline(""); return; }
+    notice("問題を読みこんでいます…");
+    if (navigator.onLine === false) { offline(""); return; }
     var qs = BDApi.call("drillQuestions", {}, key);
     var rs = BDApi.call("history", {}, key);
     qs.then(function (q) {
       return rs.then(function (r) { return { q: q.questions, r: r.records }; });
     }).then(function (got) {
       start(got.q, got.r.concat(readPending().filter(function (x) { return (x._k || key) === key; })));
-      notice(mock ? "ためしの問題です（GAS につなぐと、本物の問題になります）。" : "");
+      notice("");
       if (readPending().length) flushPending();
     }, function (err) {
-      if (err.kind === "forbidden") { BDApi.clearKey("player"); key = ""; showLogin("鍵が変わったようです。新しいプレイヤー用の鍵を入れてください。"); return; }
+      if (err.kind === "forbidden") { BDApi.clearKey("player"); key = ""; close(); Sync.reconnect("鍵が使えなくなりました。新しいプレイヤー用の鍵を入れてください。"); return; }
       offline(err.message);
     });
   }
@@ -239,24 +234,6 @@ var Trial = (function () {
     };
     box.hidden = false;
   }
-
-  // ---------- 鍵（GAS につないだとき、最初の1回だけ） ----------
-  function showLogin(msg) {
-    $("trialBody").hidden = true; $("trialLogin").hidden = false;
-    $("trialLoginMsg").textContent = msg || "";
-    notice("");
-  }
-  $("trialLoginGo").addEventListener("click", function () {
-    var k = $("trialKey").value.trim(); if (!k) return;
-    $("trialLoginGo").disabled = true;
-    BDApi.call("check", {}, k).then(function () {
-      key = k; BDApi.setKey("player", k); $("trialKey").value = "";
-      $("trialLogin").hidden = true; $("trialBody").hidden = false;
-      load();
-    }, function (err) {
-      showLogin(err.kind === "forbidden" ? "鍵がちがいます。もう一度たしかめてください。" : "つながりませんでした。インターネットを確認してください。（" + err.message + "）");
-    }).then(function () { $("trialLoginGo").disabled = false; });
-  });
 
   // ---------- メモ（教科ごとに1枚） ----------
   var canvases = {}, memo = { color: "pen", erase: false };

@@ -78,6 +78,7 @@ var GameState = (function () {
       try { localStorage.removeItem(TRY_KEY); } catch (e) { /* そのまま */ }
       game.today = { date: todayStr(), adventure: null };
       save();
+      if (window.Sync) Sync.save("", ""); // 試しモードの前のセーブにもどったことを送る
       return [];
     }
     var report = [];
@@ -130,7 +131,7 @@ var GameState = (function () {
     }
     save();
     pushHistory(r.cleared ? "森の" + r.floor + "階をクリア" : "森の" + r.floor + "階から帰った");
-    Remote.send("adventureEnd", { floor: r.floor, kind: r.kind, cleared: !!r.cleared });
+    if (!r.test && window.Sync) Sync.log({ date: todayStr(), kind: r.kind, floor: r.floor, correct: r.correct || 0, subjects: r.subjects || [] });
     return report;
   }
 
@@ -380,6 +381,7 @@ var GameState = (function () {
     game.log.unshift({ date: t, at: new Date().toISOString(), floor: 0, kind: "rest", cleared: false, correct: res.correct || 0, subjects: res.subjects || [] });
     if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
     save();
+    if (window.Sync) { Sync.log({ date: t, kind: "rest", floor: 0, correct: res.correct || 0, subjects: res.subjects || [] }); Sync.save("", ""); }
   }
   // 試しモードで出発する前に、今のセーブを控える（もどったら、これにもどす）
   function beginTry() { try { localStorage.setItem(TRY_KEY, JSON.stringify(game)); } catch (e) { /* そのまま */ } }
@@ -406,6 +408,8 @@ var GameState = (function () {
     list.unshift({ at: new Date().toISOString(), label: label, data: JSON.stringify(game) });
     if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch (e) { /* 入りきらなければ、そのまま */ }
+    // GAS にも送る（区切り。「セーブの控え」に残る）
+    if (window.Sync) Sync.save(label, summary());
   }
   function history() {
     return readHistory().map(function (h, i) {
@@ -422,16 +426,31 @@ var GameState = (function () {
     return true;
   }
 
-  // ---------- GAS へのつなぎ口（GAS ができたらここをつなぐ。今は何もしない） ----------
-  // 送るもの：区切りごとのセーブ（階層に入るとき・冒険が終わったとき）と、冒険の記録（docs/draft.md 5）。
-  var Remote = {
-    enabled: false,
-    send: function (kind, info) { if (!this.enabled) return; /* 段階6以降：fetch で GAS の doPost へ（text/plain・JSON） */ }
-  };
+  // GAS とのやりとりは sync.js（段階G-2）。区切りで Sync.save、冒険の記録は Sync.log。
 
   // ---------- iPad の中の控え ----------
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (e) { /* 保存できない端末では、そのまま遊ぶ */ }
+    if (window.Sync) Sync.markDirty(); // まだ GAS に送っていない変更がある（区切りで送る）
+  }
+  // GAS から読んだセーブ（JSON の文字列）を使う。読めなければ false
+  function adopt(json) {
+    var g = null;
+    try { g = JSON.parse(json); } catch (e) { return false; }
+    if (!g || !Array.isArray(g.party)) return false;
+    game = upgrade(g);
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (e) { /* そのまま */ }
+    return true;
+  }
+  // この iPad の中のゲームのデータを捨てる（はじめて GAS につないだとき・GAS にセーブがないとき）
+  function wipeLocal() {
+    [SAVE_KEY, HISTORY_KEY, TRY_KEY, "bd-mock-records"].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) { /* そのまま */ } });
+    game = null;
+  }
+  // セーブのまとめ（控えの一覧に出す）
+  function summary() {
+    if (!game) return "";
+    return game.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + game.gold + "G　" + game.progress.deepest + "階まで";
   }
   function load() {
     try {
@@ -448,9 +467,9 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
-    get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe,
+    get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
-    history: history, restore: restore, Remote: Remote,
+    history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, setSkill: setSkill, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
