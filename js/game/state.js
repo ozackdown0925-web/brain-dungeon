@@ -296,7 +296,7 @@ var GameState = (function () {
       if (it && !(slot === "weapon" ? J.weapons.indexOf(it.base) >= 0 : it.base === J.armor)) back.push(slot);
     });
     if (game.storage.length + back.length > STORAGE_MAX) return { ok: false, why: "倉庫がいっぱいで、装備をしまえない" };
-    var moved = back.map(function (slot) { var it = h.equip[slot]; h.equip[slot] = null; game.storage.push(it); return it.name; });
+    var moved = back.map(function (slot) { var it = h.equip[slot]; h.equip[slot] = null; game.storage.push(it); return Loot.label(it); });
     h.job = job;
     var removed = fixSkills(h);
     var learned = learnSkills(h);

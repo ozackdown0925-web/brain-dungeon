@@ -9,28 +9,29 @@ var GameData = (function () {
   // power：ふつうの攻撃の「1回の強さ」の倍率（2026-10-17 決定）。近い武器ほど1秒あたりのダメージが強く、遠い武器ほど弱い
   //   （レベルが上がるとダメージは能力でほぼ決まるので、間かくの長い大剣・斧が弱く、離れて戦える職と差がなかったため）
   var WEAPONS = {
-    sword:      { name: "剣",   element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
-    greatsword: { name: "大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
-    axe:        { name: "斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
-    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
-    fist:       { name: "拳",   element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
+    // item＝拾う・買う装備の名前（最初の地方。レア以上は名前のあとに〈レア〉などがつく）、starter＝はじめから持っている武器の名前（2026-10-18 決定）
+    sword:      { name: "剣",   item: "銅の剣",   starter: "古い剣", element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
+    greatsword: { name: "大剣", item: "銅の大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
+    axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
+    bow:        { name: "弓",   item: "木の弓",   starter: "古い弓", element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
+    fist:       { name: "拳",   item: "革のこて", starter: "古いこて", element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
     // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9・待ち1.0秒）、それ以外の職は近くをたたく（物攻・打・倍率1.15・待ち0.7秒）
     // 弓と魔法弾の待ち時間は 2026-10-18 保護者と決定（弓 0.8→1.1秒、魔法弾 0.7→1.0秒）
-    staff:      { name: "杖",   element: "strike", patk: 4,  matk: 8, wait: 0.7, power: 1.15, reach: 16, arc: 1.0,
+    staff:      { name: "杖",   item: "かしの杖", starter: "古い杖", element: "strike", patk: 4,  matk: 8, wait: 0.7, power: 1.15, reach: 16, arc: 1.0,
                   boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none", power: 0.9, wait: 1.0 } }
   };
 
   // 防具（ノーマル・アイテムレベル1）。宝箱・お店・鍛冶屋で手に入るもの（2026-10-17 案H：重装備は物理に、魔法装備は魔法に強い）
   var ARMORS = {
-    heavy: { name: "重装備", pdef: 4, mdef: 1 },
-    light: { name: "軽装備", pdef: 3, mdef: 2 },
-    magic: { name: "魔法装備", pdef: 2, mdef: 4 }
+    heavy: { name: "重装備", item: "銅のよろい", pdef: 4, mdef: 1 },
+    light: { name: "軽装備", item: "革の服", pdef: 3, mdef: 2 },
+    magic: { name: "魔法装備", item: "布のローブ", pdef: 2, mdef: 4 }
   };
   // はじめから持っている防具：ふつうの防具より弱い（はじめの手ごたえ「約20回当たると倒れる」を保つため）
   var STARTER_ARMORS = {
-    heavy: { name: "古い重装備", pdef: 3, mdef: 0 },
-    light: { name: "古い軽装備", pdef: 2, mdef: 1 },
-    magic: { name: "古い魔法装備", pdef: 1, mdef: 3 }
+    heavy: { name: "古いよろい", pdef: 3, mdef: 0 },
+    light: { name: "古い服", pdef: 2, mdef: 1 },
+    magic: { name: "古いローブ", pdef: 1, mdef: 3 }
   };
 
   // 職業。line＝系統（上級職ができたら、ここに上級職の名前を足す）
