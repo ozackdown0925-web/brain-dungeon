@@ -17,7 +17,7 @@ var Base = (function () {
     priest: "杖でたたく。仲間全員の HP を回復できる。"
   };
   var DEFAULT = [
-    { name: "アレン", job: "warrior", face: 1 },
+    { name: "アレン", job: "warrior", face: 0 },
     { name: "ミラ", job: "mage", face: 4 },
     { name: "ロイ", job: "hunter", face: 3 }
   ];
