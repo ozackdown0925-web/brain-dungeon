@@ -160,7 +160,7 @@
     if (c.bossCell && !dg.bossDown) {
       setDoor(c, "w", "V");
       if (!dg.bossMet) {
-        dg.bossMet = true;
+        dg.bossMet = true; Sound.bgm("boss");
         showStory(GameData.ENEMIES[dg.bossInfo.enemy].name, dg.bossInfo.before, "たたかう！", function () { say("つるが道をふさいだ！"); });
       }
     }
@@ -704,12 +704,12 @@
     start: function (floor, seed, t) {
       trial = t || { correct: settings.correct, subjects: [], test: true };
       settings.correct = trial.correct;
-      startFloor(floor, seed); updateButtons(true);
+      startFloor(floor, seed); updateButtons(true); Sound.bgm("dungeon");
     },
     // 途中で閉じた冒険の続き（その階層の入口から）
     resume: function (a) {
       trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode };
-      settings.correct = a.correct; startFloor(a.floor, a.seed, a); updateButtons(true);
+      settings.correct = a.correct; startFloor(a.floor, a.seed, a); updateButtons(true); Sound.bgm("dungeon");
     },
     resultFromSnapshot: resultFromSnapshot
   };
@@ -798,7 +798,7 @@
     if (active && !paused && !choosing) setPaused(true);
   });
   window.addEventListener("pagehide", function () { snapshot(); });
-  Base.boot();
+  Title.show(function () { Base.boot(); }); // 段階7-1：はじめにタイトル画面
 
   // ---------- 毎フレーム ----------
   var last = 0;
