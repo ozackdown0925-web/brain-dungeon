@@ -219,6 +219,7 @@ var Trial = (function () {
       onFinish: function (res) {
         var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
         saveAnswer(current, rec);
+        Sound.play(rec.correct ? "correct" : "wrong");
         shownKey = current + "|" + q.id + "|done";
         renderTabs(); renderDone(); appendNext(ansBox);
       }
@@ -246,6 +247,7 @@ var Trial = (function () {
     var r = result();
     $("trialProgress").textContent = r.total ? "解いた問い " + r.solved + " / " + r.total : "";
     if (!r.all) { box.hidden = true; return; }
+    if (box.hidden) Sound.play("trialDone");
     $("trialDoneText").textContent = "正解 " + r.correct + " / " + r.total + "。" +
       (rest ? "" : r.correct ? "加護：" + r.subjects.map(function (s) { return BLESS[s].name + "（" + BLESS[s].text + "）"; }).join("・") + "。" : "加護はなし。") +
       (rest ? "今日はお休みの日なので、ダンジョンはまた明日。" : "正解が多いほど、宝箱がよくなり、クリア報酬がふえる。");

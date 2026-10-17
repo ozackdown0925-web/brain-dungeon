@@ -317,6 +317,7 @@ var Base = (function () {
     box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
     if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
+    if (rep.people.some(function (p) { return p.lines.some(function (t) { return t.indexOf("レベルが") === 0; }); })) Sound.play("levelup");
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");
       d.appendChild(el("b", "", p.name + "（経験値 +" + p.exp + "）"));

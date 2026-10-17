@@ -23,6 +23,7 @@ var Combat = (function () {
       e.hp -= res.amount; e.flash = 0.1;
       e.swingsTaken = (e.swingsTaken || 0) + 1;
       Battle.showHit(e.x, e.y - 20, res, false);
+      Sound.play("hit");
       if (e.status.sleep) delete e.status.sleep;
     }
     if (spec.status && Math.random() < spec.status.chance) Enemies.addStatus(e, spec.status.type, spec.status.dur);
@@ -31,7 +32,7 @@ var Combat = (function () {
       var dx = e.x - ox, dy = e.y - oy, d = Math.sqrt(dx * dx + dy * dy) || 1;
       hooks.room.move(e, dx / d * push, dy / d * push);
     }
-    if (e.hp <= 0) { e.dead = true; hooks.onKill(e); }
+    if (e.hp <= 0) { e.dead = true; Sound.play("kill"); hooks.onKill(e); }
   }
 
   // 扇の範囲（reach・arc）の敵に当てる
@@ -104,6 +105,7 @@ var Combat = (function () {
     var a = A();
     var w = GameData.WEAPONS[c.weapon];
     a.wait = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait");
+    Sound.play("swing");
     var ang = shotRange(c) ? aimAt(shotRange(c)) : Math.atan2(a.face.y, a.face.x);
     // 1回の強さは武器ごとの倍率（data.js の power）
     if (w.shot) { addShot(c, { stat: "p", mult: w.power || 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }, ang); return; }
@@ -129,6 +131,7 @@ var Combat = (function () {
     c.ct[id] = s.ct;
     if (s.once) c.used[id] = true;
     Battle.pop(A().x, A().y - 30, s.name, "#ffe7a0", 8);
+    Sound.play("skill");
     run(c, s.fx, 0);
     return "";
   }

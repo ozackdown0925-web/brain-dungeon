@@ -12,5 +12,7 @@
 
 ## 音
 
-- 音を鳴らすしくみ：`js/game/sound.js`。ファイルは `assets/sound/` に置く（まだない）。
-- 使う予定の素材：NOT JAM MUSIC PACK 2（https://not-jam.itch.io/not-jam-music-pack-2 、CC0。BGM 15曲・効果音41個）。保護者がダウンロードして渡し、iPadOS 16 で鳴らせる mp3 にして置く。
+- 音を鳴らすしくみ：`js/game/sound.js`（Web Audio）。ファイルは `assets/sound/`。
+- **NOT JAM MUSIC PACK 2**（Not Jam、<https://not-jam.itch.io/not-jam-music-pack-2>、CC0 1.0。名前の表示は不要だが、ここに書いておく）。OGG（BGM）と WAV（効果音）を、iPadOS 16 の Safari で鳴らせる mp3 にした（BGM 96kbps・効果音 64kbps モノラル）。
+  - BGM：タイトル Lich King Ascendant／エルム村 Lazy River Rally／ワールドマップ Rainy Foothills／知恵の試練 Crystal Caverns／ダンジョン Leading the Charge／ボス Locrian Chipdoom（どれも loopable 版）。
+  - 効果音：パックの SFX 22個と、You Died（全滅などのとき）。どの音をどこで鳴らすかは `sound.js` の FILES。
