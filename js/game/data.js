@@ -223,6 +223,10 @@ var GameData = (function () {
 
   // 職の系統に入っているか
   function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
+  // 場所の名前（2026-10-18 保護者が決定）。ダンジョン2・3は、まだ行けない（地図では「？？？」）
+  var PLACES = { region: "フォレストヴェール", base: "エルム村", dungeon1: "新緑の樹海", dungeon2: "瘴気の森", dungeon3: "原生の秘境" };
+  // 「新緑の樹海 3階」のような階の名前（今はダンジョン1だけ）
+  function floorLabel(floor) { return PLACES.dungeon1 + " " + floor + "階"; }
   // ふつうの攻撃の待ち時間（杖で魔法弾をうつ職は、魔法弾の待ち時間）
   function weaponWait(weapon, job) {
     var w = WEAPONS[weapon];
@@ -249,6 +253,6 @@ var GameData = (function () {
   return {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
-    baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, canSet: canSet, condText: condText
+    baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, canSet: canSet, condText: condText
   };
 })();

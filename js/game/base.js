@@ -65,7 +65,7 @@ var Base = (function () {
     var el2 = document.getElementById("resumeScreen");
     var t = Math.ceil(a.timeLeft);
     document.getElementById("resumeText").textContent =
-      "森の " + a.floor + " 階を冒険している途中です（のこり " + Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60) + "）。" +
+      GameData.floorLabel(a.floor) + "を冒険している途中です（のこり " + Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60) + "）。" +
       "その階の入口から続けます。拾った物と経験値はそのまま。開けた宝箱は開いたまま、たおした敵はもどっています。";
     document.getElementById("resumeGo").onclick = function () { el2.hidden = true; Adventure.resume(a); };
     document.getElementById("resumeQuit").onclick = function () {
@@ -314,7 +314,7 @@ var Base = (function () {
   function showReport(rep) {
     var box = document.getElementById("baseReport"); box.textContent = "";
     var r = rep.result;
-    box.appendChild(el("h3", "", r.cleared ? "森の " + r.floor + " 階をクリアして、拠点にもどった" : "拠点にもどった"));
+    box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
     if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     rep.people.forEach(function (p) {
