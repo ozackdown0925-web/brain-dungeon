@@ -12,7 +12,8 @@
 // ・切りかえが終わるまで、GAS が配る今の画面（doGet の HTML と google.script.run 用の関数）も残す。
 // ・ゲーム（Brain Dungeon）のセーブ・冒険の記録・保護者の暗証番号（段階G-1）：
 //   セーブは「セーブ」シートにプレイヤーごとに1行（大きいときは右の列へ分けて入れる）。区切りごとの控えは「セーブの控え」シートに最近の10回分。
-//   冒険の記録は「冒険の記録」シートに1回1行。暗証番号はスクリプトプロパティに、そのままではなく「ハッシュ」（元にもどせない形）で置く。
+//   冒険の記録は「冒険の記録」シートに1回1行。保護者の暗証番号は固定で、スプレッドシートのメニューから1回入れる。
+//   スクリプトプロパティに、そのままではなく「ハッシュ」（元にもどせない形）で置く。番号はこのファイルには書かない（公開されるため）。
 
 const RECORD_SHEET = '記録';
 const RECORD_HEADERS = ['日付', '教科', '問題ID', '単元', '答え', '正誤', '復習', '時刻', 'メモ', '詳細', 'プレイヤー'];
@@ -134,7 +135,6 @@ const PLAYER_ACTIONS = {
   adventures: function (p, role, player) { return { adventures: readAdventures_(player) }; },
   pinStatus: function () { return pinStatus_(); },
   pinCheck: function (p) { return pinCheck_(String(p.pin || '')); },
-  pinSet: function (p) { return pinSet_(String(p.pin || ''), String(p.old || '')); },
 };
 const ADMIN_ACTIONS = {
   questions: function () { return { questions: readQuestions_(false) }; },
@@ -142,7 +142,6 @@ const ADMIN_ACTIONS = {
   deleteQuestion: function (p) { adminDeleteQuestion(p.key, String(p.id || '')); return {}; },
   uploadImage: function (p) { return { id: adminUploadImage(p.key, p.dataUrl, p.name) }; },
   export: function (p) { return { records: readRecords_(p.player || DEFAULT_PLAYER) }; },
-  pinReset: function () { resetParentPin(); return {}; },
 };
 
 function api_(action, p) {
@@ -359,23 +358,26 @@ function pinCheck_(pin) {
   pinCount_(match);
   return { match: match, locked: pinLocked_() };
 }
-// まだ決めていなければ、そのまま決める。決めてあれば、今の番号（old）が合うときだけ変える
-function pinSet_(pin, old) {
-  if (!/^[0-9]{4}$/.test(pin)) throw new Error('4けたの数字にしてください');
-  const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('PARENT_PIN')) {
-    const c = pinCheck_(old);
-    if (!c.match) return { changed: false, locked: c.locked };
-  }
-  props.setProperty('PARENT_PIN', pinHash_(pin));
-  return { changed: true, locked: 0 };
+// 番号は固定（2026-10-17 決定）。画面からは決めたり変えたりできない。
+// 入れるとき・入れかえるとき：スプレッドシートの上のメニュー「Brain Dungeon」→「保護者の暗証番号を入れる」。
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Brain Dungeon')
+    .addItem('保護者の暗証番号を入れる', 'enterParentPin')
+    .addToUi();
 }
-// 暗証番号を忘れたとき：Apps Script の画面でこの関数を選んで「実行」する（次に保護者画面を開いたときに決め直す）
-function resetParentPin() {
-  PropertiesService.getScriptProperties().deleteProperty('PARENT_PIN');
-  CacheService.getScriptCache().remove('PIN_FAIL');
-  CacheService.getScriptCache().remove('PIN_LOCK');
-  Logger.log('保護者の暗証番号を消しました');
+function enterParentPin() {
+  const ui = SpreadsheetApp.getUi();
+  const res = ui.prompt('保護者の暗証番号', '4けたの数字を入れてください（ゲームの保護者画面で使う番号）。', ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  const pin = String(res.getResponseText() || '').trim();
+  if (!/^[0-9]{4}$/.test(pin)) { ui.alert('4けたの数字にしてください。もう一度メニューから入れてください。'); return; }
+  savePin_(pin);
+  ui.alert('暗証番号を入れました。');
+}
+function savePin_(pin) {
+  PropertiesService.getScriptProperties().setProperty('PARENT_PIN', pinHash_(pin));
+  const cache = CacheService.getScriptCache();
+  cache.remove('PIN_FAIL'); cache.remove('PIN_LOCK');
 }
 function pinHash_(pin) {
   const props = PropertiesService.getScriptProperties();
