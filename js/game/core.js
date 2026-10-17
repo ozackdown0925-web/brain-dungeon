@@ -587,7 +587,7 @@
     var d = Sprites.dirOf(A.face);
     // 武器：ふつうは手に、攻撃中はつき出し、敵を全滅させた部屋で走るときは背中にしまう
     var mode = A.swing > 0 ? "attack" : A.running ? "back" : "hold";
-    var behind = mode === "back" ? d.dir !== "up" : d.dir === "up";
+    var behind = mode === "back" ? d.dir !== "up" : mode === "hold" ? d.dir !== "down" : d.dir === "up";   // 横で持つときも体の後ろ
     if (behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
     Sprites.drawHero(ctx, c.job, hair, A.face, frame, px, py + 6);
     if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);

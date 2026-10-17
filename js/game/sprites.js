@@ -1,191 +1,522 @@
-// 仲間のドット絵（段階7-2b）。16×24 点の縦長。すべてプログラムで描く（素材は使っていない）。
-// 形（体・頭・足）をぬってから、まわりにふちどりを自動でつける。光は左上から（右下が影）。
-// 職業で服と頭（かぶと・帽子・フード・はちまき・頭巾）が変わる。髪の色は顔の番号で変わる（同じ職業でも見分けられる）。
-// 向き：down（前）・up（後ろ）・side（右向き。左向きは左右反転）。
-// コマ：stand・walkA・walkB・attack・runA・runB。描いた絵は覚えておく（同じ絵は1回だけ描く）。
+// 仲間のドット絵（段階7-2b）。16×24 点。保護者の絵（横向きの戦士・正面の素体）をもとに、1点ずつの地図で描いた。
+// 地図の1文字が1点。色は下の PAL（16色の DawnBringer の色が中心）。1〜4 は髪の色で、顔の番号で8色に変わる。
+// 正面はFF6のように少し上から見下ろした形（目は顔の下より、あごは平ら）。体は左右対称。
+// 職業で変わるのは服と髪型だけ（顔と体の形は全員同じ）。男女どちらにも見えるように描く。
+// 向き：down（前）・up（後ろ）・side（地図は左向き。絵にするときに右向きにする。左向きはさらに左右反転）。
+// コマ：stand・walkA・walkB・attack・runA・runB。地図を少し書きかえて作る。描いた絵は覚えておく。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Sprites = (function () {
   var SW = 16, SH = 24;
   var cache = {};
 
-  function hex(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
-  function pal(list) { return list.map(hex); }
-
-  // 髪の色（顔の番号 0〜7）：[影, ふつう, 明るい]
+  // 色
+  var PAL = {
+    A: "#140c1c",  // ふちどり
+    B: "#dad45e", C: "#854c30", D: "#442434",   // 金・茶・こげ茶
+    E: "#d2aa99", F: "#d27d2c",                 // 肌・肌の影（オレンジ）
+    H: "#deeed6", I: "#597dce", J: "#30346d",   // 白・青・紺
+    K: "#d04648",                               // 赤
+    L: "#6a3a98", M: "#3a1a5a", N: "#9a5ad0",   // むらさき（魔法使い）
+    O: "#2a5a2e", Q: "#4e8a40", R: "#7aaa4a",   // 緑（狩人）
+    T: "#8595a1", U: "#c8ccd4",                 // 白い布の影（僧侶）
+    V: "#a04a14", W: "#f8a040"                  // オレンジの道着（格闘家）
+  };
+  // 髪の色（顔の番号 0〜7）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
-    pal(["#4a2a12", "#7a4a20", "#a8743a"]),   // 茶
-    pal(["#8a6a20", "#d0a838", "#f4d870"]),   // 金
-    pal(["#14141e", "#2a2a3e", "#4a4a6a"]),   // 黒
-    pal(["#7a1e14", "#b8402a", "#e4704a"]),   // 赤
-    pal(["#4a4a5a", "#8a8a9a", "#c8c8d4"]),   // 銀
-    pal(["#1a2a5a", "#2e4a9a", "#5a7ad0"]),   // 青
-    pal(["#2a4a1a", "#4a7a2a", "#7aaa4a"]),   // 緑
-    pal(["#5a1a4a", "#8a2a7a", "#c050a8"])    // 紫
+    ["#dad45e", "#854c30", "#442434", "#deeed6"],   // 茶
+    ["#f4e890", "#d0a838", "#7a5418", "#ffffff"],   // 金
+    ["#6a6a8a", "#30304a", "#14141e", "#b0b0d0"],   // 黒
+    ["#f08a5a", "#b8402a", "#5a1410", "#ffd0b0"],   // 赤
+    ["#e8e8f0", "#a8a8b8", "#5a5a6a", "#ffffff"],   // 銀
+    ["#8ab0f0", "#3e5aa0", "#1a2450", "#deeed6"],   // 青
+    ["#9ad06a", "#4a7a2a", "#1e3a14", "#e8f8d0"],   // 緑
+    ["#d08ad8", "#8a2a7a", "#3a1034", "#f8d8f8"]    // 紫
   ];
-  var SKIN = pal(["#c8865a", "#f0c49a", "#ffe0c0"]);
-  var OUT = hex("#1c1424");
-  var BOOT = pal(["#2a1a14", "#4a3020", "#6a4a30"]);
 
-  // 職業ごとの服：cloth（服）・pants（ズボン）・trim（ふち）・head（頭の物）
-  var JOB = {
-    warrior: { cloth: pal(["#2a3a6a", "#3e5aa0", "#6a8ad0"]), pants: pal(["#2a2a3a", "#3e3e54", "#5a5a74"]), trim: pal(["#8a6a20", "#c8a040", "#f0d070"]),
-               head: "helmet", headPal: pal(["#4a5060", "#8a92a8", "#d0d6e4"]), cape: pal(["#5a1018", "#8a1e28", "#b83a40"]) },
-    mage:    { cloth: pal(["#3a1a5a", "#5a2a8a", "#8a4ac0"]), pants: pal(["#3a1a5a", "#5a2a8a", "#8a4ac0"]), trim: pal(["#8a6a20", "#c8a040", "#f0d070"]),
-               head: "hat", headPal: pal(["#2a1240", "#46206a", "#6a3a98"]), robe: true },
-    hunter:  { cloth: pal(["#1e4a24", "#2e6a34", "#4e9a50"]), pants: pal(["#4a3420", "#6a4a2e", "#8a6a44"]), trim: pal(["#5a3a1a", "#7a5428", "#a07440"]),
-               head: "hood", headPal: pal(["#1a3a1e", "#2a5a2e", "#3e7e42"]) },
-    fighter: { cloth: pal(["#a04a14", "#d8701e", "#f8a040"]), pants: pal(["#7a3a10", "#a85418", "#d0782a"]), trim: pal(["#1a1a24", "#2a2a3a", "#44445a"]),
-               head: "band", headPal: pal(["#8a1418", "#c8242a", "#f05050"]), bareArms: true },
-    priest:  { cloth: pal(["#a8a8b8", "#e0e0e8", "#ffffff"]), pants: pal(["#a8a8b8", "#e0e0e8", "#ffffff"]), trim: pal(["#1e4a8a", "#2e6ac8", "#5a9af0"]),
-               head: "cap", headPal: pal(["#a8a8b8", "#e0e0e8", "#ffffff"]), robe: true }
+  // 職業ごとの地図（立っている絵）。side は左向き
+  var MAP = {
+    warrior: {
+      down: [
+        "................",
+        ".....AAAAAA.....",
+        "....A223322A....",
+        "...A21232123A...",
+        "..A2114321423A..",
+        "..A3211232123A..",
+        ".A32223EE32223A.",
+        ".A3123FEEF3213A.",
+        ".A323AAEEAA323A.",
+        "..A3AHJEEJHA3A..",
+        "...AFEJEEJEFA...",
+        "....AFEEEEFA....",
+        ".AHIJAAFFAAJIHA.",
+        ".AIJAJIBBIJAJIA.",
+        ".AIJAIIJJIIAJIA.",
+        ".AIJACCBBCCAJIA.",
+        ".AEEAJIJJIJAEEA.",
+        ".AFFAJIJJIJAFFA.",
+        "..AKAJJAAJJAKA..",
+        "..AKADDAADDAKA..",
+        "..AKADCAACDAKA..",
+        "...AADDAADDAA...",
+        "...AJIJAAJIJA...",
+        "...AAAAAAAAAA..."
+      ],
+      up: [
+        "................",
+        ".....AAAAAA.....",
+        "....A211223A....",
+        "...A21412223A...",
+        "..A2112122323A..",
+        "..A2212232233A..",
+        ".A322232232233A.",
+        ".A323223223233A.",
+        ".A332323323233A.",
+        "..A3323323333A..",
+        "...A33332333A...",
+        "....A3FEEF3A....",
+        ".AHIAKKKKKKAIHA.",
+        ".AIJAKKKKKDAJIA.",
+        ".AIJAKKDKKDAJIA.",
+        ".AIJAKKDKKDAJIA.",
+        ".AEEAKKDKKDAEEA.",
+        ".AFFAKDKKKDAFFA.",
+        "..AAAKDKKDDAAA..",
+        "...AKDKKKDKDA...",
+        "...AKAKKAKDAA...",
+        "...AADDAADDAA...",
+        "...AJIJAAJIJA...",
+        "...AAAAAAAAAA..."
+      ],
+      side: [
+        "................",
+        "....AAAAA.......",
+        "..AA12233AA.....",
+        ".A211232233A....",
+        ".A132412333A....",
+        ".A1323122333A...",
+        ".A3322312333A...",
+        ".A3AFAAA3E33A...",
+        "..AAEJHF3F3A....",
+        "...AEJEFF33A....",
+        "...AEEFAAAA.....",
+        "....AFAHIJAA....",
+        ".....AJIJAAKA...",
+        "....AAIJIJJAKA..",
+        "....AIIJIJAAKA..",
+        "....AJCBCCAAKKA.",
+        ".....AJAEEFACKA.",
+        "......AAEFAACKA.",
+        ".....AJIJJAACKK.",
+        ".....AJADDAJACA.",
+        ".....AAADDAA.A..",
+        ".....AAAADA.....",
+        "......AJIJA.....",
+        ".....AAAAAA....."
+      ]
+    },
+    mage: {
+      down: [
+        "................",
+        ".....AAAAAA.....",
+        "....ANLLLLMA....",
+        "...ANLLLLLMMA...",
+        "..ANLNLLLLLMMA..",
+        "..ALLAAAAAAMMA..",
+        "..ALA212212AMA..",
+        "..ALA3FEEF3AMA..",
+        "..AL3AAEEAA3MA..",
+        "..AMAHJEEJHAMA..",
+        "..AMFEJEEJEFMA..",
+        "..AMAFEEEEFAMA..",
+        "..ANLAAFFAALNA..",
+        ".ALMAMLBBLMAMLA.",
+        ".ALMAMLNLLMAMLA.",
+        ".ALMAMMMBMMAMLA.",
+        ".ALNAMLLMLMANLA.",
+        ".AEEALNLMLMAEEA.",
+        "..AAAMLLMLMAAA..",
+        "...AMLNLMLLMA...",
+        "...ALMLLMNLMA...",
+        "..AMLLMLLMLMMA..",
+        "..ABMBMMMBMBMA..",
+        "....AJJAAJJA...."
+      ],
+      up: [
+        "................",
+        ".....AAAAAA.....",
+        "....ANLLLLMA....",
+        "...ANLNLLLLMA...",
+        "..ANLLLLLMLMMA..",
+        "..ALNLLLMLLMMA..",
+        "..ALLLMLLLMLMA..",
+        "..ALLMLLLMLLMA..",
+        "..AMLLLMLLMLMA..",
+        "..AMLLMLLLMLMA..",
+        "..AMMLLLMLLMMA..",
+        "..AMLMLLLMLMMA..",
+        "..ANLMMLLMMLNA..",
+        ".ALMAMLLMLMAMLA.",
+        ".ALMAMLNLLMAMLA.",
+        ".ALMAMMMLMMAMLA.",
+        ".ALNAMLLMLMANLA.",
+        ".AEEALNLMLMAEEA.",
+        "..AAAMLLMLMAAA..",
+        "...AMLNLMLLMA...",
+        "...ALMLLMNLMA...",
+        "..AMLLMLLMLMMA..",
+        "..ABMBMMMBMBMA..",
+        "....AJJAAJJA...."
+      ],
+      side: [
+        "................",
+        "....AAAAA.......",
+        "..AANLLMMAA.....",
+        ".ALNNLMLLMMA....",
+        ".ANMLNNLMMMA....",
+        ".ANMLMNLLMMMA...",
+        ".AMMLLMNLMMMA...",
+        ".A2AFAAAMMMMA...",
+        "..AAEJHFMMMA....",
+        "...AEJEFMMMA....",
+        "...AEEFAMMMA....",
+        "....AFAMLMMA....",
+        ".....ALMLMMA....",
+        "....AALMNLMMA...",
+        "....ALMLNLLMA...",
+        "....AMMMBMMMA...",
+        "....ALMNEEFA....",
+        "....ALMLAEFA....",
+        "....AMLLMLMA....",
+        "...AMLNLMLLMA...",
+        "...ALMLLMNLMA...",
+        "..AMLLMLLMLMA...",
+        "..ABMBMMBMBMA...",
+        "....AAJJAJJA...."
+      ]
+    },
+    hunter: {
+      down: [
+        "................",
+        ".....AAAAAA.....",
+        "....A232212A....",
+        "...A23112122A...",
+        "..A2321412123A..",
+        "..A3222112223A..",
+        ".A323EE3212233A.",
+        ".A323FEE322323A.",
+        ".A323AAEEA3323A.",
+        "..A3AHJEEJHA3A..",
+        "...AFEJEEJEFA...",
+        "....AFEEEEFA....",
+        "..ARQAAFFAAQRA..",
+        ".AQOAOCQQQOAOQA.",
+        ".AQOAQQCQQOAOQA.",
+        ".AQOACCDCBCAOQA.",
+        ".ACCAOQQOQOACCA.",
+        ".ADDAQOAAOQADDA.",
+        "..AAACCAACCAAA..",
+        "....ACDAADCA....",
+        "....ACDAADCA....",
+        "...ADDDAADDDA...",
+        "...ADCDAADCDA...",
+        "...AAAAAAAAAA..."
+      ],
+      up: [
+        "................",
+        ".....AAAAAA.....",
+        "....A211223A....",
+        "...A21412223A...",
+        "..A2112122323A..",
+        "..A2212232233A..",
+        ".A322232232233A.",
+        ".A323223223233A.",
+        ".A332323323233A.",
+        "..A3323323333A..",
+        "...A3333233HKA..",
+        "....A3FEEFAKHA..",
+        "..ARQRQRQACDRA..",
+        ".AQOAQRQACDAOQA.",
+        ".AQOAQQACDQAOQA.",
+        ".AQOACDDCCCAOQA.",
+        ".ACCAOQQOQOACCA.",
+        ".ADDAQOQOQOADDA.",
+        "..AAACCAACCAAA..",
+        "....ACDAADCA....",
+        "....ACDAADCA....",
+        "...ADDDAADDDA...",
+        "...ADCDAADCDA...",
+        "...AAAAAAAAAA..."
+      ],
+      side: [
+        "................",
+        "....AAAAA.......",
+        "..AA12233AA.....",
+        ".A211232233A....",
+        ".A132412333A....",
+        ".A1323122333A...",
+        ".A3322312333A...",
+        ".A3AFAAA3E33A...",
+        "..AAEJHF3F3A....",
+        "...AEJEFF33A....",
+        "...AEEFAAARHA...",
+        "....AFAQRRRKA...",
+        ".....AOQOARCDA..",
+        "....AAQOQOACDA..",
+        "....AQQOQOACDA..",
+        "....AOCDCCACDA..",
+        ".....AOACCDAA...",
+        "......AAQDAA....",
+        ".....AQOQOAA....",
+        ".....ACADCA.....",
+        ".....ACADCA.....",
+        ".....ADDADA.....",
+        "......ADCDA.....",
+        ".....AAAAAA....."
+      ]
+    },
+    fighter: {
+      down: [
+        "....A..AA..A....",
+        "...A2AA12AA2A...",
+        "...A21212232A...",
+        "..A2142121233A..",
+        "..A3212212233A..",
+        ".A322321232233A.",
+        ".A3KFKKKKKFKK3A.",
+        ".A323FEEEEF323A.",
+        ".A323AAEEAA323A.",
+        "..A3AHJEEJHA3A..",
+        "...AFEJEEJEFA...",
+        "....AFEEEEFA....",
+        ".AWFVAAFFAAVFWA.",
+        ".AFVAWFEEFVAVFA.",
+        ".AEFAWFFEFVAFEA.",
+        ".AEFAJJDJJJAFEA.",
+        ".AHHAFWFFVFAHHA.",
+        ".AEFAFWFVVFAFEA.",
+        "..AAAFFAAVFAAA..",
+        "....AWFAAVFA....",
+        "....AFVAAFVA....",
+        "....AHHAAHHA....",
+        "...AEEFAAEEFA...",
+        "...AAAAAAAAAA..."
+      ],
+      up: [
+        "....A..AA..A....",
+        "...A2AA12AA2A...",
+        "...A21212232A...",
+        "..A2142121233A..",
+        "..A3212212233A..",
+        ".A322321232233A.",
+        ".A3KFKKKKKKKK3A.",
+        ".A323232232K33A.",
+        ".A332323323KK3A.",
+        "..A3323323K3KA..",
+        "...A333323K3KA..",
+        "....A3FEEFAKA...",
+        ".AWFVWFWFFVVFWA.",
+        ".AFVAWFFWFVAVFA.",
+        ".AEFAFWFFVFAFEA.",
+        ".AEFAJJDJJJAFEA.",
+        ".AHHAFWFFVFAHHA.",
+        ".AEFAFWFVVFAFEA.",
+        "..AAAFFAAVFAAA..",
+        "....AWFAAVFA....",
+        "....AFVAAFVA....",
+        "....AHHAAHHA....",
+        "...AFEEAAFEEA...",
+        "...AAAAAAAAAA..."
+      ],
+      side: [
+        "....A.AA.A......",
+        "...A2A12A2A.....",
+        "..AA12233AA.....",
+        ".A211232233A....",
+        ".A132412333A....",
+        ".A1323122333A...",
+        ".AKKFKKKKKKKAKA.",
+        ".A3AFAAA3E33AKA.",
+        "..AAEJHF3F3AKA..",
+        "...AEJEFF33A....",
+        "...AEEFAAAA.....",
+        "....AFAWFVAA....",
+        ".....AVFWFVA....",
+        "....AAFWFVFVA...",
+        "....AFWFFVFA....",
+        "....AJJDJJJJA...",
+        ".....AFAEEFA....",
+        "......AAHHAA....",
+        ".....AWFVFA.....",
+        ".....AWFAVFA....",
+        ".....AFVAFVA....",
+        ".....AHHAHHA....",
+        ".....AEEFEEA....",
+        ".....AAAAAAA...."
+      ]
+    },
+    priest: {
+      down: [
+        "................",
+        ".....AAAAAA.....",
+        "....A222223A....",
+        "...A21223223A...",
+        "..A2112212323A..",
+        "..A3212322323A..",
+        ".A323EEE322233A.",
+        ".A323FEEEF3233A.",
+        ".A323AAEEAA323A.",
+        "..A3AHJEEJHA3A..",
+        "...AFEJEEJEFA...",
+        "....AFEEEEFA....",
+        "..AHUAAFFAAUHA..",
+        ".AUTAIHUUHIATUA.",
+        ".AUTAIHUUTJATUA.",
+        ".AUTAJUHUUJATUA.",
+        ".AHUAIUHUTIAUHA.",
+        ".AEEAJHUUTJAEEA.",
+        "..AAAIUHUTIAAA..",
+        "...AUJUHUTJTA...",
+        "...AHIUHUTITA...",
+        "...AUJHUUTJTA...",
+        "...AIJIIJIJIA...",
+        "....AJJAAJJA...."
+      ],
+      up: [
+        "................",
+        ".....AAAAAA.....",
+        "....A221223A....",
+        "...A21222323A...",
+        "..A2122322323A..",
+        "..A2232232233A..",
+        ".A322232232233A.",
+        ".A323223223233A.",
+        ".A332323323233A.",
+        "..A3323323333A..",
+        "...A33332333A...",
+        "....A3FEEF3A....",
+        "..AHUIIJJIIUHA..",
+        ".AUTAHUUHUTATUA.",
+        ".AUTAUHUUTUATUA.",
+        ".AUTAIJIIJIATUA.",
+        ".AHUAUHUTUTAUHA.",
+        ".AEEAHUUTUTAEEA.",
+        "..AAAUHUUTTAAA..",
+        "...AUHUUTUTTA...",
+        "...AHUHUUTUTA...",
+        "...AUUHUTUTTA...",
+        "...AIJIIJIJIA...",
+        "....AJJAAJJA...."
+      ],
+      side: [
+        "................",
+        "....AAAAA.......",
+        "..AA12233AA.....",
+        ".A211232233A....",
+        ".A132112333A....",
+        ".A1323122333A...",
+        ".A3322312333A...",
+        ".A3AFAAA3E33A...",
+        "..AAEJHF3F3A....",
+        "...AEJEFF33A....",
+        "...AEEFAAAA.....",
+        "....AFAHUTAA....",
+        ".....AIHUTTA....",
+        "....AAIHUUTTA...",
+        "....AUJHUTUTA...",
+        "....AUIJIJIJA...",
+        ".....AJHAEEFA...",
+        "....AUIUHAEFA...",
+        "....AUJHUTTA....",
+        "...AUIHUUTTA....",
+        "...AHJUHUTTTA...",
+        "...AUIUHUTUTA...",
+        "...AIJIIJIJA....",
+        "....AJJAJJA....."
+      ]
+    }
   };
 
-  // ---------- 1枚の絵を描く ----------
-  // dir：down / up / side（右向き）。frame：stand・walkA・walkB・attack・runA・runB
+  // 横向きで歩くときの足（19〜23行め。前の足を左＝前へ、後ろの足を右＝後ろへ開く）
+  var STRIDE = {
+    warrior: ["....ADAADDAJACA.", "...ADDA.ADDA.A..", "...ADDA..ADDA...", "..AJIJA..AJIJA..", "..AAAAA..AAAAA.."],
+    hunter:  ["....ACAACDA.....", "...ACDA.ACDA....", "...ADDA..ADDA...", "..ADCDA..ADCDA..", "..AAAAA..AAAAA.."],
+    fighter: ["....AWFAAVFA....", "...AFVA..AFVA...", "...AHHA..AHHA...", "..AEEFA..AEEFA..", "..AAAAA..AAAAA.."],
+    mage:    [null, null, null, null, "..AJJA..AJJA...."],
+    priest:  [null, null, null, null, "..AJJA..AJJA...."]
+  };
+  // 横向きの攻撃：前（左）へのばす腕の色 [そで, そでの影]
+  var SLEEVE = { warrior: ["I", "J"], mage: ["N", "L"], hunter: ["Q", "O"], fighter: ["E", "F"], priest: ["U", "T"] };
+
+  function grid(rows) { return rows.map(function (r) { return r.split(""); }); }
+  function rowsOf(g) { return g.map(function (r) { return r.join(""); }); }
+  // x0〜x1 の列の足（19〜23行め）を1点上げる
+  function lift(g, x0, x1) {
+    for (var y = 19; y <= 23; y++) for (var x = x0; x <= x1; x++) if (g[y][x] !== ".") g[y - 1][x] = g[y][x];
+    for (x = x0; x <= x1; x++) g[23][x] = ".";
+  }
+  // y0〜y1 行の x0〜x1 列を、dy 行ずらす（腕を上げるなど）
+  function shiftUp(g, x0, x1, y0, y1, dy) {
+    var keep = [], y, x;
+    for (y = y0; y <= y1; y++) { keep.push(g[y].slice(x0, x1 + 1)); }
+    for (y = y0; y <= y1; y++) for (x = x0; x <= x1; x++) g[y][x] = ".";
+    for (y = y0; y <= y1; y++) for (x = x0; x <= x1; x++) { var ch = keep[y - y0][x - x0]; if (ch !== ".") g[y - dy][x] = ch; }
+  }
+  // 上半身（0〜rows行め）を左（前）へ1点ずらす：走るときの前かがみ
+  function lean(g, rows) {
+    for (var y = 0; y <= rows; y++) { g[y].shift(); g[y].push("."); }
+  }
+
+  function frameMap(job, dir, frame) {
+    var base = (MAP[job] || MAP.warrior)[dir];
+    var g = grid(base), y, x;
+    var walk = frame === "walkA" || frame === "runA" ? 1 : frame === "walkB" || frame === "runB" ? -1 : 0;
+    var run = frame === "runA" || frame === "runB";
+    if (dir !== "side") {
+      if (walk > 0) lift(g, 2, 7);
+      if (walk < 0) lift(g, 8, 13);
+      if (frame === "attack") {
+        // 前：右手（絵の右）を上げる。後ろ：左手（絵の左）を上げる
+        if (dir === "down") shiftUp(g, 11, 14, 13, 17, 2); else shiftUp(g, 1, 4, 13, 17, 2);
+      }
+    } else {
+      var st = STRIDE[job] || STRIDE.warrior;
+      var stride = walk > 0 || frame === "attack";
+      if (stride) for (y = 0; y < 5; y++) if (st[y]) g[19 + y] = st[y].split("");
+      if (walk < 0) lift(g, 8, 11);
+      if (run) lean(g, 17);
+      if (frame === "attack") {
+        var s = SLEEVE[job] || SLEEVE.warrior;
+        var arm = [["A", "A", "A", "A", "A"], ["A", "E", s[0], s[0], s[0]], ["A", "F", s[1], s[1], s[1]], ["A", "A", "A", "A", "A"]];
+        for (y = 0; y < 4; y++) for (x = 0; x < 5; x++) g[13 + y][x] = arm[y][x];
+      }
+    }
+    return g;
+  }
+
   function paint(job, hairId, dir, frame) {
-    var J = JOB[job] || JOB.warrior, H = HAIR[(hairId | 0) % HAIR.length];
-    var g = []; for (var i = 0; i < SW * SH; i++) g.push(null);
-    function set(x, y, c) { if (x >= 0 && y >= 0 && x < SW && y < SH && c) g[y * SW + x] = c; }
-    function get(x, y) { return x >= 0 && y >= 0 && x < SW && y < SH ? g[y * SW + x] : null; }
-    function rect(x, y, w, h, c) { for (var j = 0; j < h; j++) for (var k = 0; k < w; k++) set(x + k, y + j, c); }
-    // 3色（影・ふつう・明るい）で、左上が明るく右下が暗い四角
-    function shaded(x, y, w, h, p) {
-      for (var j = 0; j < h; j++) for (var k = 0; k < w; k++) {
-        var c = p[1];
-        if (k === 0 || j === 0 && k < w - 1) c = p[2];
-        if (k === w - 1 || j === h - 1) c = p[0];
-        set(x + k, y + j, c);
-      }
-    }
-
-    var walk = frame === "walkA" ? 1 : frame === "walkB" ? -1 : 0;
-    var run = frame === "runA" ? 1 : frame === "runB" ? -1 : 0;
-    var atk = frame === "attack";
-    var lean = run ? 1 : 0;                 // 走るときは少し前かがみ（頭が1点下がる）
-    var bob = walk || run ? 1 : 0;           // 歩く・走るとき、体が1点しずむ
-    var hy = 2 + lean + bob;                 // 頭の上のはし
-    var by = 12 + bob;                       // 体の上のはし
-
-    // ---- マント（戦士。体の後ろ） ----
-    if (J.cape && dir !== "up") { /* 前と横では体にかくれる */ }
-    if (J.cape && dir === "up") shaded(4, by, 8, 9 + (run ? 0 : 1), J.cape);
-    if (J.cape && dir === "side") shaded(2 - run, by + 1, 3, 8, J.cape);
-
-    // ---- 足 ----
-    var legY = 19;
-    if (dir === "side") {
-      var s = run || walk;
-      // 前の足と後ろの足（歩くと前後に開く）
-      shaded(6 + s * 2, legY, 3, 4, J.pants); rect(6 + s * 2, legY + 3, 4, 2, BOOT[1]); set(9 + s * 2, legY + 4, BOOT[0]);
-      shaded(7 - s * 2, legY, 3, 4, J.pants); rect(7 - s * 2, legY + 3, 4, 2, BOOT[0]);
-    } else {
-      var l = walk || run, up = function (side) { return l === side ? 1 : 0; };
-      shaded(4, legY - up(1), 3, 4, J.pants); rect(4, legY + 3 - up(1), 3, 2, BOOT[1]); set(4, legY + 4 - up(1), BOOT[2]);
-      shaded(9, legY - up(-1), 3, 4, J.pants); rect(9, legY + 3 - up(-1), 3, 2, BOOT[1]); set(11, legY + 4 - up(-1), BOOT[0]);
-    }
-
-    // ---- 体（服） ----
-    if (J.robe) {
-      // ローブ：すそが広がる
-      for (var j = 0; j < 9; j++) { var wdt = 8 + Math.floor(j / 3) * 2; shaded(8 - wdt / 2, by + j, wdt, 1, J.cloth); }
-      for (j = 0; j < 9; j++) { var w2 = 8 + Math.floor(j / 3) * 2; set(8 - w2 / 2, by + j, J.cloth[2]); set(8 + w2 / 2 - 1, by + j, J.cloth[0]); }
-      if (dir !== "up") { rect(7, by + 1, 2, 8, J.trim[1]); set(7, by + 1, J.trim[2]); }
-    } else {
-      shaded(4, by, 8, 7, J.cloth);
-      rect(4, by + 5, 8, 1, J.trim[1]); set(4, by + 5, J.trim[2]);           // ベルト
-      if (dir === "down") set(7, by + 5, J.trim[2]), set(8, by + 5, J.trim[0]);
-      if (job === "warrior" && dir !== "up") { rect(5, by + 1, 6, 2, J.headPal[1]); set(5, by + 1, J.headPal[2]); }  // むね当て
-    }
-
-    // ---- うで ----
-    var armC = J.bareArms ? SKIN : J.cloth;
-    var aSwing = run ? run * 2 : walk;
-    if (dir === "side") {
-      if (atk) { rect(10, by + 2, 5, 2, armC[1]); set(14, by + 2, SKIN[1]); set(14, by + 3, SKIN[0]); }   // 前にのばす
-      else { shaded(7 + aSwing, by + 1, 3, 5, armC); set(7 + aSwing, by + 5, SKIN[1]); set(8 + aSwing, by + 5, SKIN[1]); }
-    } else {
-      var la = atk && dir === "down" ? 2 : aSwing, ra = atk && dir === "up" ? 2 : -aSwing;
-      shaded(2, by + 1 - Math.max(0, la), 2, 5, armC); set(2, by + 6 - Math.max(0, la), SKIN[1]); set(3, by + 6 - Math.max(0, la), SKIN[0]);
-      shaded(12, by + 1 - Math.max(0, ra), 2, 5, armC); set(12, by + 6 - Math.max(0, ra), SKIN[1]); set(13, by + 6 - Math.max(0, ra), SKIN[0]);
-    }
-
-    // ---- 頭 ----
-    // 顔と髪（10×10 の丸い頭）
-    function head() {
-      for (var y = 0; y < 10; y++) for (var x = 0; x < 10; x++) {
-        var dx = x - 4.5, dy = y - 4.8, inside = dx * dx / 26 + dy * dy / 28 <= 1;
-        if (!inside) continue;
-        var X = 3 + x, Y = hy + y, c;
-        if (dir === "up") c = H[x < 3 && y < 5 ? 2 : x > 6 || y > 7 ? 0 : 1];
-        else if (dir === "down") {
-          var hairTop = y < 4 || (y < 6 && (x < 2 || x > 7)) || (y === 4 && (x === 3 || x === 6));
-          c = hairTop ? H[x < 4 && y < 3 ? 2 : x > 6 ? 0 : 1] : SKIN[x > 7 ? 0 : y > 8 ? 0 : 1];
-        } else { // side（右向き）：顔は右、髪は左と上
-          var hairS = y < 4 || x < 4 || (y < 6 && x < 6);
-          c = hairS ? H[x < 3 && y < 4 ? 2 : x < 2 || y > 7 ? 0 : 1] : SKIN[y > 8 ? 0 : 1];
-        }
-        set(X, Y, c);
-      }
-      // 目
-      if (dir === "down") { set(5, hy + 6, OUT); set(5, hy + 7, OUT); set(10, hy + 6, OUT); set(10, hy + 7, OUT); set(6, hy + 8, SKIN[0]); set(9, hy + 8, SKIN[0]); }
-      if (dir === "side") { set(10, hy + 6, OUT); set(10, hy + 7, OUT); set(12, hy + 7, SKIN[1]); }
-    }
-    head();
-
-    // 頭の物（職業）
-    var P = J.headPal;
-    if (J.head === "helmet") {        // かぶと（上半分）と、まんなかの線
-      for (var x2 = 3; x2 < 13; x2++) for (var y2 = 0; y2 < 4; y2++) if (get(x2, hy + y2)) set(x2, hy + y2, P[x2 < 6 ? 2 : x2 > 10 ? 0 : 1]);
-      rect(3, hy + 4, 10, 1, P[0]);
-      if (dir !== "up") { rect(dir === "side" ? 9 : 7, hy, 1, 4, P[2]); }
-      if (dir === "side") { rect(3, hy + 4, 3, 3, P[1]); }
-    }
-    if (J.head === "hat") {           // とがった帽子（つばと、とがった先）
-      rect(1, hy + 3, 14, 2, P[1]); rect(1, hy + 4, 14, 1, P[0]); set(1, hy + 3, P[2]);
-      for (var k2 = 0; k2 < 6; k2++) { var wd = 8 - k2; rect(4 + Math.floor(k2 / 2) + (dir === "side" ? -1 : 0), hy + 2 - k2, wd, 1, P[k2 % 2 ? 1 : 2]); }
-      rect(5, hy + 2, 6, 1, J.trim[1]);                                // 帽子の帯
-      set(dir === "side" ? 3 : 7, hy - 4, P[1]); set(dir === "side" ? 2 : 6, hy - 4, P[0]);   // 先が折れている
-    }
-    if (J.head === "hood") {          // フード（頭のまわりをかこむ）
-      for (var yy = 0; yy < 10; yy++) for (var xx = 0; xx < 10; xx++) {
-        var X2 = 3 + xx, Y2 = hy + yy;
-        if (!get(X2, Y2)) continue;
-        var edge = dir === "up" || yy < 3 || xx < 2 || xx > 7 || (dir === "side" && xx < 5);
-        if (edge) set(X2, Y2, P[xx < 3 && yy < 4 ? 2 : xx > 7 ? 0 : 1]);
-      }
-      if (dir !== "side") rect(4, hy + 9, 8, 2, P[1]);
-    }
-    if (J.head === "band") {          // はちまき（結び目が後ろにたれる）
-      rect(3, hy + 3, 10, 1, P[1]); set(3, hy + 3, P[2]);
-      if (dir === "up") { set(7, hy + 4, P[1]); set(8, hy + 4, P[0]); set(7, hy + 5, P[0]); }
-      if (dir === "side") { rect(1, hy + 3, 2, 1, P[1]); rect(0, hy + 4 + (run ? 0 : 1), 2, 1, P[0]); }
-    }
-    if (J.head === "cap") {           // 頭巾
-      for (var y3 = 0; y3 < 4; y3++) for (var x3 = 3; x3 < 13; x3++) if (get(x3, hy + y3)) set(x3, hy + y3, P[x3 < 6 ? 2 : x3 > 10 ? 0 : 1]);
-      if (dir !== "up") rect(7, hy + 1, 2, 2, J.trim[1]);
-      if (dir === "up") rect(4, hy + 4, 8, 3, P[1]);
-    }
-
-    // ---- ふちどり（色のある点のとなりのすき間を、こい色に） ----
-    var out = g.slice();
-    for (var yy2 = 0; yy2 < SH; yy2++) for (var xx2 = 0; xx2 < SW; xx2++) {
-      if (g[yy2 * SW + xx2]) continue;
-      if (get(xx2 - 1, yy2) || get(xx2 + 1, yy2) || get(xx2, yy2 - 1) || get(xx2, yy2 + 1)) out[yy2 * SW + xx2] = OUT;
-    }
-
+    var g = frameMap(job, dir, frame);
+    var hair = HAIR[(hairId | 0) % HAIR.length];
     var cv = document.createElement("canvas"); cv.width = SW; cv.height = SH;
-    var ctx = cv.getContext("2d"), id = ctx.createImageData(SW, SH);
-    for (i = 0; i < out.length; i++) if (out[i]) { id.data[i * 4] = out[i][0]; id.data[i * 4 + 1] = out[i][1]; id.data[i * 4 + 2] = out[i][2]; id.data[i * 4 + 3] = 255; }
-    ctx.putImageData(id, 0, 0);
+    var ctx = cv.getContext("2d");
+    var flip = dir === "side";   // 地図は左向き。絵は右向きにする
+    for (var y = 0; y < SH; y++) for (var x = 0; x < SW; x++) {
+      var ch = g[y][x], col = null;
+      if (ch >= "1" && ch <= "4") col = hair[ch.charCodeAt(0) - 49];
+      else if (PAL[ch]) col = PAL[ch];
+      if (!col) continue;
+      ctx.fillStyle = col; ctx.fillRect(flip ? SW - 1 - x : x, y, 1, 1);
+    }
     return cv;
   }
 
   // ---------- 手に持つ武器 ----------
-  // 足もと（x, y）と向きから、手の場所に武器を描く。体より前に描くか後ろに描くかは behind で決める
   var WCOL = {
     blade: pal(["#5a6078", "#c8ccd8", "#ffffff"]), gold: pal(["#7a5a18", "#c8a040", "#f0d070"]), wood: pal(["#4a2c14", "#7a4e26", "#a87840"]),
     gem: pal(["#1a7a9a", "#5ad8f8", "#d8f8ff"]), string: pal(["#c8c0a8", "#e8e0c8", "#ffffff"])
   };
+  function hex(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
+  function pal(list) { return list.map(hex); }
   function px(ctx, x, y, c) { ctx.fillStyle = "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); }
   // (x0, y0) から向き (dx, dy) に len 点、太さ wid の棒
   function bar(ctx, x0, y0, dx, dy, len, wid, P) {
@@ -196,6 +527,8 @@ var Sprites = (function () {
     }
   }
   // weapon：sword・greatsword・axe・bow・fist・staff。face：向き。mode：hold（持つ）・attack（ふる）・back（背中にしまう）
+  // 手の場所：前は絵の右手（足もとから右へ5・上へ7）、後ろは絵の左手、横は体のうしろよりの手（足もとから後ろへ2・上へ7）。
+  // 横で持つときは、刃や杖が顔にかぶらないように、体の後ろで少し後ろへたおして立てる
   function drawWeapon(ctx, weapon, face, x, y, mode) {
     if (weapon === "fist") return;   // 拳は手そのもの
     var d = dirOf(face), sx = d.flip ? -1 : 1;
@@ -206,9 +539,9 @@ var Sprites = (function () {
     } else if (mode === "attack") {  // 向いているほうへつき出す
       hx = x + face.x * 7; hy = y - 9 + face.y * 5; dx = face.x; dy = face.y;
     } else {                          // 手に持って、少し上に向ける
-      if (d.dir === "side") { hx = x + 2 * sx; hy = y - 7; dx = 0.35 * sx; dy = -0.94; }
-      else if (d.dir === "down") { hx = x + 5; hy = y - 6; dx = 0.2; dy = -0.98; }
-      else { hx = x - 5; hy = y - 7; dx = -0.2; dy = -0.98; }
+      if (d.dir === "side") { hx = x - 2 * sx; hy = y - 7; dx = -0.35 * sx; dy = -0.94; }   // 横：体の後ろで立てて持つ（core.js で体より先に描く）
+      else if (d.dir === "down") { hx = x + 5; hy = y - 7; dx = 0.2; dy = -0.98; }
+      else { hx = x - 6; hy = y - 7; dx = -0.2; dy = -0.98; }
     }
     if (weapon === "sword") { bar(ctx, hx, hy, dx, dy, 9, 1, WCOL.blade); bar(ctx, hx - dy * 1.5 * -1 - dx, hy + dx * 1.5 * -1 - dy, -dy, dx, 3, 1, WCOL.gold); }
     if (weapon === "greatsword") { bar(ctx, hx, hy, dx, dy, 12, 2, WCOL.blade); bar(ctx, hx + dy * 2 - dx, hy - dx * 2 - dy, -dy, dx, 5, 1, WCOL.gold); }
@@ -235,13 +568,13 @@ var Sprites = (function () {
     return cache[k];
   }
 
-  // 向き（face：{x, y}）から、down / up / side と、左右反転するか
+  // 向き（face：{x, y}）から、down / up / side と、左右反転するか（side の絵は右向き）
   function dirOf(face) {
     if (Math.abs(face.x) > Math.abs(face.y) + 0.01) return { dir: "side", flip: face.x < 0 };
     return { dir: face.y < 0 ? "up" : "down", flip: false };
   }
 
-  // 足もと（x, y）を基準に描く。opt：{ flip, alpha }
+  // 足もと（x, y）を基準に描く。opt：{ alpha }
   function drawHero(ctx, job, hairId, face, frame, x, y, opt) {
     var d = dirOf(face), img = hero(job, hairId, d.dir, frame);
     ctx.save();
@@ -256,5 +589,5 @@ var Sprites = (function () {
     ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(Math.PI / 2); ctx.drawImage(img, -SH + 2, -SW / 2); ctx.restore();
   }
 
-  return { SW: SW, SH: SH, hero: hero, drawHero: drawHero, drawDown: drawDown, drawWeapon: drawWeapon, dirOf: dirOf, JOBS: Object.keys(JOB), HAIRS: HAIR.length };
+  return { SW: SW, SH: SH, hero: hero, drawHero: drawHero, drawDown: drawDown, drawWeapon: drawWeapon, dirOf: dirOf, JOBS: Object.keys(MAP), HAIRS: HAIR.length };
 })();
