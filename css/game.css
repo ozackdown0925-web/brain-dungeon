@@ -348,3 +348,7 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
   .title-logo { margin-top: 0; font-size: 28px; }
   .title-story { font-size: 14px; line-height: 1.6; }
 }
+
+/* ふりがな（段階7-3。js/game/furigana.js が自動でつける） */
+ruby { ruby-position: over; }
+rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; text-transform: none; }

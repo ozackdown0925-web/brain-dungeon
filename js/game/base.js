@@ -231,9 +231,9 @@ var Base = (function () {
       ctx.font = "bold 7px \"Hiragino Maru Gothic ProN\", \"Hiragino Sans\", \"Yu Gothic\", sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       var lx = b.x + b.w / 2, ly = Math.min(TH - 11, b.id === "gate" ? b.y + b.h + 1 : b.board ? b.y + b.h + 2 : b.y + b.h + 2);
-      var tw = ctx.measureText(b.name).width + 6;
-      r(lx - tw / 2, ly, tw, 10, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.75)");
-      ctx.fillStyle = lit ? "#1a1408" : "#ece7da"; ctx.fillText(b.name, lx, ly + 1.5);
+      var tw = Furi.width(ctx, b.name) + 6, rh = Furi.has(b.name) ? Furi.rubyHeight(7) : 0;   // ふりがなの分だけ札を上にのばす
+      r(lx - tw / 2, ly - rh, tw, 10 + rh, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.75)");
+      ctx.fillStyle = lit ? "#1a1408" : "#ece7da"; Furi.draw(ctx, b.name, lx, ly + 1.5, 7);
     });
   }
   function buildingAt(ev) {
