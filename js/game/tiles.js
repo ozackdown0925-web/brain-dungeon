@@ -239,7 +239,7 @@ var Tiles = (function () {
       if (k4 !== "ground" && k4 !== "path" && k4 !== "tall") continue;
       // 木の影は、木のところで丸く落とす（ここでは、しげみとがけの影だけ）
       var ku = kind(tx, ty - 1), kl = kind(tx - 1, ty);
-      var nUp = solidKind(ku) && ku !== "tree", nLf = solidKind(kl) && kl !== "tree";
+      var nUp = solidKind(ku) && ku !== "tree" && ku !== "rock", nLf = solidKind(kl) && kl !== "tree" && kl !== "rock";
       if (!nUp && !nLf) continue;
       for (var ly = 0; ly < T; ly++) for (var lx = 0; lx < T; lx++) {
         var x5 = tx * T + lx, y5 = ty * T + ly;
@@ -300,20 +300,22 @@ var Tiles = (function () {
 
     // ---------- 5. 岩のがけ（部屋の中の壁） ----------
     var isRock = isK("rock");
+    var rockVis = new Uint8Array(W * H);   // 高台を描いた点（影をつけるため）
     // 高台：上は草の台地。タイルごとの丸をつなげて角を大きく丸める（岩のタイルの外へは出さない）。
     // 南のはしのタイルは、上3点が草で、その下が岩の面
     var platM = new Uint8Array(W * H);
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
       if (!isRock(tx, ty)) continue;
       var nbR = (isRock(tx - 1, ty) ? 1 : 0) + (isRock(tx + 1, ty) ? 1 : 0) + (isRock(tx, ty - 1) ? 1 : 0) + (isRock(tx, ty + 1) ? 1 : 0);
-      var radR = nbR >= 4 ? 13 : nbR === 3 ? 11 : 9.5;
+      var radR = nbR >= 4 ? 13 : nbR === 3 ? 8.5 + hash(tx, ty, 75) * 3.5 : 9.5;
       // 角のタイルは、丸の中心を内側へずらして、角を大きく丸める
-      var pcx = tx * T + 8 + ((isRock(tx + 1, ty) ? 1 : 0) - (isRock(tx - 1, ty) ? 1 : 0)) * (nbR <= 2 ? 3 : 0);
-      var pcy = ty * T + 8 + ((isRock(tx, ty + 1) ? 1 : 0) - (isRock(tx, ty - 1) ? 1 : 0)) * (nbR <= 2 ? 3 : 0);
-      if (nbR <= 2) radR = 10.5;
+      var shR = nbR <= 2 ? 2.5 + hash(tx, ty, 76) * 2.5 : 0;
+      var pcx = tx * T + 8 + ((isRock(tx + 1, ty) ? 1 : 0) - (isRock(tx - 1, ty) ? 1 : 0)) * shR + (hash(tx, ty, 77) - 0.5) * 3;
+      var pcy = ty * T + 8 + ((isRock(tx, ty + 1) ? 1 : 0) - (isRock(tx, ty - 1) ? 1 : 0)) * shR + (hash(tx, ty, 78) - 0.5) * 3;
+      if (nbR <= 2) radR = 9.5 + hash(tx, ty, 79) * 2;
       for (y = ty * T - T; y < ty * T + 2 * T; y++) for (x = tx * T - T; x < tx * T + 2 * T; x++) {
         if (x < 0 || y < 0 || x >= W || y >= H || !isRock(Math.floor(x / T), Math.floor(y / T))) continue;
-        var ddx = x + 0.5 - pcx, ddy = y + 0.5 - pcy, rr = radR + (noise(x / 3, y / 3, 60) - 0.5) * 2.4;
+        var ddx = x + 0.5 - pcx, ddy = y + 0.5 - pcy, rr = radR + (noise(x / 7, y / 7, 80) - 0.5) * 5 + (noise(x / 3, y / 3, 60) - 0.5) * 1.6;
         if (ddx * ddx + ddy * ddy <= rr * rr) platM[y * W + x] = 1;
       }
     }
@@ -325,7 +327,7 @@ var Tiles = (function () {
       return platM[gy * W + gx] === 1;
     }
     // 岩の面の下のはし（でこぼこ）
-    function faceBottom(gx, ty3) { return ty3 * T + 13 + Math.round(noise(gx / 3, ty3, 61) * 2.5); }
+    function faceBottom(gx, ty3) { return ty3 * T + 12 + Math.round(noise(gx / 6, ty3, 81) * 3 + noise(gx / 2.5, ty3, 61) * 1.5); }
     for (y = 0; y < H + T; y++) for (x = 0; x < W; x++) {
       var tx3 = Math.floor(x / T), ty3 = Math.floor(y / T);
       // 岩の面は、南のはしのタイルから下へ少しはみ出してよい
@@ -370,7 +372,7 @@ var Tiles = (function () {
         if (ly3 - 3 < drip) c4 = ly3 - 3 === drip - 1 ? GRASS[1] : GRASS[2];
         else if (ly3 - 3 === Math.max(0, drip)) c4 = ROCK[0];   // 草の下の影
         if (ly3 === 3 && !left && !right) c4 = drip > 0 ? GRASS[2] : OUT;
-        put(x, y, c4);
+        put(x, y, c4); rockVis[y * W + x] = 1;
         // 下のはしに小石
         if (y === fb && hash(x, faceTy, 65) < 0.12) { put(x, y + 1, ROCK[2]); put(x + 1, y + 1, ROCK[1]); put(x, y + 2, OUT); }
         continue;
@@ -386,7 +388,15 @@ var Tiles = (function () {
       else if (!plateau(x, y - 2) || !plateau(x - 2, y)) c4 = GRASS[4];        // 北と西のふちは明るい
       else if (!plateau(x + 2, y)) c4 = GRASS[1];                              // 東のふちは暗い
       else if (!plateau(x, y + 2)) c4 = GRASS[2];
-      put(x, y, c4);
+      put(x, y, c4); rockVis[y * W + x] = 1;
+    }
+    // 高台の影：高台の形を右下へずらした形で、地面を暗くする
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (rockVis[y * W + x]) continue;
+      var sx9 = x - 2, sy9 = y - 3;
+      if (sx9 < 0 || sy9 < 0 || !rockVis[sy9 * W + sx9]) continue;
+      var k9 = kind(Math.floor(x / T), Math.floor(y / T));
+      if (k9 === "ground" || k9 === "path" || k9 === "tall" || k9 === "rock") put(x, y, dark(get(x, y), 0.62));
     }
     // 台地の上にも草の葉と花
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
