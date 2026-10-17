@@ -24,7 +24,7 @@ var Party = (function () {
 
   // 拠点の仲間（GameState の hero）から、冒険に出るキャラを作る。武器は、装備のしくみ（段階5-2）ができるまでは、職業のはじめの武器
   function fromHero(h) {
-    var c = makeChar(h.name, h.job, GameState.starterWeapon(h.job), h.level, h.set.slice(), h);
+    var c = makeChar(h.name, h.job, GameState.heroWeaponType(h), h.level, h.set.slice(), h);
     return c;
   }
 
@@ -32,8 +32,8 @@ var Party = (function () {
   function recalc(c) {
     var J = GameData.JOBS[c.job];
     c.base = c.hero ? c.hero.base : GameData.baseStats(c.job, c.level);
-    // 防具は、装備のしくみ（段階5）ができるまでは、はじめから持っている防具
-    c.stats = GameData.combatStats(c.base, GameData.WEAPONS[c.weapon], GameData.STARTER_ARMORS[J.armor], c.level);
+    // 拠点の仲間なら、装備（武器・防具・バフ・デバフ・強化）をふくめた能力
+    c.stats = c.hero ? GameState.heroStats(c.hero) : GameData.combatStats(c.base, GameData.WEAPONS[c.weapon], GameData.STARTER_ARMORS[J.armor], c.level);
   }
 
   // バフをふくめた値。stat：patk/pdef/matk/mdef/crit/wait（wait は倍率）
