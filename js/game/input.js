@@ -32,7 +32,15 @@ var Input = (function () {
   }
 
   // ---------- キーボード ----------
+  // 文字を入れる欄（つなぎ先・暗証番号・知恵の試練の答えなど）にいるときは、キーを横取りしない
+  function typing(e) {
+    var t = e.target;
+    if (!t || !t.tagName) return false;
+    var tag = t.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select" || !!t.isContentEditable;
+  }
   window.addEventListener("keydown", function (e) {
+    if (typing(e)) return;
     var k = KEYS[e.code];
     if (!k) return;
     e.preventDefault();
@@ -41,6 +49,7 @@ var Input = (function () {
     keyDown[k] = true; refresh(k);
   });
   window.addEventListener("keyup", function (e) {
+    if (typing(e)) return;
     var k = KEYS[e.code];
     if (!k) return;
     if (keyDir.hasOwnProperty(k)) { keyDir[k] = false; return; }
