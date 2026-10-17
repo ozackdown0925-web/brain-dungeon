@@ -181,7 +181,7 @@ var Bosses = (function () {
   // ボスが倒れたら、地面の予告も消す
   function bossDown() { hazards.length = 0; }
 
-  // ---------- 描画（仮の絵） ----------
+  // ---------- 描画 ----------
   function drawHazards(cam, glow) {
     var ctx = Render.ctx;
     hazards.forEach(function (h) {
@@ -210,31 +210,23 @@ var Bosses = (function () {
   // ボスの絵
   function draw(e, cam, glow) {
     var x = Math.round(e.x - cam.x), y = Math.round(e.y - cam.y), d = e.def, ctx = Render.ctx;
-    var white = e.flash > 0;
     if (d.kind === "wolf_boss") {
-      var bob = Math.sin(e.walk) > 0 ? 1 : 0, fx = e.face.x < 0 ? -1 : 1;
-      Render.rect(x - 14, y + 8, 28, 4, "rgba(0,0,0,0.35)");
-      Render.rect(x - 13, y - 8 - bob, 26, 14, white ? "#fff" : d.color);
-      Render.rect(x - 13, y - 8 - bob, 26, 3, white ? "#fff" : "#8a8f9a");
-      Render.rect(x + fx * 10 - 6, y - 15 - bob, 12, 10, white ? "#fff" : "#7a7e8a"); // 頭
-      Render.rect(x + fx * 10 - 5, y - 19 - bob, 3, 4, "#5a5e6a"); Render.rect(x + fx * 10 + 2, y - 19 - bob, 3, 4, "#5a5e6a"); // 耳
-      Render.rect(x + fx * 13 - 1, y - 12 - bob, 2, 2, "#ef5b5b"); // 目
-      Render.rect(x - fx * 16 - 3, y - 8 - bob, 6, 3, "#6e7280"); // しっぽ
+      // 段階7-2c：ドット絵（monsters.js、52×40）。足もとは y＋11
+      var ph = Math.sin(e.walk || 0), moving = e.state === "chase" || e.state === "charge";
+      Render.rect(x - 18, y + 8, 36, 5, "rgba(0,0,0,0.35)");
+      Monsters.drawBoss(ctx, e, x, y + 11, !moving ? "stand" : ph > 0 ? "walkA" : "walkB");
       if (e.state === "warn") Render.text("！", x, y - 34, { size: 12, align: "center", bold: true, color: "#ef5b5b" });
-      if (e.state === "howl") Render.text("ウォォーン", x, y - 32, { size: 8, align: "center", bold: true, color: "#ffd24a" });
+      if (e.state === "howl") Render.text("ウォォーン", x, y - 34, { size: 8, align: "center", bold: true, color: "#ffd24a" });
     } else {
-      Render.rect(x - 18, y + 14, 36, 5, "rgba(0,0,0,0.35)");
-      Render.rect(x - 7, y - 6, 14, 22, white ? "#fff" : d.color); // みき
-      Render.rect(x - 14, y + 12, 6, 5, "#4a3018"); Render.rect(x + 8, y + 12, 6, 5, "#4a3018"); // 根
-      ctx.fillStyle = white ? "#fff" : "#2a5a28";
-      ctx.beginPath(); ctx.arc(x, y - 16, 20, 0, Math.PI * 2); ctx.fill(); // 葉
-      ctx.fillStyle = "#3a7a37"; ctx.beginPath(); ctx.arc(x - 6, y - 22, 8, 0, Math.PI * 2); ctx.fill();
-      Render.rect(x - 5, y - 2, 3, 3, "#ffd24a"); Render.rect(x + 2, y - 2, 3, 3, "#ffd24a"); // 目
+      // 段階7-2c：ドット絵（monsters.js、64×64）。足もとは y＋18。構えのときはうでを上げ、ふだんは葉がゆれる
+      Render.rect(x - 22, y + 13, 44, 7, "rgba(0,0,0,0.35)");
+      var tf = e.state === "windup" ? "windup" : Math.sin(glow * 2) > 0 ? "sway" : "stand";
+      Monsters.drawBoss(ctx, e, x, y + 18, tf);
       if (e.sweep > 0) {
         ctx.strokeStyle = "rgba(160,112,58,0.8)"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(x, y, d.reach + e.r - 4, 0, Math.PI * 2); ctx.stroke();
       }
-      if (e.state === "windup") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: "#ffd24a" });
+      if (e.state === "windup") Render.text("！", x, y - 50, { size: 11, align: "center", bold: true, color: "#ffd24a" });
       if (e.state === "pollen" || e.pollenFx > 0) {
         ctx.fillStyle = "rgba(180,140,240," + (e.state === "pollen" ? 0.15 : 0.3) + ")";
         ctx.beginPath(); ctx.arc(x, y, d.pollenRadius, 0, Math.PI * 2); ctx.fill();

@@ -197,7 +197,7 @@ var Enemies = (function () {
     room.move(b, dx / dist * s, dy / dist * s);
   }
 
-  // ---------- 描画（仮の絵） ----------
+  // ---------- 描画 ----------
   var clock = 0;
   function draw(cam) {
     var ctx = Render.ctx;
@@ -208,44 +208,39 @@ var Enemies = (function () {
       var d = e.def;
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
-      var bob = Math.sin(e.walk) > 0 ? 1 : 0;
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
-      var body = e.flash > 0 ? "#ffffff" : d.color;
-      if (e.type === "wolf_pup") {
-        var fx = e.face.x < 0 ? -1 : 1;
-        Render.rect(x - 7, y - 4 - bob, 14, 7, body); Render.rect(x + fx * 5 - 3, y - 9 - bob, 6, 6, body);
-        Render.rect(x + fx * 7 - 1, y - 7 - bob, 2, 2, "#ef5b5b");
-        if (!e.dead && e.hp < e.maxHp) { Render.rect(x - 8, y - 14 - bob, 16, 2, "#2a2f42"); Render.rect(x - 8, y - 14 - bob, Math.round(16 * e.hp / e.maxHp), 2, "#ef5b5b"); }
-        if (e.state === "windup" && !e.dead) Render.text("！", x, y - 22 - bob, { size: 9, align: "center", bold: true, color: "#ffd24a" });
-        return;
-      }
-      Render.rect(x - 5, y - 6 - bob, 10, 10, body);
-      Render.rect(x - 4, y - 11 - bob, 8, 6, e.flash > 0 ? "#ffffff" : "#9bbf5a");
-      Render.rect(x - 3 + Math.round(e.face.x * 2), y - 9 - bob, 2, 2, "#c0392b");
-      Render.rect(x + 1 + Math.round(e.face.x * 2), y - 9 - bob, 2, 2, "#c0392b");
-      // 持ち物で見分ける
-      if (d.kind === "melee") Render.rect(x + (e.face.x < 0 ? -8 : 5), y - 5 - bob, 3, 8, "#8a6a3a");
+      // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
+      var top = e.type === "wolf_pup" ? 8 : 15;            // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
+      var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
-        ctx.strokeStyle = "#c9ccd6"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + e.face.x * 16, y - 3 + e.face.y * 16); ctx.stroke();
+        // 槍：木の柄と、鉄の穂先
+        var ex = hx + e.face.x * 16, ey = hy + e.face.y * 16;
+        ctx.strokeStyle = "#7a5230"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx - e.face.x * 4, hy - e.face.y * 4); ctx.lineTo(ex, ey); ctx.stroke();
+        Render.rect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2, "#c8ccd4");
       }
-      if (d.kind === "vine") {
-        var la = e.lash > 0 ? 1 : 0;
-        ctx.strokeStyle = "#2f6a2a"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x, y - 2);
-        ctx.lineTo(x + e.face.x * (8 + la * (d.reach + 2)), y - 2 + e.face.y * (8 + la * (d.reach + 2))); ctx.stroke();
-      }
+      Monsters.drawSmall(ctx, e, x, y + 6);
       if (d.kind === "archer") {
-        ctx.strokeStyle = "#a0703a"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(x + e.face.x * 5, y - 3, 5, Math.atan2(e.face.y, e.face.x) - 1.2, Math.atan2(e.face.y, e.face.x) + 1.2); ctx.stroke();
+        // 弓：木の弧と、白い弦
+        ctx.strokeStyle = "#854c30"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(hx, hy, 5, ang - 1.2, ang + 1.2); ctx.stroke();
+        ctx.strokeStyle = "#deeed6";
+        ctx.beginPath(); ctx.moveTo(hx + Math.cos(ang - 1.2) * 5, hy + Math.sin(ang - 1.2) * 5); ctx.lineTo(hx + Math.cos(ang + 1.2) * 5, hy + Math.sin(ang + 1.2) * 5); ctx.stroke();
+      }
+      if (d.kind === "vine" && e.lash > 0) {
+        // つるをのばす
+        ctx.strokeStyle = "#2a5a2e"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, y - 2);
+        ctx.lineTo(x + e.face.x * (10 + d.reach), y - 2 + e.face.y * (10 + d.reach)); ctx.stroke();
       }
       // 状態異常の印
       var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
       if (marks.length && !e.dead) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 7, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
-      if (e.status.sleep && !e.dead) Render.text("Zz", x + 7, y - 20, { size: 7, color: "#b48cf0" });
+      if (e.status.sleep && !e.dead) Render.text("Zz", x + 7, y - top - 4, { size: 7, color: "#b48cf0" });
       // 構え（予告）
       if (e.state === "windup" && !e.dead) {
-        Render.text("！", x, y - 24 - bob, { size: 9, align: "center", bold: true, color: "#ffd24a" });
+        Render.text("！", x, y - top - 9, { size: 9, align: "center", bold: true, color: "#ffd24a" });
         if (d.kind === "spear") {
           ctx.strokeStyle = "rgba(239,91,91,0.5)"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x + e.aim.x * (d.reach + e.r), y - 3 + e.aim.y * (d.reach + e.r)); ctx.stroke();
@@ -253,8 +248,8 @@ var Enemies = (function () {
       }
       // HP のバー（へっていたら出す）
       if (!e.dead && e.hp < e.maxHp) {
-        Render.rect(x - 8, y - 17 - bob, 16, 2, "#2a2f42");
-        Render.rect(x - 8, y - 17 - bob, Math.round(16 * e.hp / e.maxHp), 2, "#ef5b5b");
+        Render.rect(x - 8, y - top - 3, 16, 2, "#2a2f42");
+        Render.rect(x - 8, y - top - 3, Math.round(16 * e.hp / e.maxHp), 2, "#ef5b5b");
       }
     });
     ctx.globalAlpha = 1;
