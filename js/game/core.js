@@ -55,7 +55,7 @@
     else say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
     saveTimer = 0;
     snapshot();
-    GameState.Remote.send("floorStart", { floor: floor });
+    if (!resume && !trial.tryMode && window.Sync) Sync.save("", ""); // 階に入るとき（区切り）に GAS へ
   }
 
   // 知恵の試練で正解した教科の加護：その日の冒険だけ、算数→物攻、国語→魔攻、理科→物防・魔防、社会→HP・MP を ＋10%

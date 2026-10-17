@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=19">
-<link rel="stylesheet" href="css/drillcore.css?v=19">
-<link rel="stylesheet" href="css/trial.css?v=19">
+<link rel="stylesheet" href="css/game.css?v=20">
+<link rel="stylesheet" href="css/drillcore.css?v=20">
+<link rel="stylesheet" href="css/trial.css?v=20">
 </head>
 <body>
 <div id="stage">
@@ -100,12 +100,6 @@
         <p id="trialSub"></p>
       </header>
       <div id="trialNotice" class="notice" hidden></div>
-      <div id="trialLogin" class="tlogin" hidden>
-        <p>はじめに「プレイヤー用の鍵」を入れてください。この iPad が覚えるので、次からは入れなくてよくなります。</p>
-        <input class="dq-in" type="text" id="trialKey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="プレイヤー用の鍵" aria-label="プレイヤー用の鍵">
-        <button class="dq-btn" type="button" id="trialLoginGo">はじめる</button>
-        <p id="trialLoginMsg" class="err"></p>
-      </div>
       <div id="trialBody">
         <nav id="trialTabs" class="ttabs" aria-label="教科"></nav>
         <p id="trialProgress" class="tprogress"></p>
@@ -144,6 +138,31 @@
     </div>
   </div>
 
+  <!-- G-2：つなぎ先（はじめて開いたとき。URL と鍵は iPad の中に覚える） -->
+  <div id="connectScreen" class="screen town" hidden>
+    <div class="panel wide-panel">
+      <h2>はじめに（保護者むけ）</h2>
+      <p>ゲームのデータ（問題・記録・セーブ）を置くところにつなぎます。保護者が1回だけ入れてください。この端末が覚えます。</p>
+      <label class="connect-row">GAS の URL（…/exec で終わる）
+        <input type="url" id="connectUrl" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      </label>
+      <label class="connect-row">プレイヤー用の鍵（子ども用か、保護者用）
+        <input type="text" id="connectKey" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="プレイヤー用の鍵">
+      </label>
+      <button type="button" id="connectGo" class="btn big">つなぐ</button>
+      <p id="connectMsg" class="note"></p>
+    </div>
+  </div>
+
+  <!-- G-2：インターネットにつながらないとき（遊べない） -->
+  <div id="netScreen" class="net-screen" hidden>
+    <div class="panel">
+      <p id="netText"></p>
+      <button type="button" id="netRetry" class="btn big">もう一度</button>
+      <button type="button" id="netOk" class="btn big" hidden>OK</button>
+    </div>
+  </div>
+
   <!-- 段階6-2：保護者画面（暗証番号） -->
   <div id="parentScreen" class="screen town" hidden>
     <div class="panel wide-panel">
@@ -154,7 +173,6 @@
       <div id="parentPin" class="pin-box">
         <p id="parentPinLead"></p>
         <input type="password" id="parentPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="暗証番号（4けた）">
-        <input type="password" id="parentPinInput2" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="もう一度" hidden>
         <button type="button" id="parentPinGo" class="btn">OK</button>
         <p id="parentPinMsg" class="note"></p>
       </div>
@@ -183,7 +201,7 @@
           <div id="parentLog"></div>
         </section>
         <section class="pp">
-          <h3>セーブの復元（最近の10回分。データを消しても残る）</h3>
+          <h3>セーブの復元（GAS に残っている最近の10回分）</h3>
           <div id="historyList"></div>
         </section>
         <section class="pp">
@@ -197,8 +215,10 @@
           </div>
         </section>
         <section class="pp">
-          <h3>暗証番号</h3>
-          <button type="button" id="parentPinChange" class="btn small-btn">暗証番号を変える</button>
+          <h3>つなぎ先（GAS）</h3>
+          <p id="parentConnect" class="note"></p>
+          <button type="button" id="parentReconnect" class="btn small-btn">つなぎ先を入れ直す</button>
+          <p class="note">暗証番号を変えるときは、スプレッドシートのメニュー「Brain Dungeon」から入れ直す。</p>
         </section>
       </div>
     </div>
@@ -246,9 +266,6 @@
         <div class="test-foot">
           <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
         </div>
-        <div class="test-foot">
-          <button type="button" id="testPinReset" class="btn">保護者の暗証番号を消す（決め直す）</button>
-        </div>
       </details>
     </div>
   </div>
@@ -262,29 +279,29 @@
   </div>
 </div>
 
-<script src="config.js?v=19"></script>
-<script src="js/api.js?v=19"></script>
-<script src="js/drillcore.js?v=19"></script>
-<script src="js/game/input.js?v=19"></script>
-<script src="js/game/render.js?v=19"></script>
-<script src="js/game/world.js?v=19"></script>
-<script src="js/game/rooms.js?v=19"></script>
-<script src="js/game/dungeon.js?v=19"></script>
-<script src="js/game/loot.js?v=19"></script>
-<script src="js/game/data.js?v=19"></script>
-<script src="js/game/state.js?v=19"></script>
-<script src="js/game/faces.js?v=19"></script>
-<script src="js/game/battle.js?v=19"></script>
-<script src="js/game/enemies.js?v=19"></script>
-<script src="js/game/bosses.js?v=19"></script>
-<script src="js/game/party.js?v=19"></script>
-<script src="js/game/skills.js?v=19"></script>
-<script src="js/game/town.js?v=19"></script>
-<script src="js/game/trial-mock.js?v=19"></script>
-<script src="js/game/trial.js?v=19"></script>
-<script src="js/game/parent.js?v=19"></script>
-<script src="js/game/worldmap.js?v=19"></script>
-<script src="js/game/base.js?v=19"></script>
-<script src="js/game/core.js?v=19"></script>
+<script src="config.js?v=20"></script>
+<script src="js/api.js?v=20"></script>
+<script src="js/game/sync.js?v=20"></script>
+<script src="js/drillcore.js?v=20"></script>
+<script src="js/game/input.js?v=20"></script>
+<script src="js/game/render.js?v=20"></script>
+<script src="js/game/world.js?v=20"></script>
+<script src="js/game/rooms.js?v=20"></script>
+<script src="js/game/dungeon.js?v=20"></script>
+<script src="js/game/loot.js?v=20"></script>
+<script src="js/game/data.js?v=20"></script>
+<script src="js/game/state.js?v=20"></script>
+<script src="js/game/faces.js?v=20"></script>
+<script src="js/game/battle.js?v=20"></script>
+<script src="js/game/enemies.js?v=20"></script>
+<script src="js/game/bosses.js?v=20"></script>
+<script src="js/game/party.js?v=20"></script>
+<script src="js/game/skills.js?v=20"></script>
+<script src="js/game/town.js?v=20"></script>
+<script src="js/game/trial.js?v=20"></script>
+<script src="js/game/parent.js?v=20"></script>
+<script src="js/game/worldmap.js?v=20"></script>
+<script src="js/game/base.js?v=20"></script>
+<script src="js/game/core.js?v=20"></script>
 </body>
 </html>

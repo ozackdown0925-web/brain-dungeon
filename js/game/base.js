@@ -40,8 +40,14 @@ var Base = (function () {
 
   // ---------- はじめに ----------
   // 開いたとき：途中で閉じた冒険があれば「続きから」、終わったのに拠点にもどっていなければ受け取る（段階5-3）
+  // G-2：まず GAS につなぎ、GAS のセーブと iPad の中の控えの新しい方を使う（つながらなければ遊べない）
   function boot() {
-    if (!GameState.load()) { showCreate(); return; }
+    Sync.start(function (hasGame) {
+      if (!hasGame) { showCreate(); return; }
+      afterLoad();
+    });
+  }
+  function afterLoad() {
     var a = GameState.adventure();
     if (a && a.state === "finished") { returnFrom(a.result); return; }
     if (a && a.state === "playing") {
@@ -117,14 +123,19 @@ var Base = (function () {
       createEl.hidden = true;
       showBase(null);
     };
-    var hist = GameState.history(), rb = document.getElementById("createRestore");
-    rb.hidden = !hist.length;
-    rb.onclick = function () {
-      if (!hist.length) return;
-      if (!Parent.checkPin()) return; // 保護者の暗証番号（決めてあれば）
-      if (!window.confirm("いちばん新しいセーブ（" + hist[0].label + "：" + hist[0].summary + "）にもどしますか？")) return;
-      if (GameState.restore(0)) { createEl.hidden = true; showBase(null); }
-    };
+    // GAS の「セーブの控え」から、いちばん新しいものにもどす（保護者の暗証番号を聞く）
+    var rb = document.getElementById("createRestore");
+    rb.hidden = true;
+    Sync.checkpoints().then(function (list) {
+      rb.hidden = !list.length;
+      rb.onclick = function () {
+        Parent.askPin(function () {
+          if (!window.confirm("いちばん新しいセーブ（" + list[0].label + "：" + list[0].summary + "）にもどしますか？")) return;
+          Sync.restore(list[0].id, list[0].label).then(function () { createEl.hidden = true; showBase(null); },
+            function (err) { document.getElementById("createNote").textContent = "もどせませんでした（" + err.message + "）"; });
+        });
+      };
+    }, function () { rb.hidden = true; });
     baseEl.hidden = true;
     createEl.hidden = false;
   }
@@ -136,7 +147,7 @@ var Base = (function () {
     createEl.hidden = true;
     baseEl.hidden = false;
     var tools = GameState.TOOL_ORDER.filter(function (k) { return g.items[k] > 0; }).map(function (k) { return GameState.TOOLS[k].name + g.items[k]; });
-    document.getElementById("baseMoney").textContent = g.gold + "G　鉄 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
+    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉄 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
       (tools.length ? "　道具：" + tools.join("・") : "") +
       (g.titles.length ? "　称号：" + g.titles.join("・") : "");
 
