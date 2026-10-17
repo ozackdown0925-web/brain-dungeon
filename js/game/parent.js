@@ -171,22 +171,21 @@ var Parent = (function () {
     days.slice(0, 30).forEach(function (d) {
       var trips = byDay[d].slice().reverse(); // 朝 → 夜の順
       var div = el("div", "log-day");
-      var head = el("div");
-      head.appendChild(el("b", "", dateLabel(d)));
-      var t = trips[trips.length - 1]; // その日の知恵の試練（どの回も同じ）
-      head.appendChild(document.createTextNode("知恵の試練 正解 " + t.correct + " / 4　"));
-      SUBJECTS.forEach(function (s) {
-        var ok = t.subjects.indexOf(s.id) >= 0;
-        head.appendChild(el("span", ok ? "ok" : "ng", s.name + (ok ? "○" : "×") + " "));
-      });
-      div.appendChild(head);
+      div.appendChild(el("b", "", dateLabel(d)));
       var n = 0;
       trips.forEach(function (r) {
-        if (r.kind !== "rest") n++;
+        // 出発ごとに知恵の試練の結果（2026-10-17：出発ごとに新しい4問）
         var at = new Date(r.at);
         var hm = at.getHours() + ":" + ("0" + at.getMinutes()).slice(-2);
-        div.appendChild(el("div", "log-line", r.kind === "rest" ? "休みの日（知恵の試練だけ）　" + hm :
-          n + "回目　" + hm + "　森の " + r.floor + " 階　" + (KIND[r.kind] || r.kind)));
+        var line = el("div", "log-line");
+        if (r.kind === "rest") line.appendChild(document.createTextNode("休みの日（知恵の試練だけ）　" + hm + "　"));
+        else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　森の " + r.floor + " 階　" + (KIND[r.kind] || r.kind) + "　")); }
+        line.appendChild(document.createTextNode("試練 " + r.correct + " / 4　"));
+        SUBJECTS.forEach(function (s) {
+          var ok = (r.subjects || []).indexOf(s.id) >= 0;
+          line.appendChild(el("span", ok ? "ok" : "ng", s.name + (ok ? "○" : "×") + " "));
+        });
+        div.appendChild(line);
       });
       box.appendChild(div);
     });
