@@ -102,11 +102,22 @@ var World = (function () {
 
   // 見えている範囲だけを写す。部屋の絵は tiles.js が1回だけ描いて覚えておく（段階7-2a）
   Room.prototype.draw = function (cam, view) {
-    var cv = Tiles.canvasFor(this), ctx = Render.ctx;
+    var cv = Tiles.canvasFor(this).ground, ctx = Render.ctx;
     var cx = Math.round(cam.x), cy = Math.round(cam.y);
     var sx = Math.max(0, cx), sy = Math.max(0, cy);
     var w = Math.min(this.pxW, cx + view.w + 1) - sx, h = Math.min(this.pxH, cy + view.h + 1) - sy;
     if (w > 0 && h > 0) ctx.drawImage(cv, sx, sy, w, h, sx - cx, sy - cy, w, h);
+  };
+  // 木の葉の帯。footY（キャラの足もと）より奥の行の木は front＝true のときに（キャラの前に）、手前の行の木は front＝false のときに描く
+  Room.prototype.drawCrowns = function (cam, view, footY, front) {
+    var bands = Tiles.canvasFor(this).bands, ctx = Render.ctx;
+    var cx = Math.round(cam.x), cy = Math.round(cam.y);
+    for (var i = 0; i < bands.length; i++) {
+      var b = bands[i];
+      if ((b.base > footY) !== front) continue;
+      if (b.y0 > cy + view.h || b.y0 + b.canvas.height < cy) continue;
+      ctx.drawImage(b.canvas, -cx, b.y0 - cy);
+    }
   };
 
   return { TILE: TILE, Room: Room, testRoom: function () { return new Room(TEST_ROOM); } };

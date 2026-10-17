@@ -437,10 +437,12 @@
   function draw() {
     Render.begin();
     room.draw(cam, view);
+    room.drawCrowns(cam, view, A.y + 6, false);   // キャラより手前（南）の行の木の葉は、キャラの後ろ
     drawThings();
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
     drawActor();
+    room.drawCrowns(cam, view, A.y + 6, true);    // キャラより奥（北）の行の木の葉は、キャラの前
     Combat.draw(cam);
     Battle.draw(cam);
     drawHud();
