@@ -17,11 +17,17 @@ var GameData = (function () {
                   boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none" } }
   };
 
-  // 防具
+  // 防具（ノーマル・アイテムレベル1）。宝箱・お店・鍛冶屋で手に入るもの（2026-10-17 案H：重装備は物理に、魔法装備は魔法に強い）
   var ARMORS = {
-    heavy: { name: "重装備", pdef: 3, mdef: 0 },
-    light: { name: "軽装備", pdef: 2, mdef: 1 },
-    magic: { name: "魔法装備", pdef: 1, mdef: 3 }
+    heavy: { name: "重装備", pdef: 4, mdef: 1 },
+    light: { name: "軽装備", pdef: 3, mdef: 2 },
+    magic: { name: "魔法装備", pdef: 2, mdef: 4 }
+  };
+  // はじめから持っている防具：ふつうの防具より弱い（はじめの手ごたえ「約20回当たると倒れる」を保つため）
+  var STARTER_ARMORS = {
+    heavy: { name: "古い重装備", pdef: 3, mdef: 0 },
+    light: { name: "古い軽装備", pdef: 2, mdef: 1 },
+    magic: { name: "古い魔法装備", pdef: 1, mdef: 3 }
   };
 
   // 職業。line＝系統（上級職ができたら、ここに上級職の名前を足す）
@@ -198,9 +204,10 @@ var GameData = (function () {
   }
 
   // 戦闘パラメーター（docs/draft.md 1.2）
-  function combatStats(base, weapon, armor) {
+  // level：HP に (レベル−1)×3 を足す（2026-10-17 案H。深い階層でも打たれ強さが下がりすぎないように。Lv1 では 0）
+  function combatStats(base, weapon, armor, level) {
     return {
-      hp: Math.floor(30 + base.vit * 5),
+      hp: Math.floor(30 + base.vit * 5 + ((level || 1) - 1) * 3),
       mp: Math.floor(10 + base.int * 2),
       patk: Math.floor(base.str + weapon.patk),
       pdef: Math.floor(base.str * 0.5 + armor.pdef),
@@ -230,7 +237,7 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, canSet: canSet, condText: condText
   };
