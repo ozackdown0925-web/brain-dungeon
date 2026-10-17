@@ -12,6 +12,7 @@
   var SPEED = 52;       // 1秒に進むドット数（保護者の感想で 72 → 52 に下げた）
   var ACCEL_TIME = 0.12; // 止まっている状態から、この秒数をかけて全速になる
   var TURN_TIME = 0.15;  // 大きく向きを変える（ほぼ反対を押す）ときは、この秒数その場で振り返ってから動く
+  var CLEAR_SPEED = 1.5; // 敵を全滅させた部屋では、この倍の速さで歩く
   var TURN_ANGLE = 1.9;  // これより大きく向きが変わったら「振り返り」（ラジアン。約110度）
   var A = Party.actor;
   A.x = 6 * World.TILE; A.y = 11 * World.TILE;
@@ -139,7 +140,8 @@
     run.byType[e.type] = (run.byType[e.type] || 0) + 1;
     // 経験値と熟練度：倒れていない3人に同じだけ（docs/draft.md 1.1：1体 2＋0.6×深さ、熟練度 1。ボスは10体分）
     if (!e.summoned) {
-      var k = e.def.boss ? 10 : 1;
+      // ボスは10体分。ふつうの敵は、敵を増やしたぶん Dungeon.rewardScale 倍（1階層の合計は前と同じ）
+      var k = e.def.boss ? 10 : Dungeon.rewardScale(dg.floor);
       Party.members().forEach(function (m, i) {
         if (m.down) return;
         run.exp[i] += (2 + 0.6 * dg.floor) * k;
@@ -151,7 +153,7 @@
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
     var drop = Loot.enemyDrop(e.type, dg.floor);
     run.gold += drop.gold;
-    Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
+    if (drop.gold) Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
     if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
   };
 
@@ -204,7 +206,9 @@
       }
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
-        Enemies.moveBlocked(room, A, a.x * SPEED * A.move * dt, a.y * SPEED * A.move * dt); // 敵はすり抜けない
+        // 部屋の敵を全滅させたら、歩く速さ 1.5 倍（探索しやすいように。2026-10-17）
+        var sp = SPEED * (Enemies.alive().length === 0 ? CLEAR_SPEED : 1);
+        Enemies.moveBlocked(room, A, a.x * sp * A.move * dt, a.y * sp * A.move * dt); // 敵はすり抜けない
         A.walk += dt * 8 * A.move;
       }
     } else {

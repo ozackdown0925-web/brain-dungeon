@@ -265,3 +265,18 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .toolbox { margin-top: 12px; text-align: center; }
 .toolbox h3 { font-size: 15px; margin: 0 0 6px; color: var(--gold); }
 .tool-list { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+
+/* スマホで、重ねる画面（終わりの画面・一時停止）が画面より高いときにスクロールできるように */
+#pause, #choose {
+  align-items: flex-start;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+#choose .panel { margin: auto; }
+@media (max-height: 500px) {
+  #choose .panel { padding: 12px 18px; }
+  #choose .panel h2 { font-size: 18px; margin-bottom: 4px; }
+  #choose .panel p, #chooseLead { font-size: 13px; }
+  #choose .btn.wide { padding: 8px 12px; font-size: 15px; }
+}

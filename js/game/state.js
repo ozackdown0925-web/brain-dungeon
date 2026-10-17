@@ -20,7 +20,7 @@ var GameState = (function () {
 
   // 古いセーブに、あとから足した項目を入れる
   function upgrade(g) {
-    g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; });
+    g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; learnSkills(h); });
     if (!g.items) g.items = { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 };
     return g;
   }
@@ -45,11 +45,12 @@ var GameState = (function () {
   function stars(h, job) { return Math.min(MAX_STAR, Math.floor((h.mastery[job || h.job] || 0) / STAR_NEED)); }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
 
-  // 今の職業の★までのスキルを覚える（上から順）。覚えたスキルは、空いているスキル1〜3に自動でセットする（スキルのセットの画面は段階5-2）
+  // 今の職業のスキルを、★の数に合わせて上から順に覚える。覚えたスキルは、空いているスキル1〜3に自動でセットする。
+  // ★k のスキルは ★(k−1) で覚える：★1 のスキルは、その職業になったときから使える（2026-10-17。Lv1 でも職業の差が出るように）。★7 は「極めた」印。
   function learnSkills(h) {
     var got = [], st = stars(h);
     GameData.SKILLS.forEach(function (sk) {
-      if (sk.job !== h.job || sk.star > st || h.learned.indexOf(sk.id) >= 0) return;
+      if (sk.job !== h.job || sk.star > st + 1 || h.learned.indexOf(sk.id) >= 0) return;
       h.learned.push(sk.id); got.push(sk.name);
       var free = h.set.indexOf(null);
       if (free >= 0 && GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) h.set[free] = sk.id;

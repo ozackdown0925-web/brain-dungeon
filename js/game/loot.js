@@ -88,9 +88,12 @@ var Loot = (function () {
   }
 
   // 敵が落とすもの：ゴールド 3＋d、素材は30%で1つ（ゴブリン → 鉄、つる草の魔物 → 魔石）（draft 2）
+  // 敵を増やしたので、1体あたりは Dungeon.rewardScale(d) 倍（1階層の合計は前と同じ）
   function enemyDrop(type, floor) {
-    var drop = { gold: 3 + floor, mat: null };
-    if (Math.random() < 0.3) drop.mat = type === "vine" ? "stone" : "iron";
+    var k = Dungeon.rewardScale(floor);
+    var g = (3 + floor) * k;
+    var drop = { gold: Math.floor(g) + (Math.random() < g - Math.floor(g) ? 1 : 0), mat: null }; // 小数は確率で切り上げ（合計がずれないように）
+    if (Math.random() < 0.3 * k) drop.mat = type === "vine" ? "stone" : "iron";
     return drop;
   }
 

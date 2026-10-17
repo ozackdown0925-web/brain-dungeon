@@ -104,13 +104,14 @@ var Combat = (function () {
     var w = GameData.WEAPONS[c.weapon];
     a.wait = w.wait * Party.eff(c, "wait");
     var ang = shotRange(c) ? aimAt(shotRange(c)) : Math.atan2(a.face.y, a.face.x);
-    if (w.shot) { addShot(c, { stat: "p", mult: 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }, ang); return; }
+    // 1回の強さは武器ごとの倍率（data.js の power）
+    if (w.shot) { addShot(c, { stat: "p", mult: w.power || 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }, ang); return; }
     if (w.bolt && GameData.inLine(c.job, w.boltFor)) {
-      addShot(c, { stat: "m", mult: 1, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff" }, ang);
+      addShot(c, { stat: "m", mult: w.bolt.power || 1, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff" }, ang);
       return;
     }
     a.swing = 0.15; a.swingArc = w.arc; a.swingReach = w.reach; a.swingColor = "#ffffff";
-    hitArc(c, { stat: "p", mult: 1, elem: "weapon" }, w.reach, w.arc);
+    hitArc(c, { stat: "p", mult: w.power || 1, elem: "weapon" }, w.reach, w.arc);
   }
 
   // ---------- スキル ----------

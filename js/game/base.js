@@ -123,7 +123,7 @@ var Base = (function () {
       info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : "はじめの" + GameData.WEAPONS[GameState.starterWeapon(h.job)].name) +
         "　防具：" + (h.equip.armor ? Loot.describe(h.equip.armor) : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name)));
       info.appendChild(el("div", "hero-skills", "スキル：" + h.set.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") +
-        (h.learned.length ? "" : "（★1 になると覚える）")));
+        ""));
       card.appendChild(info);
       pbox.appendChild(card);
     });
