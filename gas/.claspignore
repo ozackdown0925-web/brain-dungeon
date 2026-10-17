@@ -1,0 +1,5 @@
+# clasp push で送るのは、この3種類だけ（手順書などは送らない）
+**/**
+!Code.gs
+!*.html
+!appsscript.json

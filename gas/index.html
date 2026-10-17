@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>毎日4問ドリル</title>
+<?!= include('theme'); ?>
+<style>
+/* レイアウト：ノートの1ページ。上に教科タブ、左に問題と答え、右に方眼のメモ（iPad横）。縦や狭い画面では縦に積む。 */
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; display: grid; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+.top h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; margin: 0; letter-spacing: 0.02em; }
+.top .date { color: var(--ink-soft); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.top .streak { font-family: var(--font-display); font-size: 1rem; }
+.top .streak b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+nav.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tab { appearance: none; border: 2px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: var(--radius); padding: 10px 8px; font: inherit; cursor: pointer; display: grid; justify-items: center; gap: 2px; min-height: 64px; }
+.tab .name { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--c); }
+.tab .state { font-size: 0.85rem; color: var(--ink-soft); }
+.tab[aria-selected="true"] { border-color: var(--c); box-shadow: inset 0 -5px 0 var(--c); }
+.tab.done-ok .state { color: var(--ok); font-weight: 700; }
+.tab.done-ng .state { color: var(--ng); font-weight: 700; }
+
+main.page { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { main.page { grid-template-columns: minmax(0, 1fr); } }
+.qcard { background: var(--sheet); border: 1px solid var(--rule); border-top: 6px solid var(--c); border-radius: var(--radius); padding: 18px 20px 20px; display: grid; gap: 14px; min-width: 0; }
+.nextrow { display: flex; justify-content: flex-end; }
+
+.memo { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px; display: grid; gap: 10px; min-width: 0; position: sticky; top: 8px; }
+.memo .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.memo .bar .label { font-family: var(--font-display); font-weight: 700; color: var(--ink-soft); }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool { appearance: none; font: inherit; font-size: 0.95rem; border: 2px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 14px; cursor: pointer; min-height: 40px; }
+.tool[aria-pressed="true"] { border-color: var(--ink); font-weight: 700; }
+.tool .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.canvasbox { position: relative; width: 100%; height: 480px; border-radius: 10px; overflow: hidden; border: 1px solid var(--rule);
+  background-color: var(--sheet);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; }
+.canvasbox canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+@media (max-width: 860px) { .canvasbox { height: 380px; } .memo { position: static; } }
+
+.donebox { background: var(--sheet); border: 2px solid var(--ok); border-radius: var(--radius); padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
+.donebox h2 { font-family: var(--font-display); margin: 0; font-size: 1.3rem; color: var(--ok); }
+
+section.log { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 14px; min-width: 0; }
+.log h2 { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+.log .grid2 { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 860px) { .log .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.tablewrap { overflow-x: auto; }
+table.days { border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+table.days th, table.days td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.days th[scope="row"] { text-align: left; color: var(--c); font-family: var(--font-display); }
+table.days thead th { color: var(--ink-soft); font-weight: 400; font-size: 0.8rem; }
+.mk-ok { color: var(--ok); font-weight: 700; }
+.mk-ng { color: var(--ng); font-weight: 700; }
+.mk-none { color: var(--rule); }
+ul.weak { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.weak li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.95rem; }
+ul.weak .bar2 { grid-column: 1 / -1; height: 6px; background: var(--grid); border-radius: 3px; overflow: hidden; }
+ul.weak .bar2 span { display: block; height: 100%; background: var(--c); }
+</style>
+<?!= include('drillcore'); ?>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>毎日4問ドリル</h1>
+      <div class="date" id="today"></div>
+    </div>
+    <div class="streak" id="streak" hidden>連続 <b id="streakNum">0</b> 日</div>
+  </header>
+  <div class="notice" id="notice" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="教科" id="tabs"></nav>
+
+  <div class="donebox" id="donebox" hidden>
+    <h2>今日の4問、おわり！</h2>
+    <span id="doneScore"></span>
+  </div>
+
+  <main class="page">
+    <article class="qcard" id="qcard" aria-live="polite"></article>
+    <aside class="memo" aria-label="メモ">
+      <div class="bar">
+        <span class="label">メモ</span>
+        <div class="tools" role="group" aria-label="ペン">
+          <button class="tool" type="button" id="penBlack" aria-pressed="true"><span class="dot" style="background:var(--pen)"></span>えんぴつ</button>
+          <button class="tool" type="button" id="penRed" aria-pressed="false"><span class="dot" style="background:var(--ng)"></span>赤</button>
+          <button class="tool" type="button" id="eraser" aria-pressed="false">消しゴム</button>
+          <button class="tool" type="button" id="clear">ぜんぶ消す</button>
+        </div>
+      </div>
+      <div class="canvasbox" id="canvasbox"></div>
+    </aside>
+  </main>
+
+  <section class="log" aria-labelledby="logTitle">
+    <h2 id="logTitle">これまでの記録</h2>
+    <div class="grid2">
+      <div>
+        <div class="tablewrap"><table class="days" id="daysTable"></table></div>
+      </div>
+      <div>
+        <p class="muted" style="margin-bottom:6px">まちがえが多い単元</p>
+        <ul class="weak" id="weakList"></ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var SUBJECTS = DrillCore.SUBJECTS;
+  var REVIEW_AFTER_DAYS = 3;
+  var $ = function (id) { return document.getElementById(id); };
+  var gas = (window.google && google.script && google.script.run) ? google.script.run : null;
+
+  // ---------- 日付 ----------
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseYmd(s) { var a = s.split("-").map(Number); return new Date(a[0], a[1] - 1, a[2]); }
+  function daysBetween(a, b) { return Math.round((parseYmd(b) - parseYmd(a)) / 86400000); }
+  var WD = ["日", "月", "火", "水", "木", "金", "土"];
+  var today = ymd(new Date());
+
+  // ---------- 状態 ----------
+  var Q = [];               // 有効な問題
+  var byId = {};
+  var days = {};            // date -> { items: { math: 記録, ... } }
+  var picks = {};           // subject -> { qid, review }
+  var current = "math";
+  var ready = false;
+  var writeChain = Promise.resolve();
+
+  // ---------- 図の読みこみ（同じ図は1回だけ取りにいく） ----------
+  var imgCache = {};
+  function loadImage(id) {
+    if (!imgCache[id]) imgCache[id] = new Promise(function (resolve, reject) {
+      if (!gas) return resolve(window.PREVIEW_IMAGES ? window.PREVIEW_IMAGES[id] : null);
+      gas.withSuccessHandler(resolve).withFailureHandler(reject).getImage(id);
+    });
+    return imgCache[id];
+  }
+
+  // ---------- 今日の問題を選ぶ ----------
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function itemOf(subject) { return days[today] && days[today].items && days[today].items[subject]; }
+  function historyFor(subject) {
+    var last = {};
+    Object.keys(days).sort().forEach(function (d) {
+      if (d >= today) return;
+      var it = days[d].items && days[d].items[subject];
+      if (it && it.qid) last[it.qid] = { date: d, correct: !!it.correct };
+    });
+    return last;
+  }
+  function choose(subject) {
+    var t = itemOf(subject);
+    if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
+    var pool = Q.filter(function (q) { return q.subject === subject; });
+    if (!pool.length) return null;
+    var last = historyFor(subject);
+    var due = pool.filter(function (q) { var l = last[q.id]; return l && !l.correct && daysBetween(l.date, today) >= REVIEW_AFTER_DAYS; })
+      .sort(function (a, b) { return last[a.id].date < last[b.id].date ? -1 : 1; });
+    if (due.length) return { qid: due[0].id, review: true };
+    // まだ解いていない問題：①テストでまちがえた問題 ②正答率の高い問題 の順。同じ順位なら日によって変える
+    var unseen = pool.filter(function (q) { return !last[q.id]; });
+    if (unseen.length) {
+      unseen.sort(function (a, b) { return priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
+      return { qid: unseen[0].id, review: false };
+    }
+    var oldest = pool.slice().sort(function (a, b) { return last[a.id].date < last[b.id].date ? -1 : last[a.id].date > last[b.id].date ? 1 : priority(b) - priority(a); });
+    return { qid: oldest[0].id, review: false };
+  }
+  // 問題の正答率（小問の平均。正答率がなければ50とみなす）
+  function rateOf(q) {
+    var r = DrillCore.asList(q.parts).map(function (p) { return Number(p.rate); }).filter(function (v) { return isFinite(v) && v > 0; });
+    if (!r.length) return 50;
+    return r.reduce(function (s, v) { return s + v; }, 0) / r.length;
+  }
+  // 大きいほど先に出す。テストでまちがえた問題は正答率に関係なく先（ただし正答率30%未満の難問は後回し）
+  function priority(q) {
+    var r = rateOf(q);
+    return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0);
+  }
+  function pickAll() { SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); }); }
+
+  // ---------- 記録 ----------
+  function saveAnswer(subject, record) {
+    var day = days[today] || { date: today, items: {} };
+    day.items[subject] = record; days[today] = day;
+    if (!gas) return;
+    var body = Object.assign({ date: today, subject: subject }, record);
+    function send(tries) {
+      return new Promise(function (resolve) {
+        gas.withSuccessHandler(function () { resolve(true); })
+          .withFailureHandler(function () { if (tries > 0) setTimeout(function () { send(tries - 1).then(resolve); }, 2000); else resolve(false); })
+          .saveAnswer(body);
+      });
+    }
+    writeChain = writeChain.then(function () { return send(2); }).then(function (ok) {
+      if (!ok) showNotice("記録を保存できませんでした。インターネットにつながっているか確認して、もう一度開いてください。");
+    });
+  }
+  function showNotice(text) { var n = $("notice"); n.textContent = text; n.hidden = !text; }
+
+  // ---------- 描画 ----------
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function renderTabs() {
+    var nav = $("tabs"); nav.textContent = "";
+    SUBJECTS.forEach(function (s) {
+      var it = itemOf(s.key);
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "tab"; b.dataset.s = s.key; b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", String(s.key === current));
+      if (it) b.classList.add(it.correct ? "done-ok" : "done-ng");
+      b.append(el("span", "name", s.name), el("span", "state", it ? (it.correct ? "○ 正解" : "× まちがい") : "まだ"));
+      b.addEventListener("click", function () { current = s.key; renderAll(); });
+      nav.append(b);
+    });
+    var done = SUBJECTS.filter(function (s) { return itemOf(s.key); }).length;
+    var ok = SUBJECTS.filter(function (s) { return itemOf(s.key) && itemOf(s.key).correct; }).length;
+    $("donebox").hidden = done < SUBJECTS.length;
+    $("doneScore").textContent = SUBJECTS.length + "問中 " + ok + "問 正解。まちがえた問題は" + REVIEW_AFTER_DAYS + "日後にもう一度出ます。";
+  }
+  var shownKey = "";
+  function renderQuestion(force) {
+    var card = $("qcard"); card.dataset.s = current;
+    document.querySelector(".memo").dataset.s = current;
+    if (!ready) { card.textContent = ""; card.append(el("p", "muted", "今日の問題を用意しています…")); return; }
+    var pick = picks[current]; var q = pick && byId[pick.qid];
+    if (!q) { card.textContent = ""; card.append(el("p", "muted", "この教科の問題がまだありません。")); return; }
+    var saved = itemOf(current) || null;
+    var key = current + "|" + q.id + "|" + (saved ? "done" : "open");
+    if (!force && key === shownKey) return; // 入力中の答えを消さない
+    shownKey = key;
+    var holder = el("div"); card.textContent = ""; card.append(holder);
+    DrillCore.renderQuestion(holder, q, {
+      imageLoader: loadImage, saved: saved, review: pick.review,
+      extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
+      reviewNote: REVIEW_AFTER_DAYS + "日後にもう一度出ます。",
+      onFinish: function (res) {
+        var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
+        saveAnswer(current, rec);
+        shownKey = current + "|" + q.id + "|done";
+        renderTabs(); renderLog(); appendNext(card);
+      }
+    });
+    if (saved) appendNext(card);
+  }
+  function appendNext(card) {
+    var nextS = SUBJECTS.filter(function (s) { return !itemOf(s.key); })[0];
+    if (!nextS) return;
+    var row = el("div", "nextrow");
+    var b = el("button", "dq-btn ghost", "次は" + nextS.name + " →"); b.type = "button"; b.dataset.s = nextS.key;
+    b.addEventListener("click", function () { current = nextS.key; renderAll(); window.scrollTo(0, 0); });
+    row.append(b); card.append(row);
+  }
+  function renderLog() {
+    var dates = [];
+    for (var i = 13; i >= 0; i--) { var d = parseYmd(today); d.setDate(d.getDate() - i); dates.push(ymd(d)); }
+    var t = $("daysTable"); t.textContent = "";
+    var thead = document.createElement("thead"); var hr = document.createElement("tr");
+    hr.append(el("th", null, ""));
+    dates.forEach(function (d) { var dd = parseYmd(d); hr.append(el("th", null, (dd.getMonth() + 1) + "/" + dd.getDate())); });
+    thead.append(hr); t.append(thead);
+    var tb = document.createElement("tbody");
+    SUBJECTS.forEach(function (s) {
+      var tr = document.createElement("tr"); tr.dataset.s = s.key;
+      var th = el("th", null, s.name); th.scope = "row"; tr.append(th);
+      dates.forEach(function (d) {
+        var it = days[d] && days[d].items && days[d].items[s.key];
+        tr.append(el("td", it ? (it.correct ? "mk-ok" : "mk-ng") : "mk-none", it ? (it.correct ? "○" : "×") : "・"));
+      });
+      tb.append(tr);
+    });
+    t.append(tb);
+
+    var stats = {};
+    Object.keys(days).forEach(function (d) {
+      var items = days[d].items || {};
+      Object.keys(items).forEach(function (s) {
+        var it = items[s]; var unit = it.unit || (byId[it.qid] || {}).unit || "その他";
+        var k = s + "|" + unit; var st = stats[k] || (stats[k] = { s: s, unit: unit, ok: 0, n: 0 });
+        st.n++; if (it.correct) st.ok++;
+      });
+    });
+    var all = Object.keys(stats).map(function (k) { return stats[k]; });
+    var weak = all.filter(function (x) { return x.ok < x.n; }).sort(function (a, b) { return a.ok / a.n - b.ok / b.n || b.n - a.n; }).slice(0, 8);
+    var ul = $("weakList"); ul.textContent = "";
+    if (!weak.length) ul.append(el("li", "muted", all.length ? "まちがえた単元はまだありません。" : "解いた問題がここに記録されます。"));
+    weak.forEach(function (w) {
+      var li = el("li"); li.dataset.s = w.s;
+      li.append(el("span", null, DrillCore.subjectName(w.s) + "・" + w.unit), el("span", null, w.ok + "/" + w.n));
+      var bar = el("div", "bar2"); var fill = el("span"); fill.style.width = (w.ok / w.n * 100) + "%"; bar.append(fill); li.append(bar);
+      ul.append(li);
+    });
+
+    var streak = 0; var cur = parseYmd(today);
+    var has = function (d) { return days[d] && Object.keys(days[d].items || {}).length; };
+    if (!has(today)) cur.setDate(cur.getDate() - 1);
+    while (has(ymd(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+    $("streak").hidden = streak === 0; $("streakNum").textContent = streak;
+  }
+  function renderHeader() { var d = parseYmd(today); $("today").textContent = d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日（" + WD[d.getDay()] + "）"; }
+  function renderAll() { renderHeader(); renderTabs(); renderQuestion(); showMemo(current); renderLog(); }
+
+  // ---------- メモ（教科ごとに1枚） ----------
+  var memo = { color: "pen", erase: false };
+  var canvases = {};
+  function makeCanvas(subject) {
+    var c = document.createElement("canvas"); c.hidden = true; c.setAttribute("aria-label", "メモ用の方眼");
+    $("canvasbox").append(c); canvases[subject] = c;
+    var ctx = c.getContext("2d");
+    var drawing = false, lastX = 0, lastY = 0;
+    function pos(e) { var r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    c.addEventListener("pointerdown", function (e) { drawing = true; c.setPointerCapture(e.pointerId); var p = pos(e); lastX = p[0]; lastY = p[1]; dot(lastX, lastY, e); });
+    c.addEventListener("pointermove", function (e) {
+      if (!drawing) return;
+      var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      if (!evs.length) evs = [e];
+      evs.forEach(function (ev) { var p = pos(ev); line(lastX, lastY, p[0], p[1], ev); lastX = p[0]; lastY = p[1]; });
+    });
+    function stop() { drawing = false; }
+    c.addEventListener("pointerup", stop); c.addEventListener("pointercancel", stop); c.addEventListener("pointerleave", stop);
+    function style(ev) {
+      var pr = ev.pressure && ev.pointerType === "pen" ? ev.pressure : 0.5;
+      ctx.globalCompositeOperation = memo.erase ? "destination-out" : "source-over";
+      ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(memo.color === "red" ? "--ng" : "--pen").trim();
+      ctx.lineWidth = memo.erase ? 22 : 1.4 + pr * 2.6;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+    }
+    function line(x1, y1, x2, y2, ev) { style(ev); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    function dot(x, y, ev) { style(ev); ctx.beginPath(); ctx.arc(x, y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill(); }
+    fit(c);
+    return c;
+  }
+  function fit(c) {
+    var box = $("canvasbox"); var dpr = window.devicePixelRatio || 1;
+    var w = Math.round(box.clientWidth * dpr), h = Math.round(box.clientHeight * dpr);
+    if (!w || !h || (c.width === w && c.height === h)) return;
+    var old = null;
+    if (c.width) { old = document.createElement("canvas"); old.width = c.width; old.height = c.height; old.getContext("2d").drawImage(c, 0, 0); }
+    c.width = w; c.height = h;
+    var ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (old) ctx.drawImage(old, 0, 0, old.width / dpr, old.height / dpr);
+  }
+  function showMemo(subject) {
+    SUBJECTS.forEach(function (s) { var c = canvases[s.key] || makeCanvas(s.key); c.hidden = s.key !== subject; });
+    fit(canvases[subject]);
+  }
+  function setTool(which) {
+    memo.erase = which === "eraser"; if (!memo.erase) memo.color = which === "red" ? "red" : "pen";
+    $("penBlack").setAttribute("aria-pressed", String(which === "pen"));
+    $("penRed").setAttribute("aria-pressed", String(which === "red"));
+    $("eraser").setAttribute("aria-pressed", String(which === "eraser"));
+  }
+  $("penBlack").addEventListener("click", function () { setTool("pen"); });
+  $("penRed").addEventListener("click", function () { setTool("red"); });
+  $("eraser").addEventListener("click", function () { setTool("eraser"); });
+  $("clear").addEventListener("click", function () { var c = canvases[current]; if (c) { var ctx = c.getContext("2d"); ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height); ctx.restore(); } });
+  window.addEventListener("resize", function () { var c = canvases[current]; if (c) fit(c); });
+
+  // ---------- 起動 ----------
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && ymd(new Date()) !== today) { today = ymd(new Date()); picks = {}; pickAll(); current = "math"; shownKey = ""; renderAll(); }
+  });
+
+  function start(questions, records, notice) {
+    Q = (questions || []).filter(function (q) { return q && q.id && q.enabled !== false; });
+    byId = {}; Q.forEach(function (q) { byId[q.id] = q; });
+    days = {};
+    (records || []).forEach(function (r) {
+      if (!r || !r.date || !r.subject) return;
+      var d = days[r.date] || (days[r.date] = { date: r.date, items: {} });
+      d.items[r.subject] = r; // 同じ日・同じ教科が2行あれば後の行を使う
+    });
+    ready = true; showNotice(notice || ""); pickAll(); renderAll();
+  }
+
+  renderAll();
+  if (!gas) {
+    start(window.PREVIEW_QUESTIONS || [], window.PREVIEW_RECORDS || [], "プレビュー表示です。ここで解いた結果は保存されません。");
+  } else {
+    showNotice("問題を読みこんでいます…");
+    var got = { q: null, r: null, fail: false };
+    function maybe() { if (got.q && got.r) start(got.q, got.r, got.fail ? "記録を読みこめませんでした。問題は解けますが、保存されないことがあります。" : ""); }
+    gas.withSuccessHandler(function (qs) { got.q = qs; maybe(); })
+      .withFailureHandler(function () { got.q = []; maybe(); showNotice("問題を読みこめませんでした。インターネットにつながっているか確認して、開き直してください。"); })
+      .getQuestions();
+    gas.withSuccessHandler(function (rs) { got.r = rs; maybe(); })
+      .withFailureHandler(function () { got.r = []; got.fail = true; maybe(); })
+      .getHistory();
+  }
+})();
+</script>
+</body>
+</html>
