@@ -12,11 +12,12 @@ var GameData = (function () {
     sword:      { name: "剣",   element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
     greatsword: { name: "大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
     axe:        { name: "斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
-    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 0.8, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
+    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
     fist:       { name: "拳",   element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
-    // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9）、それ以外の職は近くをたたく（物攻・打・倍率1.15）
+    // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9・待ち1.0秒）、それ以外の職は近くをたたく（物攻・打・倍率1.15・待ち0.7秒）
+    // 弓と魔法弾の待ち時間は 2026-10-18 保護者と決定（弓 0.8→1.1秒、魔法弾 0.7→1.0秒）
     staff:      { name: "杖",   element: "strike", patk: 4,  matk: 8, wait: 0.7, power: 1.15, reach: 16, arc: 1.0,
-                  boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none", power: 0.9 } }
+                  boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none", power: 0.9, wait: 1.0 } }
   };
 
   // 防具（ノーマル・アイテムレベル1）。宝箱・お店・鍛冶屋で手に入るもの（2026-10-17 案H：重装備は物理に、魔法装備は魔法に強い）
@@ -163,17 +164,18 @@ var GameData = (function () {
       reach: 12, windup: 0.35, cooldown: 1.3, color: "#8a8f9a"
     },
     // ボス（段階4-3）。HP はたたき台 docs/draft.md 2 のまま。物攻・物防・魔防は、たたき台にないので仮の数字（遊んでみて直す）
+    // 2026-10-18 保護者と決定：攻撃を1.3倍に、ふつうの攻撃と大技の間かくを約2割短く（HP はそのまま）
     wolf_boss: {
-      name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 13, pdef: 6, mdef: 4,
+      name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 17, pdef: 6, mdef: 4,
       res: { slash: 1.5, fire: 1.5 }, speed: 34, r: 12,
-      reach: 18, windup: 0.5, cooldown: 1.4, color: "#6e7280",
-      chargeWarn: 1.5, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 7, howlEvery: 16
+      reach: 18, windup: 0.5, cooldown: 1.1, color: "#6e7280",
+      chargeWarn: 1.5, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 5.5, howlEvery: 13
     },
     tree_boss: {
-      name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 18, pdef: 7, mdef: 5,
+      name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 23, pdef: 7, mdef: 5,
       res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 18,
-      reach: 40, windup: 0.6, cooldown: 1.6, color: "#5a3d22",
-      rootWarn: 2.0, rootMult: 3.0, rootEvery: 10, rootEveryHalf: 6, pollenEvery: 12, pollenRadius: 80, seedSpeed: 110
+      reach: 40, windup: 0.6, cooldown: 1.25, color: "#5a3d22",
+      rootWarn: 2.0, rootMult: 3.0, rootEvery: 8, rootEveryHalf: 5, pollenEvery: 10, pollenRadius: 80, seedSpeed: 110
     }
   };
 
@@ -221,6 +223,12 @@ var GameData = (function () {
 
   // 職の系統に入っているか
   function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
+  // ふつうの攻撃の待ち時間（杖で魔法弾をうつ職は、魔法弾の待ち時間）
+  function weaponWait(weapon, job) {
+    var w = WEAPONS[weapon];
+    if (w.bolt && w.bolt.wait && inLine(job, w.boltFor)) return w.bolt.wait;
+    return w.wait;
+  }
 
   // スキルの条件に合うか（合わないスキルはセットできない）
   function canSet(skill, job, weapon) {
@@ -241,6 +249,6 @@ var GameData = (function () {
   return {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
-    baseStats: baseStats, combatStats: combatStats, inLine: inLine, canSet: canSet, condText: condText
+    baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, canSet: canSet, condText: condText
   };
 })();

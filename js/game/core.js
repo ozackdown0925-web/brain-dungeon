@@ -614,7 +614,7 @@
       ctx.globalAlpha = 1;
     }
     if (A.wait > 0) {
-      var wt = GameData.WEAPONS[c.weapon].wait * Party.eff(c, "wait");
+      var wt = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait");
       bar(px - 8, py + 9, 16, 2, 1 - A.wait / wt, "#f2c14e");
     }
   }
