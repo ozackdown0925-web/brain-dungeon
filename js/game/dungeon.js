@@ -126,7 +126,7 @@ var Dungeon = (function () {
 
   // ---------- 敵の置き方 ----------
   // 1部屋に4〜6体（平均5体）。入口の部屋にもいる（2026-10-17 保護者の感想で、2〜4体から増やした）。
-  // ゴブリンの部隊が多く、ときどきつる草の魔物がまざる。
+  // ゴブリンの部隊が多く、ときどきつる草の魔物・キノコの魔物（8階からは大きな蜂も）がまざる。
   function enemyCount(rnd, floor) { return 4 + Math.floor(rnd() * 3); }
 
   // 敵1体あたりのごほうび（経験値・熟練度・ゴールド・素材の出る確率）の倍率。
@@ -142,6 +142,9 @@ var Dungeon = (function () {
     var n = enemyCount(rnd, floor), types = [];
     for (var i = 0; i < n; i++) types.push(SQUAD[i % 3]);
     if (rnd() < 0.35) types[types.length - 1] = "vine";
+    // キノコの魔物（どの階でも）と、大きな蜂（8階から）がまざる（2026-10-18 保護者と決定）
+    if (rnd() < 0.4) types[0] = "mushroom";
+    if (floor >= 8 && rnd() < 0.55) { types[1] = "bee"; if (n >= 5 && rnd() < 0.5) types[2] = "bee"; }
     // 道（入り口）から離れた、立てる場所
     var doorPts = [];
     doors.forEach(function (d) { doorPts.push(doorTiles(room.w, room.h, d)[1]); });

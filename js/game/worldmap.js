@@ -10,13 +10,13 @@ var WorldMap = (function () {
   var trialEl = document.getElementById("trialScreen");
   var MW = 320, MH = 180, FLOORS = 14;
 
-  // 地方：森の地方。拠点1つとダンジョン。まだ行けない場所は「？？？」
+  // 地方：フォレストヴェール（2026-10-18 決定）。拠点（エルム村）1つとダンジョン。まだ行けない場所は「？？？」（瘴気の森・原生の秘境）
   var REGION = {
-    name: "森の地方",
+    name: GameData.PLACES.region,
     spots: [
-      { id: "base", kind: "base", name: "森の拠点", x: 92, y: 112 },
-      { id: "forest1", kind: "dungeon", name: "深い森", floors: FLOORS, x: 208, y: 58, open: true,
-        note: "ゴブリンの部隊と、つる草の魔物がすむ森。7階に大オオカミ、14階に森の主がいる。" },
+      { id: "base", kind: "base", name: GameData.PLACES.base, x: 92, y: 112 },
+      { id: "forest1", kind: "dungeon", name: GameData.PLACES.dungeon1, floors: FLOORS, x: 208, y: 58, open: true,
+        note: "若葉のしげる深い樹海。ゴブリンの部隊と、つる草の魔物がすむ。7階に大オオカミ、14階に森の主がいる。" },
       { id: "locked1", kind: "dungeon", name: "？？？", x: 262, y: 128, open: false },
       { id: "locked2", kind: "dungeon", name: "？？？", x: 44, y: 40, open: false }
     ]

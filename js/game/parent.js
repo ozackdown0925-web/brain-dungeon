@@ -179,7 +179,7 @@ var Parent = (function () {
         var hm = at.getHours() + ":" + ("0" + at.getMinutes()).slice(-2);
         var line = el("div", "log-line");
         if (r.kind === "rest") line.appendChild(document.createTextNode("休みの日（知恵の試練だけ）　" + hm + "　"));
-        else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　森の " + r.floor + " 階　" + (KIND[r.kind] || r.kind) + "　")); }
+        else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　" + GameData.floorLabel(r.floor) + "　" + (KIND[r.kind] || r.kind) + "　")); }
         line.appendChild(document.createTextNode("試練 " + r.correct + " / 4　"));
         SUBJECTS.forEach(function (s) {
           var ok = (r.subjects || []).indexOf(s.id) >= 0;

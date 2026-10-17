@@ -52,8 +52,8 @@
     if (resume) applyResume(resume);
     enterRoom(dg.start, null);
     prerender(dg);
-    if (resume) say("森の " + floor + " 階　続きから（入口にもどった）");
-    else say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
+    if (resume) say(GameData.floorLabel(floor) + "　続きから（入口にもどった）");
+    else say(GameData.floorLabel(floor) + (dg.boss ? "　この先に、ボスがいる…！" : "　出口をめざそう！"));
     saveTimer = 0;
     snapshot();
     if (!resume && !trial.tryMode && window.Sync) Sync.save("", ""); // 階に入るとき（区切り）に GAS へ
@@ -662,7 +662,7 @@
   function finish(kind) {
     if (run.over) return;
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
-    var titles = { clear: "森の " + dg.floor + " 階をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
+    var titles = { clear: GameData.floorLabel(dg.floor) + "をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
     document.getElementById("chooseTitle").textContent = titles[kind];
     if (kind === "clear") {
       run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold;
