@@ -130,7 +130,9 @@ var WorldMap = (function () {
   function toTrial(floor) {
     dlg.hidden = true;
     el.hidden = true;
-    Trial.open(floor, function (res) { Base.depart(floor, res); });
+    // 出発ごとに新しい4問（1日に出発できる回数まで。テスト用に回数の制限をはずしたときは、最後の回をくり返す）
+    var round = Math.min(GameState.adventuresToday() + 1, GameState.parent().perDay);
+    Trial.open(floor, function (res) { Base.depart(floor, res); }, { round: round });
   }
 
   // 休みの日（保護者画面で決める）：ダンジョンは閉じていて、知恵の試練だけ解ける（段階6-2）

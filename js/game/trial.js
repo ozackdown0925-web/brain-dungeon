@@ -21,6 +21,9 @@ var Trial = (function () {
   var Q = [], byId = {}, days = {}, picks = {}, current = "math", ready = false, shownKey = "";
   var writeChain = Promise.resolve();
   var onDone = null, floorNo = 1, rest = false;
+  // 何回目の試練か（1日に出発できる回数まで。出発ごとに新しい4問。2026-10-17）
+  // 記録の形は変えない：同じ日・同じ教科の記録の、何番目かで見分ける（1番目＝1回目、2番目＝2回目）
+  var round = 1, memoFor = "";
 
   function pad(n) { return ("0" + n).slice(-2); }
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -31,11 +34,14 @@ var Trial = (function () {
   // opts.rest：休みの日（ダンジョンは閉じていて、知恵の試練だけ解く。段階6-2）
   function open(floor, done, opts) {
     floorNo = floor; onDone = done; today = ymd(new Date()); rest = !!(opts && opts.rest);
+    round = Math.max(1, (opts && opts.round) || 1);
+    // 新しい試練になったら、メモを白紙にする
+    if (memoFor !== today + "#" + round) { clearMemos(); memoFor = today + "#" + round; }
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
     $("trialSub").textContent = rest ? "今日はお休みの日。ダンジョンは閉じているけれど、知恵の試練は解けるよ。" :
-      "森の " + floor + " 階へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
+      (round > 1 ? "今日の " + round + " 回目の試練。" : "") + "森の " + floor + " 階へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
     document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;
@@ -78,8 +84,8 @@ var Trial = (function () {
     days = {};
     (records || []).forEach(function (r) {
       if (!r || !r.date || !r.subject) return;
-      var d = days[r.date] || (days[r.date] = { date: r.date, items: {} });
-      d.items[r.subject] = r;
+      var d = days[r.date] || (days[r.date] = { date: r.date, lists: {} });
+      (d.lists[r.subject] || (d.lists[r.subject] = [])).push(r); // 記録の順（古い順）
     });
     ready = true;
     SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); });
@@ -91,15 +97,21 @@ var Trial = (function () {
 
   // ---------- 出題（ドリルと同じルール） ----------
   function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-  function itemOf(subject) { return days[today] && days[today].items && days[today].items[subject]; }
+  function todayList(subject) { return (days[today] && days[today].lists[subject]) || []; }
+  // この回（round）に、この教科で解いた記録
+  function itemOf(subject) { return todayList(subject)[round - 1]; }
+  // 正解した回数：前の日の記録と、今日のこの回より前の記録
   function historyFor(subject) {
     var h = {};
     Object.keys(days).forEach(function (d) {
-      if (d >= today) return;
-      var it = days[d].items && days[d].items[subject];
-      if (!it || !it.qid) return;
-      var x = h[it.qid] || (h[it.qid] = { ok: 0, tries: 0 });
-      x.tries++; if (it.correct) x.ok++;
+      if (d > today) return;
+      var list = days[d].lists[subject] || [];
+      if (d === today) list = list.slice(0, round - 1);
+      list.forEach(function (it) {
+        if (!it || !it.qid) return;
+        var x = h[it.qid] || (h[it.qid] = { ok: 0, tries: 0 });
+        x.tries++; if (it.correct) x.ok++;
+      });
     });
     return h;
   }
@@ -114,6 +126,10 @@ var Trial = (function () {
     if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
     var pool = Q.filter(function (q) { return q.subject === subject; });
     if (!pool.length) return null;
+    // 今日もう出した問題は、ほかに問題があれば出さない（2回目に同じ問題が続かないように）
+    var shown = todayList(subject).slice(0, round - 1).map(function (r) { return r.qid; });
+    var fresh = pool.filter(function (q) { return shown.indexOf(q.id) < 0; });
+    if (fresh.length) pool = fresh;
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
     pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
@@ -123,8 +139,9 @@ var Trial = (function () {
 
   // ---------- 記録（送れないときは iPad の中に控えて、あとで送る） ----------
   function saveAnswer(subject, record) {
-    var day = days[today] || { date: today, items: {} };
-    day.items[subject] = record; days[today] = day;
+    var day = days[today] || (days[today] = { date: today, lists: {} });
+    var list = day.lists[subject] || (day.lists[subject] = []);
+    list[round - 1] = record;
     var body = Object.assign({ date: today, subject: subject }, record);
     body._k = key;
     var list = readPending(); list.push(body); writePending(list);
@@ -270,6 +287,9 @@ var Trial = (function () {
     c.width = w; c.height = h;
     var ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (old) ctx.drawImage(old, 0, 0, old.width / dpr, old.height / dpr);
+  }
+  function clearMemos() {
+    Object.keys(canvases).forEach(function (k) { var c = canvases[k]; var x = c.getContext("2d"); x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); x.restore(); });
   }
   function showMemo(subject) {
     if (screen.hidden) return;
