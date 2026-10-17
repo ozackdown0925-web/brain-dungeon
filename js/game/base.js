@@ -17,9 +17,9 @@ var Base = (function () {
     priest: "杖でたたく。仲間全員の HP を回復できる。"
   };
   var DEFAULT = [
-    { name: "アレン", job: "warrior", face: 0 },
-    { name: "ミラ", job: "mage", face: 1 },
-    { name: "ロイ", job: "hunter", face: 2 }
+    { name: "アレン", job: "warrior", face: 1 },
+    { name: "ミラ", job: "mage", face: 4 },
+    { name: "ロイ", job: "hunter", face: 3 }
   ];
 
   function el(tag, cls, text) {
@@ -101,7 +101,7 @@ var Base = (function () {
       });
       card.appendChild(jobs); card.appendChild(note);
 
-      card.appendChild(el("div", "cc-label", "顔（仮の絵。段階7で差しかえ）"));
+      card.appendChild(el("div", "cc-label", "顔（髪の色は、ダンジョンの中の姿と同じ）"));
       var faces = el("div", "cc-faces");
       for (var f = 0; f < Faces.count; f++) (function (f) {
         var b = el("button", "face-btn" + (f === p.face ? " sel" : "")); b.type = "button";
