@@ -577,24 +577,20 @@
   function drawActor() {
     var c = Party.current();
     var px = Math.round(A.x - cam.x), py = Math.round(A.y - cam.y);
-    var bob = Math.sin(A.walk) > 0 ? 1 : 0;
     var ctx = Render.ctx;
     if (A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
     Render.rect(px - 6, py + 5, 12, 3, "rgba(0,0,0,0.35)");
-    Render.rect(px - 5, py - 6 - bob, 10, 11, GameData.JOBS[c.job].color);
-    Render.rect(px - 4, py - 12 - bob, 8, 7, "#f5d7b0");
-    var ey = py - 10 - bob + (A.face.y < -0.5 ? -2 : 0);
-    Render.rect(px - 4 + Math.round(A.face.x * 2), ey, 2, 2, "#11131b");
-    Render.rect(px + 1 + Math.round(A.face.x * 2), ey, 2, 2, "#11131b");
-    // 武器（仮の絵）。敵を全滅させた部屋で走っているあいだは、武器をしまう（背中に小さく）
-    var w = c.weapon;
-    ctx.strokeStyle = w === "bow" ? "#a0703a" : w === "staff" ? "#c9a8ff" : w === "fist" ? "#f5d7b0" : "#c9ccd6";
-    ctx.lineWidth = w === "greatsword" || w === "axe" ? 2 : 1;
-    if (A.running && A.swing <= 0) {
-      if (w !== "fist") { ctx.beginPath(); ctx.moveTo(px - A.face.x * 3 - 3, py - 10 - bob); ctx.lineTo(px - A.face.x * 3 + 3, py + 1 - bob); ctx.stroke(); }
-    } else {
-      ctx.beginPath(); ctx.moveTo(px + A.face.x * 4, py - 2 + A.face.y * 4); ctx.lineTo(px + A.face.x * (w === "fist" ? 7 : 11), py - 2 + A.face.y * (w === "fist" ? 7 : 11)); ctx.stroke();
-    }
+    // 段階7-2b：ドット絵（sprites.js）。歩く・走る・攻撃でコマを変える
+    var ph = Math.sin(A.walk), moving = A.move > 0.1;
+    var frame = A.swing > 0 ? "attack" : !moving ? "stand" : A.running ? (ph > 0 ? "runA" : "runB") : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
+    var hair = c.hero ? c.hero.face : 0;
+    var d = Sprites.dirOf(A.face);
+    // 武器：ふつうは手に、攻撃中はつき出し、敵を全滅させた部屋で走るときは背中にしまう
+    var mode = A.swing > 0 ? "attack" : A.running ? "back" : "hold";
+    var behind = mode === "back" ? d.dir !== "up" : d.dir === "up";
+    if (behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
+    Sprites.drawHero(ctx, c.job, hair, A.face, frame, px, py + 6);
+    if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
     if (c.status.sleep) Render.text("Zz", px + 7, py - 20, { size: 7, color: "#b48cf0" });
     if (A.swing > 0) {
       var ang = Math.atan2(A.face.y, A.face.x);
