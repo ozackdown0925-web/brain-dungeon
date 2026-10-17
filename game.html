@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=15">
+<link rel="stylesheet" href="css/game.css?v=16">
 </head>
 <body>
 <div id="stage">
@@ -55,6 +55,16 @@
         <p id="floorInfo" class="note"></p>
         <p id="chestInfo" class="note"></p>
       </div>
+    </div>
+  </div>
+
+  <!-- 段階5-3：途中で閉じた冒険の「続きから」 -->
+  <div id="resumeScreen" class="screen trial" hidden>
+    <div class="panel">
+      <h2>冒険のとちゅう</h2>
+      <p id="resumeText"></p>
+      <button type="button" id="resumeGo" class="btn big">続きから</button>
+      <button type="button" id="resumeQuit" class="btn small-btn quit">冒険をやめて拠点にもどる</button>
     </div>
   </div>
 
@@ -108,6 +118,7 @@
       <div id="createList" class="cc-list"></div>
       <p id="createNote" class="note"></p>
       <button type="button" id="createGo" class="btn big">冒険をはじめる</button>
+      <button type="button" id="createRestore" class="btn small-btn" hidden>（保護者むけ）前のセーブにもどす</button>
     </div>
   </div>
 
@@ -139,6 +150,8 @@
         <div class="test-foot">
           <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
         </div>
+        <h4 class="test-sub">セーブの復元（最近の10回分。データを消しても残る）</h4>
+        <div id="historyList"></div>
       </details>
     </div>
   </div>
@@ -152,23 +165,23 @@
   </div>
 </div>
 
-<script src="js/game/input.js?v=15"></script>
-<script src="js/game/render.js?v=15"></script>
-<script src="js/game/world.js?v=15"></script>
-<script src="js/game/rooms.js?v=15"></script>
-<script src="js/game/dungeon.js?v=15"></script>
-<script src="js/game/loot.js?v=15"></script>
-<script src="js/game/data.js?v=15"></script>
-<script src="js/game/state.js?v=15"></script>
-<script src="js/game/faces.js?v=15"></script>
-<script src="js/game/battle.js?v=15"></script>
-<script src="js/game/enemies.js?v=15"></script>
-<script src="js/game/bosses.js?v=15"></script>
-<script src="js/game/party.js?v=15"></script>
-<script src="js/game/skills.js?v=15"></script>
-<script src="js/game/town.js?v=15"></script>
-<script src="js/game/worldmap.js?v=15"></script>
-<script src="js/game/base.js?v=15"></script>
-<script src="js/game/core.js?v=15"></script>
+<script src="js/game/input.js?v=16"></script>
+<script src="js/game/render.js?v=16"></script>
+<script src="js/game/world.js?v=16"></script>
+<script src="js/game/rooms.js?v=16"></script>
+<script src="js/game/dungeon.js?v=16"></script>
+<script src="js/game/loot.js?v=16"></script>
+<script src="js/game/data.js?v=16"></script>
+<script src="js/game/state.js?v=16"></script>
+<script src="js/game/faces.js?v=16"></script>
+<script src="js/game/battle.js?v=16"></script>
+<script src="js/game/enemies.js?v=16"></script>
+<script src="js/game/bosses.js?v=16"></script>
+<script src="js/game/party.js?v=16"></script>
+<script src="js/game/skills.js?v=16"></script>
+<script src="js/game/town.js?v=16"></script>
+<script src="js/game/worldmap.js?v=16"></script>
+<script src="js/game/base.js?v=16"></script>
+<script src="js/game/core.js?v=16"></script>
 </body>
 </html>

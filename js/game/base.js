@@ -39,9 +39,36 @@ var Base = (function () {
   }
 
   // ---------- はじめに ----------
+  // 開いたとき：途中で閉じた冒険があれば「続きから」、終わったのに拠点にもどっていなければ受け取る（段階5-3）
   function boot() {
-    if (GameState.load()) showBase(null);
-    else showCreate();
+    if (!GameState.load()) { showCreate(); return; }
+    var a = GameState.adventure();
+    if (a && a.state === "finished") { returnFrom(a.result); return; }
+    if (a && a.state === "playing") {
+      if (GameState.adventureDate() === GameState.todayStr()) { showResume(a); return; }
+      // 日付が変わっていたら、時間切れと同じあつかいで終わらせる
+      var rep = GameState.applyAdventure(Adventure.resultFromSnapshot(a, "timeout"));
+      showBase({ result: Adventure.resultFromSnapshot(a, "timeout"), people: rep, note: "前の冒険は、日付が変わったので終わりにした（時間切れと同じ）。" });
+      return;
+    }
+    showBase(null);
+  }
+
+  // 「続きから」の画面
+  function showResume(a) {
+    var el2 = document.getElementById("resumeScreen");
+    var t = Math.ceil(a.timeLeft);
+    document.getElementById("resumeText").textContent =
+      "森の " + a.floor + " 階を冒険している途中です（のこり " + Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60) + "）。" +
+      "その階の入口から続けます。拾った物と経験値はそのまま。開けた宝箱は開いたまま、たおした敵はもどっています。";
+    document.getElementById("resumeGo").onclick = function () { el2.hidden = true; Adventure.resume(a); };
+    document.getElementById("resumeQuit").onclick = function () {
+      if (!window.confirm("冒険をやめて拠点にもどりますか？（拾った物と経験値は持ち帰れるけれど、階層は進みません）")) return;
+      el2.hidden = true;
+      returnFrom(Adventure.resultFromSnapshot(a, "quit"));
+    };
+    baseEl.hidden = true; createEl.hidden = true;
+    el2.hidden = false;
   }
 
   // ---------- キャラクリ ----------
@@ -89,6 +116,13 @@ var Base = (function () {
       GameState.newGame(picks.map(function (p) { return { name: p.name.replace(/^\s+|\s+$/g, ""), job: p.job, face: p.face }; }));
       createEl.hidden = true;
       showBase(null);
+    };
+    var hist = GameState.history(), rb = document.getElementById("createRestore");
+    rb.hidden = !hist.length;
+    rb.onclick = function () {
+      if (!hist.length) return;
+      if (!window.confirm("いちばん新しいセーブ（" + hist[0].label + "：" + hist[0].summary + "）にもどしますか？")) return;
+      if (GameState.restore(0)) { createEl.hidden = true; showBase(null); }
     };
     baseEl.hidden = true;
     createEl.hidden = false;
@@ -140,6 +174,7 @@ var Base = (function () {
     fillSelect("testLevel", [1, 5, 10, 20, 50, 100], g.party[0].level, function (n) { return "Lv" + n; });
     fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
+    fillHistory();
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
 
@@ -230,6 +265,27 @@ var Base = (function () {
   });
   window.addEventListener("resize", function () { if (!baseEl.hidden) drawTown(); });
 
+  // セーブの復元（最近の10回分）。段階6で、暗証番号つきの保護者画面へ移す
+  function fillHistory() {
+    var box = document.getElementById("historyList"); if (!box) return;
+    box.textContent = "";
+    var list = GameState.history();
+    if (!list.length) { box.appendChild(el("p", "note", "まだ控えがない")); return; }
+    list.forEach(function (h) {
+      var row = el("div", "item-line");
+      var d = new Date(h.at);
+      row.appendChild(el("span", "item-name", (d.getMonth() + 1) + "/" + d.getDate() + " " + d.getHours() + ":" + ("0" + d.getMinutes()).slice(-2) + "　" + h.label));
+      row.appendChild(el("span", "item-extra", h.summary));
+      var b = el("button", "btn small-btn", "このセーブにもどす"); b.type = "button";
+      b.onclick = function () {
+        if (!window.confirm("この時のセーブにもどします。今のセーブは、上の一覧に残っている時点までもどります。よいですか？")) return;
+        if (GameState.restore(h.index)) { showBase(null); document.getElementById("baseNote").textContent = "セーブを復元した"; }
+      };
+      row.appendChild(b);
+      box.appendChild(row);
+    });
+  }
+
   function range(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
   function fillSelect(id, values, cur, label) {
     var s = document.getElementById(id); s.textContent = "";
@@ -259,6 +315,7 @@ var Base = (function () {
     var box = document.getElementById("baseReport"); box.textContent = "";
     var r = rep.result;
     box.appendChild(el("h3", "", r.cleared ? "森の " + r.floor + " 階をクリアして、拠点にもどった" : "拠点にもどった"));
+    if (rep.note) box.appendChild(el("p", "", rep.note));
     box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");

@@ -36,7 +36,8 @@
 
   // ---------- 階層と部屋 ----------
   // 階層に入る：毎日の出発と同じく、HP・MP は全快。seed を省くと新しいつなぎ方。
-  function startFloor(floor, seed) {
+  // resume：途中で閉じた冒険の控え（GameState.adventure()）。あれば、その続きを「階層の入口から」始める（段階5-3）
+  function startFloor(floor, seed, resume) {
     settings.floor = floor;
     dg = Dungeon.generate(floor, seed || Dungeon.newSeed());
     Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
@@ -45,8 +46,71 @@
     pauseEl.hidden = true; chooseEl.hidden = true;
     A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
     run = newRun();
+    if (resume) applyResume(resume);
     enterRoom(dg.start, null);
-    say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
+    if (resume) say("森の " + floor + " 階　続きから（入口にもどった）");
+    else say(dg.boss ? "森の " + floor + " 階　この先に、ボスがいる…！" : "森の " + floor + " 階　出口をめざそう！");
+    saveTimer = 0;
+    snapshot();
+    GameState.Remote.send("floorStart", { floor: floor });
+  }
+
+  // ---------- 冒険の途中の控え（段階5-3） ----------
+  // 再開は「その階層の入口から」：部屋のつなぎ方は同じ（seed）。拾った物・経験値はそのまま。開けた宝箱は開いたまま、たおした敵は元にもどる。
+  var saveTimer = 0;
+  function snapshot() {
+    if (!dg || !active || run.over) return;
+    var opened = [], found = [];
+    Object.keys(dg.cells).forEach(function (k) {
+      var c = dg.cells[k];
+      c.chests.forEach(function (b, i) { if (b.opened) opened.push(k + "#" + i); });
+      c.traps.forEach(function (t, i) { if (t.found) found.push(k + "#" + i); });
+    });
+    var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
+    GameState.setAdventure({
+      state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct,
+      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, keyTaken: keyTaken, hasKey: !!dg.hasKey,
+      lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown,
+      run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
+      party: Party.members().map(function (m) { return { hp: m.hp, mp: m.mp, down: m.down }; })
+    });
+  }
+  function applyResume(a) {
+    run.timeLeft = a.timeLeft;
+    var r = a.run;
+    run.gold = r.gold; run.mat = r.mat; run.got = r.got; run.exp = r.exp; run.mastery = r.mastery; run.byType = r.byType; run.kills = r.kills;
+    if (r.title) run.title = r.title;
+    if (dg.boss && a.bossDown) {
+      // ボスはもういない。ごほうびの宝箱（2つ）と出口がある
+      var bc = dg.cells[dg.exit];
+      dg.bossDown = true; dg.bossMet = true;
+      bc.enemies.forEach(function (s) { s.dead = true; });
+      bc.chests.push({ x: bc.center.x - 60, y: bc.center.y - 22, opened: false, rare: true });
+      bc.chests.push({ x: bc.center.x - 60, y: bc.center.y + 22, opened: false, rare: true });
+    } else if (dg.boss) {
+      dg.bossMet = false; // ボスの前の文章を、もう一度出す
+    }
+    a.opened.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.chests[+p[1]]) c.chests[+p[1]].opened = true; });
+    a.found.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.traps[+p[1]]) c.traps[+p[1]].found = true; });
+    if (a.keyTaken) Object.keys(dg.cells).forEach(function (k) { if (dg.cells[k].key) dg.cells[k].key.taken = true; });
+    dg.hasKey = !!a.hasKey;
+    if (a.lockOpen && dg.lock) {
+      dg.lock.open = true;
+      var pc = dg.cells[dg.lock.parent];
+      Dungeon.doorTiles(pc.room.w, pc.room.h, dg.lock.dir).forEach(function (p) { pc.room.setTile(p.x, p.y, ":"); });
+    }
+    Party.members().forEach(function (m, i) {
+      var s = a.party[i]; if (!s) return;
+      m.hp = Math.min(m.stats.hp, s.hp); m.mp = Math.min(m.stats.mp, s.mp); m.down = !!s.down;
+    });
+    // 今の仲間が倒れていたら、倒れていない仲間から始める
+    var ms = Party.members();
+    if (ms[Party.activeIndex()].down) for (var i = 0; i < ms.length; i++) if (!ms[i].down) { Party.switchTo(i); break; }
+  }
+  // 控えから、拠点で受け取る結果を作る（日付が変わっていたとき・やめたとき）
+  function resultFromSnapshot(a, kind) {
+    return { exp: a.run.exp, mastery: a.run.mastery, gold: a.run.gold, mat: a.run.mat, items: a.run.got, title: a.run.title,
+             floor: a.floor, cleared: false, boss: a.floor === 7 || a.floor === 14, kills: a.run.byType, kind: kind };
   }
 
   // 部屋に入る。fromDir は入ってきた道の向き（n/s/w/e）、null なら部屋のまんなか（入口の部屋）。
@@ -78,6 +142,7 @@
       if (slot.boss) { e.face = { x: -1, y: 0 }; boss = e; }
     });
     run.fade = 0.3;
+    snapshot();
     // ボスの部屋：入るとつるが道をふさぎ、短い文章が出る
     if (c.bossCell && !dg.bossDown) {
       setDoor(c, "w", "V");
@@ -124,6 +189,7 @@
     Battle.pop(e.x, e.y - 40, "+" + g + "G", "#f2c14e", 9);
     var after = dg.bossInfo.after.concat(["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
     showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
+    snapshot();
   }
 
   function finishedCells() {
@@ -257,6 +323,8 @@
     // 残り時間（ダンジョンに入ってから数える。一時停止・メニューのあいだは止まる）
     run.timeLeft -= dt;
     if (run.timeLeft <= 0) { run.timeLeft = 0; finish("timeout"); return; }
+    saveTimer += dt;
+    if (saveTimer >= 5) { saveTimer = 0; snapshot(); } // 5秒ごとに控える（敵をたおした数・残り時間）
 
     updateCamera();
     updateButtons(false);
@@ -271,7 +339,7 @@
 
     if (c.key && !c.key.taken && near(c.key.x, c.key.y, 12)) {
       c.key.taken = true; dg.hasKey = true;
-      say("鍵を手に入れた！ 鍵のかかった扉をさがそう");
+      say("鍵を手に入れた！ 鍵のかかった扉をさがそう"); snapshot();
       Battle.pop(A.x, A.y - 30, "鍵", "#ffe066", 9);
     }
     c.chests.forEach(function (b) {
@@ -282,7 +350,7 @@
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
       var R = Loot.RARITY[got.equip.r];
-      say("宝箱：" + R.name + "の " + got.equip.name + " を手に入れた！");
+      say("宝箱：" + R.name + "の " + got.equip.name + " を手に入れた！"); snapshot();
       Battle.pop(b.x, b.y - 22, R.name + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
     });
@@ -293,7 +361,7 @@
         if (dg.hasKey) {
           dg.lock.open = true; dg.hasKey = false;
           dt3.forEach(function (p) { room.setTile(p.x, p.y, ":"); });
-          say("鍵で扉を開けた！");
+          say("鍵で扉を開けた！"); snapshot();
         } else if (run.lockMsg <= 0) {
           say("鍵がかかっている。どこかの部屋に鍵があるはず");
           run.lockMsg = 3;
@@ -305,7 +373,7 @@
     for (var i = 0; i < c.traps.length; i++) {
       var t = c.traps[i];
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
-      if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); }
+      if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); }
       var ch = Party.current();
       if (t.type === "swamp") {
         if (!ch.status.poison && run.swampCd <= 0) {
@@ -606,6 +674,7 @@
       exp: run.exp.slice(), mastery: run.mastery.slice(), gold: run.gold, mat: run.mat, items: run.got.slice(),
       title: run.title || null, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind
     };
+    GameState.setAdventure({ state: "finished", result: result }); // 「拠点にもどる」を押す前に閉じても、次に開いたとき受け取れる
     button("拠点にもどる", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
     chooseEl.hidden = false;
   }
@@ -613,7 +682,10 @@
   // 拠点から呼ぶ：出発する
   window.Adventure = {
     settings: settings,
-    start: function (floor, seed) { startFloor(floor, seed); updateButtons(true); }
+    start: function (floor, seed) { startFloor(floor, seed); updateButtons(true); },
+    // 途中で閉じた冒険の続き（その階層の入口から）
+    resume: function (a) { settings.correct = a.correct; startFloor(a.floor, a.seed, a); updateButtons(true); },
+    resultFromSnapshot: resultFromSnapshot
   };
 
   // ---------- 一時停止とテスト用の設定 ----------
@@ -632,7 +704,7 @@
     paused = on;
     pauseEl.hidden = !on;
     Input.releaseAll();
-    if (on) { drawBigMap(); buildTools(); }
+    if (on) { drawBigMap(); buildTools(); snapshot(); }
   }
 
   // メニューの道具：お店で買った薬を使う（段階5-2①）
@@ -694,7 +766,12 @@
   }
   window.addEventListener("resize", checkRotate);
   checkRotate();
-  document.addEventListener("visibilitychange", function () { if (document.hidden && active && !paused && !choosing) setPaused(true); });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) return;
+    snapshot(); // iPad がスリープする・アプリを閉じるときは、まず控える
+    if (active && !paused && !choosing) setPaused(true);
+  });
+  window.addEventListener("pagehide", function () { snapshot(); });
   Base.boot();
 
   // ---------- 毎フレーム ----------
