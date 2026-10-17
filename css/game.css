@@ -49,8 +49,11 @@ html, body {
 
 #dpad {
   position: absolute;
-  left: calc(24px + env(safe-area-inset-left, 0px));
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: calc(24px * var(--ctrl, 1) + env(safe-area-inset-left, 0px));
+  bottom: calc(24px * var(--ctrl, 1) + env(safe-area-inset-bottom, 0px));
+  /* 画面に合わせて大きさを変える（--ctrl は input.js が決める。iPad の横向きで 1） */
+  transform: scale(var(--ctrl, 1));
+  transform-origin: left bottom;
   width: 168px;
   height: 168px;
   border-radius: 50%;
@@ -83,8 +86,10 @@ html, body {
 
 #buttons {
   position: absolute;
-  right: calc(24px + env(safe-area-inset-right, 0px));
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  right: calc(24px * var(--ctrl, 1) + env(safe-area-inset-right, 0px));
+  bottom: calc(24px * var(--ctrl, 1) + env(safe-area-inset-bottom, 0px));
+  transform: scale(var(--ctrl, 1));
+  transform-origin: right bottom;
   width: 236px;
   height: 200px;
 }
@@ -110,8 +115,10 @@ html, body {
 #buttons .skill { border-color: var(--mana); }
 #menuBtn {
   position: absolute;
-  right: calc(16px + env(safe-area-inset-right, 0px));
-  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(16px * var(--ctrl, 1) + env(safe-area-inset-right, 0px));
+  top: calc(12px * var(--ctrl, 1) + env(safe-area-inset-top, 0px));
+  transform: scale(var(--ctrl, 1));
+  transform-origin: right top;
   width: auto;
   height: 40px;
   padding: 0 16px;

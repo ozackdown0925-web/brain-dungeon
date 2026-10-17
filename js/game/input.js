@@ -63,6 +63,16 @@ var Input = (function () {
 
   if (isTouch) touchEl.hidden = false;
 
+  // ボタンの大きさを画面に合わせる：画面の短い辺が 768（iPad の横向き）なら今の大きさ、スマホでは小さく（最小 0.6 倍）
+  function sizeControls() {
+    var short = Math.min(window.innerWidth, window.innerHeight);
+    var k = Math.max(0.6, Math.min(1, short / 768));
+    document.documentElement.style.setProperty("--ctrl", k.toFixed(3));
+  }
+  window.addEventListener("resize", sizeControls);
+  window.addEventListener("orientationchange", function () { setTimeout(sizeControls, 200); });
+  sizeControls();
+
   // 指が外へずれても、離すまでそのボタンのまま扱う（できない端末では何もしない）
   function capture(el, id) {
     try { if (el.setPointerCapture) el.setPointerCapture(id); } catch (err) { /* そのままでよい */ }
