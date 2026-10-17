@@ -49,12 +49,17 @@ var World = (function () {
   // 通れないところ：岩の壁・木・水
   Room.prototype.solidAt = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "~" || t === "T";
+    return t === "#" || t === "~" || t === "T" || t === "L";
+  };
+  // タイルを1つ書きかえる（鍵で扉を開けたときなど）
+  Room.prototype.setTile = function (tx, ty, ch) {
+    var r = this.rows[ty];
+    this.rows[ty] = r.substring(0, tx) + ch + r.substring(tx + 1);
   };
   // 矢や魔法が止まるところ：岩の壁と木（水の上は飛んでいける）
   Room.prototype.blocksShot = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "T";
+    return t === "#" || t === "T" || t === "L";
   };
   // 敵が部屋の外に出ないようにする
   Room.prototype.keepInside = function (e) {
@@ -111,7 +116,12 @@ var World = (function () {
       for (var tx = tx0; tx <= tx1; tx++) {
         var t = this.tile(tx, ty);
         var sx = tx * TILE - cam.x, sy = ty * TILE - cam.y;
-        if (t === "#") {
+        if (t === "L") {
+          // 鍵のかかった扉（仮の絵）：木の扉に金の錠
+          Render.rect(sx, sy, TILE, TILE, "#6e4a26");
+          Render.rect(sx, sy + 3, TILE, 1, "#4e3418"); Render.rect(sx, sy + 12, TILE, 1, "#4e3418");
+          Render.rect(sx + 6, sy + 6, 4, 4, "#f2c14e"); Render.rect(sx + 7, sy + 8, 2, 2, "#3a2a10");
+        } else if (t === "#") {
           Render.rect(sx, sy, TILE, TILE, COLORS["#"].face);
           if (!this.solidAt(tx, ty + 1) || ty === this.h - 1) Render.rect(sx, sy, TILE, 4, COLORS["#"].top);
         } else {

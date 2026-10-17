@@ -190,10 +190,109 @@ var Dungeon = (function () {
       c.enemies = c.kind === "start" ? [] : placeEnemies(rnd, c.room, c.doors, floor);
       c.visited = false;
     });
-    return {
+    var dg = {
       floor: floor, seed: seed, cells: cells, start: key(start.x, start.y), exit: key(exit.x, exit.y),
-      boss: BOSS_FLOORS.indexOf(floor) >= 0
+      boss: BOSS_FLOORS.indexOf(floor) >= 0, lock: null, hasKey: false
     };
+    placeThings(dg, floor, seed);
+    return dg;
+  }
+
+  // ---------- 鍵と扉・宝箱・罠（段階4-2） ----------
+  // 部屋のつなぎ方と別の順の数を使う（4-1 と同じ seed なら、部屋のつなぎ方と敵は同じまま）
+  function placeThings(dg, floor, seed) {
+    var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
+    var keys = Object.keys(dg.cells);
+    var used = {}; // 物を置いたタイル（部屋ごと）
+    keys.forEach(function (k) {
+      var c = dg.cells[k], T = World.TILE;
+      used[k] = {};
+      c.enemies.forEach(function (e) { used[k][key(e.tx, e.ty)] = true; });
+      // 部屋の中心（入口でキャラが立つ場所・出口）のまわりは空けておく
+      var cx = c.center.x / T - 1, cy = c.center.y / T - 1;
+      for (var y = cy - 2; y <= cy + 3; y++) for (var x = cx - 2; x <= cx + 3; x++) used[k][key(x, y)] = true;
+      c.chests = []; c.key = null; c.traps = [];
+    });
+    function mark(k, x, y, w, h, pad) {
+      for (var yy = y - pad; yy < y + h + pad; yy++) for (var xx = x - pad; xx < x + w + pad; xx++) used[k][key(xx, yy)] = true;
+    }
+    function plain(ch) { return ch === "." || ch === "*"; }
+    // 部屋 k の中で、w×h が置ける場所（道から minDoor マス以上はなれる）。around＝まわり1マスも通れること
+    function spots(k, w, h, minDoor, around) {
+      var c = dg.cells[k], room = c.room, out = [];
+      var doorPts = c.doors.map(function (d) { return doorTiles(room.w, room.h, d)[1]; });
+      for (var y = 2; y < room.h - 1 - h; y++) for (var x = 2; x < room.w - 1 - w; x++) {
+        var ok = true;
+        for (var yy = y - (around ? 1 : 0); yy < y + h + (around ? 1 : 0) && ok; yy++)
+          for (var xx = x - (around ? 1 : 0); xx < x + w + (around ? 1 : 0) && ok; xx++) {
+            if (!plain(room.tile(xx, yy)) || used[k][key(xx, yy)]) ok = false;
+          }
+        for (var q = 0; q < doorPts.length && ok; q++) {
+          var dx = doorPts[q].x - x, dy = doorPts[q].y - y;
+          if (dx * dx + dy * dy < minDoor * minDoor) ok = false;
+        }
+        if (ok) out.push({ x: x, y: y });
+      }
+      return out;
+    }
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)); var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+      return arr;
+    }
+    var T = World.TILE;
+
+    // 鍵のかかった部屋：寄り道の部屋の1つ（寄り道がない階層は、鍵も扉もなし）
+    var sides = keys.filter(function (k) { return dg.cells[k].kind === "side"; });
+    if (sides.length) {
+      var lk = pick(rnd, sides), lc = dg.cells[lk], d = lc.doors[0];
+      var pk = neighbor(dg, lk, d), pdir = DIRS[d].back, pc = dg.cells[pk];
+      lc.locked = true;
+      doorTiles(pc.room.w, pc.room.h, pdir).forEach(function (p) { pc.room.setTile(p.x, p.y, "L"); });
+      dg.lock = { cell: lk, parent: pk, dir: pdir, open: false };
+      // 鍵の部屋の宝箱（レア以上）：部屋のまんなかに
+      lc.chests.push({ x: lc.center.x, y: lc.center.y, opened: false, rare: true });
+      // 鍵：入口・鍵の部屋以外のどこかの部屋に
+      var keyRooms = shuffle(keys.filter(function (k) { return k !== dg.start && k !== lk; }));
+      for (var i = 0; i < keyRooms.length; i++) {
+        var ks = spots(keyRooms[i], 1, 1, 5, false);
+        if (!ks.length) continue;
+        var kp = pick(rnd, ks);
+        dg.cells[keyRooms[i]].key = { tx: kp.x, ty: kp.y, x: kp.x * T + 8, y: kp.y * T + 8, taken: false };
+        mark(keyRooms[i], kp.x, kp.y, 1, 1, 1);
+        break;
+      }
+    }
+
+    // ふつうの宝箱：鍵の部屋とあわせて1階層に2〜3個。寄り道の部屋を先に
+    var total = 2 + (rnd() < 0.5 ? 1 : 0), have = dg.lock ? 1 : 0;
+    var chestRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side" && !dg.cells[k].locked; }))
+      .concat(shuffle(keys.filter(function (k) { return dg.cells[k].kind === "room" || dg.cells[k].kind === "exit"; })));
+    for (var ci = 0; ci < chestRooms.length && have < total; ci++) {
+      var cs = spots(chestRooms[ci], 1, 1, 5, true);
+      if (!cs.length) continue;
+      var cp = pick(rnd, cs);
+      dg.cells[chestRooms[ci]].chests.push({ x: cp.x * T + 8, y: cp.y * T + 8, opened: false, rare: false });
+      mark(chestRooms[ci], cp.x, cp.y, 1, 1, 1);
+      have++;
+    }
+
+    // 罠：毒の沼（2×2）と落とし穴（1マス）。深い階層ほど少し多い。一部は踏むまで見えない
+    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0);
+    var trapRooms = keys.filter(function (k) { return k !== dg.start; });
+    var perRoom = {};
+    for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
+      var tk = pick(rnd, trapRooms);
+      if ((perRoom[tk] || 0) >= 2) continue;
+      var pit = rnd() < 0.45;
+      // 落とし穴はまわり1マスも通れるところだけ（せまい道をふさがないように）
+      var ts = pit ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
+      if (!ts.length) continue;
+      var tp = pick(rnd, ts);
+      dg.cells[tk].traps.push({ type: pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: pit ? 1 : 2, h: pit ? 1 : 2, hidden: rnd() < 0.35, found: false });
+      mark(tk, tp.x, tp.y, pit ? 1 : 2, pit ? 1 : 2, 1);
+      perRoom[tk] = (perRoom[tk] || 0) + 1;
+      t++;
+    }
   }
 
   // 部屋の外へ出た向き（出ていなければ null）
@@ -232,14 +331,24 @@ var Dungeon = (function () {
     Object.keys(dg.cells).forEach(function (k) {
       var c = dg.cells[k];
       var px = x + c.x * (cw + gap), py = y + c.y * (ch + gap);
-      // 道（部屋どうしのつながり）
+      // 道（部屋どうしのつながり）。鍵のかかった扉は、開けるまで茶色
       c.doors.forEach(function (d) {
         var lw = Math.max(1, Math.round(Math.min(cw, ch) / 4));
-        if (d === "e") rect(px + cw, py + ch / 2 - lw / 2, gap, lw, "#8a8f74");
-        if (d === "s") rect(px + cw / 2 - lw / 2, py + ch, lw, gap, "#8a8f74");
+        var other = key(c.x + DIRS[d].dx, c.y + DIRS[d].dy);
+        var locked = dg.lock && !dg.lock.open && ((k === dg.lock.cell && other === dg.lock.parent) || (k === dg.lock.parent && other === dg.lock.cell));
+        var lc = locked ? "#c0782e" : "#8a8f74";
+        if (locked) lw = Math.max(lw, 2);
+        if (d === "e") rect(px + cw, py + ch / 2 - lw / 2, gap, lw, lc);
+        if (d === "s") rect(px + cw / 2 - lw / 2, py + ch, lw, gap, lc);
       });
-      var color = k === curKey ? "#f2c14e" : c.visited ? "#5e7a52" : "#3a4636";
+      var color = k === curKey ? "#f2c14e" : c.visited ? "#5e7a52" : c.locked && !(dg.lock && dg.lock.open) ? "#4a3a2a" : "#3a4636";
       rect(px, py, cw, ch, color);
+      // 中の物：鍵（金）・まだ開けていない宝箱（茶）・見つけた罠（紫）
+      var dot = Math.max(1, Math.round(Math.min(cw, ch) / 5));
+      function at(tx, ty, col) { rect(px + tx / c.room.w * cw - dot / 2, py + ty / c.room.h * ch - dot / 2, dot, dot, col); }
+      if (c.traps) c.traps.forEach(function (t) { if (!t.hidden || t.found) at(t.tx + t.w / 2, t.ty + t.h / 2, "#c86ae0"); });
+      if (c.chests) c.chests.forEach(function (b) { if (!b.opened) at(b.x / World.TILE, b.y / World.TILE, "#d08a3a"); });
+      if (c.key && !c.key.taken) at(c.key.tx + 0.5, c.key.ty + 0.5, "#ffe066");
       if (c.kind === "exit") {
         var s = Math.max(2, Math.round(Math.min(cw, ch) / 2.5));
         rect(px + cw / 2 - s / 2, py + ch / 2 - s / 2, s, s, k === curKey ? "#b32c2c" : "#ef5b5b");
@@ -253,7 +362,7 @@ var Dungeon = (function () {
   function mapSize(cw, ch, gap) { return { w: GRID_W * cw + (GRID_W - 1) * gap, h: GRID_H * ch + (GRID_H - 1) * gap }; }
 
   return {
-    generate: generate, newSeed: newSeed, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
+    generate: generate, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
     enemyDepth: enemyDepth, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS, BOSS_FLOORS: BOSS_FLOORS
   };
 })();
