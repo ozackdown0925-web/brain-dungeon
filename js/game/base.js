@@ -82,7 +82,7 @@ var Base = (function () {
       card.appendChild(faces);
       box.appendChild(card);
     });
-    document.getElementById("createNote").textContent = "同じ職業を2人以上にしてもだいじょうぶ。職業は、あとで転職の神殿で変えられる（段階5-2）。";
+    document.getElementById("createNote").textContent = "同じ職業を2人以上にしてもだいじょうぶ。職業は、あとで拠点の転職の神殿で変えられる。";
     document.getElementById("createGo").onclick = function () {
       var bad = picks.filter(function (p) { return !p.name || !p.name.replace(/\s/g, ""); });
       if (bad.length) { document.getElementById("createNote").textContent = "3人とも名前を入れてね"; return; }
@@ -142,13 +142,8 @@ var Base = (function () {
     document.getElementById("goAgain").disabled = deepest < 1;
     document.getElementById("goAgain").onclick = function () { depart(Number(sel.value) || 1); };
 
-    // メニュー：装備・お店・鍛冶屋・倉庫は 5-2①、ほかは 5-2②で作る
-    var OPEN = { "装備": "equip", "お店": "shop", "鍛冶屋": "smith", "倉庫": "storage" };
-    Array.prototype.forEach.call(document.querySelectorAll("#baseMenu .btn"), function (b) {
-      var name = b.textContent;
-      b.onclick = OPEN[name] ? function () { Town.open(OPEN[name]); }
-        : function () { document.getElementById("baseNote").textContent = "「" + name + "」は段階5-2②で作ります"; };
-    });
+    // 町の絵（建物を押すと開く）
+    drawTown();
     document.getElementById("baseNote").textContent = "";
 
     // テスト用の設定
@@ -159,8 +154,100 @@ var Base = (function () {
     fillSelect("testLevel", [1, 5, 10, 20, 50, 100], g.party[0].level, function (n) { return "Lv" + n; });
     fillSelect("testFloor", range(1, FLOORS), next, function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
-    if (report) showReport(report);
+    if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
+
+  // ---------- 町の絵（上から見た町。仮の絵。段階7で素材に差しかえ） ----------
+  // 絵は 320×180 の大きさで描いて、画面の幅に合わせて広げる。b は建物の場所（x, y, w, h）。
+  var TW = 320, TH = 180;
+  var BUILDINGS = [
+    { id: "gate",    name: "森の門（出発）",   x: 138, y: 6,   w: 44, h: 22, roof: "#6e4a26" },
+    { id: "party",   name: "宿屋",             x: 18,  y: 34,  w: 56, h: 34, roof: "#b0473a" },
+    { id: "shop",    name: "お店",             x: 18,  y: 104, w: 56, h: 34, roof: "#3a6ab0" },
+    { id: "smith",   name: "鍛冶屋",           x: 246, y: 34,  w: 56, h: 34, roof: "#4a4f5a" },
+    { id: "job",     name: "転職の神殿",       x: 246, y: 104, w: 56, h: 34, roof: "#d8b84a" },
+    { id: "storage", name: "倉庫",             x: 84,  y: 140, w: 50, h: 28, roof: "#7a5a34" },
+    { id: "book",    name: "書庫（図鑑）",     x: 186, y: 140, w: 50, h: 28, roof: "#6a4a9a" },
+    { id: "help",    name: "掲示板（遊び方）", x: 200, y: 66,  w: 22, h: 14, roof: "#8a6a3a", board: true }
+  ];
+  var townCanvas = document.getElementById("townMap"), townScale = 1, hover = null;
+  function drawTown() {
+    var dpr = window.devicePixelRatio || 1;
+    // 幅は画面に合わせ、高さは画面の高さより少し小さく（スマホの横向きでも、町ぜんぶが1画面に入るように）
+    var cssW = Math.min(townCanvas.parentNode.clientWidth || 600, 720, Math.max(280, (window.innerHeight - 140) * TW / TH));
+    var cssH = Math.round(cssW * TH / TW);
+    townCanvas.style.width = cssW + "px"; townCanvas.style.height = cssH + "px";
+    townCanvas.width = Math.round(cssW * dpr); townCanvas.height = Math.round(cssH * dpr);
+    townScale = cssW / TW;
+    var ctx = townCanvas.getContext("2d");
+    ctx.setTransform(townCanvas.width / TW, 0, 0, townCanvas.height / TH, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    function r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+    // 地面と森
+    r(0, 0, TW, TH, "#3b5a2f");
+    for (var i = 0; i < 40; i++) { var tx = (i * 37) % TW, ty = (i * 53) % 30; if (tx > 128 && tx < 192) continue; r(tx, ty, 8, 8, "#1f4a22"); r(tx + 3, ty + 7, 2, 3, "#5a3d22"); }
+    r(0, 0, TW, 4, "#1f4a22");
+    // 道と広場
+    r(152, 26, 16, 60, "#8a8264");            // 門から広場へ
+    r(70, 92, 180, 14, "#8a8264");            // 横の道
+    r(100, 106, 14, 40, "#8a8264"); r(206, 106, 14, 40, "#8a8264");
+    ctx.fillStyle = "#a8a088"; ctx.beginPath(); ctx.arc(160, 99, 30, 0, Math.PI * 2); ctx.fill();   // 広場
+    ctx.fillStyle = "#5a8ab0"; ctx.beginPath(); ctx.arc(160, 99, 9, 0, Math.PI * 2); ctx.fill();    // 噴水
+    ctx.fillStyle = "#a8d0f0"; ctx.beginPath(); ctx.arc(160, 97, 3, 0, Math.PI * 2); ctx.fill();
+    // 建物
+    BUILDINGS.forEach(function (b) {
+      var lit = hover === b.id;
+      if (b.id === "gate") {
+        r(b.x, b.y + 4, 6, b.h - 4, "#5a3d22"); r(b.x + b.w - 6, b.y + 4, 6, b.h - 4, "#5a3d22"); r(b.x - 2, b.y, b.w + 4, 6, lit ? "#c08a4a" : b.roof);
+        r(b.x + 6, b.y + 6, b.w - 12, b.h - 6, "#16301a");
+      } else if (b.board) {
+        r(b.x + 4, b.y + b.h, 2, 6, "#5a3d22"); r(b.x + b.w - 6, b.y + b.h, 2, 6, "#5a3d22");
+        r(b.x, b.y, b.w, b.h, lit ? "#c8a46a" : b.roof); r(b.x + 3, b.y + 3, b.w - 6, 2, "#e8dcc0"); r(b.x + 3, b.y + 7, b.w - 8, 2, "#e8dcc0");
+      } else {
+        r(b.x + 2, b.y + b.h - 2, b.w, 4, "rgba(0,0,0,0.3)");                                  // かげ
+        r(b.x, b.y + 12, b.w, b.h - 12, "#d8c8a8");                                            // かべ
+        r(b.x - 2, b.y, b.w + 4, 14, lit ? "#f2c14e" : b.roof);                                // 屋根
+        r(b.x - 2, b.y + 12, b.w + 4, 2, "rgba(0,0,0,0.25)");
+        r(b.x + b.w / 2 - 4, b.y + b.h - 10, 8, 10, "#5a3d22");                                // 戸
+        r(b.x + 6, b.y + 17, 8, 6, "#8ab0d0"); r(b.x + b.w - 14, b.y + 17, 8, 6, "#8ab0d0");   // 窓
+        if (b.id === "smith") { r(b.x + b.w - 12, b.y - 6, 6, 8, "#3a3a3a"); r(b.x + b.w - 11, b.y - 12, 4, 4, "rgba(200,200,200,0.5)"); }
+        if (b.id === "job") { r(b.x + b.w / 2 - 1, b.y - 8, 2, 8, "#f2e6a0"); r(b.x + b.w / 2 - 4, b.y - 5, 8, 2, "#f2e6a0"); }
+      }
+      // 名前の札
+      ctx.font = "bold 7px \"Hiragino Maru Gothic ProN\", \"Hiragino Sans\", \"Yu Gothic\", sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      var lx = b.x + b.w / 2, ly = b.id === "gate" ? b.y + b.h + 1 : b.board ? b.y + b.h + 6 : b.y + b.h + 2;
+      var tw = ctx.measureText(b.name).width + 6;
+      r(lx - tw / 2, ly, tw, 10, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.75)");
+      ctx.fillStyle = lit ? "#1a1408" : "#ece7da"; ctx.fillText(b.name, lx, ly + 1.5);
+    });
+  }
+  function buildingAt(ev) {
+    var rect = townCanvas.getBoundingClientRect();
+    var x = (ev.clientX - rect.left) / rect.width * TW, y = (ev.clientY - rect.top) / rect.height * TH;
+    for (var i = 0; i < BUILDINGS.length; i++) {
+      var b = BUILDINGS[i];
+      if (x >= b.x - 4 && x <= b.x + b.w + 4 && y >= b.y - 4 && y <= b.y + b.h + 14) return b;
+    }
+    return null;
+  }
+  townCanvas.addEventListener("click", function (ev) {
+    var b = buildingAt(ev);
+    if (!b) return;
+    if (b.id === "gate") {
+      var d = document.getElementById("departBox");
+      d.scrollIntoView({ behavior: "smooth", block: "center" });
+      d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash");
+      return;
+    }
+    Town.open(b.id);
+  });
+  townCanvas.addEventListener("mousemove", function (ev) {
+    var b = buildingAt(ev), id = b ? b.id : null;
+    townCanvas.style.cursor = b ? "pointer" : "default";
+    if (id !== hover) { hover = id; drawTown(); }
+  });
+  window.addEventListener("resize", function () { if (!baseEl.hidden) drawTown(); });
 
   function range(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
   function fillSelect(id, values, cur, label) {

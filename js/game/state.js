@@ -254,6 +254,49 @@ var GameState = (function () {
     return out;
   }
 
+  // ---------- 転職とスキルのセット（段階5-2②） ----------
+  // 基本職どうしは、いつでも転職できる（上級職は段階8）。熟練度は職業ごとに残る。
+  // 新しい職業で装備できない武器・防具は倉庫へ。条件に合わなくなったスキルは外す。新しい職業の1つ目のスキルはすぐ覚える。
+  function changeJob(h, job) {
+    if (h.job === job) return { ok: false, why: "いまの職業と同じ" };
+    var J = GameData.JOBS[job], back = [];
+    ["weapon", "armor"].forEach(function (slot) {
+      var it = h.equip[slot];
+      if (it && !(slot === "weapon" ? J.weapons.indexOf(it.base) >= 0 : it.base === J.armor)) back.push(slot);
+    });
+    if (game.storage.length + back.length > STORAGE_MAX) return { ok: false, why: "倉庫がいっぱいで、装備をしまえない" };
+    var moved = back.map(function (slot) { var it = h.equip[slot]; h.equip[slot] = null; game.storage.push(it); return it.name; });
+    h.job = job;
+    var removed = fixSkills(h);
+    var learned = learnSkills(h);
+    save();
+    return { ok: true, moved: moved, removed: removed, learned: learned };
+  }
+  // スキル i 番目をセットする（id が null なら外す）。条件に合わない・同じスキルを2つは、できない
+  function setSkill(h, i, id) {
+    if (id) {
+      var sk = GameData.SKILL[id];
+      if (h.learned.indexOf(id) < 0 || !GameData.canSet(sk, h.job, heroWeaponType(h))) return false;
+      h.set = h.set.map(function (x, k) { return k !== i && x === id ? null : x; });
+    }
+    h.set[i] = id || null;
+    save();
+    return true;
+  }
+
+  // ---------- 図鑑（段階5-2②） ----------
+  function monster(type) {
+    var b = game.book.monsters[type] || (game.book.monsters[type] = { kills: 0 });
+    if (!b.tried) b.tried = {};
+    return b;
+  }
+  function noteSeen(type) { if (game) { monster(type).seen = true; } }
+  // 攻撃した属性の効き方を覚える：weak（弱点）・normal・half（いまひとつ）・none（無効）
+  function noteHit(type, elem, mult) {
+    if (!game || !elem) return;
+    monster(type).tried[elem] = mult === 0 ? "none" : mult < 1 ? "half" : mult > 1 ? "weak" : "normal";
+  }
+
   // テスト用：3人のレベルをまとめて変える（能力は今の職業で育ったものとして作りなおす）
   function setLevelForTest(level) {
     game.party.forEach(function (h) {
@@ -284,6 +327,7 @@ var GameState = (function () {
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
+    changeJob: changeJob, setSkill: setSkill, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, sell: sell, dismantle: dismantle,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool,

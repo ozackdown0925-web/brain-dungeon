@@ -12,7 +12,7 @@
   var SPEED = 52;       // 1秒に進むドット数（保護者の感想で 72 → 52 に下げた）
   var ACCEL_TIME = 0.12; // 止まっている状態から、この秒数をかけて全速になる
   var TURN_TIME = 0.15;  // 大きく向きを変える（ほぼ反対を押す）ときは、この秒数その場で振り返ってから動く
-  var CLEAR_SPEED = 1.5; // 敵を全滅させた部屋では、この倍の速さで歩く
+  var CLEAR_SPEED = 2; // 敵を全滅させた部屋では、武器をしまって、この倍の速さで走る（2026-10-17 保護者の案）
   var TURN_ANGLE = 1.9;  // これより大きく向きが変わったら「振り返り」（ラジアン。約110度）
   var A = Party.actor;
   A.x = 6 * World.TILE; A.y = 11 * World.TILE;
@@ -59,7 +59,7 @@
     Enemies.clear(); Combat.clear(); Battle.clear();
     boss = null;
     var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: c.center.x, y: c.center.y + 20, face: { x: 0, y: 1 } };
-    A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0;
+    A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0; A.running = false;
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
     run.inPit = false;
     A.inv = 0.6; // 部屋に入った直後は少しだけ無敵
@@ -73,6 +73,7 @@
     c.enemies.forEach(function (slot) {
       if (slot.dead) return;
       var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
+      GameState.noteSeen(slot.type); // 図鑑：たたかった敵
       e.slot = slot;
       if (slot.boss) { e.face = { x: -1, y: 0 }; boss = e; }
     });
@@ -192,6 +193,7 @@
     A.busy = Math.max(0, A.busy - dt);
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
+    A.running = Enemies.alive().length === 0; // 部屋の敵を全滅させたら走る
     var a = Input.axis();
     A.turn = Math.max(0, (A.turn || 0) - dt);
     if (Math.abs(a.x) > 0.05 || Math.abs(a.y) > 0.05) {
@@ -206,10 +208,10 @@
       }
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
-        // 部屋の敵を全滅させたら、歩く速さ 1.5 倍（探索しやすいように。2026-10-17）
-        var sp = SPEED * (Enemies.alive().length === 0 ? CLEAR_SPEED : 1);
+        // 部屋の敵を全滅させたら、武器をしまって走る（探索しやすいように。2026-10-17）
+        var sp = SPEED * (A.running ? CLEAR_SPEED : 1);
         Enemies.moveBlocked(room, A, a.x * sp * A.move * dt, a.y * sp * A.move * dt); // 敵はすり抜けない
-        A.walk += dt * 8 * A.move;
+        A.walk += dt * 8 * A.move * (A.running ? 1.8 : 1);
       }
     } else {
       A.move = 0;
@@ -500,11 +502,15 @@
     var ey = py - 10 - bob + (A.face.y < -0.5 ? -2 : 0);
     Render.rect(px - 4 + Math.round(A.face.x * 2), ey, 2, 2, "#11131b");
     Render.rect(px + 1 + Math.round(A.face.x * 2), ey, 2, 2, "#11131b");
-    // 武器（仮の絵）
+    // 武器（仮の絵）。敵を全滅させた部屋で走っているあいだは、武器をしまう（背中に小さく）
     var w = c.weapon;
     ctx.strokeStyle = w === "bow" ? "#a0703a" : w === "staff" ? "#c9a8ff" : w === "fist" ? "#f5d7b0" : "#c9ccd6";
     ctx.lineWidth = w === "greatsword" || w === "axe" ? 2 : 1;
-    ctx.beginPath(); ctx.moveTo(px + A.face.x * 4, py - 2 + A.face.y * 4); ctx.lineTo(px + A.face.x * (w === "fist" ? 7 : 11), py - 2 + A.face.y * (w === "fist" ? 7 : 11)); ctx.stroke();
+    if (A.running && A.swing <= 0) {
+      if (w !== "fist") { ctx.beginPath(); ctx.moveTo(px - A.face.x * 3 - 3, py - 10 - bob); ctx.lineTo(px - A.face.x * 3 + 3, py + 1 - bob); ctx.stroke(); }
+    } else {
+      ctx.beginPath(); ctx.moveTo(px + A.face.x * 4, py - 2 + A.face.y * 4); ctx.lineTo(px + A.face.x * (w === "fist" ? 7 : 11), py - 2 + A.face.y * (w === "fist" ? 7 : 11)); ctx.stroke();
+    }
     if (c.status.sleep) Render.text("Zz", px + 7, py - 20, { size: 7, color: "#b48cf0" });
     if (A.swing > 0) {
       var ang = Math.atan2(A.face.y, A.face.x);
