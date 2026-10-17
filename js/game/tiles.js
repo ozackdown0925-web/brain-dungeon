@@ -212,23 +212,35 @@ var Tiles = (function () {
       put(x, y, c2);
     }
     // 岸のまわりの草を少し暗く（ぬれた土）
-    // 橋
+    // 橋：両はしが陸になる向きにわたす（上下が陸なら縦にわたる橋）。手すりは、橋のかたまりの外がわにだけつける
+    var isBridge = function (tx, ty) { return kind(tx, ty) === "bridge"; };
+    function landEnd(tx, ty, dx, dy) {
+      var x0 = tx, y0 = ty;
+      while (isBridge(x0, y0)) { x0 += dx; y0 += dy; }
+      return !isWater(x0, y0);
+    }
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
-      if (kind(tx, ty) !== "bridge") continue;
-      var horiz = isWater(tx - 1, ty) || isWater(tx + 1, ty) ? !(isWater(tx, ty - 1) && isWater(tx, ty + 1)) || isWater(tx - 1, ty) : false;
-      var vert = isWater(tx - 1, ty) && isWater(tx + 1, ty) && !(isWater(tx, ty - 1) && !isWater(tx, ty + 1));
+      if (!isBridge(tx, ty)) continue;
+      var vert = landEnd(tx, ty, 0, -1) && landEnd(tx, ty, 0, 1);
+      var railA = vert ? !isBridge(tx - 1, ty) : !isBridge(tx, ty - 1);   // 左（または上）の手すり
+      var railB = vert ? !isBridge(tx + 1, ty) : !isBridge(tx, ty + 1);   // 右（または下）の手すり
       for (y = 0; y < T; y++) for (x = 0; x < T; x++) {
         var gx = tx * T + x, gy = ty * T + y, bc;
-        if (vert || !horiz) {
-          // 縦にわたる橋：板は横向き、左右に手すり
-          if (x <= 1 || x >= 14) bc = x === 0 || x === 15 ? OUT : BARK[x === 1 ? 2 : 1];
-          else bc = (y % 4 === 3) ? BARK[0] : x < 4 ? BARK[3] : BARK[2];
-        } else {
-          // 横にわたる橋：板は縦向き、上下に手すり
-          if (y <= 1 || y >= 14) bc = y === 0 || y === 15 ? OUT : BARK[y === 1 ? 3 : 1];
-          else bc = (x % 4 === 3) ? BARK[0] : y < 4 ? BARK[3] : y > 11 ? BARK[1] : BARK[2];
+        var across = vert ? x : y, along = vert ? y : x;          // across：橋のはばの方向
+        if (railA && across <= 1) bc = across === 0 ? OUT : BARK[3];
+        else if (railB && across >= 14) bc = across === 15 ? OUT : BARK[1];
+        else {
+          // 板：わたる向きに直角に並ぶ。板の境目は暗く、左上が明るい
+          var plank = (along + (vert ? 0 : 0)) % 4;
+          bc = plank === 3 ? BARK[0] : plank === 0 ? BARK[3] : BARK[2];
+          if (hash(Math.floor((vert ? gy : gx) / 4), vert ? gx >> 3 : gy >> 3, 90) < 0.15 && plank !== 3) bc = BARK[1];
         }
         put(gx, gy, bc);
+      }
+      // 手すりの柱（4点ごと）
+      for (var k8 = 2; k8 < T; k8 += 6) {
+        if (railA) put(vert ? tx * T + 1 : tx * T + k8, vert ? ty * T + k8 : ty * T + 1, BARK[0]);
+        if (railB) put(vert ? tx * T + 14 : tx * T + k8, vert ? ty * T + k8 : ty * T + 14, BARK[0]);
       }
     }
 

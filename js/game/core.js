@@ -540,7 +540,7 @@
     var low = run.timeLeft <= 60;
     var tcol = low ? (Math.floor(run.timeLeft * 2) % 2 === 0 ? "#ef5b5b" : "#ffb0a8") : "#ece7da";
     Render.rect(view.w / 2 - 44, 3, 88, 24, "rgba(10,12,18,0.72)");
-    Render.text("森 " + dg.floor + "階", view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
+    Render.text(GameData.floorLabel(dg.floor), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
     Render.text("のこり " + mm + ":" + (ss < 10 ? "0" : "") + ss, view.w / 2, 13, { size: 11, align: "center", bold: true, color: tcol });
 
     // 右上（メニューのボタンの下）：小さな地図
@@ -790,7 +790,7 @@
     ctx.clearRect(0, 0, ms.w, ms.h);
     Dungeon.drawMap(ctx, dg, 0, 0, cw, ch, gap, curKey);
     document.getElementById("floorInfo").textContent =
-      "森 " + dg.floor + "階　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
+      GameData.floorLabel(dg.floor) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
     var w = Loot.rarityWeights(settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
     document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
       Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";
