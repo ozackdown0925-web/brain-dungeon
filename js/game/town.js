@@ -97,7 +97,7 @@ var Town = (function () {
           say("はずして倉庫に入れた"); render();
         }));
       } else {
-        var starter = slot === "weapon" ? GameData.WEAPONS[GameState.starterWeapon(h.job)].name : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name;
+        var starter = slot === "weapon" ? GameData.WEAPONS[GameState.starterWeapon(h.job)].starter : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name;
         box.appendChild(el("div", "item-line", "はじめの" + (slot === "weapon" ? "武器（" + starter + "）" : "防具（" + starter + "）")));
       }
       // 倉庫の中で、この職業が装備できる物
@@ -112,7 +112,7 @@ var Town = (function () {
           row.appendChild(button("装備する", function () {
             GameState.equipItem(h, x.id);
             var removed = GameState.fixSkills(h);
-            say(x.name + "を装備した" + (removed.length ? "（「" + removed.join("」「") + "」は条件に合わなくなったので外した）" : ""));
+            say(Loot.label(x) + "を装備した" + (removed.length ? "（「" + removed.join("」「") + "」は条件に合わなくなったので外した）" : ""));
             render();
           }));
           box.appendChild(row);
@@ -133,8 +133,8 @@ var Town = (function () {
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
       var p = GameState.sellPrice(it), m = GameState.matOf(it), n = GameState.dismantleCount(it);
-      row.appendChild(button("売る（" + p + "G）", function () { var got = GameState.sell(it.id); say(it.name + "を売った（+" + got + "G）"); render(); }));
-      row.appendChild(button("分解（" + Loot.MATERIALS[m] + "+" + n + "）", function () { var r = GameState.dismantle(it.id); say(it.name + "を分解した（" + Loot.MATERIALS[r.mat] + "+" + r.n + "）"); render(); }));
+      row.appendChild(button("売る（" + p + "G）", function () { var got = GameState.sell(it.id); say(Loot.label(it) + "を売った（+" + got + "G）"); render(); }));
+      row.appendChild(button("分解（" + Loot.MATERIALS[m] + "+" + n + "）", function () { var r = GameState.dismantle(it.id); say(Loot.label(it) + "を分解した（" + Loot.MATERIALS[r.mat] + "+" + r.n + "）"); render(); }));
       bodyEl.appendChild(row);
     });
   }
@@ -163,7 +163,7 @@ var Town = (function () {
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
       row.appendChild(button("買う（" + price + "G）", function () {
         if (!GameState.buyEquip(it)) { say(g.storage.length >= GameState.STORAGE_MAX ? "倉庫がいっぱい" : "ゴールドが足りない"); return; }
-        say(it.name + "を買った（倉庫に入れた。「装備」で付けかえられる）"); render();
+        say(Loot.label(it) + "を買った（倉庫に入れた。「装備」で付けかえられる）"); render();
       }));
       bodyEl.appendChild(row);
     });
@@ -181,12 +181,12 @@ var Town = (function () {
         var c = GameState.upgradeCost(it);
         row.appendChild(button("強化 ＋" + ((it.plus || 0) + 1) + "（" + Loot.MATERIALS[c.mat] + c.n + "＋" + c.gold + "G）", function () {
           if (!GameState.upgradeItem(it)) { say("素材かゴールドが足りない"); return; }
-          say(it.name + "を ＋" + it.plus + " にした！"); render();
+          say(Loot.label(it) + "にした！"); render();
         }));
       } else row.appendChild(el("span", "item-extra", "＋10（いちばん上）"));
       row.appendChild(button("引き直し", function () {
         if (!GameState.rerollItem(it)) { say("魔石かゴールドが足りない"); return; }
-        say(it.name + "のバフ・デバフを引き直した"); render();
+        say(Loot.label(it) + "のバフ・デバフを引き直した"); render();
       }));
       bodyEl.appendChild(row);
     });
@@ -297,7 +297,7 @@ var Town = (function () {
     var row2 = el("div", "chips");
     Object.keys(GameData.WEAPONS).concat(Object.keys(GameData.ARMORS)).forEach(function (k) {
       var got = g.book.items.indexOf(k) >= 0;
-      var name = GameData.WEAPONS[k] ? GameData.WEAPONS[k].name : GameData.ARMORS[k].name;
+      var name = Loot.typeName(k);
       row2.appendChild(el("span", "chip-tag" + (got ? " got" : ""), got ? name : "？？？"));
     });
     ibox.appendChild(row2);

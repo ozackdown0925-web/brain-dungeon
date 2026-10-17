@@ -167,7 +167,7 @@ var Base = (function () {
       info.appendChild(el("div", "hero-stats", "HP " + s.hp + "　MP " + s.mp + "　物攻 " + s.patk + "　物防 " + s.pdef + "　魔攻 " + s.matk + "　魔防 " + s.mdef));
       var m = h.mastery[h.job] || 0;
       info.appendChild(el("div", "hero-stats", "熟練度 " + m + (st < GameState.MAX_STAR ? "（次の★まで " + ((st + 1) * GameState.STAR_NEED - m) + "）" : "（極めた！）")));
-      info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : "はじめの" + GameData.WEAPONS[GameState.starterWeapon(h.job)].name) +
+      info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : GameData.WEAPONS[GameState.starterWeapon(h.job)].starter) +
         "　防具：" + (h.equip.armor ? Loot.describe(h.equip.armor) : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name)));
       info.appendChild(el("div", "hero-skills", "スキル：" + h.set.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") +
         ""));

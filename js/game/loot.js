@@ -39,7 +39,7 @@ var Loot = (function () {
     var k = (1 + 0.08 * (ilv - 1)) * R.mult;
     var item = {
       slot: isWeapon ? "weapon" : "armor", base: base, r: r, ilv: ilv, plus: 0, buff: [], debuff: [], sp: null,
-      name: def.name
+      name: def.item || def.name
     };
     if (isWeapon) { item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k); }
     else { item.pdef = Math.round(def.pdef * k); item.mdef = Math.round(def.mdef * k); }
@@ -64,7 +64,21 @@ var Loot = (function () {
     return out;
   }
 
-  // 装備を1行で書く（例：「レア 剣 Lv3  物攻11（物攻+3・魔防−3）」）
+  // 装備の名前（例：「銅の剣」「銅の剣＋2〈レア〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
+  function baseName(item) {
+    var def = item.slot === "weapon" ? GameData.WEAPONS[item.base] : GameData.ARMORS[item.base];
+    return def ? (def.item || def.name) : item.name;
+  }
+  function label(item) {
+    return baseName(item) + (item.plus ? "＋" + item.plus : "") + (item.r > 0 ? "〈" + RARITY[item.r].name + "〉" : "");
+  }
+  // 装備の種類の名前（図鑑などで使う）
+  function typeName(key) {
+    var def = GameData.WEAPONS[key] || GameData.ARMORS[key];
+    return def ? (def.item || def.name) : key;
+  }
+
+  // 装備を1行で書く（例：「銅の剣〈レア〉 Lv3  物攻11（物攻+3・魔防−3）」）
   function describe(item) {
     var main = item.slot === "weapon"
       ? (item.patk ? "物攻" + item.patk : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + item.matk : "")
@@ -76,7 +90,7 @@ var Loot = (function () {
     main = item.slot === "weapon"
       ? (item.patk ? "物攻" + Math.round(item.patk * k) : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + Math.round(item.matk * k) : "")
       : "物防" + Math.round(item.pdef * k) + "・魔防" + Math.round(item.mdef * k);
-    return RARITY[item.r].name + " " + item.name + (item.plus ? "＋" + item.plus : "") + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
+    return label(item) + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
   }
 
   // 宝箱の中身（いつも装備1つ＋素材＋ゴールド）。ゴールド 20＋5×d（draft 4）
@@ -104,6 +118,6 @@ var Loot = (function () {
 
   return {
     RARITY: RARITY, MATERIALS: MATERIALS, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
-    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, STAT_NAMES: STAT_NAMES
+    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, typeName: typeName, STAT_NAMES: STAT_NAMES
   };
 })();
