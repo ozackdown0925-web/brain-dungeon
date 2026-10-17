@@ -280,3 +280,27 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
   #choose .panel p, #chooseLead { font-size: 13px; }
   #choose .btn.wide { padding: 8px 12px; font-size: 15px; }
 }
+
+/* 段階5-2②：町の絵、宿屋・転職・図鑑・遊び方 */
+.town-wrap { display: flex; justify-content: center; margin: 6px 0 2px; }
+#townMap { display: block; border-radius: 10px; border: 2px solid #343b55; image-rendering: pixelated; touch-action: manipulation; }
+.town-hint { text-align: center; margin: 2px 0; }
+.depart.flash { animation: flash 1s ease-out; border-radius: 10px; }
+@keyframes flash { 0% { background: rgba(242, 193, 78, 0.6); } 100% { background: transparent; } }
+.dim-line { opacity: 0.55; }
+.cur-line { background: rgba(242, 193, 78, 0.12); border-radius: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-tag { font-size: 13px; padding: 3px 8px; border-radius: 10px; border: 1px solid #343b55; color: var(--muted); }
+.chip-tag.got { color: #ece7da; border-color: var(--gold); }
+.help-list { margin: 4px 0; padding-left: 1.3em; font-size: 14px; line-height: 1.6; }
+#townBody select { font: inherit; font-size: 15px; color: #ece7da; background: #242a3d; border: 1px solid #343b55; border-radius: 6px; padding: 5px; max-width: 100%; }
+
+/* ワールドマップと知恵の試練（仮） */
+.screen.world { background: linear-gradient(#1d2a3a, #2a3a22); }
+#worldMap { display: block; border-radius: 10px; border: 2px solid #343b55; image-rendering: pixelated; touch-action: manipulation; }
+.dialog { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(6, 8, 13, 0.7); padding: 12px; overflow-y: auto; touch-action: pan-y; }
+.dialog .panel { text-align: center; }
+.dialog .again { font-size: 14px; color: var(--muted); }
+.screen.trial { display: flex; align-items: center; justify-content: center; background: linear-gradient(#2a2440, #14101e); }
+.screen.trial .panel { text-align: center; max-width: 520px; }
+.btn.quit { display: block; margin: 8px auto 0; border-color: var(--life); }
