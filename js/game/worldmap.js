@@ -1,7 +1,7 @@
 // ワールドマップ（段階5-2②）：地方の地図の上に、拠点とダンジョンが点在する（ロマサガ2の地図のイメージ。保護者の案）。
 // 流れ：拠点 →（森の門）→ ワールドマップ → ダンジョンを選ぶ → 何階に挑むか → 知恵の試練（trial.js）→ ダンジョン。
 // 終わったら（クリア・時間切れ・全滅・メニューでやめる）、いつも拠点にもどる。
-// 地図の絵は仮（段階7で差しかえ）。地方はこれから増える（森の地方が最初）。
+// 地図の絵は、保護者が Gemini で作ったもの（assets/maps/forestveil.png、2026-10-18）。地方はこれから増える。
 // 部屋の当たり判定の World（world.js）とは別もの：こちらは WorldMap。
 var WorldMap = (function () {
   var el = document.getElementById("worldScreen");
@@ -14,11 +14,11 @@ var WorldMap = (function () {
   var REGION = {
     name: GameData.PLACES.region,
     spots: [
-      { id: "base", kind: "base", name: GameData.PLACES.base, x: 92, y: 112 },
-      { id: "forest1", kind: "dungeon", name: GameData.PLACES.dungeon1, floors: FLOORS, x: 208, y: 58, open: true,
+      { id: "base", kind: "base", name: GameData.PLACES.base, x: 61, y: 124 },
+      { id: "forest1", kind: "dungeon", name: GameData.PLACES.dungeon1, floors: FLOORS, x: 200, y: 76, open: true,
         note: "若葉のしげる深い樹海。ゴブリンの部隊と、つる草の魔物がすむ。7階に大オオカミ、14階に森の主がいる。" },
-      { id: "locked1", kind: "dungeon", name: "？？？", x: 262, y: 128, open: false },
-      { id: "locked2", kind: "dungeon", name: "？？？", x: 44, y: 40, open: false }
+      { id: "locked1", kind: "dungeon", name: "？？？", x: 283, y: 122, open: false },   // 原生の秘境（南東の遺跡）
+      { id: "locked2", kind: "dungeon", name: "？？？", x: 94, y: 60, open: false }      // 瘴気の森（北西の沼）
     ]
   };
   var hover = null;
@@ -45,27 +45,22 @@ var WorldMap = (function () {
     ctx.imageSmoothingEnabled = false;
     function r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
     function circle(x, y, rad, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill(); }
-    // 草原・森・山・川・湖
-    r(0, 0, MW, MH, "#6a9a4a");
-    for (var i = 0; i < 70; i++) { var fx = 150 + (i * 29) % 160, fy = 10 + (i * 17) % 90; circle(fx, fy, 6, i % 2 ? "#2f6a2a" : "#3a7a32"); }   // 森
-    for (var j = 0; j < 12; j++) { var mx = 10 + j * 14, my = 8 + (j % 3) * 6; ctx.fillStyle = "#8a8070"; ctx.beginPath(); ctx.moveTo(mx, my + 18); ctx.lineTo(mx + 9, my); ctx.lineTo(mx + 18, my + 18); ctx.fill(); ctx.fillStyle = "#e8e8f0"; ctx.beginPath(); ctx.moveTo(mx + 6, my + 6); ctx.lineTo(mx + 9, my); ctx.lineTo(mx + 12, my + 6); ctx.fill(); } // 山
-    ctx.strokeStyle = "#4a8ac0"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, 150); ctx.bezierCurveTo(80, 140, 120, 175, 200, 160); ctx.bezierCurveTo(240, 150, 270, 160, 320, 150); ctx.stroke(); // 川
-    circle(262, 140, 18, "#4a8ac0"); circle(256, 136, 10, "#6aaae0");                                      // 湖
-    // 道
-    ctx.strokeStyle = "#c8b080"; ctx.lineWidth = 3; ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(92, 112); ctx.quadraticCurveTo(150, 100, 208, 58); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(92, 112); ctx.quadraticCurveTo(180, 130, 262, 128); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(92, 112); ctx.quadraticCurveTo(60, 80, 44, 40); ctx.stroke();
-    ctx.setLineDash([]);
+    // 地図の絵（mapart.js。読みこめたら描き直す）
+    var art = MapArt.get("world", draw);
+    if (art) ctx.drawImage(art, 0, 0, MW, MH); else r(0, 0, MW, MH, "#6a9a4a");
     // 場所の印
     REGION.spots.forEach(function (s) {
       var lit = hover === s.id;
+      // 印：絵の上に、場所がわかる小さな印（村は絵に描いてあるので、指したときだけ光る輪）
+      ctx.lineWidth = 1.5;
       if (s.kind === "base") {
-        r(s.x - 10, s.y - 6, 20, 12, "#d8c8a8"); r(s.x - 12, s.y - 12, 24, 7, lit ? "#f2c14e" : "#b0473a"); r(s.x - 2, s.y, 4, 6, "#5a3d22");
+        if (lit) { ctx.strokeStyle = "#f2c14e"; ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, Math.PI * 2); ctx.stroke(); }
       } else if (s.open) {
-        circle(s.x, s.y, 10, lit ? "#f2c14e" : "#1a3a18"); circle(s.x, s.y, 7, "#0b0d13"); r(s.x - 1, s.y - 14, 2, 6, "#ffe066");
+        ctx.strokeStyle = lit ? "#f2c14e" : "#ffe066"; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.stroke();
+        circle(s.x, s.y, 3, lit ? "#f2c14e" : "#ffe066"); r(s.x - 1, s.y - 16, 2, 6, "#ffe066");
       } else {
-        circle(s.x, s.y, 9, "rgba(20,20,30,0.75)");
+        circle(s.x, s.y, 8, "rgba(20,20,30,0.7)");
+        ctx.fillStyle = "#a3a8bd"; ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", s.x, s.y + 0.5);
       }
       ctx.font = "bold 8px \"Hiragino Maru Gothic ProN\", \"Hiragino Sans\", \"Yu Gothic\", sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "top";
