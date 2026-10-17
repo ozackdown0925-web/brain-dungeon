@@ -50,5 +50,7 @@ var Battle = (function () {
     ctx.globalAlpha = 1;
   }
 
-  return { damage: damage, resOf: resOf, pop: pop, showHit: showHit, update: update, draw: draw };
+  function clear() { popups.length = 0; }
+
+  return { clear: clear, damage: damage, resOf: resOf, pop: pop, showHit: showHit, update: update, draw: draw };
 })();

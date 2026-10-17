@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=11">
+<link rel="stylesheet" href="css/game.css?v=12">
 </head>
 <body>
 <div id="stage">
@@ -39,7 +39,7 @@
   <div id="pause" hidden>
     <div class="panel">
       <h2>一時停止</h2>
-      <p>装備などのメニューは、段階5で作ります。</p>
+      <p>メニューを開いているあいだは、敵も時間も止まります。</p>
       <button type="button" id="resumeBtn" class="btn">つづける</button>
       <div class="mapbox">
         <h3>地図</h3>
@@ -49,20 +49,61 @@
         <p id="floorInfo" class="note"></p>
         <p id="chestInfo" class="note"></p>
       </div>
-      <div class="test">
-        <h3>テスト用の設定（キャラクリと拠点は段階5、知恵の試練は段階6で作る）</h3>
-        <p class="note">職業・武器・スキル1〜3を選べます。スキルは、条件（職業の系統・装備している武器）に合うものだけ選べます。</p>
-        <div id="testPanel"></div>
+    </div>
+  </div>
+
+  <!-- 段階5-1：キャラクリ -->
+  <div id="create" class="screen" hidden>
+    <div class="panel wide-panel">
+      <h2>仲間を3人つくろう</h2>
+      <p>名前・職業・顔を選んでね。</p>
+      <div id="createList" class="cc-list"></div>
+      <p id="createNote" class="note"></p>
+      <button type="button" id="createGo" class="btn big">冒険をはじめる</button>
+    </div>
+  </div>
+
+  <!-- 段階5-1：拠点 -->
+  <div id="base" class="screen town" hidden>
+    <div class="panel wide-panel">
+      <h2>森の拠点</h2>
+      <p id="baseMoney" class="money"></p>
+      <div id="baseReport" class="report" hidden></div>
+      <div id="baseParty" class="party"></div>
+      <div class="depart">
+        <button type="button" id="goNext" class="btn big">出発</button>
+        <span class="again">前の階層にもう一度 <select id="goAgainFloor"></select> <button type="button" id="goAgain" class="btn">出発</button></span>
+      </div>
+      <div id="baseMenu" class="menu-grid">
+        <button type="button" class="btn">装備</button>
+        <button type="button" class="btn">お店</button>
+        <button type="button" class="btn">鍛冶屋</button>
+        <button type="button" class="btn">転職の神殿</button>
+        <button type="button" class="btn">スキル</button>
+        <button type="button" class="btn">倉庫</button>
+        <button type="button" class="btn">図鑑</button>
+        <button type="button" class="btn">遊び方</button>
+      </div>
+      <p id="baseNote" class="note"></p>
+      <details class="test">
+        <summary>テスト用の設定（保護者むけ）</summary>
         <div class="test-foot">
-          <label>レベル <select id="testLevel"></select></label>
-          <label>階層 <select id="testFloor"></select></label>
           <label>知恵の試練の正解数（仮） <select id="testCorrect"></select></label>
           <label>冒険の時間 <select id="testMinutes"></select></label>
           <label>seed <input id="testSeed" type="text" inputmode="numeric" placeholder="空なら毎回ちがう" size="10"></label>
-          <button type="button" id="testApply" class="btn">この設定ではじめから</button>
         </div>
-        <p id="testNote" class="note warn"></p>
-      </div>
+        <div class="test-foot">
+          <label>3人のレベル <select id="testLevel"></select></label>
+          <button type="button" id="testLevelApply" class="btn">このレベルにする</button>
+        </div>
+        <div class="test-foot">
+          <label>好きな階層 <select id="testFloor"></select></label>
+          <button type="button" id="testGo" class="btn">この階層へ出発（テスト）</button>
+        </div>
+        <div class="test-foot">
+          <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -75,18 +116,21 @@
   </div>
 </div>
 
-<script src="js/game/input.js?v=11"></script>
-<script src="js/game/render.js?v=11"></script>
-<script src="js/game/world.js?v=11"></script>
-<script src="js/game/rooms.js?v=11"></script>
-<script src="js/game/dungeon.js?v=11"></script>
-<script src="js/game/loot.js?v=11"></script>
-<script src="js/game/data.js?v=11"></script>
-<script src="js/game/battle.js?v=11"></script>
-<script src="js/game/enemies.js?v=11"></script>
-<script src="js/game/bosses.js?v=11"></script>
-<script src="js/game/party.js?v=11"></script>
-<script src="js/game/skills.js?v=11"></script>
-<script src="js/game/core.js?v=11"></script>
+<script src="js/game/input.js?v=12"></script>
+<script src="js/game/render.js?v=12"></script>
+<script src="js/game/world.js?v=12"></script>
+<script src="js/game/rooms.js?v=12"></script>
+<script src="js/game/dungeon.js?v=12"></script>
+<script src="js/game/loot.js?v=12"></script>
+<script src="js/game/data.js?v=12"></script>
+<script src="js/game/state.js?v=12"></script>
+<script src="js/game/faces.js?v=12"></script>
+<script src="js/game/battle.js?v=12"></script>
+<script src="js/game/enemies.js?v=12"></script>
+<script src="js/game/bosses.js?v=12"></script>
+<script src="js/game/party.js?v=12"></script>
+<script src="js/game/skills.js?v=12"></script>
+<script src="js/game/base.js?v=12"></script>
+<script src="js/game/core.js?v=12"></script>
 </body>
 </html>
