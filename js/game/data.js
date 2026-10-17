@@ -6,15 +6,17 @@ var GameData = (function () {
 
   // 武器（ノーマル・アイテムレベル1）。reach＝届く距離（ドット）、arc＝ふりの広さ（左右それぞれのラジアン）
   // shot：ふつうの攻撃が飛ぶもの（弓の矢、魔術師の系統の杖の魔法弾）
+  // power：ふつうの攻撃の「1回の強さ」の倍率（2026-10-17 決定）。近い武器ほど1秒あたりのダメージが強く、遠い武器ほど弱い
+  //   （レベルが上がるとダメージは能力でほぼ決まるので、間かくの長い大剣・斧が弱く、離れて戦える職と差がなかったため）
   var WEAPONS = {
-    sword:      { name: "剣",   element: "slash",  patk: 8,  matk: 0, wait: 0.6, reach: 18, arc: 1.05 },
-    greatsword: { name: "大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, reach: 22, arc: 1.4 },
-    axe:        { name: "斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, reach: 20, arc: 1.3 },
-    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 0.8, shot: { speed: 170, range: 150, stat: "p" } },
-    fist:       { name: "拳",   element: "strike", patk: 6,  matk: 0, wait: 0.4, reach: 14, arc: 0.9 },
-    // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離）、それ以外の職は近くをたたく（物攻・打）
-    staff:      { name: "杖",   element: "strike", patk: 4,  matk: 8, wait: 0.7, reach: 16, arc: 1.0,
-                  boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none" } }
+    sword:      { name: "剣",   element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
+    greatsword: { name: "大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
+    axe:        { name: "斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
+    bow:        { name: "弓",   element: "pierce", patk: 9,  matk: 0, wait: 0.8, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
+    fist:       { name: "拳",   element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
+    // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9）、それ以外の職は近くをたたく（物攻・打・倍率1.15）
+    staff:      { name: "杖",   element: "strike", patk: 4,  matk: 8, wait: 0.7, power: 1.15, reach: 16, arc: 1.0,
+                  boltFor: "mage", bolt: { speed: 140, range: 90, stat: "m", element: "none", power: 0.9 } }
   };
 
   // 防具（ノーマル・アイテムレベル1）。宝箱・お店・鍛冶屋で手に入るもの（2026-10-17 案H：重装備は物理に、魔法装備は魔法に強い）
