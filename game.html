@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=18">
-<link rel="stylesheet" href="css/drillcore.css?v=18">
-<link rel="stylesheet" href="css/trial.css?v=18">
+<link rel="stylesheet" href="css/game.css?v=19">
+<link rel="stylesheet" href="css/drillcore.css?v=19">
+<link rel="stylesheet" href="css/trial.css?v=19">
 </head>
 <body>
 <div id="stage">
@@ -144,6 +144,66 @@
     </div>
   </div>
 
+  <!-- 段階6-2：保護者画面（暗証番号） -->
+  <div id="parentScreen" class="screen town" hidden>
+    <div class="panel wide-panel">
+      <div class="town-head">
+        <button type="button" id="parentBack" class="btn small-btn">← 拠点にもどる</button>
+        <h2>保護者画面</h2>
+      </div>
+      <div id="parentPin" class="pin-box">
+        <p id="parentPinLead"></p>
+        <input type="password" id="parentPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="暗証番号（4けた）">
+        <input type="password" id="parentPinInput2" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="もう一度" hidden>
+        <button type="button" id="parentPinGo" class="btn">OK</button>
+        <p id="parentPinMsg" class="note"></p>
+      </div>
+      <div id="parentBody" hidden>
+        <p id="parentNote" class="note town-note"></p>
+        <section class="pp">
+          <h3>冒険の決まり</h3>
+          <div class="test-foot">
+            <label>冒険の時間 <select id="parentMinutes"></select></label>
+            <label>1日に出発できる回数 <select id="parentPerDay"></select></label>
+          </div>
+          <p id="parentToday" class="note"></p>
+        </section>
+        <section class="pp">
+          <h3>休みの日</h3>
+          <p class="note">休みの日は、ダンジョンに出発できない。知恵の試練だけは解ける（「森の門」からダンジョンを選ぶと、試練だけ開く）。</p>
+          <div id="parentWeek" class="pp-week"></div>
+          <div class="test-foot">
+            <label>日にちで休む <input type="date" id="parentDate"></label>
+            <button type="button" id="parentDateAdd" class="btn small-btn">休みの日に足す</button>
+          </div>
+          <div id="parentDates"></div>
+        </section>
+        <section class="pp">
+          <h3>遊んだ記録</h3>
+          <div id="parentLog"></div>
+        </section>
+        <section class="pp">
+          <h3>セーブの復元（最近の10回分。データを消しても残る）</h3>
+          <div id="historyList"></div>
+        </section>
+        <section class="pp">
+          <h3>試しモード</h3>
+          <p class="note">回数・休みの日の決まりなしで、好きな階を試せる。知恵の試練はなし（正解数を選ぶ）。もどると出発する前のセーブにもどり、記録にもセーブにも残らない。</p>
+          <div class="test-foot">
+            <label>階 <select id="tryFloor"></select></label>
+            <label>正解数 <select id="tryCorrect"></select></label>
+            <label>時間 <select id="tryMinutes"></select></label>
+            <button type="button" id="tryGo" class="btn">試しモードで出発</button>
+          </div>
+        </section>
+        <section class="pp">
+          <h3>暗証番号</h3>
+          <button type="button" id="parentPinChange" class="btn small-btn">暗証番号を変える</button>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <!-- 段階5-1：キャラクリ -->
   <div id="create" class="screen" hidden>
     <div class="panel wide-panel">
@@ -164,6 +224,7 @@
       <div id="baseReport" class="report" hidden></div>
       <div class="town-wrap"><canvas id="townMap" aria-label="町の地図。建物を押すと開く"></canvas></div>
       <p class="note town-hint">建物を押すと開くよ。冒険は「森の門」から！</p>
+      <div class="parent-entry"><button type="button" id="parentBtn" class="btn small-btn">保護者</button></div>
       <div id="baseParty" class="party"></div>
       <p id="baseNote" class="note"></p>
       <details class="test">
@@ -185,8 +246,9 @@
         <div class="test-foot">
           <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
         </div>
-        <h4 class="test-sub">セーブの復元（最近の10回分。データを消しても残る）</h4>
-        <div id="historyList"></div>
+        <div class="test-foot">
+          <button type="button" id="testPinReset" class="btn">保護者の暗証番号を消す（決め直す）</button>
+        </div>
       </details>
     </div>
   </div>
@@ -200,28 +262,29 @@
   </div>
 </div>
 
-<script src="config.js?v=18"></script>
-<script src="js/api.js?v=18"></script>
-<script src="js/drillcore.js?v=18"></script>
-<script src="js/game/input.js?v=18"></script>
-<script src="js/game/render.js?v=18"></script>
-<script src="js/game/world.js?v=18"></script>
-<script src="js/game/rooms.js?v=18"></script>
-<script src="js/game/dungeon.js?v=18"></script>
-<script src="js/game/loot.js?v=18"></script>
-<script src="js/game/data.js?v=18"></script>
-<script src="js/game/state.js?v=18"></script>
-<script src="js/game/faces.js?v=18"></script>
-<script src="js/game/battle.js?v=18"></script>
-<script src="js/game/enemies.js?v=18"></script>
-<script src="js/game/bosses.js?v=18"></script>
-<script src="js/game/party.js?v=18"></script>
-<script src="js/game/skills.js?v=18"></script>
-<script src="js/game/town.js?v=18"></script>
-<script src="js/game/trial-mock.js?v=18"></script>
-<script src="js/game/trial.js?v=18"></script>
-<script src="js/game/worldmap.js?v=18"></script>
-<script src="js/game/base.js?v=18"></script>
-<script src="js/game/core.js?v=18"></script>
+<script src="config.js?v=19"></script>
+<script src="js/api.js?v=19"></script>
+<script src="js/drillcore.js?v=19"></script>
+<script src="js/game/input.js?v=19"></script>
+<script src="js/game/render.js?v=19"></script>
+<script src="js/game/world.js?v=19"></script>
+<script src="js/game/rooms.js?v=19"></script>
+<script src="js/game/dungeon.js?v=19"></script>
+<script src="js/game/loot.js?v=19"></script>
+<script src="js/game/data.js?v=19"></script>
+<script src="js/game/state.js?v=19"></script>
+<script src="js/game/faces.js?v=19"></script>
+<script src="js/game/battle.js?v=19"></script>
+<script src="js/game/enemies.js?v=19"></script>
+<script src="js/game/bosses.js?v=19"></script>
+<script src="js/game/party.js?v=19"></script>
+<script src="js/game/skills.js?v=19"></script>
+<script src="js/game/town.js?v=19"></script>
+<script src="js/game/trial-mock.js?v=19"></script>
+<script src="js/game/trial.js?v=19"></script>
+<script src="js/game/parent.js?v=19"></script>
+<script src="js/game/worldmap.js?v=19"></script>
+<script src="js/game/base.js?v=19"></script>
+<script src="js/game/core.js?v=19"></script>
 </body>
 </html>

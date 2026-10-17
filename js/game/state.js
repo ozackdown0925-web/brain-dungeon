@@ -25,6 +25,8 @@ var GameState = (function () {
     g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; learnSkills(h); });
     if (!g.items) g.items = { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 };
     if (!g.today) g.today = { date: todayStr(), adventure: null };
+    if (!g.parent) g.parent = defaultParent();
+    if (!g.log) g.log = [];
     return g;
   }
 
@@ -37,7 +39,9 @@ var GameState = (function () {
       progress: { deepest: 0, bosses: [] },
       titles: [],
       book: { monsters: {}, items: [] },
-      today: { date: todayStr(), adventure: null }
+      today: { date: todayStr(), adventure: null },
+      parent: defaultParent(), // 保護者画面の決まり（段階6-2）
+      log: []                  // 遊んだ記録（段階6-2）
     };
     game.party.forEach(function (h) { learnSkills(h); });
     save();
@@ -66,6 +70,16 @@ var GameState = (function () {
   // 冒険の結果を受け取る。r：{ exp: [3人分], mastery: [3人分], gold, mat, items, title, floor, cleared, kills: { 敵の種類: 数 } }
   // もどり値：拠点で見せる知らせ（1人ずつの行）
   function applyAdventure(r) {
+    // 試しモード（保護者）：出発する前のセーブにもどす。記録にもセーブにも残らない（段階6-2）
+    if (r.tryMode) {
+      var back = null;
+      try { back = JSON.parse(localStorage.getItem(TRY_KEY) || "null"); } catch (e) { back = null; }
+      if (back) game = upgrade(back);
+      try { localStorage.removeItem(TRY_KEY); } catch (e) { /* そのまま */ }
+      game.today = { date: todayStr(), adventure: null };
+      save();
+      return [];
+    }
     var report = [];
     game.party.forEach(function (h, i) {
       var lines = [];
@@ -107,7 +121,13 @@ var GameState = (function () {
     if (lost) report.push({ name: "倉庫", lines: ["倉庫がいっぱいで、装備を " + lost + "個 持ち帰れなかった"], exp: 0 });
     game.today = { date: todayStr(), adventure: null };
     // 出発できるのは1日2回（テスト用の出発は数えない）
-    if (!r.test) { game.adventureCount = { date: todayStr(), n: adventuresToday() + 1 }; game.lastAdventure = todayStr(); }
+    if (!r.test) {
+      game.adventureCount = { date: todayStr(), n: adventuresToday() + 1 }; game.lastAdventure = todayStr();
+      // 遊んだ記録（保護者画面で見る）。最近の100回分
+      game.log.unshift({ date: todayStr(), at: new Date().toISOString(), floor: r.floor, kind: r.kind, cleared: !!r.cleared,
+                         correct: r.correct || 0, subjects: r.subjects || [] });
+      if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
+    }
     save();
     pushHistory(r.cleared ? "森の" + r.floor + "階をクリア" : "森の" + r.floor + "階から帰った");
     Remote.send("adventureEnd", { floor: r.floor, kind: r.kind, cleared: !!r.cleared });
@@ -331,8 +351,40 @@ var GameState = (function () {
   function adventure() { return game && game.today ? game.today.adventure : null; }
   function adventureDate() { return game && game.today ? game.today.date : null; }
 
-  // 1日に出発できる回数。テスト用に外せる（この端末だけ。段階6-2で保護者画面の「試しモード」に）
-  var DAILY_LIMIT = 2;
+  // ---------- 保護者画面の決まり（段階6-2） ----------
+  // minutes：冒険の時間（分）、perDay：1日に出発できる回数、restWeek：休みの曜日（0＝日〜6＝土）、restDates：休みの日（"2026-10-20" の形）
+  var LOG_MAX = 100;
+  var TRY_KEY = "bd-try-backup"; // 試しモードで出発する前のセーブ
+  function defaultParent() { return { minutes: 5, perDay: 2, restWeek: [], restDates: [] }; }
+  function parent() { return game ? game.parent : defaultParent(); }
+  function setParent(p) {
+    if (!game) return;
+    var c = game.parent;
+    if (p.minutes) c.minutes = p.minutes;
+    if (p.perDay) c.perDay = p.perDay;
+    if (p.restWeek) c.restWeek = p.restWeek.slice().sort();
+    if (p.restDates) c.restDates = p.restDates.slice().sort();
+    save();
+  }
+  function restToday() {
+    if (!game) return false;
+    var c = game.parent, d = new Date();
+    return c.restWeek.indexOf(d.getDay()) >= 0 || c.restDates.indexOf(todayStr()) >= 0;
+  }
+  function log() { return game ? game.log : []; }
+  // 休みの日に知恵の試練だけ解いたとき（その日1回だけ記録する）
+  function logRest(res) {
+    if (!game) return;
+    var t = todayStr();
+    if (game.log.some(function (r) { return r.date === t && r.kind === "rest"; })) return;
+    game.log.unshift({ date: t, at: new Date().toISOString(), floor: 0, kind: "rest", cleared: false, correct: res.correct || 0, subjects: res.subjects || [] });
+    if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
+    save();
+  }
+  // 試しモードで出発する前に、今のセーブを控える（もどったら、これにもどす）
+  function beginTry() { try { localStorage.setItem(TRY_KEY, JSON.stringify(game)); } catch (e) { /* そのまま */ } }
+
+  // 1日に出発できる回数は保護者画面で決める（はじめは2回）。テスト用に外せる（この端末だけ）
   // 今日もう何回冒険したか（拠点にもどった回数で数える）
   function adventuresToday() {
     if (!game) return 0;
@@ -340,7 +392,7 @@ var GameState = (function () {
     if (c && c.date === todayStr()) return c.n || 0;
     return game.lastAdventure === todayStr() ? 1 : 0; // 1日1回だったころのセーブ
   }
-  function adventuredToday() { return adventuresToday() >= DAILY_LIMIT; }
+  function adventuredToday() { return adventuresToday() >= parent().perDay; }
   function unlimited() { try { return localStorage.getItem("bd-test-unlimited") === "1"; } catch (e) { return false; } }
   function setUnlimited(on) { try { if (on) localStorage.setItem("bd-test-unlimited", "1"); else localStorage.removeItem("bd-test-unlimited"); } catch (e) { /* そのまま */ } }
 
@@ -397,7 +449,7 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe,
-    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, DAILY_LIMIT: DAILY_LIMIT, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, Remote: Remote,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
