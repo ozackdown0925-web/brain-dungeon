@@ -173,6 +173,7 @@
       setDoor(c, "w", "V");
       if (!dg.bossMet) {
         dg.bossMet = true; Sound.bgm("boss");
+        Sound.play("boss");
         showStory(GameData.ENEMIES[dg.bossInfo.enemy].name, dg.bossInfo.before, "たたかう！", function () { say("つるが道をふさいだ！"); });
       }
     }
@@ -262,12 +263,14 @@
     var res = Battle.damage(e.patk * (opts.mult || 1), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
+    Sound.play("hurt");
     if (opts.big) Battle.pop(A.x, A.y - 40, "大ダメージ！", "#ef5b5b", 9);
     A.inv = opts.big ? 0.8 : 0.35;
     var fell = Party.hurtActive(res.amount);
     var st = opts.status || e.def.onHit;
     if (!fell && st && Math.random() < st.chance) Party.addStatus(c, st.type, st.dur);
     if (fell) {
+      Sound.play("down");
       tally.downs++;
       if (Party.allDown()) finish("wipe"); else showChoose(c);
     }
@@ -366,6 +369,7 @@
       c.key.taken = true; dg.hasKey = true;
       say("鍵を手に入れた！ 鍵のかかった扉をさがそう"); snapshot();
       Battle.pop(A.x, A.y - 30, "鍵", "#ffe066", 9);
+      Sound.play("key");
     }
     c.chests.forEach(function (b) {
       if (b.opened || !near(b.x, b.y, 14)) return;
@@ -378,6 +382,7 @@
       say("宝箱：" + R.name + "の " + got.equip.name + " を手に入れた！"); snapshot();
       Battle.pop(b.x, b.y - 22, R.name + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
+      Sound.play("chest");
     });
     // 鍵のかかった扉：鍵を持っていれば、近づくと開く
     if (dg.lock && !dg.lock.open && curKey === dg.lock.parent) {
@@ -386,7 +391,7 @@
         if (dg.hasKey) {
           dg.lock.open = true; dg.hasKey = false;
           dt3.forEach(function (p) { room.setTile(p.x, p.y, ":"); });
-          say("鍵で扉を開けた！"); snapshot();
+          say("鍵で扉を開けた！"); snapshot(); Sound.play("door");
         } else if (run.lockMsg <= 0) {
           say("鍵がかかっている。どこかの部屋に鍵があるはず");
           run.lockMsg = 3;
@@ -398,20 +403,20 @@
     for (var i = 0; i < c.traps.length; i++) {
       var t = c.traps[i];
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
-      if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); }
+      if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); Sound.play("trap"); }
       var ch = Party.current();
       if (t.type === "swamp") {
         if (!ch.status.poison && run.swampCd <= 0) {
           Party.addStatus(ch, "poison", 8);
           run.swampCd = 1.5;
-          say("毒の沼だ！");
+          say("毒の沼だ！"); Sound.play("trap");
         }
       } else {
         onPit = true;
         if (!run.inPit) {
           // 落とし穴：少しダメージ（最大HPの10%。これで倒れることはない）＋部屋の入口へ（2026-10-17 決定）
           var dmg = Math.max(1, Math.round(ch.stats.hp * 0.1));
-          ch.hp = Math.max(1, ch.hp - dmg);
+          ch.hp = Math.max(1, ch.hp - dmg); Sound.play("trap");
           A.x = run.entry.x; A.y = run.entry.y; A.face = run.entry.face; A.move = 0;
           A.inv = Math.max(A.inv, 0.6);
           run.fade = 0.3;
@@ -540,7 +545,7 @@
     var low = run.timeLeft <= 60;
     var tcol = low ? (Math.floor(run.timeLeft * 2) % 2 === 0 ? "#ef5b5b" : "#ffb0a8") : "#ece7da";
     Render.rect(view.w / 2 - 44, 3, 88, 24, "rgba(10,12,18,0.72)");
-    Render.text("森 " + dg.floor + "階", view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
+    Render.text(GameData.floorLabel(dg.floor), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
     Render.text("のこり " + mm + ":" + (ss < 10 ? "0" : "") + ss, view.w / 2, 13, { size: 11, align: "center", bold: true, color: tcol });
 
     // 右上（メニューのボタンの下）：小さな地図
@@ -664,6 +669,7 @@
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
     var titles = { clear: GameData.floorLabel(dg.floor) + "をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
     document.getElementById("chooseTitle").textContent = titles[kind];
+    Sound.bgm(""); Sound.play(kind === "clear" ? "clear" : "fail");
     if (kind === "clear") {
       run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold;
       // クリア報酬：経験値 (20＋5×深さ)×(1＋0.25×正解数)、熟練度 10（倒れていない仲間に）
@@ -761,19 +767,19 @@
       var t = GameState.TOOLS[k], n = " ×" + g.items[k];
       if (k === "potion") {
         add(t.name + n, c.hp < c.stats.hp, function () {
-          GameState.useTool(k); c.hp = Math.min(c.stats.hp, c.hp + Math.round(c.stats.hp * 0.4)); note.textContent = c.name + "の HP が回復した";
+          GameState.useTool(k); Sound.play("heal"); c.hp = Math.min(c.stats.hp, c.hp + Math.round(c.stats.hp * 0.4)); note.textContent = c.name + "の HP が回復した";
         });
       } else if (k === "revive") {
         var downs = Party.members().filter(function (m) { return m.down; });
         if (!downs.length) add(t.name + n + "（たおれた仲間がいない）", false, function () {});
         downs.forEach(function (m) {
           add(t.name + n + " → " + m.name, true, function () {
-            GameState.useTool(k); m.down = false; m.hp = Math.max(1, Math.round(m.stats.hp * 0.3)); note.textContent = m.name + "が復活した！";
+            GameState.useTool(k); Sound.play("heal"); m.down = false; m.hp = Math.max(1, Math.round(m.stats.hp * 0.3)); note.textContent = m.name + "が復活した！";
           });
         });
       } else {
         add(t.name + n, !!c.status[t.cures], function () {
-          GameState.useTool(k); delete c.status[t.cures]; note.textContent = c.name + "の" + GameData.STATUS[t.cures].name + "が治った";
+          GameState.useTool(k); Sound.play("heal"); delete c.status[t.cures]; note.textContent = c.name + "の" + GameData.STATUS[t.cures].name + "が治った";
         });
       }
     });
@@ -790,7 +796,7 @@
     ctx.clearRect(0, 0, ms.w, ms.h);
     Dungeon.drawMap(ctx, dg, 0, 0, cw, ch, gap, curKey);
     document.getElementById("floorInfo").textContent =
-      "森 " + dg.floor + "階　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
+      GameData.floorLabel(dg.floor) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
     var w = Loot.rarityWeights(settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
     document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
       Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";

@@ -8,14 +8,24 @@ var Sound = (function () {
   var DIR = "assets/sound/";
   // 名前 → ファイル（assets/sound/ の中）。空のものは、まだ音がない
   var FILES = {
-    bgm: { title: "", town: "", world: "", trial: "", dungeon: "", boss: "" },
+    // NOT JAM MUSIC PACK 2（CC0）。OGG と WAV を mp3 にした（docs/credits.md）
+    bgm: {
+      title: "bgm_lich_king_ascendant.mp3", town: "bgm_lazy_river_rally.mp3", world: "bgm_rainy_foothills.mp3",
+      trial: "bgm_crystal_caverns.mp3", dungeon: "bgm_leading_the_charge.mp3", boss: "bgm_locrian_chipdoom.mp3"
+    },
     se: {
-      click: "", ok: "", cancel: "",              // 画面のボタン
-      correct: "", wrong: "", trialDone: "",      // 知恵の試練
-      swing: "", hit: "", hurt: "", kill: "", down: "", skill: "", heal: "",   // たたかい
-      coin: "", chest: "", key: "", door: "", trap: "", item: "",            // ダンジョン
-      clear: "", fail: "", levelup: "", boss: ""                              // 区切り
+      click: "se_click.mp3", ok: "se_accept.mp3", cancel: "se_click_2.mp3",                                        // 画面のボタン
+      correct: "se_green_light_tone.mp3", wrong: "se_red_light_tone.mp3", trialDone: "se_powerup_b.mp3",          // 知恵の試練
+      swing: "se_swipe_metallic.mp3", hit: "se_attack_a.mp3", hurt: "se_crunch_a.mp3", kill: "se_chirp_crunch.mp3",
+      down: "se_fall_and_die.mp3", skill: "se_rising_metallic.mp3", heal: "se_powerup_a.mp3",                     // たたかい
+      coin: "se_chirp_a.mp3", chest: "se_boost_pad.mp3", key: "se_lockon_available.mp3", door: "se_scene_transition.mp3",
+      trap: "se_alarm.mp3", item: "se_bounce_2.mp3",                                                              // ダンジョン
+      clear: "se_lap_complete.mp3", fail: "se_you_died.mp3", levelup: "se_rising_tone_explosion.mp3", boss: "se_siren_explosion.mp3"   // 区切り
     }
+  };
+  // BGM のくり返しの長さ（秒。もとの OGG の長さ）。mp3 にすると終わりに少し無音がつくので、ここでくり返す
+  var LOOP = {
+    title: 37.317, town: 38.519, world: 36.364, trial: 33.391, dungeon: 78.367, boss: 117.736
   };
   var VOL = { bgm: 0.45, se: 0.8 };
 
@@ -90,7 +100,9 @@ var Sound = (function () {
     bgmName = name;
     load(file).then(function (buf) {
       if (bgmWant !== name || bgmSrc || !settings.bgm) return;
-      var s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(bgmGain); s.start(0);
+      var s = ctx.createBufferSource(); s.buffer = buf; s.loop = true;
+      if (LOOP[name] && LOOP[name] < buf.duration) { s.loopStart = 0; s.loopEnd = LOOP[name]; }
+      s.connect(bgmGain); s.start(0);
       bgmSrc = s;
     }, function () { bgmName = ""; });
   }
@@ -111,6 +123,9 @@ var Sound = (function () {
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t || !t.classList) return;
+    // ボタンを押した音。試練の問題の中のボタン（選択肢・図にかく道具など）は鳴らさない（「次の問い」などの dq-btn は鳴らす）
+    var cls = String(t.className || "");
+    if (t.tagName === "BUTTON" && (!/(^|\s)dq-/.test(cls) || /(^|\s)dq-btn(\s|$)/.test(cls)) && !(t.closest && t.closest(".dq-ann-bar"))) play("click");
     if (t.classList.contains("sound-bgm")) setBgm(!settings.bgm);
     else if (t.classList.contains("sound-se")) setSe(!settings.se);
   });
