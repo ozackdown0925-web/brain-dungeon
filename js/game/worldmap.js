@@ -15,10 +15,11 @@ var WorldMap = (function () {
     name: GameData.PLACES.region,
     spots: [
       { id: "base", kind: "base", name: GameData.PLACES.base, x: 61, y: 124 },
-      { id: "forest1", kind: "dungeon", name: GameData.PLACES.dungeon1, floors: FLOORS, x: 200, y: 76, open: true,
+      // 新緑の樹海は右下の森（2026-10-18 保護者が決定）
+      { id: "forest1", kind: "dungeon", name: GameData.PLACES.dungeon1, floors: FLOORS, x: 283, y: 122, open: true,
         note: "若葉のしげる深い樹海。ゴブリンの部隊と、つる草の魔物がすむ。7階に大オオカミ、14階に森の主がいる。" },
-      { id: "locked1", kind: "dungeon", name: "？？？", x: 283, y: 122, open: false },   // 原生の秘境（南東の遺跡）
-      { id: "locked2", kind: "dungeon", name: "？？？", x: 94, y: 60, open: false }      // 瘴気の森（北西の沼）
+      { id: "locked1", kind: "dungeon", name: "？？？", x: 200, y: 76, open: false },    // 原生の秘境（まんなかの大木の森）
+      { id: "locked2", kind: "dungeon", name: "？？？", x: 94, y: 60, open: false }      // 瘴気の森（左上の沼）
     ]
   };
   var hover = null;
@@ -66,8 +67,9 @@ var WorldMap = (function () {
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       var label = s.kind === "dungeon" && s.open ? s.name + "（" + reached() + "/" + s.floors + "階）" : s.name;
       var tw = ctx.measureText(label).width + 6, ly = s.y + 12;
-      r(s.x - tw / 2, ly, tw, 11, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.78)");
-      ctx.fillStyle = lit ? "#1a1408" : s.open === false ? "#a3a8bd" : "#ece7da"; ctx.fillText(label, s.x, ly + 1.5);
+      var lx = Math.max(tw / 2 + 2, Math.min(MW - tw / 2 - 2, s.x));   // 名前の札が地図からはみ出さないように
+      r(lx - tw / 2, ly, tw, 11, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.78)");
+      ctx.fillStyle = lit ? "#1a1408" : s.open === false ? "#a3a8bd" : "#ece7da"; ctx.fillText(label, lx, ly + 1.5);
     });
   }
   function reached() { return GameState.get().progress.deepest; }
