@@ -1,7 +1,7 @@
 // 拠点とキャラクリ（段階5-1）。
 // はじめて遊ぶとき：3人の名前・職業・顔を決める。そのあとは拠点の「森の門」からワールドマップへ出て（worldmap.js）、冒険が終わると拠点にもどる。
 // 拠点のメニュー（装備・お店・鍛冶屋・転職・スキル・倉庫・図鑑・遊び方）は段階5-2で作る。
-// 「1日1回」と「知恵の試練を解いてから出発」は段階6。それまでは何回でも出発できる。
+// 出発は1日2回、知恵の試練を解いてから（段階6）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Base = (function () {
   var baseEl = document.getElementById("base");
@@ -175,6 +175,7 @@ var Base = (function () {
     fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
 
     fillHistory();
+    document.getElementById("testUnlimited").checked = GameState.unlimited();
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
   }
 
@@ -298,10 +299,12 @@ var Base = (function () {
     st.seed = String(document.getElementById("testSeed").value || "").replace(/[^0-9]/g, "");
   }
 
-  function depart(floor) {
+  // trial：知恵の試練の結果 { correct, subjects }。テスト用の出発（trial なし）は、テスト用の正解数を使い、加護はなし
+  function depart(floor, trial) {
     readTestSettings();
     baseEl.hidden = true;
-    Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0);
+    Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
+      trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
   }
 
   // 冒険から拠点にもどる
@@ -330,6 +333,7 @@ var Base = (function () {
   }
 
   // テスト用のボタン
+  document.getElementById("testUnlimited").addEventListener("change", function (e) { GameState.setUnlimited(e.target.checked); });
   document.getElementById("testLevelApply").addEventListener("click", function () {
     GameState.setLevelForTest(Number(document.getElementById("testLevel").value) || 1);
     showBase(null);
