@@ -157,6 +157,20 @@ var GameData = (function () {
       reach: 34, windup: 0.6, cooldown: 2.0, color: "#3f8a3a",
       onHit: { type: "para", chance: 0.2, dur: 3 }
     },
+    // キノコの魔物（2026-10-18 保護者が選んだ）：のろい。近づくと、まわりに胞子をまく（毒）。火に弱い。浅い階から出る
+    mushroom: {
+      name: "キノコの魔物", kind: "spore", hp: 34, patk: 7, pdef: 3, mdef: 3,
+      res: { fire: 1.5, strike: 0.5, grass: 0.5 }, speed: 14, r: 6,
+      reach: 24, windup: 0.8, cooldown: 2.6, color: "#a85a8a",
+      onHit: { type: "poison", chance: 0.6, dur: 6 }
+    },
+    // 大きな蜂（2026-10-18 保護者が選んだ）：飛んで、じぐざぐに近づき、毒の針でさす。速いが HP は少ない。8階から出る
+    bee: {
+      name: "大きな蜂", kind: "bee", hp: 18, patk: 8, pdef: 1, mdef: 2,
+      res: { pierce: 1.5, fire: 1.5, strike: 0.75 }, speed: 46, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.5, color: "#dad45e",
+      onHit: { type: "poison", chance: 0.3, dur: 6 }
+    },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,

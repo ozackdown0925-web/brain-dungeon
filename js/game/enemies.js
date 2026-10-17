@@ -69,6 +69,7 @@ var Enemies = (function () {
       e.lash = Math.max(0, (e.lash || 0) - dt);
       e.sweep = Math.max(0, (e.sweep || 0) - dt);
       e.pollenFx = Math.max(0, (e.pollenFx || 0) - dt);
+      e.puff = Math.max(0, (e.puff || 0) - dt);
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
@@ -100,6 +101,16 @@ var Enemies = (function () {
       } else if (d.kind === "vine") {
         if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
         else e.face = { x: ux, y: uy };
+      } else if (d.kind === "spore") {
+        // キノコ：ゆっくり近づき、届くところで胞子をまく
+        if (gap > d.reach - 6) { mx = ux; my = uy; }
+        if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "bee") {
+        // 蜂：横にゆれながら（じぐざぐに）近づく
+        e.zig = (e.zig || Math.random() * 6) + dt * 7;
+        var sw = Math.sin(e.zig) * 0.9;
+        if (gap > d.reach - 2) { mx = ux - uy * sw; my = uy + ux * sw; var ml = Math.sqrt(mx * mx + my * my) || 1; mx /= ml; my /= ml; }
+        else if (e.cd <= 0) startWindup(e, ux, uy);
       } else if (d.kind === "archer") {
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
         else if (gap > d.keepMax) { mx = ux; my = uy; }
@@ -110,7 +121,7 @@ var Enemies = (function () {
       if (e.state === "chase" || mx || my) {
         if (mx || my) {
           e.face = { x: mx, y: my };
-          if (d.kind !== "archer" || gap >= d.keepMin) e.face = { x: ux, y: uy };
+          if ((d.kind !== "archer" || gap >= d.keepMin) && d.kind !== "bee") e.face = { x: ux, y: uy };
           var before = { x: e.x, y: e.y };
           room.move(e, mx * d.speed * dt, my * d.speed * dt);
           if (d.kind === "archer" && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
@@ -164,6 +175,7 @@ var Enemies = (function () {
     // 近い攻撃：構えたときの向きのまま。届けば当たる
     if (!p.down && gap <= d.reach + 2) hurt(e, p.x, p.y - 8);
     if (d.kind === "vine") e.lash = 0.25;
+    if (d.kind === "spore") e.puff = 0.45;   // 胞子の雲を少しのあいだ見せる
   }
 
   // キャラを動かす。生きている敵にめりこむ方向には進めない（すり抜けない）。
@@ -210,7 +222,7 @@ var Enemies = (function () {
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" ? 8 : 15;            // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" ? 8 : e.type === "mushroom" ? 10 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
       var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
@@ -221,6 +233,21 @@ var Enemies = (function () {
         Render.rect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2, "#c8ccd4");
       }
       Monsters.drawSmall(ctx, e, x, y + 6);
+      if (d.kind === "spore" && !e.dead) {
+        // 胞子：構えのあいだは、とどく範囲がだんだん濃くなる。まいたあとは、点の雲
+        var rr2 = d.reach + e.r;
+        if (e.state === "windup") {
+          var k2 = 1 - e.t / d.windup;
+          ctx.fillStyle = "rgba(170,110,200," + (0.08 + 0.18 * k2).toFixed(2) + ")";
+          ctx.beginPath(); ctx.arc(x, y, rr2, 0, Math.PI * 2); ctx.fill();
+        }
+        if (e.puff > 0) {
+          for (var sp = 0; sp < 18; sp++) {
+            var ang2 = sp * 2.4 + e.puff * 3, rd = rr2 * (0.3 + 0.7 * ((sp * 37) % 10) / 10) * (1.2 - e.puff);
+            Render.rect(Math.round(x + Math.cos(ang2) * rd), Math.round(y - 4 + Math.sin(ang2) * rd * 0.8), 2, 2, sp % 3 ? "#c890e0" : "#e8d8f0");
+          }
+        }
+      }
       if (d.kind === "archer") {
         // 弓：木の弧と、白い弦
         ctx.strokeStyle = "#854c30"; ctx.lineWidth = 1;
