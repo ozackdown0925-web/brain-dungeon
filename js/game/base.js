@@ -148,7 +148,7 @@ var Base = (function () {
     createEl.hidden = true;
     baseEl.hidden = false;
     var tools = GameState.TOOL_ORDER.filter(function (k) { return g.items[k] > 0; }).map(function (k) { return GameState.TOOLS[k].name + g.items[k]; });
-    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉄 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
+    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
       (tools.length ? "　道具：" + tools.join("・") : "") +
       (g.titles.length ? "　称号：" + g.titles.join("・") : "");
 
@@ -296,7 +296,7 @@ var Base = (function () {
     var r = rep.result;
     box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
-    if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉄 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
+    if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉱石 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     if (rep.people.some(function (p) { return p.lines.some(function (t) { return t.indexOf("レベルが") === 0; }); })) Sound.play("levelup");
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");

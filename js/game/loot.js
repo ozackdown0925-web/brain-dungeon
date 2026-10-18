@@ -4,41 +4,53 @@
 var Loot = (function () {
   // レア度（draft 1.5）。表記は なし・R・SR・UR（2026-10-18 決定）。long＝手に入れたときの言い方
   var RARITY = [
+  // 強さの倍率は「当たったらラッキー」くらい（2026-10-18 決定：R ×1.1・SR ×1.2・UR ×1.3）。強くなるのは主に鍛冶屋の強化
     { name: "ノーマル", tag: "",   long: "",               color: "#ece7da", mult: 1.00, buff: [0, 1], debuff: [0, 1] },
-    { name: "R",        tag: "R",  long: "レア装備",         color: "#5aa9ff", mult: 1.15, buff: [1, 2], debuff: [0, 1] },
-    { name: "SR",       tag: "SR", long: "スーパーレア装備", color: "#b48cf0", mult: 1.30, buff: [2, 2], debuff: [0, 1] },
-    { name: "UR",       tag: "UR", long: "ウルトラレア装備", color: "#f2c14e", mult: 1.50, buff: [2, 2], debuff: [0, 0] }
+    { name: "R",        tag: "R",  long: "レア装備",         color: "#5aa9ff", mult: 1.10, buff: [1, 2], debuff: [0, 1] },
+    { name: "SR",       tag: "SR", long: "スーパーレア装備", color: "#b48cf0", mult: 1.20, buff: [2, 2], debuff: [0, 1] },
+    { name: "UR",       tag: "UR", long: "ウルトラレア装備", color: "#f2c14e", mult: 1.30, buff: [2, 2], debuff: [0, 0] }
   ];
+  // 装備の段（銅・鉄・鋼…。ダンジョン1つで1段）。次の段のもとの強さは1.6倍（＝前の段の＋10くらい）。
+  // 強化に使う素材は、段が上がるほど増える（銅 ×1・鉄 ×2・鋼 ×3）。今は銅（0）だけ。2026-10-18 決定
+  var TIER_MULT = [1, 1.6, 2.56];
+  // 深い階で拾う装備の、もとの強さの伸び（1階ごと）
+  var ILV_STEP = 0.03;
   var STAT_NAMES = { patk: "物攻", pdef: "物防", matk: "魔攻", mdef: "魔防", hp: "HP", mp: "MP" };
   var STATS = ["patk", "pdef", "matk", "mdef", "hp", "mp"];
   // レジェンドの特別な効果（名前だけ。効き目は段階5で装備できるようになってから）
   var SPECIALS = ["会心が出やすい", "MPの回復が速い", "Wait Time が短い", "毒にならない"];
-  var MATERIALS = { iron: "鉄", stone: "魔石" };
+  var MATERIALS = { iron: "鉱石", stone: "魔石" };   // iron は前のセーブとそろえるための名前（画面では「鉱石」）
+
+  // 鍛冶屋の強化：＋1ごとにもとの強さ＋6%、どの段も＋10まで（2026-10-18 決定）
+  var PLUS_STEP = 0.06, PLUS_MAX = 10;
 
   function between(r) { return r[0] + Math.floor(Math.random() * (r[1] - r[0] + 1)); }
 
-  // 宝箱のレア度の出やすさ（draft 1.5、決定）：0問 ノーマル60・レア30・エピック9・レジェンド1、正解1問ごとに −8・＋4・＋3・＋1
-  function rarityWeights(correct, rareOrBetter) {
+  // 宝箱のレア度の出やすさ（2026-10-18 決定）：階層で変わる。1階 ふつう85・R13・SR2・UR0 → 14階 65・25・8・2。
+  // 正解数は少しだけ効く（1問ごとに ふつう−2・R＋1.5・SR＋0.5）
+  function rarityWeights(floor, correct, rareOrBetter) {
     var c = Math.max(0, Math.min(4, correct || 0));
-    var w = [60 - 8 * c, 30 + 4 * c, 9 + 3 * c, 1 + c];
+    var t = (Math.max(1, Math.min(14, floor || 1)) - 1) / 13;
+    var w = [85 - 20 * t - 2 * c, 13 + 12 * t + 1.5 * c, 2 + 6 * t + 0.5 * c, 2 * t];
     if (rareOrBetter) w[0] = 0; // 鍵の部屋の宝箱：レア以上が必ず出る（2026-10-17 決定）
     return w;
   }
-  function rollRarity(correct, rareOrBetter) {
-    var w = rarityWeights(correct, rareOrBetter), sum = w[0] + w[1] + w[2] + w[3], r = Math.random() * sum;
+  function rollRarity(floor, correct, rareOrBetter) {
+    var w = rarityWeights(floor, correct, rareOrBetter), sum = w[0] + w[1] + w[2] + w[3], r = Math.random() * sum;
     for (var i = 0; i < 4; i++) { if (r < w[i]) return i; r -= w[i]; }
     return 3;
   }
 
-  // 装備を1つ作る。ilv＝拾った階層の深さ
-  function makeEquip(ilv, correct, rareOrBetter) {
-    var r = rollRarity(correct, rareOrBetter), R = RARITY[r];
+  // 装備を1つ作る。ilv＝拾った階層の深さ、tier＝段（0＝銅）
+  function makeEquip(ilv, correct, rareOrBetter, tier) {
+    tier = tier || 0;
+    var r = rollRarity(ilv, correct, rareOrBetter), R = RARITY[r];
     var isWeapon = Math.random() < 0.6;
     var base = isWeapon ? pick(Object.keys(GameData.WEAPONS)) : pick(Object.keys(GameData.ARMORS));
     var def = isWeapon ? GameData.WEAPONS[base] : GameData.ARMORS[base];
-    var k = (1 + 0.08 * (ilv - 1)) * R.mult;
+    var k = (1 + ILV_STEP * (ilv - 1)) * R.mult * TIER_MULT[tier];
     var item = {
-      slot: isWeapon ? "weapon" : "armor", base: base, r: r, ilv: ilv, plus: 0, buff: [], debuff: [], sp: null,
+      slot: isWeapon ? "weapon" : "armor", base: base, r: r, ilv: ilv, tier: tier, plus: 0, buff: [], debuff: [], sp: null,
       name: def.item || def.name
     };
     if (isWeapon) { item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k); }
@@ -86,28 +98,43 @@ var Loot = (function () {
     var mods = item.buff.map(function (b) { return STAT_NAMES[b[0]] + "+" + b[1]; })
       .concat(item.debuff.map(function (d) { return STAT_NAMES[d[0]] + "−" + d[1]; }));
     if (item.sp) mods.push(item.sp);
-    var k = 1 + 0.05 * (item.plus || 0);
+    var k = 1 + PLUS_STEP * (item.plus || 0);
     main = item.slot === "weapon"
       ? (item.patk ? "物攻" + Math.round(item.patk * k) : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + Math.round(item.matk * k) : "")
       : "物防" + Math.round(item.pdef * k) + "・魔防" + Math.round(item.mdef * k);
     return label(item) + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
   }
 
-  // 宝箱の中身（いつも装備1つ＋素材＋ゴールド）。ゴールド 20＋5×d（draft 4）
-  function chest(floor, correct, rareOrBetter) {
-    var mat = {};
-    var n = 1 + Math.floor(Math.random() * 2) + (rareOrBetter ? 1 : 0);
-    for (var i = 0; i < n; i++) { var m = Math.random() < 0.6 ? "iron" : "stone"; mat[m] = (mat[m] || 0) + 1; }
-    return { equip: makeEquip(floor, correct, rareOrBetter), gold: 20 + 5 * floor, mat: mat };
+  // 素材の量の倍率：深い階ほど多い（14階で1階の2倍）、正解1問ごとに＋25%（2026-10-18 決定）
+  function matScale(floor, correct) {
+    var t = (Math.max(1, Math.min(14, floor || 1)) - 1) / 13;
+    return (1 + t) * (1 + 0.25 * Math.max(0, Math.min(4, correct || 0)));
+  }
+  // 道具（宝箱は3つに1つくらい、敵はまれに）
+  function rollTool() {
+    var r = Math.random();
+    if (r < 0.45) return "potion";
+    if (r < 0.80) return "ether";
+    return pick(["antidote", "paraheal", "wake"]);
   }
 
-  // 敵が落とすもの：ゴールド 3＋d、素材は30%で1つ（ゴブリン・蜂 → 鉄、つる草・キノコの魔物 → 魔石）（draft 2）
+  // 宝箱の中身（いつも装備1つ＋素材＋ゴールド。ときどき道具）。ゴールド 20＋5×d（draft 4）
+  function chest(floor, correct, rareOrBetter) {
+    var mat = {};
+    var n = Math.floor(1.5 * matScale(floor, correct) + (rareOrBetter ? 1 : 0) + Math.random());
+    for (var i = 0; i < n; i++) { var m = Math.random() < 0.6 ? "iron" : "stone"; mat[m] = (mat[m] || 0) + 1; }
+    return { equip: makeEquip(floor, correct, rareOrBetter), gold: 20 + 5 * floor, mat: mat, tool: Math.random() < 1 / 3 ? rollTool() : null };
+  }
+
+  // 敵が落とすもの：ゴールド 3＋d、素材は30%で1つ（ゴブリン・蜂 → 鉱石、つる草・キノコの魔物 → 魔石）（draft 2）
   // 敵を増やしたので、1体あたりは Dungeon.rewardScale(d) 倍（1階層の合計は前と同じ）
-  function enemyDrop(type, floor) {
+  // 素材は深い階と正解数で増える（matScale）。まれに（3%）回復薬か MP回復薬を落とす
+  function enemyDrop(type, floor, correct) {
     var k = Dungeon.rewardScale(floor);
     var g = (3 + floor) * k;
     var drop = { gold: Math.floor(g) + (Math.random() < g - Math.floor(g) ? 1 : 0), mat: null }; // 小数は確率で切り上げ（合計がずれないように）
-    if (Math.random() < 0.3 * k) drop.mat = type === "vine" || type === "mushroom" ? "stone" : "iron";
+    if (Math.random() < 0.3 * k * matScale(floor, correct)) drop.mat = type === "vine" || type === "mushroom" ? "stone" : "iron";
+    drop.tool = Math.random() < 0.03 ? (Math.random() < 0.5 ? "potion" : "ether") : null;
     return drop;
   }
 
@@ -118,6 +145,6 @@ var Loot = (function () {
 
   return {
     RARITY: RARITY, MATERIALS: MATERIALS, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
-    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, typeName: typeName, STAT_NAMES: STAT_NAMES
+    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, TIER_MULT: TIER_MULT, ILV_STEP: ILV_STEP, PLUS_STEP: PLUS_STEP, PLUS_MAX: PLUS_MAX, typeName: typeName, STAT_NAMES: STAT_NAMES
   };
 })();

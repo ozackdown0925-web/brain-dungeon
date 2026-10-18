@@ -23,7 +23,8 @@ var GameState = (function () {
   // 古いセーブに、あとから足した項目を入れる
   function upgrade(g) {
     g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; learnSkills(h); });
-    if (!g.items) g.items = { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 };
+    if (!g.items) g.items = {};
+    TOOL_ORDER.forEach(function (k) { if (typeof g.items[k] !== "number") g.items[k] = 0; });   // 新しい道具（MP回復薬など）
     if (!g.today) g.today = { date: todayStr(), adventure: null };
     if (!g.parent) g.parent = defaultParent();
     if (!g.log) g.log = [];
@@ -35,7 +36,7 @@ var GameState = (function () {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0 }, storage: [], nextId: 1,
-      items: { potion: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
+      items: { potion: 0, ether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [] },
       titles: [],
       book: { monsters: {}, items: [] },
@@ -139,12 +140,13 @@ var GameState = (function () {
   var STORAGE_MAX = 200;
   var TOOLS = {
     potion:   { name: "回復薬", price: 30, note: "HP を 40% 回復" },
-    revive:   { name: "復活薬", price: 150, note: "たおれた仲間を HP30% で復活" },
+    ether:    { name: "MP回復薬", price: 40, note: "MP を 40% 回復" },   // MP は自然に回復しない（2026-10-18 決定）
+    revive:   { name: "復活薬", price: 1000, note: "たおれた仲間を HP30% で復活" },   // 2026-10-18 に 150G から変更
     antidote: { name: "毒消し", price: 20, note: "毒を治す", cures: "poison" },
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
-  var TOOL_ORDER = ["potion", "revive", "antidote", "paraheal", "wake"];
+  var TOOL_ORDER = ["potion", "ether", "revive", "antidote", "paraheal", "wake"];
   var TOOL_MAX = 99;
 
   // 装備できるか：武器は職業の武器の種類、防具は職業の防具の種類
@@ -152,7 +154,7 @@ var GameState = (function () {
     var J = GameData.JOBS[h.job];
     return item.slot === "weapon" ? J.weapons.indexOf(item.base) >= 0 : item.base === J.armor;
   }
-  function plusMult(item) { return 1 + 0.05 * (item.plus || 0); } // 強化 ＋1 ごとに基本の強さ＋5%（draft 4）
+  function plusMult(item) { return 1 + Loot.PLUS_STEP * (item.plus || 0); } // 強化 ＋1 ごとに基本の強さ＋6%（2026-10-18 決定）
 
   // 能力に入れる武器・防具（はじめの装備か、装備している物）
   function weaponOf(h) {
@@ -216,18 +218,24 @@ var GameState = (function () {
   // 値段：ノーマルは 100＋20×ilv（draft 4）。レア度が高いほど高い（仮：×1・×2・×4・×8）。強化 ＋1 ごとに 10% 高い
   function itemValue(it) { return Math.round((100 + 20 * it.ilv) * [1, 2, 4, 8][it.r] * (1 + 0.1 * (it.plus || 0))); }
   function sellPrice(it) { return Math.round(itemValue(it) * 0.25); } // 売る：値段の 25%
-  // 分解：杖と魔法装備は魔石、それ以外は鉄。1〜3（レア度が高いほど多い）
+  // 素材：杖と魔法装備は魔石、それ以外は鉱石
   function matOf(it) { return it.base === "staff" || it.base === "magic" ? "stone" : "iron"; }
   function dismantleCount(it) { return [1, 2, 2, 3][it.r]; }
-  function sell(id) {
-    var i = indexOf(id); if (i < 0) return 0;
-    var g = sellPrice(game.storage[i]); game.storage.splice(i, 1); game.gold += g; save(); return g;
+  // 手放す（売ると分解を1つに。2026-10-18 決定）：ゴールド（値段の25%）と素材（1〜3）に加えて、強化に使ったゴールドと素材の8割がもどる
+  function spentOn(it) {
+    var gold = 0, n = 0;
+    for (var p = 0; p < (it.plus || 0); p++) { var c = upgradeCostAt(it, p); gold += c.gold; n += c.n; }
+    return { gold: gold, n: n };
   }
-  function dismantle(id) {
+  function releaseValue(it) {
+    var s = spentOn(it);
+    return { gold: sellPrice(it) + Math.floor(s.gold * 0.8), mat: matOf(it), n: dismantleCount(it) + Math.floor(s.n * 0.8) };
+  }
+  function release(id) {
     var i = indexOf(id); if (i < 0) return null;
-    var it = game.storage[i], m = matOf(it), n = dismantleCount(it);
-    game.storage.splice(i, 1); game.mat[m] += n; save();
-    return { mat: m, n: n };
+    var v = releaseValue(game.storage[i]);
+    game.storage.splice(i, 1); game.gold += v.gold; game.mat[v.mat] += v.n; save();
+    return v;
   }
 
   // お店：ふつうの装備（ノーマル。バフ・デバフなし）。ilv は今いちばん深く行った階層まで（draft 4）
@@ -239,8 +247,8 @@ var GameState = (function () {
     return list;
   }
   function shopItem(slot, base, ilv) {
-    var def = slot === "weapon" ? GameData.WEAPONS[base] : GameData.ARMORS[base], k = 1 + 0.08 * (ilv - 1);
-    var it = { slot: slot, base: base, r: 0, ilv: ilv, plus: 0, buff: [], debuff: [], sp: null, name: def.name };
+    var def = slot === "weapon" ? GameData.WEAPONS[base] : GameData.ARMORS[base], k = 1 + Loot.ILV_STEP * (ilv - 1);
+    var it = { slot: slot, base: base, r: 0, ilv: ilv, tier: 0, plus: 0, buff: [], debuff: [], sp: null, name: def.item || def.name };
     if (slot === "weapon") { it.patk = Math.round(def.patk * k); it.matk = Math.round(def.matk * k); }
     else { it.pdef = Math.round(def.pdef * k); it.mdef = Math.round(def.mdef * k); }
     return it;
@@ -261,10 +269,11 @@ var GameState = (function () {
   }
   function useTool(key) { if (game.items[key] <= 0) return false; game.items[key]--; save(); return true; }
 
-  // 鍛冶屋：強化 ＋1〜＋10。費用は「素材×(今の段階＋1)＋50×(今の段階＋1) G」（draft 4）。必ず成功
-  function upgradeCost(it) { var n = (it.plus || 0) + 1; return { mat: matOf(it), n: n, gold: 50 * n }; }
+  // 鍛冶屋：強化 ＋1〜＋10。必ず成功。＋n にするのに、素材 n×(段＋1) 個と 10×n G（2026-10-18 決定。ゴールドは少なめで、素材が中心）
+  function upgradeCostAt(it, plus) { var n = plus + 1; return { mat: matOf(it), n: n * ((it.tier || 0) + 1), gold: 10 * n }; }
+  function upgradeCost(it) { return upgradeCostAt(it, it.plus || 0); }
   function upgradeItem(it) {
-    if ((it.plus || 0) >= 10) return false;
+    if ((it.plus || 0) >= Loot.PLUS_MAX) return false;
     var c = upgradeCost(it);
     if (game.gold < c.gold || game.mat[c.mat] < c.n) return false;
     game.gold -= c.gold; game.mat[c.mat] -= c.n; it.plus = (it.plus || 0) + 1; save(); return true;
@@ -278,6 +287,42 @@ var GameState = (function () {
     it.buff = fresh.buff; it.debuff = fresh.debuff;
     save(); return true;
   }
+  // 強化の引きつぎ（2026-10-18 決定）：同じ部位・同じ段の装備へ、＋をそのまま移す。もとの装備はなくなる。手数料は 10G×(＋の数)
+  function transferCost(it) { return 10 * (it.plus || 0); }
+  function transferTargets(it) {
+    return allItems().filter(function (x) {
+      return x.item !== it && x.item.slot === it.slot && (x.item.tier || 0) === (it.tier || 0) && (x.item.plus || 0) < (it.plus || 0);
+    });
+  }
+  function ownerOf(it) {
+    for (var i = 0; i < game.party.length; i++) { var h = game.party[i]; if (h.equip[it.slot] === it) return h; }
+    return null;
+  }
+  // もどり値：null（できない）か { equipped: 新しい装備をつけた仲間（なければ null） }
+  function transferPlus(from, to) {
+    var cost = transferCost(from);
+    if (!(from.plus > 0) || game.gold < cost) return null;
+    var h = ownerOf(from), equipped = null;
+    game.gold -= cost;
+    to.plus = from.plus;
+    if (h) {
+      h.equip[from.slot] = null;
+      // もとの装備をつけていた仲間が、新しい装備をつけられるなら、そのままつける
+      var j = indexOf(to.id);
+      if (j >= 0 && canEquip(h, to)) { game.storage.splice(j, 1); h.equip[to.slot] = to; equipped = h; }
+      fixSkills(h);
+    } else {
+      var i = indexOf(from.id); if (i >= 0) game.storage.splice(i, 1);
+    }
+    save();
+    return { equipped: equipped };
+  }
+  // 冒険の中で道具を拾う（持てる数をこえたら拾えない）
+  function gainTool(key) {
+    if (!TOOLS[key] || game.items[key] >= TOOL_MAX) return false;
+    game.items[key]++; save(); return true;
+  }
+
   // 倉庫と、3人が装備している物を全部（鍛冶屋で使う）
   function allItems() {
     var out = game.storage.map(function (it) { return { item: it, who: null }; });
@@ -474,8 +519,8 @@ var GameState = (function () {
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, setSkill: setSkill, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
-    itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, sell: sell, dismantle: dismantle,
-    shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool,
-    upgradeCost: upgradeCost, upgradeItem: upgradeItem, rerollItem: rerollItem, allItems: allItems
+    itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
+    shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,
+    upgradeCost: upgradeCost, upgradeItem: upgradeItem, transferCost: transferCost, transferTargets: transferTargets, transferPlus: transferPlus, rerollItem: rerollItem, allItems: allItems
   };
 })();

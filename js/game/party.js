@@ -3,7 +3,7 @@
 // 状態異常の時間は、画面に出ているあいだだけ進む（切りかえても治らない）。
 var Party = (function () {
   var SWITCH_CD = 3;   // 切りかえたあと、もう一度切りかえられるまでの秒
-  var MP_REGEN = 0.01; // 1秒に MP の上限の 1%
+  var MP_REGEN = 0; // MP は自然に回復しない（2026-10-18 決定。MP回復薬で回復する。前は 1秒に上限の 1%）
 
   var members = [];
   var active = 0;
