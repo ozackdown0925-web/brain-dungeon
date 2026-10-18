@@ -29,6 +29,9 @@
 
   var cam = { x: 0, y: 0 };
   var paused = false, choosing = false;
+  // 演出（2026-10-18 保護者の案）：出口に入ったとき（光が広がって暗転）と、ボスをたおしたとき（絵が崩れ落ちる）。
+  // 演出のあいだは、時間も敵も止まる。cine：{ kind: "exit"|"boss", t, dur, ... }
+  var cine = null;
   var debug = /[?&]debug=1/.test(location.search);
   var fps = { n: 0, t: 0, value: 0 };
   var message = { text: "", t: 0 };
@@ -45,7 +48,7 @@
     Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
     Party.resetAll();
     applyBlessings(trial.subjects);
-    active = true; paused = false; choosing = false;
+    active = true; paused = false; choosing = false; cine = null;
     pauseEl.hidden = true; chooseEl.hidden = true;
     A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
     run = newRun();
@@ -218,6 +221,102 @@
     snapshot();
   }
 
+  // ---------- 演出 ----------
+  function startExitCine(ex) {
+    cine = { kind: "exit", t: 0, dur: 1.6, x: ex.x, y: ex.y };
+    Input.releaseAll(); A.move = 0;
+    Sound.play("door");
+  }
+  function drawExitCine() {
+    var ctx = Render.ctx, t = cine.t;
+    var x = cine.x - cam.x, y = cine.y - cam.y;
+    var far = Math.sqrt(view.w * view.w + view.h * view.h);
+    // 0〜1秒：まんなかが光る出口の光が、画面いっぱいに広がる
+    var k = Math.min(1, t / 1.0), ease = k * k * (3 - 2 * k);
+    var r = 18 + ease * far * 1.1;
+    var gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, "rgba(255,252,235," + (0.95).toFixed(2) + ")");
+    gr.addColorStop(0.35, "rgba(255,230,140," + (0.55 + 0.4 * ease).toFixed(2) + ")");
+    gr.addColorStop(0.7, "rgba(242,193,78," + (0.25 + 0.6 * ease).toFixed(2) + ")");
+    gr.addColorStop(1, "rgba(242,193,78," + (0.6 * ease).toFixed(2) + ")");
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, view.w, view.h);
+    // 1〜1.6秒：暗くなる
+    if (t > 1.0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, (t - 1.0) / 0.5).toFixed(2) + ")");
+  }
+
+  function startBossCine(e) {
+    // ボスの絵を、べつの紙に写しとる（足もとが紙の下のほうに来るように）
+    var W = 128, H = 128, fx = 64, fy = 110;
+    var off = document.createElement("canvas"); off.width = W; off.height = H;
+    var octx = off.getContext("2d"); octx.imageSmoothingEnabled = false;
+    e.flash = 0;
+    var wolf = e.def.kind === "wolf_boss";
+    Monsters.drawBoss(octx, e, fx, fy + (wolf ? 11 : 18), "stand");
+    // 3×3点ずつのかけらに分ける。上のほうから先に崩れる
+    var data = octx.getImageData(0, 0, W, H).data, chunks = [], top = H, bottom = 0;
+    for (var cy = 0; cy < H; cy += 3) for (var cx = 0; cx < W; cx += 3) {
+      var any = false;
+      for (var yy = cy; yy < cy + 3 && !any; yy++) for (var xx = cx; xx < cx + 3; xx++) { if (data[(yy * W + xx) * 4 + 3] > 0) { any = true; break; } }
+      if (any) { chunks.push({ sx: cx, sy: cy }); top = Math.min(top, cy); bottom = Math.max(bottom, cy); }
+    }
+    var span = Math.max(1, bottom - top);
+    chunks.forEach(function (c) {
+      c.delay = 0.45 + (c.sy - top) / span * 0.9 + Math.random() * 0.25;
+      c.vx = (Math.random() - 0.5) * 30; c.vy = -10 - Math.random() * 20; c.x = 0; c.y = 0;
+    });
+    e.fade = 0;   // ふつうの絵は消す（崩れる絵を描く）
+    cine = { kind: "boss", t: 0, dur: 2.2, e: e, img: off, ox: e.x - fx, oy: e.y - fy, chunks: chunks, dust: [] };
+    Input.releaseAll(); A.move = 0;
+    Sound.play("kill");
+  }
+  function drawBossCine() {
+    var ctx = Render.ctx, c = cine, t = c.t;
+    var bx = Math.round(c.ox - cam.x), by = Math.round(c.oy - cam.y);
+    // はじめの0.45秒：白く光って、ふるえる
+    var shake = t < 0.45 ? Math.round(Math.sin(t * 90) * 2) : 0;
+    c.chunks.forEach(function (k) {
+      var a = 1, dx = 0, dy = 0;
+      if (t > k.delay) {
+        var u = t - k.delay;
+        dx = k.vx * u; dy = k.vy * u + 160 * u * u;   // 下へ落ちる
+        a = Math.max(0, 1 - u / 0.6);
+      }
+      if (a <= 0) return;
+      ctx.globalAlpha = a;
+      ctx.drawImage(c.img, k.sx, k.sy, 3, 3, bx + k.sx + shake + Math.round(dx), by + k.sy + Math.round(dy), 3, 3);
+    });
+    ctx.globalAlpha = 1;
+    if (t < 0.45) {   // 白い光
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.5 * (1 - t / 0.45);
+      ctx.drawImage(c.img, bx + shake, by);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    }
+    // 足もとの土けむり（ドット）
+    c.dust.forEach(function (d) {
+      var k2 = d.t / 0.8, a2 = (1 - k2) * 0.75, r = 2 + Math.round(k2 * 4);
+      var x = Math.round(d.x - cam.x), y = Math.round(d.y - cam.y - k2 * 6);
+      ctx.fillStyle = "rgba(168,152,120," + a2.toFixed(2) + ")"; ctx.fillRect(x - r, y - 1, r * 2, 3); ctx.fillRect(x - r + 1, y - 2, r * 2 - 2, 5);
+      ctx.fillStyle = "rgba(220,206,170," + (a2 * 0.9).toFixed(2) + ")"; ctx.fillRect(x - r + 1, y - 2, 2, 2);
+    });
+  }
+  function updateCine(dt) {
+    cine.t += dt;
+    if (cine.kind === "boss") {
+      var c = cine;
+      if (!c.boomed && c.t > 0.45) { c.boomed = true; Sound.play("boss"); }   // 崩れはじめる音
+      // かけらが落ちはじめたら、足もとに土けむり
+      if (c.t > 0.5 && c.t < 1.8 && Math.random() < dt * 14) c.dust.push({ x: c.e.x + (Math.random() - 0.5) * 50, y: c.e.y + 10 + Math.random() * 6, t: 0 });
+      c.dust.forEach(function (d) { d.t += dt; });
+      c.dust = c.dust.filter(function (d) { return d.t < 0.8; });
+    }
+    Battle.update(dt);   // ダメージの数字などは動かしておく
+    if (cine.t < cine.dur) return;
+    var done = cine; cine = null;
+    if (done.kind === "exit") { run.blackout = true; finish("clear"); }
+    else bossDefeated(done.e);
+  }
+
   function finishedCells() {
     var n = 0, all = 0;
     Object.keys(dg.cells).forEach(function (k) { all++; if (dg.cells[k].visited) n++; });
@@ -241,7 +340,7 @@
         run.mastery[i] += k;
       });
     }
-    if (e.def.boss) { bossDefeated(e); return; }
+    if (e.def.boss) { startBossCine(e); return; }
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
     var drop = Loot.enemyDrop(e.type, dg.floor, settings.correct);
@@ -346,7 +445,7 @@
     // 出口：入るとクリア
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) {
       var ex = dg.cells[curKey].center, edx = A.x - ex.x, edy = A.y - ex.y;
-      if (edx * edx + edy * edy < 10 * 10) { finish("clear"); return; }
+      if (edx * edx + edy * edy < 10 * 10) { startExitCine(ex); return; }
     }
 
     // 残り時間（ダンジョンに入ってから数える。一時停止・メニューのあいだは止まる）
@@ -449,12 +548,15 @@
     drawThings();
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
+    if (cine && cine.kind === "boss") drawBossCine();
     drawActor();
     room.drawCrowns(cam, view, A.y + 6, true);    // キャラより奥（北）の行の木の葉は、キャラの前
     Combat.draw(cam);
     Battle.draw(cam);
     drawHud();
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
+    if (cine && cine.kind === "exit") drawExitCine();
+    if (run.blackout) Render.rect(0, 0, view.w, view.h, "#000");   // 出口の演出のあと、結果の画面のうしろは暗いまま
   }
 
   // 罠・宝箱・鍵（宝箱・鍵・落とし穴のドット絵は props.js。2026-10-18 に仮の絵から差しかえ）
@@ -832,7 +934,7 @@
     if (fps.t >= 0.5) { fps.value = Math.round(fps.n / fps.t); fps.n = 0; fps.t = 0; }
     glow += dt;
     if (run.fade > 0) run.fade = Math.max(0, run.fade - dt);
-    if (active && !paused && !choosing && rotateEl.hidden) update(dt);
+    if (active && !paused && !choosing && rotateEl.hidden) { if (cine) updateCine(dt); else update(dt); }
     if (dg) draw(); else Render.begin();
     Input.endFrame();
     requestAnimationFrame(frame);
