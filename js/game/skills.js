@@ -103,7 +103,8 @@ var Combat = (function () {
   // ---------- ふつうの攻撃 ----------
   // 遠くへ飛ばす攻撃（弓・魔法弾）は、狙いを定めるあいだ（撃つ前）と撃ったあと、少しのあいだ動けない
   // （逃げながら撃つと、敵が追いつけなかったため。2026-10-18 保護者の案）
-  var AIM = { bow: { before: 0.25, after: 0.2 }, bolt: { before: 0.2, after: 0.15 } };
+  // 2026-10-18：まだ逃げられたので長くした（弓 0.25＋0.2 → 0.35＋0.3、魔法弾 0.2＋0.15 → 0.3＋0.25）
+  var AIM = { bow: { before: 0.35, after: 0.3 }, bolt: { before: 0.3, after: 0.25 } };
   function shootAfterAim(c, aim, spec) {
     var a = A();
     a.busy = aim.before + aim.after;
