@@ -161,15 +161,19 @@ var Town = (function () {
   }
   function renderStorageEquip(g) {
     if (!g.storage.length) { bodyEl.appendChild(el("p", "", "倉庫は空っぽ。宝箱やお店で装備を手に入れよう。")); return; }
-    bodyEl.appendChild(el("p", "sub", "いらない装備は手放すと、ゴールドと鍛冶の素材になる（強化してあれば、強化に使った分の8割ももどる）。"));
+    bodyEl.appendChild(el("p", "sub", "いらない装備は売却すると、ゴールドと鍛冶の素材になる（強化してあれば、強化に使った分の8割ももどる）。"));
     g.storage.slice().sort(function (a, b) { return a.slot.localeCompare(b.slot) || b.r - a.r || b.ilv - a.ilv; }).forEach(function (it) {
       var row = itemLine(it);
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
       var v = GameState.releaseValue(it);
-      row.appendChild(button("手放す（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
+      row.appendChild(button("売却（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
+        // 強化してあって、同じ種類の装備に移せるときは、売る前に確かめる（2026-10-18 保護者の希望）
+        var to = (it.plus || 0) > 0 ? GameState.transferTargets(it) : [];
+        if (to.length && !window.confirm(Loot.label(it) + " の強化（＋" + it.plus + "）は、鍛冶屋の「強化を移す」で " + Loot.label(to[0].item) +
+          (to.length > 1 ? " など" : "") + " に移せます。\n売却すると、強化は移せなくなります（強化に使った分の8割は、ゴールドと素材でもどります）。\n売却しますか？")) return;
         var r = GameState.release(it.id); if (!r) return;
-        say(Loot.label(it) + "を手放した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
+        say(Loot.label(it) + "を売却した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
       }));
       bodyEl.appendChild(row);
     });
@@ -244,13 +248,12 @@ var Town = (function () {
     if (moveFrom && !all.some(function (x) { return x.item === moveFrom; })) moveFrom = null;
     if (!moveFrom) {
       bodyEl.appendChild(el("h3", "", "① どの装備の強化を移す？"));
-      var src = all.filter(function (x) { return (x.item.plus || 0) > 0; });
-      if (!src.length) { bodyEl.appendChild(el("p", "sub", "強化してある装備がない。「装備強化」で強くしてから使おう。")); return; }
+      // 移す先（同じ種類で、＋が小さい装備）がある装備だけを出す（2026-10-18 保護者の希望）
+      var src = all.filter(function (x) { return (x.item.plus || 0) > 0 && GameState.transferTargets(x.item).length > 0; });
+      if (!src.length) { bodyEl.appendChild(el("p", "sub", "強化を移せる装備がない。強化した装備と同じ種類の装備を手に入れると、ここで移せる。")); return; }
       src.forEach(function (x) {
         var it = x.item, row = itemLine(it, whereText(x));
-        var n = GameState.transferTargets(it).length;
-        if (n) row.appendChild(button("これを移す", function () { moveFrom = it; say(""); render(); }));
-        else row.appendChild(el("span", "item-extra", "移せる装備がない（同じ種類で、＋が小さい装備がいる）"));
+        row.appendChild(button("これを移す", function () { moveFrom = it; say(""); render(); }));
         bodyEl.appendChild(row);
       });
       return;
@@ -417,7 +420,7 @@ var Town = (function () {
       "毒の沼や落とし穴に気をつけよう。見えない罠もある。", "部屋の敵を全部たおすと、武器をしまって速く走れる。", "7階と14階には、ボスがいる。"]],
     ["装備と鍛冶屋", ["装備には、ふつう・R・SR・URがある。Rより上が出たらラッキー！",
       "鍛冶屋で鉱石・魔石を使うと、装備を強くできる（＋10まで、必ず成功）。", "鍛冶屋の「強化を移す」で、強化を同じ種類の装備に引きつげる。",
-      "いらない装備は倉庫で手放すと、ゴールドと素材になる。"]],
+      "いらない装備は倉庫で売却すると、ゴールドと素材になる。"]],
     ["拠点", ["宿屋：仲間のようす・装備・スキルのセット", "お店：薬とふつうの装備を買う", "鍛冶屋：装備を強くする", "転職の神殿：職業を変える",
       "倉庫：装備・道具・素材を見る", "書庫：モンスター図鑑・装備図鑑・称号の棚"]],
     ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。",

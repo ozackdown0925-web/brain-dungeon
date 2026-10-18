@@ -4,8 +4,9 @@
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Bosses = (function () {
   var hazards = []; // 地面の予告と大技：{ kind: "line"|"rect", ..., t, warn, from }
+  var dust = [];    // 大突進のあとの土けむり：{ x, y, t, max, s }
 
-  function clear() { hazards.length = 0; }
+  function clear() { hazards.length = 0; dust.length = 0; }
   function isBoss(e) { return !!(e && e.def && e.def.boss); }
 
   // ボスが出たときの準備
@@ -72,6 +73,9 @@ var Bosses = (function () {
       var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
       e.travel += step;
       e.walk += dt * 20;
+      // 走ったあとに土けむりを残す（12ドットごと）
+      e.dustAt = (e.dustAt || 0) + moved;
+      if (e.dustAt >= 12) { e.dustAt = 0; dust.push({ x: e.x - e.aim.x * 8 + (Math.random() - 0.5) * 8, y: e.y + 8 + (Math.random() - 0.5) * 4, t: 0, max: 0.7, s: Math.random() }); }
       var px = p.x - e.x, py = p.y - e.y;
       if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 3) * (e.r + p.r + 3)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.chargeMult, big: true }); }
       if (moved < step * 0.4 || e.travel >= e.chargeLen) {
@@ -155,8 +159,8 @@ var Bosses = (function () {
         var cx = i === 0 ? p.x : 24 + Math.random() * (room.pxW - 48);
         var cy = i === 0 ? p.y : 24 + Math.random() * (room.pxH - 48);
         hazards.push(vertical
-          ? { kind: "rect", from: e, x: cx - W / 2, y: 0, w: W, h: room.pxH, t: 0, warn: d.rootWarn, erupt: 0.4, hit: false }
-          : { kind: "rect", from: e, x: 0, y: cy - W / 2, w: room.pxW, h: W, t: 0, warn: d.rootWarn, erupt: 0.4, hit: false });
+          ? { kind: "rect", from: e, x: cx - W / 2, y: 0, w: W, h: room.pxH, t: 0, warn: d.rootWarn, erupt: 0.4, hit: false, seed: Math.random() * 100 }
+          : { kind: "rect", from: e, x: 0, y: cy - W / 2, w: room.pxW, h: W, t: 0, warn: d.rootWarn, erupt: 0.4, hit: false, seed: Math.random() * 100 });
       }
       e.ai.roots = half ? d.rootEveryHalf : d.rootEvery;
       Battle.pop(e.x, e.y - 40, "根の大波！", "#ef5b5b", 9);
@@ -175,6 +179,7 @@ var Bosses = (function () {
 
   // ---------- 予告と大技（地面） ----------
   function updateHazards(dt, p, hurt) {
+    for (var di = dust.length - 1; di >= 0; di--) { dust[di].t += dt; if (dust[di].t >= dust[di].max) dust.splice(di, 1); }
     for (var i = hazards.length - 1; i >= 0; i--) {
       var h = hazards[i];
       h.t += dt;
@@ -188,32 +193,118 @@ var Bosses = (function () {
   }
 
   // ボスが倒れたら、地面の予告も消す
-  function bossDown() { hazards.length = 0; }
+  function bossDown() { hazards.length = 0; dust.length = 0; }
 
   // ---------- 描画 ----------
+  // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光。本番は、根の大波が太いつる、大突進のあとは土けむり（ドット）
+  function rnd(n) { var v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); }
+
   function drawHazards(cam, glow) {
     var ctx = Render.ctx;
     hazards.forEach(function (h) {
-      var blink = 0.35 + 0.25 * Math.sin(glow * 14);
-      if (h.kind === "line") {
-        ctx.strokeStyle = "rgba(239,91,91," + blink.toFixed(2) + ")"; ctx.lineWidth = h.w; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(h.x1 - cam.x, h.y1 - cam.y); ctx.lineTo(h.x2 - cam.x, h.y2 - cam.y); ctx.stroke();
-        ctx.lineCap = "butt";
-        return;
-      }
+      if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       var x = h.x - cam.x, y = h.y - cam.y;
-      if (h.t < h.warn) {
-        // 光る帯：時間がたつほど明るくなる
-        var k = h.t / h.warn;
-        Render.rect(x, y, h.w, h.h, "rgba(255,220,90," + (0.12 + 0.3 * k + 0.1 * Math.sin(glow * 16)).toFixed(2) + ")");
-      } else {
-        Render.rect(x, y, h.w, h.h, "rgba(90,60,30,0.75)");
-        var along = h.w > h.h, len = along ? h.w : h.h;
-        for (var s = 4; s < len; s += 10) {
-          if (along) Render.rect(x + s, y + 4, 4, h.h - 8, "#8a6a3a"); else Render.rect(x + 4, y + s, h.w - 8, 4, "#8a6a3a");
-        }
-      }
+      if (h.t < h.warn) drawRootWarn(ctx, h, x, y, glow);
+      else drawRootErupt(ctx, h, x, y);
     });
+    // 土けむり（ドット）：ふわっと広がって、うすくなる
+    dust.forEach(function (d) {
+      var k = d.t / d.max, a = (1 - k) * 0.8, r = 2 + Math.round(k * 3);
+      var x = Math.round(d.x - cam.x), y = Math.round(d.y - cam.y - k * 4);
+      ctx.fillStyle = "rgba(168,152,120," + a.toFixed(2) + ")";
+      ctx.fillRect(x - r, y - 1, r * 2, 3); ctx.fillRect(x - r + 1, y - 2, r * 2 - 2, 5);
+      ctx.fillStyle = "rgba(220,206,170," + (a * 0.9).toFixed(2) + ")";
+      ctx.fillRect(x - r + 1, y - 2, 2, 2);
+      if (d.s > 0.5) { ctx.fillStyle = "rgba(140,124,96," + a.toFixed(2) + ")"; ctx.fillRect(x + r, y - 3 - Math.round(k * 2), 2, 2); }
+    });
+  }
+
+  // 大突進の予告：走る方向へ、赤い矢じるしの光が流れる。時間がたつほど強くなる
+  function drawChargeLine(ctx, h, cam, glow) {
+    var e = h.from, k = e.state === "warn" ? Math.min(1, h.t / h.warn) : 1;
+    var x1 = h.x1 - cam.x, y1 = h.y1 - cam.y, dx = h.x2 - h.x1, dy = h.y2 - h.y1;
+    var L = Math.sqrt(dx * dx + dy * dy); if (L < 1) return;
+    var w = h.w;
+    ctx.save();
+    ctx.translate(x1, y1); ctx.rotate(Math.atan2(dy, dx));
+    var fade = e.state === "charge" ? 0.5 : 1;
+    // 帯：まんなかが明るく、ふちがとうめい
+    var g = ctx.createLinearGradient(0, -w / 2, 0, w / 2);
+    g.addColorStop(0, "rgba(239,70,60,0)");
+    g.addColorStop(0.5, "rgba(239,70,60," + ((0.12 + 0.22 * k) * fade).toFixed(2) + ")");
+    g.addColorStop(1, "rgba(239,70,60,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, -w / 2, L, w);
+    // 矢じるし：ボスから先へ流れる
+    var gap = 16, off = (glow * 70) % gap;
+    ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (var s = off; s < L - 4; s += gap) {
+      var edge = Math.min(1, s / 20, (L - s) / 30);
+      var a = (0.25 + 0.6 * k) * edge * fade;
+      ctx.strokeStyle = "rgba(255,120,95," + a.toFixed(2) + ")";
+      ctx.beginPath(); ctx.moveTo(s - 6, -w * 0.32); ctx.lineTo(s, 0); ctx.lineTo(s - 6, w * 0.32); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 根の大波の予告：帯がだんだん明るくなり、まんなかのひび割れが両はしへのびていく
+  function drawRootWarn(ctx, h, x, y, glow) {
+    var k = h.t / h.warn, along = h.w > h.h, len = along ? h.w : h.h, thick = along ? h.h : h.w;
+    var g = along ? ctx.createLinearGradient(0, y, 0, y + h.h) : ctx.createLinearGradient(x, 0, x + h.w, 0);
+    var a = 0.10 + 0.32 * k + 0.06 * Math.sin(glow * 16);
+    g.addColorStop(0, "rgba(255,200,90,0)");
+    g.addColorStop(0.5, "rgba(255,206,100," + a.toFixed(2) + ")");
+    g.addColorStop(1, "rgba(255,200,90,0)");
+    ctx.fillStyle = g; ctx.fillRect(x, y, h.w, h.h);
+    // ひび割れ：プレイヤーに近いまんなかから、両はしへ
+    var mid = len / 2, reach = len * Math.min(1, k * 1.3) / 2;
+    ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(60,34,14," + (0.45 + 0.4 * k).toFixed(2) + ")";
+    ctx.beginPath();
+    var first = true;
+    for (var s = mid - reach; s <= mid + reach; s += 6) {
+      var j = (rnd(h.seed + Math.floor(s / 6)) - 0.5) * thick * 0.35;
+      var px = along ? x + s : x + thick / 2 + j, py = along ? y + thick / 2 + j : y + s;
+      if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    // ひびのふちが光る
+    ctx.strokeStyle = "rgba(255,236,170," + (0.2 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 根の大波の本番：予告のひび割れと同じギザギザの形で、太いつる（緑）がのびて、すぐ引っこむ（2026-10-18 保護者の案）
+  function drawRootErupt(ctx, h, x, y) {
+    var q = (h.t - h.warn) / h.erupt;
+    var rise = q < 0.3 ? q / 0.3 : q > 0.7 ? Math.max(0, (1 - q) / 0.3) : 1;
+    var along = h.w > h.h, len = along ? h.w : h.h, thick = along ? h.h : h.w;
+    ctx.fillStyle = "rgba(40,28,14," + (0.3 * rise).toFixed(2) + ")"; ctx.fillRect(x, y, h.w, h.h);   // 土がわれたところ
+    function path(seed, sway) {
+      ctx.beginPath();
+      for (var s = 0; s <= len; s += 6) {
+        var j = (rnd(seed + Math.floor(s / 6)) - 0.5) * thick * sway;
+        var px = along ? x + s : x + thick / 2 + j, py = along ? y + thick / 2 + j : y + s;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+    }
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // 2本のつるがからみ合う。ふち（暗い緑）→ 本体（緑）→ 光（明るい緑）の順に重ねる
+    [[h.seed, 0.35], [h.seed + 50, 0.5]].forEach(function (v, i) {
+      var w = (i === 0 ? 7 : 5) * rise;
+      if (w < 0.5) return;
+      path(v[0], v[1]);
+      ctx.strokeStyle = "#0e1e10"; ctx.lineWidth = w + 2; ctx.stroke();
+      ctx.strokeStyle = i === 0 ? "#2f6a2a" : "#3a7a30"; ctx.lineWidth = w; ctx.stroke();
+      ctx.strokeStyle = "rgba(122,170,74,0.9)"; ctx.lineWidth = Math.max(1, w * 0.3); ctx.stroke();
+    });
+    // とげ（短い線）をところどころに
+    ctx.strokeStyle = "#1f3a1c"; ctx.lineWidth = 2;
+    for (var s2 = 9; s2 < len; s2 += 18) {
+      var j2 = (rnd(h.seed + Math.floor(s2 / 6)) - 0.5) * thick * 0.35, side = rnd(h.seed + s2) > 0.5 ? 1 : -1, tl = 5 * rise;
+      var bx = along ? x + s2 : x + thick / 2 + j2, by = along ? y + thick / 2 + j2 : y + s2;
+      ctx.beginPath(); ctx.moveTo(bx, by);
+      ctx.lineTo(along ? bx + 2 : bx + side * tl, along ? by + side * tl : by + 2); ctx.stroke();
+    }
+    ctx.lineCap = "butt"; ctx.lineJoin = "miter";
   }
 
   // ボスの絵

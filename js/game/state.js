@@ -220,7 +220,7 @@ var GameState = (function () {
   function sellPrice(it) { return Math.round(itemValue(it) * 0.25); } // 売る：値段の 25%
   // 素材：杖と魔法装備は魔石、それ以外は鉱石
   function matOf(it) { return it.base === "staff" || it.base === "magic" ? "stone" : "iron"; }
-  function dismantleCount(it) { return [0, 1, 1, 1][it.r]; }   // 手放したときの素材：ふつう0、R以上1（2026-10-18 に 1〜3 から変更）
+  function dismantleCount(it) { return [0, 1, 1, 1][it.r]; }   // 売却したときの素材：ふつう0、R以上1（2026-10-18 に 1〜3 から変更）
   // 手放す（売ると分解を1つに。2026-10-18 決定）：ゴールド（値段の25%）と素材（1〜3）に加えて、強化に使ったゴールドと素材の8割がもどる
   function spentOn(it) {
     var gold = 0, n = 0;
