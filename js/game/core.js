@@ -716,12 +716,9 @@
     Sprites.drawHero(ctx, c.job, hair, A.face, frame, px, py + 6);
     if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
     if (c.status.sleep) Render.text("Zz", px + 7, py - 20, { size: 7, color: "#b48cf0" });
-    if (A.swing > 0) {
-      var ang = Math.atan2(A.face.y, A.face.x);
-      ctx.strokeStyle = A.swingColor; ctx.globalAlpha = Math.min(1, A.swing / 0.15);
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(px, py - 3, A.swingReach, ang - A.swingArc, ang + A.swingArc); ctx.stroke();
-      ctx.globalAlpha = 1;
+    if (A.swing > 0) {   // 振った方向へ流れる三日月の光（skills.js の drawSlash。2026-10-19）
+      var sm = A.swingMax || 0.15;
+      Combat.drawSlash(ctx, px, py - 3, A.face, A.swingArc, A.swingReach, A.swingColor, 1 - A.swing / sm, A.swingFlip);
     }
     if (A.wait > 0) {
       var wt = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait");
