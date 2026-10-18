@@ -352,3 +352,23 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 /* ふりがな（段階7-3。js/game/furigana.js が自動でつける） */
 ruby { ruby-position: over; }
 rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; text-transform: none; }
+
+/* ロード画面と、1行ずつの知らせ（段階7-3。js/game/loading.js） */
+.load-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: radial-gradient(ellipse at center, #1d2a1f 0%, #0b0f0c 75%); color: #ece7da; }
+.load-screen[hidden] { display: none; }
+.load-inner { width: 100%; max-width: 560px; text-align: center; }
+.load-title { margin: 0 0 22px; font-size: 1.5rem; color: #f2c14e; letter-spacing: 0.08em; }
+.load-tip { border: 2px solid rgba(242,193,78,0.55); border-radius: 12px; background: rgba(10,12,18,0.6); padding: 14px 18px; text-align: left; }
+.load-tip-head { font-size: 0.85rem; font-weight: 700; color: #f2c14e; margin-bottom: 4px; }
+.load-tip p { margin: 0; font-size: 1.05rem; line-height: 1.8; }
+.load-dots { margin-top: 22px; display: flex; gap: 8px; justify-content: center; }
+.load-dots span { width: 9px; height: 9px; border-radius: 50%; background: #f2c14e; opacity: 0.25; animation: loadDot 1.2s infinite; }
+.load-dots span:nth-child(2) { animation-delay: 0.2s; }
+.load-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes loadDot { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.msg-inner { cursor: pointer; }
+.msg-log { min-height: 140px; text-align: left; border: 2px solid rgba(236,231,218,0.35); border-radius: 12px; background: rgba(10,12,18,0.7); padding: 14px 18px; }
+.msg-line { font-size: 1.1rem; line-height: 1.9; animation: msgIn 0.25s ease-out; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.msg-hint { margin-top: 14px; font-size: 0.9rem; color: #a3a8bd; }

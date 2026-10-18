@@ -684,8 +684,8 @@
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
       "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "") +
         (trial.subjects.length ? "　加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・") : ""),
-      run.title ? "称号「" + run.title + "」を手に入れた！（称号の棚は段階5の図鑑に作ります）" : "",
-      "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉄 " + run.mat.iron + "　魔石 " + run.mat.stone,
+      run.title ? "称号「" + run.title + "」を手に入れた！（書庫の称号の棚に飾られる）" : "",
+      "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉱石 " + run.mat.iron + "　魔石 " + run.mat.stone,
       "経験値 " + Party.members().map(function (m, i) { return m.name + " +" + Math.round(run.exp[i]); }).join("　"),
       trial.tryMode ? "試しモードなので、拾った物も経験値も持ち帰らない（記録にもセーブにも残らない）。" :
       kind === "clear" ? "拾った物と経験値を持って、拠点にもどろう。" : "拾った物と経験値は持ち帰れるが、階層は進まない。"
@@ -694,7 +694,7 @@
     lines.forEach(function (t) { if (!t) return; var d = document.createElement("div"); d.textContent = t; lead.appendChild(d); });
     // 手に入れた装備（拠点とセーブは段階5。今は見せるだけ）
     if (run.got.length) {
-      var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（倉庫に入る。装備の付けかえは段階5-2）"; lead.appendChild(h);
+      var h = document.createElement("div"); h.className = "got-head"; h.textContent = "手に入れた装備（倉庫に入る）"; lead.appendChild(h);
       run.got.forEach(function (it) {
         var d2 = document.createElement("div"); d2.className = "got"; d2.style.color = Loot.RARITY[it.r].color;
         d2.textContent = Loot.describe(it); lead.appendChild(d2);
@@ -713,7 +713,7 @@
       correct: settings.correct, subjects: trial.subjects
     };
     GameState.setAdventure({ state: "finished", result: result }); // 「拠点にもどる」を押す前に閉じても、次に開いたとき受け取れる
-    button("拠点にもどる", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
+    button("つづける", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
     chooseEl.hidden = false;
   }
 
