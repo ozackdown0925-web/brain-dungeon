@@ -69,9 +69,10 @@ var Base = (function () {
       "その階の入口から続けます。拾った物と経験値はそのまま。開けた宝箱は開いたまま、たおした敵はもどっています。";
     document.getElementById("resumeGo").onclick = function () { el2.hidden = true; Adventure.resume(a); };
     document.getElementById("resumeQuit").onclick = function () {
-      if (!window.confirm("冒険をやめて拠点にもどりますか？（拾った物と経験値は持ち帰れるけれど、階層は進みません）")) return;
-      el2.hidden = true;
-      returnFrom(Adventure.resultFromSnapshot(a, "quit"));
+      Dialog.confirm("冒険をやめて拠点にもどりますか？\n（拾った物と経験値は持ち帰れるけれど、階層は進みません）", function () {
+        el2.hidden = true;
+        returnFrom(Adventure.resultFromSnapshot(a, "quit"));
+      }, null, { yes: "やめて拠点にもどる", no: "もどらない" });
     };
     baseEl.hidden = true; createEl.hidden = true;
     el2.hidden = false;
@@ -130,9 +131,10 @@ var Base = (function () {
       rb.hidden = !list.length;
       rb.onclick = function () {
         Parent.askPin(function () {
-          if (!window.confirm("いちばん新しいセーブ（" + list[0].label + "：" + list[0].summary + "）にもどしますか？")) return;
-          Sync.restore(list[0].id, list[0].label).then(function () { createEl.hidden = true; showBase(null); },
-            function (err) { document.getElementById("createNote").textContent = "もどせませんでした（" + err.message + "）"; });
+          Dialog.confirm("いちばん新しいセーブ（" + list[0].label + "：" + list[0].summary + "）にもどしますか？", function () {
+            Sync.restore(list[0].id, list[0].label).then(function () { createEl.hidden = true; showBase(null); },
+              function (err) { document.getElementById("createNote").textContent = "もどせませんでした（" + err.message + "）"; });
+          }, null, { yes: "もどす" });
         });
       };
     }, function () { rb.hidden = true; });
@@ -339,10 +341,11 @@ var Base = (function () {
     depart(Number(document.getElementById("testFloor").value) || 1);
   });
   document.getElementById("testWipe").addEventListener("click", function () {
-    if (!window.confirm("3人のデータを消して、キャラクリからやり直します。よいですか？")) return;
-    GameState.wipe();
-    document.getElementById("parentScreen").hidden = true;
-    showCreate();
+    Dialog.confirm("3人のデータを消して、キャラクリからやり直します。よいですか？", function () {
+      GameState.wipe();
+      document.getElementById("parentScreen").hidden = true;
+      showCreate();
+    }, null, { yes: "消してやり直す", danger: true });
   });
 
   return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart, el: el };

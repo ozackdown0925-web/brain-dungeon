@@ -372,3 +372,11 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .msg-line { font-size: 1.1rem; line-height: 1.9; animation: msgIn 0.25s ease-out; }
 @keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .msg-hint { margin-top: 14px; font-size: 0.9rem; color: #a3a8bd; }
+
+/* ゲームの中の確認の画面（js/game/dialog.js。ブラウザの確認の窓だと iPad で音が止まるため） */
+.dlg-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(5,7,12,0.6); }
+.dlg-panel { width: 100%; max-width: 480px; background: #1c2030; color: #ece7da; border: 2px solid rgba(242,193,78,0.6); border-radius: 14px; padding: 18px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+.dlg-text { margin: 0 0 8px; line-height: 1.8; }
+.dlg-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.dlg-row .btn { border-radius: 8px; padding: 10px 22px; min-width: 96px; }
+.dlg-input { width: 100%; box-sizing: border-box; font-size: 1.2rem; padding: 10px 12px; margin-top: 4px; border-radius: 8px; border: 2px solid #4a5068; background: #10131c; color: #ece7da; letter-spacing: 0.3em; }

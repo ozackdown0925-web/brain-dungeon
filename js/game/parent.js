@@ -71,13 +71,13 @@ var Parent = (function () {
   input1.addEventListener("keydown", function (e) { if (e.key === "Enter") pinGo(); });
   // キャラクリの画面のセーブの復元など、ほかの画面から確かめる。合っていたら ok() を呼ぶ
   function askPin(ok) {
-    var a = window.prompt("保護者の暗証番号（4けた）");
-    if (a === null) return;
-    Sync.checkPin(String(a)).then(function (r) {
-      var m = pinMessage(r);
-      if (m) { window.alert(m); return; }
-      ok();
-    }, function (err) { window.alert("たしかめられませんでした（" + err.message + "）"); });
+    Dialog.prompt("保護者の暗証番号（4けた）", function (a) {
+      Sync.checkPin(String(a)).then(function (r) {
+        var m = pinMessage(r);
+        if (m) { Dialog.alert(m); return; }
+        ok();
+      }, function (err) { Dialog.alert("たしかめられませんでした（" + err.message + "）"); });
+    }, null, { password: true, numeric: true, maxLength: 4 });
   }
 
   function unlocked(note) {
@@ -204,10 +204,11 @@ var Parent = (function () {
         row.appendChild(el("span", "item-extra", h.summary));
         var b = el("button", "btn small-btn", "このセーブにもどす"); b.type = "button";
         b.onclick = function () {
-          if (!window.confirm("この時のセーブにもどします。今のセーブは、一覧に残っている時点までもどります。よいですか？")) return;
-          b.disabled = true;
-          Sync.restore(h.id, h.label).then(function () { render("セーブを復元した"); },
-            function (err) { b.disabled = false; render("復元できませんでした（" + err.message + "）"); });
+          Dialog.confirm("この時のセーブにもどします。今のセーブは、一覧に残っている時点までもどります。よいですか？", function () {
+            b.disabled = true;
+            Sync.restore(h.id, h.label).then(function () { render("セーブを復元した"); },
+              function (err) { b.disabled = false; render("復元できませんでした（" + err.message + "）"); });
+          }, null, { yes: "もどす" });
         };
         row.appendChild(b);
         box.appendChild(row);
@@ -223,9 +224,10 @@ var Parent = (function () {
     document.getElementById("parentConnect").textContent = "この端末は「" + (Sync.player() === "parent" ? "保護者" : "子ども") + "」としてつながっています。";
   }
   document.getElementById("parentReconnect").addEventListener("click", function () {
-    if (!window.confirm("つなぎ先（URL と鍵）を入れ直します。別のプレイヤーの鍵を入れると、この端末のゲームは、そのプレイヤーのセーブに切りかわります。よいですか？")) return;
-    screen.hidden = true;
-    Sync.reconnect("");
+    Dialog.confirm("つなぎ先（URL と鍵）を入れ直します。別のプレイヤーの鍵を入れると、この端末のゲームは、そのプレイヤーのセーブに切りかわります。よいですか？", function () {
+      screen.hidden = true;
+      Sync.reconnect("");
+    }, null, { yes: "入れ直す" });
   });
 
   // 試しモードで出発

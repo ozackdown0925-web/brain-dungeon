@@ -841,9 +841,10 @@
   document.getElementById("resumeBtn").addEventListener("click", function () { setPaused(false); });
   // メニューから冒険をやめる：時間切れと同じ（拾った物と経験値は持ち帰り、階層は進まない）（2026-10-17 決定）
   document.getElementById("quitBtn").addEventListener("click", function () {
-    if (!window.confirm("冒険をやめて拠点にもどりますか？（拾った物と経験値は持ち帰れるけれど、階層は進みません）")) return;
-    setPaused(false);
-    finish("quit");
+    Dialog.confirm("冒険をやめて拠点にもどりますか？\n（拾った物と経験値は持ち帰れるけれど、階層は進みません）", function () {
+      setPaused(false);
+      finish("quit");
+    }, null, { yes: "やめて拠点にもどる", no: "冒険を続ける" });
   });
   window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape")) setPaused(false); });
 
