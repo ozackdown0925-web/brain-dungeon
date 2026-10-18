@@ -52,12 +52,12 @@ var Parent = (function () {
   // 答え（{ match, locked, notSet }）を、画面に出す言葉にする。合っていれば ""
   function pinMessage(r) {
     if (r.notSet) return "まだ暗証番号が入っていません。スプレッドシートのメニュー「Brain Dungeon」から入れてください。";
-    if (r.locked) return "まちがえすぎたので、あと " + Math.ceil(r.locked / 60) + " 分たってから入れてね。";
+    if (r.locked) return "まちがえすぎたので、あと " + Math.ceil(r.locked / 60) + " 分たってから入れてください。";
     return r.match ? "" : "番号がちがいます";
   }
   function pinGo() {
     var a = input1.value, msg = document.getElementById("parentPinMsg");
-    if (!/^[0-9]{4}$/.test(a)) { msg.textContent = "4けたの数字を入れてね"; return; }
+    if (!/^[0-9]{4}$/.test(a)) { msg.textContent = "4けたの数字を入れてください"; return; }
     msg.textContent = "たしかめています…";
     Sync.checkPin(a).then(function (r) {
       var m = pinMessage(r);

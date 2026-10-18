@@ -41,7 +41,7 @@ var Trial = (function () {
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
-    $("trialSub").textContent = rest ? "今日はお休みの日。ダンジョンは閉じているけれど、知恵の試練は解けるよ。" :
+    $("trialSub").textContent = rest ? "今日はお休みの日。ダンジョンは閉じているけれど、知恵の試練は解ける。" :
       (round > 1 ? "今日の " + round + " 回目の試練。" : "") + GameData.floorLabel(floor) + "へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
     document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
@@ -57,7 +57,7 @@ var Trial = (function () {
 
   // インターネットにつながらないときは遊べない（記録とセーブがいつもそろうように）
   function offline(msg) {
-    notice("インターネットにつないでね。つないだら「もう一度」を押してください。" + (msg ? "（" + msg + "）" : ""));
+    notice("インターネットにつながっていません。つないでから「もう一度」を押してください。" + (msg ? "（" + msg + "）" : ""));
     var b = el("button", "dq-btn small", "もう一度"); b.type = "button"; b.addEventListener("click", load);
     $("trialNotice").appendChild(document.createTextNode(" ")); $("trialNotice").appendChild(b);
   }

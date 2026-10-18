@@ -91,7 +91,7 @@ var WorldMap = (function () {
     // 休みの日と、1日に出発できる回数（保護者画面で決める。テスト用の設定で外せる）
     if (!GameState.unlimited()) {
       if (GameState.restToday()) { toRestTrial(); return; } // 休みの日：知恵の試練だけ
-      if (GameState.adventuredToday()) { showNote("今日の冒険は、もう終わったよ。また明日！"); return; }
+      if (GameState.adventuredToday()) { showNote("今日の冒険は、もう終わり。また明日！"); return; }
     }
     showFloors(s);
   });
