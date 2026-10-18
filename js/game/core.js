@@ -488,18 +488,21 @@
     }
   }
 
-  // 出口：床の上に重ねる光るまるい門（2026-10-18 保護者の希望で、ドット絵にせずこの描き方のまま）
+  // 出口：床の上に重ねる光（2026-10-18 保護者の希望で、ドット絵にせず、まんなかが光るグラデーションに）
   var glow = 0;
   function drawExit() {
     var ex = dg.cells[curKey].center, ctx = Render.ctx;
     var x = Math.round(ex.x - cam.x), y = Math.round(ex.y - cam.y);
     var pulse = 0.5 + 0.5 * Math.sin(glow * 4);
-    ctx.fillStyle = "rgba(242,193,78," + (0.25 + 0.25 * pulse).toFixed(2) + ")";
-    ctx.beginPath(); ctx.arc(x, y, 13 + pulse * 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#1a1408";
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#f2c14e"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.stroke();
+    // まんなかがいちばん明るく、外に向かって金色からとうめいになる光（2026-10-18 保護者の希望）
+    var r = 16 + pulse * 3;
+    var gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, "rgba(255,252,235," + (0.9 + 0.1 * pulse).toFixed(2) + ")");
+    gr.addColorStop(0.25, "rgba(255,230,140," + (0.75 + 0.15 * pulse).toFixed(2) + ")");
+    gr.addColorStop(0.6, "rgba(242,193,78," + (0.35 + 0.15 * pulse).toFixed(2) + ")");
+    gr.addColorStop(1, "rgba(242,193,78,0)");
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     Render.text("出口", x, y - 26, { size: 8, align: "center", bold: true, color: "#f2c14e" });
   }
 
