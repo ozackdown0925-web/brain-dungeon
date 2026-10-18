@@ -83,9 +83,10 @@
       c.traps.forEach(function (t, i) { if (t.found) found.push(k + "#" + i); });
     });
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
+    var ckeyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].ckey && dg.cells[k].ckey.taken; });
     GameState.setAdventure({
       state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
-      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, keyTaken: keyTaken, hasKey: !!dg.hasKey,
+      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown,
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
       party: Party.members().map(function (m) { return { hp: m.hp, mp: m.mp, down: m.down }; })
@@ -110,6 +111,8 @@
     a.found.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.traps[+p[1]]) c.traps[+p[1]].found = true; });
     if (a.keyTaken) Object.keys(dg.cells).forEach(function (k) { if (dg.cells[k].key) dg.cells[k].key.taken = true; });
     dg.hasKey = !!a.hasKey;
+    if (a.ckeyTaken) Object.keys(dg.cells).forEach(function (k) { if (dg.cells[k].ckey) dg.cells[k].ckey.taken = true; });
+    dg.hasCKey = !!a.hasCKey;
     if (a.lockOpen && dg.lock) {
       dg.lock.open = true;
       var pc = dg.cells[dg.lock.parent];
@@ -465,14 +468,26 @@
     run.lockMsg = Math.max(0, run.lockMsg - dt);
     function near(x, y, r) { var dx = A.x - x, dy = A.y - y; return dx * dx + dy * dy < r * r; }
 
+    // 鍵は2種類（2026-10-19）：出口の鍵（金）と宝箱の鍵（銀）
     if (c.key && !c.key.taken && near(c.key.x, c.key.y, 12)) {
       c.key.taken = true; dg.hasKey = true;
-      say("鍵を手に入れた！ 鍵のかかった扉をさがそう"); snapshot();
-      Battle.pop(A.x, A.y - 30, "鍵", "#ffe066", 9);
+      say("出口の鍵を手に入れた！ 出口の扉が開けられる"); snapshot();
+      Battle.pop(A.x, A.y - 30, "出口の鍵", "#ffe066", 9);
+      Sound.play("key");
+    }
+    if (c.ckey && !c.ckey.taken && near(c.ckey.x, c.ckey.y, 12)) {
+      c.ckey.taken = true; dg.hasCKey = true;
+      say("宝箱の鍵を手に入れた！ 金の宝箱が開けられる"); snapshot();
+      Battle.pop(A.x, A.y - 30, "宝箱の鍵", "#dfe6ee", 9);
       Sound.play("key");
     }
     c.chests.forEach(function (b) {
       if (b.opened || !near(b.x, b.y, 14)) return;
+      if (b.gold && !dg.hasCKey) {   // 金の宝箱は、宝箱の鍵がいる
+        if (run.lockMsg <= 0) { say("金の宝箱には鍵がかかっている。どこかの部屋に宝箱の鍵があるはず"); run.lockMsg = 3; }
+        return;
+      }
+      if (b.gold) dg.hasCKey = false;
       b.opened = true;
       var got = Loot.chest(dg.floor, settings.correct, b.rare);
       run.got.push(got.equip);
@@ -493,9 +508,9 @@
         if (dg.hasKey) {
           dg.lock.open = true; dg.hasKey = false;
           dt3.forEach(function (p) { room.setTile(p.x, p.y, ":"); });
-          say("鍵で扉を開けた！"); snapshot(); Sound.play("door");
+          say("出口の鍵で扉を開けた！"); snapshot(); Sound.play("door");
         } else if (run.lockMsg <= 0) {
-          say("鍵がかかっている。どこかの部屋に鍵があるはず");
+          say("出口の扉には鍵がかかっている。どこかの部屋に出口の鍵があるはず");
           run.lockMsg = 3;
         }
       }
@@ -576,7 +591,7 @@
     });
     c.chests.forEach(function (b) {
       var x = Math.round(b.x - cam.x), y = Math.round(b.y - cam.y);
-      var img = Props.get((b.opened ? "chestOpen" : "chest") + (b.rare ? "Rare" : ""));
+      var img = Props.get((b.opened ? "chestOpen" : "chest") + (b.gold ? "Gold" : b.rare ? "Rare" : ""));
       ctx.drawImage(img, x - 8, y - 7);
       if (b.rare && !b.opened) {   // R以上が出る宝箱は、きらっと光る
         var s = 0.5 + 0.5 * Math.sin(glow * 5);
@@ -587,6 +602,11 @@
       var kx = Math.round(c.key.x - cam.x), ky = Math.round(c.key.y - cam.y - 2 - Math.sin(glow * 3) * 2);
       Render.rect(kx - 5, Math.round(c.key.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");   // かげ
       ctx.drawImage(Props.get("key"), kx - 6, ky - 3);
+    }
+    if (c.ckey && !c.ckey.taken) {   // 宝箱の鍵（銀）
+      var cx2 = Math.round(c.ckey.x - cam.x), cy2 = Math.round(c.ckey.y - cam.y - 2 - Math.sin(glow * 3 + 1) * 2);
+      Render.rect(cx2 - 5, Math.round(c.ckey.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");
+      ctx.drawImage(Props.get("keySilver"), cx2 - 6, cy2 - 3);
     }
   }
 
@@ -640,8 +660,9 @@
     Render.text(sc > 0 ? "切りかえ あと" + sc.toFixed(1) + "秒" : "切りかえ OK", 7, y + 1, { size: 6, color: sc > 0 ? "#a3a8bd" : "#6fd08c" });
     // 手に入れたもの
     Render.text(run.gold + "G　鉱石" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
-    if (dg.hasKey) Render.text("鍵を持っている", 7, y + 19, { size: 6, color: "#ffe066" });
-    var yy = y + (dg.hasKey ? 28 : 19);
+    var yy = y + 19;
+    if (dg.hasKey) { Render.text("出口の鍵を持っている", 7, yy, { size: 6, color: "#ffe066" }); yy += 9; }
+    if (dg.hasCKey) { Render.text("宝箱の鍵を持っている", 7, yy, { size: 6, color: "#dfe6ee" }); yy += 9; }
     if (trial.subjects.length) { Render.text("加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・"), 7, yy, { size: 6, color: "#b6e3ff" }); yy += 9; }
     if (trial.tryMode) Render.text("試しモード（記録に残らない）", 7, yy, { size: 6, color: "#ffb36b" });
 
@@ -906,7 +927,7 @@
       GameData.floorLabel(dg.floor) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
     var w = Loot.rarityWeights(dg.floor, settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
     document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
-      Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";
+      Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（金の宝箱とボスの宝箱は、R以上だけ）";
   }
 
   function checkRotate() {

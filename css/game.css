@@ -182,6 +182,8 @@ html, body {
 /* 段階4-2：地図の印、手に入れた装備 */
 .key.dot { width: 7px; height: 7px; }
 .key.keyitem { background: #ffe066; }
+.key.ckeyitem { background: #dfe6ee; }
+.key.goldchest { background: #f2c14e; }
 .key.chest { background: #d08a3a; }
 .key.trap { background: #c86ae0; }
 .key.locked { background: #c0782e; height: 4px; }

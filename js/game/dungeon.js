@@ -204,7 +204,7 @@ var Dungeon = (function () {
     });
     var dg = {
       floor: floor, seed: seed, cells: cells, start: key(start.x, start.y), exit: key(exit.x, exit.y),
-      boss: BOSS_FLOORS.indexOf(floor) >= 0, lock: null, hasKey: false
+      boss: BOSS_FLOORS.indexOf(floor) >= 0, lock: null, hasKey: false, hasCKey: false
     };
     placeThings(dg, floor, seed);
     return dg;
@@ -236,7 +236,7 @@ var Dungeon = (function () {
     bc.bossCell = true;
     return {
       floor: floor, seed: seed, cells: cells, start: key(1, 1), exit: key(3, 1), boss: true, bossInfo: info,
-      bossDown: false, bossMet: false, lock: null, hasKey: false
+      bossDown: false, bossMet: false, lock: null, hasKey: false, hasCKey: false
     };
   }
 
@@ -253,7 +253,7 @@ var Dungeon = (function () {
       // 部屋の中心（入口でキャラが立つ場所・出口）のまわりは空けておく
       var cx = c.center.x / T - 1, cy = c.center.y / T - 1;
       for (var y = cy - 2; y <= cy + 3; y++) for (var x = cx - 2; x <= cx + 3; x++) used[k][key(x, y)] = true;
-      c.chests = []; c.key = null; c.traps = [];
+      c.chests = []; c.key = null; c.ckey = null; c.traps = [];
     });
     function mark(k, x, y, w, h, pad) {
       for (var yy = y - pad; yy < y + h + pad; yy++) for (var xx = x - pad; xx < x + w + pad; xx++) used[k][key(xx, yy)] = true;
@@ -283,31 +283,51 @@ var Dungeon = (function () {
     }
     var T = World.TILE;
 
-    // 鍵のかかった部屋：寄り道の部屋の1つ（寄り道がない階層は、鍵も扉もなし）
-    var sides = keys.filter(function (k) { return dg.cells[k].kind === "side"; });
-    if (sides.length) {
-      var lk = pick(rnd, sides), lc = dg.cells[lk], d = lc.doors[0];
-      var pk = neighbor(dg, lk, d), pdir = DIRS[d].back, pc = dg.cells[pk];
-      lc.locked = true;
-      doorTiles(pc.room.w, pc.room.h, pdir).forEach(function (p) { pc.room.setTile(p.x, p.y, "L"); });
-      dg.lock = { cell: lk, parent: pk, dir: pdir, open: false };
-      // 鍵の部屋の宝箱（レア以上）：部屋のまんなかに
-      lc.chests.push({ x: lc.center.x, y: lc.center.y, opened: false, rare: true });
-      // 鍵：入口・鍵の部屋以外のどこかの部屋に
-      var keyRooms = shuffle(keys.filter(function (k) { return k !== dg.start && k !== lk; }));
-      for (var i = 0; i < keyRooms.length; i++) {
-        var ks = spots(keyRooms[i], 1, 1, 5, false);
+    // 鍵は2種類（2026-10-19 決定）
+    // ・出口の鍵：出口の部屋の入口に鍵のかかった扉。出口までの道すじの部屋（入口と出口以外）に落ちている
+    // ・宝箱の鍵：1階層に1つの金の宝箱を開ける。寄り道の部屋に落ちている（寄り道がなければ道すじの部屋）
+    // 金の宝箱は、宝箱の鍵とは別の部屋（寄り道の部屋がもう1つあればそこ、なければ道すじの部屋）
+    function putItem(rooms) {
+      for (var i = 0; i < rooms.length; i++) {
+        var ks = spots(rooms[i], 1, 1, 5, false);
         if (!ks.length) continue;
         var kp = pick(rnd, ks);
-        dg.cells[keyRooms[i]].key = { tx: kp.x, ty: kp.y, x: kp.x * T + 8, y: kp.y * T + 8, taken: false };
-        mark(keyRooms[i], kp.x, kp.y, 1, 1, 1);
-        break;
+        mark(rooms[i], kp.x, kp.y, 1, 1, 1);
+        return { room: rooms[i], tx: kp.x, ty: kp.y, x: kp.x * T + 8, y: kp.y * T + 8, taken: false };
       }
+      return null;
+    }
+    var pathRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "room"; }));
+    var sides = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side"; }));
+    // 出口の鍵と、鍵のかかった扉
+    var ex = dg.cells[dg.exit], ed = ex.doors[0];
+    var ekey = putItem(pathRooms.length ? pathRooms : sides);
+    if (ekey && ed) {
+      var pk = neighbor(dg, dg.exit, ed), pdir = DIRS[ed].back, pc = dg.cells[pk];
+      doorTiles(pc.room.w, pc.room.h, pdir).forEach(function (p) { pc.room.setTile(p.x, p.y, "L"); });
+      dg.lock = { cell: dg.exit, parent: pk, dir: pdir, open: false };
+      ex.locked = true;
+      dg.cells[ekey.room].key = { tx: ekey.tx, ty: ekey.ty, x: ekey.x, y: ekey.y, taken: false };
+    }
+    // 宝箱の鍵
+    var ckey = putItem(sides.concat(pathRooms.filter(function (k) { return !dg.cells[k].key; })).concat(pathRooms));
+    if (ckey) dg.cells[ckey.room].ckey = { tx: ckey.tx, ty: ckey.ty, x: ckey.x, y: ckey.y, taken: false };
+    // 金の宝箱
+    var goldRooms = sides.filter(function (k) { return !ckey || k !== ckey.room; })
+      .concat(pathRooms.filter(function (k) { return !ckey || k !== ckey.room; }));
+    for (var gi = 0; gi < goldRooms.length && ckey; gi++) {
+      var gs = spots(goldRooms[gi], 1, 1, 5, true);
+      if (!gs.length) continue;
+      var gp = pick(rnd, gs);
+      dg.cells[goldRooms[gi]].chests.push({ x: gp.x * T + 8, y: gp.y * T + 8, opened: false, rare: true, gold: true });
+      mark(goldRooms[gi], gp.x, gp.y, 1, 1, 1);
+      dg.goldChest = true;
+      break;
     }
 
-    // ふつうの宝箱：鍵の部屋とあわせて1階層に2〜3個。寄り道の部屋を先に
-    var total = 2 + (rnd() < 0.5 ? 1 : 0), have = dg.lock ? 1 : 0;
-    var chestRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side" && !dg.cells[k].locked; }))
+    // ふつうの宝箱：金の宝箱とあわせて1階層に2〜3個。寄り道の部屋を先に
+    var total = 2 + (rnd() < 0.5 ? 1 : 0), have = dg.goldChest ? 1 : 0;
+    var chestRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side"; }))
       .concat(shuffle(keys.filter(function (k) { return dg.cells[k].kind === "room" || dg.cells[k].kind === "exit"; })));
     for (var ci = 0; ci < chestRooms.length && have < total; ci++) {
       var cs = spots(chestRooms[ci], 1, 1, 5, true);
@@ -389,8 +409,9 @@ var Dungeon = (function () {
       var dot = Math.max(1, Math.round(Math.min(cw, ch) / 5));
       function at(tx, ty, col) { rect(px + tx / c.room.w * cw - dot / 2, py + ty / c.room.h * ch - dot / 2, dot, dot, col); }
       if (c.traps) c.traps.forEach(function (t) { if (!t.hidden || t.found) at(t.tx + t.w / 2, t.ty + t.h / 2, "#c86ae0"); });
-      if (c.chests) c.chests.forEach(function (b) { if (!b.opened) at(b.x / World.TILE, b.y / World.TILE, "#d08a3a"); });
-      if (c.key && !c.key.taken) at(c.key.tx + 0.5, c.key.ty + 0.5, "#ffe066");
+      if (c.chests) c.chests.forEach(function (b) { if (!b.opened) at(b.x / World.TILE, b.y / World.TILE, b.gold ? "#f2c14e" : "#d08a3a"); });
+      if (c.key && !c.key.taken) at(c.key.tx + 0.5, c.key.ty + 0.5, "#ffe066");      // 出口の鍵（金）
+      if (c.ckey && !c.ckey.taken) at(c.ckey.tx + 0.5, c.ckey.ty + 0.5, "#dfe6ee");   // 宝箱の鍵（銀）
       if (c.kind === "exit") {
         var s = Math.max(2, Math.round(Math.min(cw, ch) / 2.5));
         rect(px + cw / 2 - s / 2, py + ch / 2 - s / 2, s, s, k === curKey ? "#b32c2c" : "#ef5b5b");
