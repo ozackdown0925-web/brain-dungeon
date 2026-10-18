@@ -290,11 +290,12 @@ var GameState = (function () {
     it.buff = fresh.buff; it.debuff = fresh.debuff;
     save(); return true;
   }
-  // 強化の引きつぎ（2026-10-18 決定）：同じ部位・同じ段の装備へ、＋をそのまま移す。もとの装備はなくなる。手数料は 10G×(＋の数)
+  // 強化の引きつぎ（2026-10-18 決定）：同じ種類（剣なら剣、弓なら弓）・同じ段の装備へ、＋をそのまま移す。もとの装備はなくなる。手数料は 10G×(＋の数)
+  // （前は同じ部位ならよかったが、弓から杖へ移せてしまったので、同じ種類だけにした）
   function transferCost(it) { return 10 * (it.plus || 0); }
   function transferTargets(it) {
     return allItems().filter(function (x) {
-      return x.item !== it && x.item.slot === it.slot && (x.item.tier || 0) === (it.tier || 0) && (x.item.plus || 0) < (it.plus || 0);
+      return x.item !== it && x.item.slot === it.slot && x.item.base === it.base && (x.item.tier || 0) === (it.tier || 0) && (x.item.plus || 0) < (it.plus || 0);
     });
   }
   function ownerOf(it) {
