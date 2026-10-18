@@ -49,7 +49,10 @@ textarea.dq-in { width: 100%; font-size: 1.1rem; min-height: 5em; resize: vertic
 .dq-fig { position: relative; }
 .dq-fig .dq-img { cursor: pointer; }
 .dq-fig-ink { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border-radius: 8px; }
-.dq-fig-btn { position: absolute; right: 8px; bottom: 8px; appearance: none; font: inherit; font-size: 0.9rem; font-weight: 700; border: 2px solid var(--c); background: var(--sheet); color: var(--c); border-radius: 999px; padding: 4px 12px; min-height: 36px; cursor: pointer; opacity: 0.95; }
+.dq-fig-btn { position: absolute; right: 6px; top: 6px; appearance: none; font: inherit; font-size: 1.05rem; line-height: 1; border: 2px solid var(--c); background: var(--sheet); color: var(--c); border-radius: 50%; width: 40px; height: 40px; padding: 0; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+.dq-fig-btn.has-ink::after { content: ""; position: absolute; right: 1px; top: 1px; width: 10px; height: 10px; border-radius: 50%; background: #d0342c; border: 2px solid var(--sheet); }
+.dq-scroll { min-width: 46px; padding: 4px 10px; font-size: 1.05rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.dq-ann:not(.zoomed) .dq-hscroll { display: none; }
 .dq-ann { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; background: #3b4350; display: flex; flex-direction: column; }
 .dq-ann-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--sheet); border-bottom: 1px solid var(--rule); }
 .dq-ann-sep { flex: 1; }

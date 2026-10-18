@@ -141,9 +141,25 @@
       btn("dq-tool", "ぜんぶ消す", function () { strokes.length = 0; redraw(); }),
       btn("dq-tool", "＋", function () { setScale(scale + 0.5); }),
       btn("dq-tool", "−", function () { setScale(scale - 0.5); }),
+      // 書いているあいだは指で動かせないので、ボタンで上下（と左右）に動かす。押しっぱなしで続けて動く（2026-10-18 保護者の案）
+      scrollBtn("▲", 0, -1), scrollBtn("▼", 0, 1), scrollBtn("◀", -1, 0, "dq-hscroll"), scrollBtn("▶", 1, 0, "dq-hscroll"),
       el("span", "dq-ann-sep"),
       btn("dq-btn small", "とじる", close)
     );
+    function scrollBtn(label, dx, dy, extra) {
+      var b = btn("dq-tool dq-scroll" + (extra ? " " + extra : ""), label);
+      b.setAttribute("aria-label", dy < 0 ? "上へ" : dy > 0 ? "下へ" : dx < 0 ? "左へ" : "右へ");
+      var timer = 0, wait = 0;
+      function step(n) { area.scrollLeft += dx * n; area.scrollTop += dy * n; }
+      function stop() { clearTimeout(wait); clearInterval(timer); wait = timer = 0; }
+      b.addEventListener("pointerdown", function (e) {
+        e.preventDefault(); stop();
+        step(Math.round(area.clientHeight * 0.25));
+        wait = setTimeout(function () { timer = setInterval(function () { step(14); }, 30); }, 350);
+      });
+      b.addEventListener("pointerup", stop); b.addEventListener("pointerleave", stop); b.addEventListener("pointercancel", stop);
+      return b;
+    }
     var area = el("div", "dq-ann-area");
     var stage = el("div", "dq-ann-stage");
     var im = document.createElement("img"); im.src = src; im.alt = "問題の図"; im.draggable = false;
@@ -159,6 +175,7 @@
     function setScale(s) {
       scale = Math.min(3, Math.max(1, s));
       stage.style.width = (scale * 100) + "%";
+      z.classList.toggle("zoomed", scale > 1);   // 拡大したときだけ ◀▶ を出す
       requestAnimationFrame(redraw);
     }
     function redraw() { fitCanvas(cv, stage); drawInk(cv, strokes); }
@@ -205,8 +222,10 @@
         var fig = el("div", "dq-fig");
         var im = document.createElement("img"); im.className = "dq-img"; im.src = src; im.alt = "問題の図";
         var cv = document.createElement("canvas"); cv.className = "dq-fig-ink";
-        var open = btn("dq-fig-btn", "✏ 書きこむ");
-        function paint() { fitCanvas(cv, im); drawInk(cv, INK[id]); open.textContent = (INK[id] && INK[id].length) ? "✏ 書きこみを見る・続ける" : "✏ 書きこむ"; }
+        // 書きこむボタンは、問題に重ならないように右上の小さなえんぴつだけにする（2026-10-18 保護者の案）。書きこみがあると印がつく
+        var open = btn("dq-fig-btn", "✏");
+        open.setAttribute("aria-label", "書きこむ"); open.title = "書きこむ";
+        function paint() { fitCanvas(cv, im); drawInk(cv, INK[id]); open.classList.toggle("has-ink", !!(INK[id] && INK[id].length)); }
         function go() { annotate(id, src, paint); }
         im.addEventListener("click", go); open.addEventListener("click", go);
         im.addEventListener("load", paint);
