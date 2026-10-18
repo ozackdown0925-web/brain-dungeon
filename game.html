@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=43">
-<link rel="stylesheet" href="css/drillcore.css?v=43">
-<link rel="stylesheet" href="css/trial.css?v=43">
+<link rel="stylesheet" href="css/game.css?v=44">
+<link rel="stylesheet" href="css/drillcore.css?v=44">
+<link rel="stylesheet" href="css/trial.css?v=44">
 </head>
 <body>
 <div id="stage">
@@ -234,6 +234,27 @@
           </div>
         </section>
         <section class="pp">
+          <h3>テスト用の設定</h3>
+          <p class="note">保護者がためすための設定（子どもには見えない）。テスト用の出発は、記録に残らない。</p>
+          <div class="test-foot">
+            <label>テスト用の出発の正解数 <select id="testCorrect"></select></label>
+            <label><input type="checkbox" id="testUnlimited"> 1日の回数の制限をはずす（この端末だけ）</label>
+            <label>冒険の時間 <select id="testMinutes"></select></label>
+            <label>seed <input id="testSeed" type="text" inputmode="numeric" placeholder="空なら毎回ちがう" size="10"></label>
+          </div>
+          <div class="test-foot">
+            <label>3人のレベル <select id="testLevel"></select></label>
+            <button type="button" id="testLevelApply" class="btn">このレベルにする</button>
+          </div>
+          <div class="test-foot">
+            <label>好きな階層 <select id="testFloor"></select></label>
+            <button type="button" id="testGo" class="btn">この階層へ出発（テスト）</button>
+          </div>
+          <div class="test-foot">
+            <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
+          </div>
+        </section>
+        <section class="pp">
           <h3>つなぎ先（GAS）</h3>
           <p id="parentConnect" class="note"></p>
           <button type="button" id="parentReconnect" class="btn small-btn">つなぎ先を入れ直す</button>
@@ -266,26 +287,6 @@
       <div class="parent-entry sound-row"><button type="button" class="btn small-btn sound-bgm">BGM：オン</button><button type="button" class="btn small-btn sound-se">効果音：オン</button><button type="button" id="parentBtn" class="btn small-btn">保護者</button></div>
       <div id="baseParty" class="party"></div>
       <p id="baseNote" class="note"></p>
-      <details class="test" data-noruby>
-        <summary>テスト用の設定（保護者むけ）</summary>
-        <div class="test-foot">
-          <label>テスト用の出発の正解数 <select id="testCorrect"></select></label>
-          <label><input type="checkbox" id="testUnlimited"> 1日の回数の制限をはずす（この端末だけ）</label>
-          <label>冒険の時間 <select id="testMinutes"></select></label>
-          <label>seed <input id="testSeed" type="text" inputmode="numeric" placeholder="空なら毎回ちがう" size="10"></label>
-        </div>
-        <div class="test-foot">
-          <label>3人のレベル <select id="testLevel"></select></label>
-          <button type="button" id="testLevelApply" class="btn">このレベルにする</button>
-        </div>
-        <div class="test-foot">
-          <label>好きな階層 <select id="testFloor"></select></label>
-          <button type="button" id="testGo" class="btn">この階層へ出発（テスト）</button>
-        </div>
-        <div class="test-foot">
-          <button type="button" id="testWipe" class="btn danger">データを消してキャラクリからやり直す</button>
-        </div>
-      </details>
     </div>
   </div>
 
@@ -298,38 +299,38 @@
   </div>
 </div>
 
-<script src="config.js?v=43"></script>
-<script src="js/api.js?v=43"></script>
-<script src="js/game/furigana.js?v=43"></script>
-<script src="js/game/sync.js?v=43"></script>
-<script src="js/game/sound.js?v=43"></script>
-<script src="js/drillcore.js?v=43"></script>
-<script src="js/game/input.js?v=43"></script>
-<script src="js/game/render.js?v=43"></script>
-<script src="js/game/tiles.js?v=43"></script>
-<script src="js/game/world.js?v=43"></script>
-<script src="js/game/rooms.js?v=43"></script>
-<script src="js/game/dungeon.js?v=43"></script>
-<script src="js/game/loot.js?v=43"></script>
-<script src="js/game/data.js?v=43"></script>
-<script src="js/game/state.js?v=43"></script>
-<script src="js/game/faces.js?v=43"></script>
-<script src="js/game/battle.js?v=43"></script>
-<script src="js/game/enemies.js?v=43"></script>
-<script src="js/game/bosses.js?v=43"></script>
-<script src="js/game/sprites.js?v=43"></script>
-<script src="js/game/monsters.js?v=43"></script>
-<script src="js/game/party.js?v=43"></script>
-<script src="js/game/skills.js?v=43"></script>
-<script src="js/game/town.js?v=43"></script>
-<script src="js/game/trial.js?v=43"></script>
-<script src="js/game/parent.js?v=43"></script>
-<script src="js/game/worldmap.js?v=43"></script>
-<script src="js/game/mapart.js?v=43"></script>
-<script src="js/game/loading.js?v=43"></script>
-<script src="js/game/base.js?v=43"></script>
-<script src="js/game/titleart.js?v=43"></script>
-<script src="js/game/title.js?v=43"></script>
-<script src="js/game/core.js?v=43"></script>
+<script src="config.js?v=44"></script>
+<script src="js/api.js?v=44"></script>
+<script src="js/game/furigana.js?v=44"></script>
+<script src="js/game/sync.js?v=44"></script>
+<script src="js/game/sound.js?v=44"></script>
+<script src="js/drillcore.js?v=44"></script>
+<script src="js/game/input.js?v=44"></script>
+<script src="js/game/render.js?v=44"></script>
+<script src="js/game/tiles.js?v=44"></script>
+<script src="js/game/world.js?v=44"></script>
+<script src="js/game/rooms.js?v=44"></script>
+<script src="js/game/dungeon.js?v=44"></script>
+<script src="js/game/loot.js?v=44"></script>
+<script src="js/game/data.js?v=44"></script>
+<script src="js/game/state.js?v=44"></script>
+<script src="js/game/faces.js?v=44"></script>
+<script src="js/game/battle.js?v=44"></script>
+<script src="js/game/enemies.js?v=44"></script>
+<script src="js/game/bosses.js?v=44"></script>
+<script src="js/game/sprites.js?v=44"></script>
+<script src="js/game/monsters.js?v=44"></script>
+<script src="js/game/party.js?v=44"></script>
+<script src="js/game/skills.js?v=44"></script>
+<script src="js/game/town.js?v=44"></script>
+<script src="js/game/trial.js?v=44"></script>
+<script src="js/game/parent.js?v=44"></script>
+<script src="js/game/worldmap.js?v=44"></script>
+<script src="js/game/mapart.js?v=44"></script>
+<script src="js/game/loading.js?v=44"></script>
+<script src="js/game/base.js?v=44"></script>
+<script src="js/game/titleart.js?v=44"></script>
+<script src="js/game/title.js?v=44"></script>
+<script src="js/game/core.js?v=44"></script>
 </body>
 </html>

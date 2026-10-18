@@ -331,13 +331,17 @@ var Base = (function () {
   document.getElementById("testUnlimited").addEventListener("change", function (e) { GameState.setUnlimited(e.target.checked); });
   document.getElementById("testLevelApply").addEventListener("click", function () {
     GameState.setLevelForTest(Number(document.getElementById("testLevel").value) || 1);
-    showBase(null);
-    document.getElementById("baseNote").textContent = "テスト用：3人のレベルを変えました";
+    document.getElementById("parentNote").textContent = "テスト用：3人のレベルを変えました";   // 保護者画面のまま
   });
-  document.getElementById("testGo").addEventListener("click", function () { depart(Number(document.getElementById("testFloor").value) || 1); });
+  // テスト用の設定は保護者画面の中にある（2026-10-18 に拠点の下から移した）
+  document.getElementById("testGo").addEventListener("click", function () {
+    document.getElementById("parentScreen").hidden = true;
+    depart(Number(document.getElementById("testFloor").value) || 1);
+  });
   document.getElementById("testWipe").addEventListener("click", function () {
     if (!window.confirm("3人のデータを消して、キャラクリからやり直します。よいですか？")) return;
     GameState.wipe();
+    document.getElementById("parentScreen").hidden = true;
     showCreate();
   });
 
