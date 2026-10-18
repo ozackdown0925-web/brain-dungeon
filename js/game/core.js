@@ -457,53 +457,43 @@
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
   }
 
-  // 罠・宝箱・鍵（仮の絵）
+  // 罠・宝箱・鍵（ドット絵は props.js。2026-10-18 に仮の絵から差しかえ）
   function drawThings() {
-    var c = dg.cells[curKey], T = World.TILE;
-    c.traps.forEach(function (t) {
+    var c = dg.cells[curKey], T = World.TILE, ctx = Render.ctx;
+    c.traps.forEach(function (t, i) {
       if (t.hidden && !t.found) return;
-      var x = t.tx * T - cam.x, y = t.ty * T - cam.y;
+      var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
       if (t.type === "pit") {
-        Render.rect(x + 1, y + 1, T - 2, T - 2, "#5a4630");
-        Render.rect(x + 3, y + 3, T - 6, T - 6, "#0b0906");
+        ctx.drawImage(Props.get("pit"), x, y);
       } else {
-        Render.rect(x, y, t.w * T, t.h * T, "rgba(120,60,140,0.75)");
-        var b = Math.floor(glow * 2) % 3;
-        Render.rect(x + 6 + b * 5, y + 8, 3, 3, "#c89ae0");
-        Render.rect(x + 18 - b * 3, y + 20, 2, 2, "#c89ae0");
+        var seed = t.tx * 7 + t.ty * 13;
+        ctx.drawImage(Props.swamp(t.w * T, t.h * T, seed), x, y);
+        Props.swampBubbles(ctx, x, y, t.w * T, t.h * T, glow, seed);
       }
     });
     c.chests.forEach(function (b) {
       var x = Math.round(b.x - cam.x), y = Math.round(b.y - cam.y);
-      var trim = b.rare ? "#f2c14e" : "#c9a060";
-      if (b.opened) {
-        Render.rect(x - 7, y - 3, 14, 9, "#4a3018"); Render.rect(x - 7, y - 8, 14, 4, "#6e4a26"); Render.rect(x - 6, y - 2, 12, 3, "#140c04");
-      } else {
-        Render.rect(x - 7, y - 6, 14, 12, "#8a5a2a"); Render.rect(x - 7, y - 1, 14, 2, trim);
-        Render.rect(x - 1, y - 2, 3, 4, trim); Render.rect(x - 7, y - 6, 14, 1, "#a8743a");
-        if (b.rare) { var s = 0.5 + 0.5 * Math.sin(glow * 5); Render.rect(x + 7, y - 10, 2, 2, "rgba(255,240,160," + s.toFixed(2) + ")"); }
+      var img = Props.get((b.opened ? "chestOpen" : "chest") + (b.rare ? "Rare" : ""));
+      ctx.drawImage(img, x - 8, y - 7);
+      if (b.rare && !b.opened) {   // R以上が出る宝箱は、きらっと光る
+        var s = 0.5 + 0.5 * Math.sin(glow * 5);
+        Render.rect(x + 6, y - 11, 2, 2, "rgba(255,240,160," + s.toFixed(2) + ")");
       }
     });
     if (c.key && !c.key.taken) {
       var kx = Math.round(c.key.x - cam.x), ky = Math.round(c.key.y - cam.y - 2 - Math.sin(glow * 3) * 2);
-      Render.rect(kx - 5, ky - 3, 5, 5, "#ffe066"); Render.rect(kx - 4, ky - 2, 3, 3, "#3a3010");
-      Render.rect(kx, ky - 1, 7, 2, "#ffe066"); Render.rect(kx + 4, ky + 1, 2, 2, "#ffe066");
+      Render.rect(kx - 5, Math.round(c.key.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");   // かげ
+      ctx.drawImage(Props.get("key"), kx - 6, ky - 3);
     }
   }
 
-  // 出口（仮の絵）：光るまるい門
+  // 出口：石の輪の門（props.js）
   var glow = 0;
   function drawExit() {
-    var ex = dg.cells[curKey].center, ctx = Render.ctx;
+    var ex = dg.cells[curKey].center;
     var x = Math.round(ex.x - cam.x), y = Math.round(ex.y - cam.y);
-    var pulse = 0.5 + 0.5 * Math.sin(glow * 4);
-    ctx.fillStyle = "rgba(242,193,78," + (0.25 + 0.25 * pulse).toFixed(2) + ")";
-    ctx.beginPath(); ctx.arc(x, y, 13 + pulse * 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#1a1408";
-    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#f2c14e"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.stroke();
-    Render.text("出口", x, y - 26, { size: 8, align: "center", bold: true, color: "#f2c14e" });
+    Props.drawExit(Render.ctx, x, y, 0.5 + 0.5 * Math.sin(glow * 4));
+    Render.text("出口", x, y - 30, { size: 8, align: "center", bold: true, color: "#f2c14e" });
   }
 
   function bar(x, y, w, h, v, color) {
