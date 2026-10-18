@@ -48,7 +48,7 @@ var Town = (function () {
 
   function render() {
     var g = GameState.get();
-    moneyEl.textContent = g.gold + "G　鉄 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫 " + g.storage.length + "/" + GameState.STORAGE_MAX;
+    moneyEl.textContent = g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫 " + g.storage.length + "/" + GameState.STORAGE_MAX;
     bodyEl.textContent = "";
     if (current === "equip") renderEquip(g);
     if (current === "party") renderParty(g);
@@ -127,14 +127,16 @@ var Town = (function () {
   // ---------- 倉庫 ----------
   function renderStorage(g) {
     if (!g.storage.length) { bodyEl.appendChild(el("p", "", "倉庫は空っぽ。宝箱やお店で装備を手に入れよう。")); return; }
-    bodyEl.appendChild(el("p", "sub", "いらない装備は、売る（ゴールド）か、分解する（鍛冶の素材）を選べる。"));
+    bodyEl.appendChild(el("p", "sub", "いらない装備は手放すと、ゴールドと鍛冶の素材になる（強化してあれば、強化に使った分の8割ももどる）。"));
     g.storage.slice().sort(function (a, b) { return a.slot.localeCompare(b.slot) || b.r - a.r || b.ilv - a.ilv; }).forEach(function (it) {
       var row = itemLine(it);
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
-      var p = GameState.sellPrice(it), m = GameState.matOf(it), n = GameState.dismantleCount(it);
-      row.appendChild(button("売る（" + p + "G）", function () { var got = GameState.sell(it.id); say(Loot.label(it) + "を売った（+" + got + "G）"); render(); }));
-      row.appendChild(button("分解（" + Loot.MATERIALS[m] + "+" + n + "）", function () { var r = GameState.dismantle(it.id); say(Loot.label(it) + "を分解した（" + Loot.MATERIALS[r.mat] + "+" + r.n + "）"); render(); }));
+      var v = GameState.releaseValue(it);
+      row.appendChild(button("手放す（+" + v.gold + "G・" + Loot.MATERIALS[v.mat] + "+" + v.n + "）", function () {
+        var r = GameState.release(it.id); if (!r) return;
+        say(Loot.label(it) + "を手放した（+" + r.gold + "G・" + Loot.MATERIALS[r.mat] + "+" + r.n + "）"); render();
+      }));
       bodyEl.appendChild(row);
     });
   }
@@ -155,7 +157,7 @@ var Town = (function () {
       });
       bodyEl.appendChild(row);
     });
-    bodyEl.appendChild(el("h3", "", "ふつうの装備（ノーマル。いちばん深く行った階層の強さ）"));
+    bodyEl.appendChild(el("h3", "", "ふつうの装備（いちばん深く行った階層の強さ）"));
     GameState.shopEquipList().forEach(function (it) {
       var price = GameState.itemValue(it);
       var row = itemLine(it);
@@ -171,19 +173,38 @@ var Town = (function () {
 
   // ---------- 鍛冶屋 ----------
   function renderSmith(g) {
-    bodyEl.appendChild(el("p", "sub", "強化は必ず成功する（＋1ごとに基本の強さ＋5%、＋10まで）。引き直しは、バフ・デバフを全部作りなおす（魔石" +
+    bodyEl.appendChild(el("p", "sub", "強化は必ず成功する（＋1ごとにもとの強さ＋" + Math.round(Loot.PLUS_STEP * 100) + "%、＋" + Loot.PLUS_MAX + "まで）。" +
+      "＋を移すと、同じ部位の装備に強化をそのまま引きつげる（もとの装備はなくなる）。引き直しは、バフ・デバフを全部作りなおす（魔石" +
       GameState.REROLL.stone + "＋" + GameState.REROLL.gold + "G）。"));
     var all = GameState.allItems();
     if (!all.length) { bodyEl.appendChild(el("p", "", "強くできる装備がない。宝箱やお店で装備を手に入れよう。")); return; }
     all.sort(function (a, b) { return (b.who ? 1 : 0) - (a.who ? 1 : 0) || b.item.r - a.item.r; }).forEach(function (x) {
       var it = x.item, row = itemLine(it, x.who ? x.who.name + "が装備中" : "倉庫");
-      if ((it.plus || 0) < 10) {
+      if ((it.plus || 0) < Loot.PLUS_MAX) {
         var c = GameState.upgradeCost(it);
         row.appendChild(button("強化 ＋" + ((it.plus || 0) + 1) + "（" + Loot.MATERIALS[c.mat] + c.n + "＋" + c.gold + "G）", function () {
           if (!GameState.upgradeItem(it)) { say("素材かゴールドが足りない"); return; }
           say(Loot.label(it) + "にした！"); render();
         }));
-      } else row.appendChild(el("span", "item-extra", "＋10（いちばん上）"));
+      } else row.appendChild(el("span", "item-extra", "＋" + Loot.PLUS_MAX + "（いちばん上）"));
+      // 強化の引きつぎ：同じ部位・同じ段で、＋が小さい装備へ移す
+      var targets = it.plus > 0 ? GameState.transferTargets(it) : [];
+      if (targets.length) {
+        var sel = el("select", "transfer-to");
+        targets.forEach(function (t, i) {
+          var o = document.createElement("option"); o.value = i;
+          o.textContent = Loot.label(t.item) + "（" + (t.who ? t.who.name + "が装備中" : "倉庫") + "）";
+          sel.appendChild(o);
+        });
+        row.appendChild(sel);
+        row.appendChild(button("＋" + it.plus + "を移す（" + GameState.transferCost(it) + "G）", function () {
+          var t = targets[Number(sel.value) || 0];
+          if (!window.confirm(Loot.label(it) + " の強化を " + Loot.label(t.item) + " に移します。" + Loot.label(it) + " はなくなります。よいですか？")) return;
+          var r = GameState.transferPlus(it, t.item);
+          if (!r) { say("ゴールドが足りない"); return; }
+          say(Loot.label(t.item) + "になった！" + (r.equipped ? "（" + r.equipped.name + "が装備した）" : "")); render();
+        }));
+      }
       row.appendChild(button("引き直し", function () {
         if (!GameState.rerollItem(it)) { say("魔石かゴールドが足りない"); return; }
         say(Loot.label(it) + "のバフ・デバフを引き直した"); render();
@@ -324,7 +345,7 @@ var Town = (function () {
       "ボスの大技は、地面が赤や黄色に光って知らせてくれる。光っているところから逃げよう。", "たおれた仲間は、ステージが終わるまで使えない。復活薬で元気になる。"]],
     ["ダンジョン", ["地図はいつも右上に出ている。赤い印が出口。", "鍵を見つけると、鍵のかかった扉が開く。奥にはよい宝箱がある。", "毒の沼や落とし穴に気をつけよう。見えない罠もある。",
       "部屋の敵を全部たおすと、武器をしまって速く走れる。"]],
-    ["拠点", ["宿屋：仲間のようす・装備・スキルのセット。", "お店：薬とふつうの装備を買う。", "鍛冶屋：素材とゴールドで装備を強くする。", "転職の神殿：職業を変える。", "倉庫：いらない装備を売る・分解する。", "書庫：モンスター図鑑・装備図鑑・称号の棚。"]],
+    ["拠点", ["宿屋：仲間のようす・装備・スキルのセット。", "お店：薬とふつうの装備を買う。", "鍛冶屋：素材とゴールドで装備を強くする。", "転職の神殿：職業を変える。", "倉庫：いらない装備を手放して、ゴールドと素材にする。", "書庫：モンスター図鑑・装備図鑑・称号の棚。"]],
     ["そだてる", ["敵をたおすとレベルが上がる。経験値は拠点にもどったときに入る。", "その職業で戦うと熟練度（★）が増え、新しいスキルを覚える。", "★7 で職業を極めると、上級職への道が開く。"]]
   ];
   function renderHelp() {

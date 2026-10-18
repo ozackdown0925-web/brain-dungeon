@@ -244,10 +244,11 @@
     if (e.def.boss) { bossDefeated(e); return; }
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
-    var drop = Loot.enemyDrop(e.type, dg.floor);
+    var drop = Loot.enemyDrop(e.type, dg.floor, settings.correct);
     run.gold += drop.gold;
     if (drop.gold) Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
     if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
+    if (drop.tool && GameState.gainTool(drop.tool)) Battle.pop(e.x, e.y - 50, GameState.TOOLS[drop.tool].name + " +1", "#9fe0a8", 7);
   };
 
   // 画面に出ているキャラがダメージを受ける（e は攻撃した敵）
@@ -379,8 +380,10 @@
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
       var R = Loot.RARITY[got.equip.r];
-      say("宝箱：" + Loot.label(got.equip) + " を手に入れた！"); snapshot();
-      Battle.pop(b.x, b.y - 22, R.name + "！", R.color, 10);
+      // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
+      var tool = got.tool && GameState.gainTool(got.tool) ? "（" + GameState.TOOLS[got.tool].name + "も）" : "";
+      say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！" + tool); snapshot();
+      Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
       Sound.play("chest");
     });
@@ -534,7 +537,7 @@
     var sc = Party.switchCd();
     Render.text(sc > 0 ? "切りかえ あと" + sc.toFixed(1) + "秒" : "切りかえ OK", 7, y + 1, { size: 6, color: sc > 0 ? "#a3a8bd" : "#6fd08c" });
     // 手に入れたもの
-    Render.text(run.gold + "G　鉄" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
+    Render.text(run.gold + "G　鉱石" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
     if (dg.hasKey) Render.text("鍵を持っている", 7, y + 19, { size: 6, color: "#ffe066" });
     var yy = y + (dg.hasKey ? 28 : 19);
     if (trial.subjects.length) { Render.text("加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・"), 7, yy, { size: 6, color: "#b6e3ff" }); yy += 9; }
@@ -765,7 +768,11 @@
     note.textContent = "いま戦っている " + c.name + " に使う（復活薬は、たおれた仲間に）";
     have.forEach(function (k) {
       var t = GameState.TOOLS[k], n = " ×" + g.items[k];
-      if (k === "potion") {
+      if (k === "ether") {
+        add(t.name + n, c.mp < c.stats.mp, function () {
+          GameState.useTool(k); Sound.play("heal"); c.mp = Math.min(c.stats.mp, c.mp + Math.round(c.stats.mp * 0.4)); note.textContent = c.name + "の MP が回復した";
+        });
+      } else if (k === "potion") {
         add(t.name + n, c.hp < c.stats.hp, function () {
           GameState.useTool(k); Sound.play("heal"); c.hp = Math.min(c.stats.hp, c.hp + Math.round(c.stats.hp * 0.4)); note.textContent = c.name + "の HP が回復した";
         });
@@ -797,7 +804,7 @@
     Dungeon.drawMap(ctx, dg, 0, 0, cw, ch, gap, curKey);
     document.getElementById("floorInfo").textContent =
       GameData.floorLabel(dg.floor) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
-    var w = Loot.rarityWeights(settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
+    var w = Loot.rarityWeights(dg.floor, settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
     document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
       Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（鍵の部屋の宝箱は、レア以上だけ）";
   }

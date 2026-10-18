@@ -9,7 +9,7 @@ var GameData = (function () {
   // power：ふつうの攻撃の「1回の強さ」の倍率（2026-10-17 決定）。近い武器ほど1秒あたりのダメージが強く、遠い武器ほど弱い
   //   （レベルが上がるとダメージは能力でほぼ決まるので、間かくの長い大剣・斧が弱く、離れて戦える職と差がなかったため）
   var WEAPONS = {
-    // item＝拾う・買う装備の名前（最初の地方。レア以上は名前のあとに〈レア〉などがつく）、starter＝はじめから持っている武器の名前（2026-10-18 決定）
+    // item＝拾う・買う装備の名前（最初の地方。R以上は名前のあとに〈R〉〈SR〉〈UR〉がつく）、starter＝はじめから持っている武器の名前（2026-10-18 決定）
     sword:      { name: "剣",   item: "銅の剣",   starter: "古い剣", element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
     greatsword: { name: "大剣", item: "銅の大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
     axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
