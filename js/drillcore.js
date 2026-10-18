@@ -238,6 +238,57 @@
     return box;
   }
 
+  // ---------- 数字のボタン（2026-10-19。iPad のキーボードは種類によって記号の並びが変わり、子どもには使いにくいため） ----------
+  // renderQuestion に opts.keypad を渡すと、数字の欄（数字・分数）は iPad のキーボードを出さず、画面の数字のボタンで入れる。
+  var kp = null;   // 今の問題の { on, inputs: [], target, node }
+  function kpRegister(inp, allowDot) {
+    if (!kp || !kp.on) return;
+    inp.readOnly = true;                 // iPad のキーボードを出さない
+    inp.setAttribute("inputmode", "none");
+    inp.classList.add("dq-kp-in");
+    inp._kpDot = !!allowDot;
+    kp.inputs.push(inp);
+    function pick() { kpTarget(inp); }
+    inp.addEventListener("click", pick); inp.addEventListener("focus", pick);
+  }
+  function kpTarget(inp) {
+    if (!kp) return;
+    kp.target = inp;
+    kp.inputs.forEach(function (x) { x.classList.toggle("kp-on", x === inp); });
+  }
+  function kpPress(key) {
+    var inp = kp && kp.target; if (!inp || inp.disabled) return;
+    var v = inp.value;
+    if (key === "back") v = v.slice(0, -1);
+    else if (key === "clear") v = "";
+    else if (key === ".") { if (!inp._kpDot || v.indexOf(".") >= 0) return; v = (v === "" ? "0" : v) + "."; }
+    else { if (inp.maxLength > 0 && v.length >= inp.maxLength) return; v += key; }
+    inp.value = v;
+    var ev; try { ev = new Event("input", { bubbles: true }); } catch (e) { ev = document.createEvent("Event"); ev.initEvent("input", true, true); }
+    inp.dispatchEvent(ev);
+  }
+  function kpBuild() {
+    var pad = el("div", "dq-keypad");
+    var anyDot = kp.inputs.some(function (x) { return x._kpDot; });
+    [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["0", anyDot ? "." : "", "back"]].forEach(function (row) {
+      row.forEach(function (k) {
+        if (!k) { pad.append(el("span", "dq-kp-gap")); return; }
+        var b = btn("dq-kp" + (k === "back" ? " back" : ""), k === "back" ? "⌫" : k);
+        if (k === "back") b.setAttribute("aria-label", "1文字消す");
+        // 押したときに欄の選び直しがおきないように、ボタンにはフォーカスを移さない
+        b.addEventListener("mousedown", function (e) { e.preventDefault(); });
+        b.addEventListener("click", function () { kpPress(k); });
+        pad.append(b);
+      });
+    });
+    var clr = btn("dq-kp clear", "ぜんぶ消す", function () { kpPress("clear"); });
+    clr.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    pad.append(clr);
+    kp.node = pad;
+    kpTarget(kp.inputs[0]);
+    return pad;
+  }
+
   // ---------- 入力部品 ----------
   // 戻り値 { node, get(), set(v), lock() }
   function widget(p, onChange) {
@@ -259,6 +310,7 @@
         };
         inp.addEventListener("input", fixDot);
         inp.addEventListener("compositionend", function () { setTimeout(function () { fixDot(); onChange(); }, 0); });
+        kpRegister(inp, true);
       }
       inp.addEventListener("input", onChange);
       row.append(inp); if (p.suffix) row.append(el("span", "dq-suffix", p.suffix));
@@ -268,6 +320,7 @@
       var fr = el("div", "dq-frac");
       function box(label) { var i = document.createElement("input"); i.className = "dq-in short"; i.type = "text"; i.inputMode = "numeric"; i.autocomplete = "off"; i.setAttribute("aria-label", label); i.addEventListener("input", onChange); return i; }
       var w = box("整数の部分"), n = box("分子"), d = box("分母");
+      kpRegister(w, false); kpRegister(n, false); kpRegister(d, false);
       var stack = el("div", "fr"); stack.append(n, el("div", "bar"), d);
       fr.append(w, stack);
       var row2 = el("div", "dq-row"); row2.append(fr); if (p.suffix) row2.append(el("span", "dq-suffix", p.suffix));
@@ -346,6 +399,7 @@
     var savedParts = saved && Array.isArray(saved.parts) ? saved.parts : [];
     var ws = [], marks = [], partBoxes = [];
     var action = el("div", "dq-row");
+    kp = { on: !!opts.keypad && !saved, inputs: [], target: null, node: null };
 
     parts.forEach(function (p, i) {
       var box = el("div", "dq-part");
@@ -361,6 +415,8 @@
       partBoxes.push(box); ans.append(box);
     });
     if (!parts.length) ans.append(el("p", "dq-note", "この問題には答えの欄がありません。"));
+    if (kp.on && kp.inputs.length) ans.append(kpBuild());
+    var myKp = kp;
     ans.append(action);
 
     var checkBtn = btn("dq-btn", "答え合わせ", check);
@@ -403,6 +459,7 @@
 
     function check() {
       ws.forEach(function (w) { w.lock(); });
+      if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);   // 答え合わせのあとは数字のボタンをしまう
       checkBtn.remove();
       var results = parts.map(function (p, i) {
         var v = ws[i].get();
