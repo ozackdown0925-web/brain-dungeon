@@ -7,7 +7,7 @@ var Town = (function () {
   var moneyEl = document.getElementById("townMoney");
   var bodyEl = document.getElementById("townBody");
   var noteEl = document.getElementById("townNote");
-  var current = null, heroIdx = 0;
+  var current = null, heroIdx = 0, storageTab = "equip";
 
   var NAMES = { party: "宿屋（仲間・装備・スキル）", equip: "装備", storage: "倉庫", shop: "お店", smith: "鍛冶屋", job: "転職の神殿", book: "書庫（図鑑）", help: "遊び方" };
 
@@ -124,8 +124,42 @@ var Town = (function () {
     });
   }
 
-  // ---------- 倉庫 ----------
+  // ---------- 倉庫（「装備」と「道具」のタブ。2026-10-18 保護者の案） ----------
   function renderStorage(g) {
+    var tabs = el("div", "tabs");
+    [["equip", "装備（" + g.storage.length + "）"], ["tools", "道具・素材"]].forEach(function (t) {
+      tabs.appendChild(button(t[1], function () { storageTab = t[0]; say(""); render(); }, "chip" + (storageTab === t[0] ? " sel" : "")));
+    });
+    bodyEl.appendChild(tabs);
+    if (storageTab === "tools") { renderToolBag(g); return; }
+    renderStorageEquip(g);
+  }
+  function renderToolBag(g) {
+    var box = el("div", "slot");
+    box.appendChild(el("h3", "", "道具（ダンジョンのメニューから使える）"));
+    var any = false;
+    GameState.TOOL_ORDER.forEach(function (k) {
+      var t = GameState.TOOLS[k], n = g.items[k] || 0;
+      if (!n) return;
+      any = true;
+      var row = el("div", "item-line");
+      row.appendChild(el("span", "item-name", t.name + "　×" + n));
+      row.appendChild(el("span", "item-extra", t.note));
+      box.appendChild(row);
+    });
+    if (!any) box.appendChild(el("p", "sub", "道具を持っていない。お店で買えるほか、宝箱や敵から手に入ることもある。"));
+    bodyEl.appendChild(box);
+    var mbox = el("div", "slot");
+    mbox.appendChild(el("h3", "", "素材（鍛冶屋で装備を強くする）"));
+    [["iron", "剣・大剣・斧・弓・こて・よろい・服の強化に使う"], ["stone", "杖・ローブの強化と、バフ・デバフの引き直しに使う"]].forEach(function (m) {
+      var row = el("div", "item-line");
+      row.appendChild(el("span", "item-name", Loot.MATERIALS[m[0]] + "　×" + (g.mat[m[0]] || 0)));
+      row.appendChild(el("span", "item-extra", m[1]));
+      mbox.appendChild(row);
+    });
+    bodyEl.appendChild(mbox);
+  }
+  function renderStorageEquip(g) {
     if (!g.storage.length) { bodyEl.appendChild(el("p", "", "倉庫は空っぽ。宝箱やお店で装備を手に入れよう。")); return; }
     bodyEl.appendChild(el("p", "sub", "いらない装備は手放すと、ゴールドと鍛冶の素材になる（強化してあれば、強化に使った分の8割ももどる）。"));
     g.storage.slice().sort(function (a, b) { return a.slot.localeCompare(b.slot) || b.r - a.r || b.ilv - a.ilv; }).forEach(function (it) {

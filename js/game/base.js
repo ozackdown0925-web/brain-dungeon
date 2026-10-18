@@ -147,10 +147,8 @@ var Base = (function () {
     var g = GameState.get();
     createEl.hidden = true;
     baseEl.hidden = false;
-    var tools = GameState.TOOL_ORDER.filter(function (k) { return g.items[k] > 0; }).map(function (k) { return GameState.TOOLS[k].name + g.items[k]; });
-    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫の装備 " + g.storage.length + "個" +
-      (tools.length ? "　道具：" + tools.join("・") : "") +
-      (g.titles.length ? "　称号：" + g.titles.join("・") : "");
+    // 上の行はゴールドと素材だけ（道具と装備の数は倉庫で見る。称号は書庫。2026-10-18 保護者の案）
+    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone;
 
     // 仲間
     var pbox = document.getElementById("baseParty"); pbox.textContent = "";
