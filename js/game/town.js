@@ -133,9 +133,9 @@ var Town = (function () {
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
       var v = GameState.releaseValue(it);
-      row.appendChild(button("手放す（+" + v.gold + "G・" + Loot.MATERIALS[v.mat] + "+" + v.n + "）", function () {
+      row.appendChild(button("手放す（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
         var r = GameState.release(it.id); if (!r) return;
-        say(Loot.label(it) + "を手放した（+" + r.gold + "G・" + Loot.MATERIALS[r.mat] + "+" + r.n + "）"); render();
+        say(Loot.label(it) + "を手放した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
       }));
       bodyEl.appendChild(row);
     });
