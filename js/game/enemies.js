@@ -63,7 +63,9 @@ var Enemies = (function () {
   // 毎フレーム：p はプレイヤー、hurt(e, amount元の攻撃力) はプレイヤーにダメージを与える関数
   var api = { spawn: function (t, x, y, depth) { return spawn(t, x, y, depth); }, alive: function () { return alive(); },
               addArrow: function (e, a, s, o) { addArrow(e, a, s, o); } };
+  var hooksRoom = null;   // 攻撃のときにふみこむために、今の部屋を覚えておく
   function update(dt, room, p, hurt, onKill) {
+    hooksRoom = room;
     list.forEach(function (e) {
       e.flash = Math.max(0, e.flash - dt);
       e.lash = Math.max(0, (e.lash || 0) - dt);
@@ -92,12 +94,13 @@ var Enemies = (function () {
       } else if (p.down) {
         // プレイヤーが倒れているあいだは様子を見る
       } else if (d.kind === "melee") {
-        if (gap > d.reach - 2) { mx = ux; my = uy; }
-        else if (e.cd <= 0) startWindup(e, ux, uy);
+        // 届くところまで来たら構える（2026-10-18：前は届くところより少し手前まで近づいてから）
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
+        else if (gap > d.reach - 2) { mx = ux; my = uy; }
       } else if (d.kind === "spear") {
         if (gap > d.keep + 8) { mx = ux; my = uy; }
         else if (gap < d.keep - 6) { mx = -ux; my = -uy; }
-        if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
       } else if (d.kind === "vine") {
         if (gap <= d.reach - 4 && e.cd <= 0) startWindup(e, ux, uy);
         else e.face = { x: ux, y: uy };
@@ -172,7 +175,15 @@ var Enemies = (function () {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e });
       return;
     }
-    // 近い攻撃：構えたときの向きのまま。届けば当たる
+    // 近い攻撃：構えたときの向きのまま。届けば当たる。剣士・槍兵は一歩ふみこんで振る（2026-10-18）
+    if (d.lunge && hooksRoom) {
+      var bx = e.x, by = e.y;
+      hooksRoom.move(e, e.aim.x * d.lunge, e.aim.y * d.lunge);
+      var stepped = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      var ddx = p.x - e.x, ddy = p.y - e.y;
+      gap = Math.sqrt(ddx * ddx + ddy * ddy) - e.r - p.r;
+      if (gap < 0) { hooksRoom.move(e, -e.aim.x * Math.min(stepped, -gap), -e.aim.y * Math.min(stepped, -gap)); gap = 0; }
+    }
     if (!p.down && gap <= d.reach + 2) hurt(e, p.x, p.y - 8);
     if (d.kind === "vine") e.lash = 0.25;
     if (d.kind === "spore") e.puff = 0.45;   // 胞子の雲を少しのあいだ見せる

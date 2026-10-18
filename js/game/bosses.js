@@ -1,6 +1,6 @@
 // ボスの動き（段階4-3）：大オオカミ（7階）と大木の魔物（14階）。数字は data.js の ENEMIES、たたき台は docs/draft.md 2。
-// ふつうの攻撃は「当たる前提」。かわすことを求めるのは、とても大きなダメージの大技だけで、地面で 1.5〜2 秒前に予告する。
-//   大オオカミ：大突進（赤い線で1.5秒予告）／大木の魔物：根の大波（地面が光って2秒予告。HP が半分になると増える）
+// ふつうの攻撃は「当たる前提」。かわすことを求めるのは、とても大きなダメージの大技だけで、地面で予告する（大突進0.9秒・根の大波1.2秒。2026-10-18）。
+//   大オオカミ：大突進（赤い線で0.9秒予告）／大木の魔物：根の大波（地面が光って1.2秒予告。HP が半分になると増える）
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Bosses = (function () {
   var hazards = []; // 地面の予告と大技：{ kind: "line"|"rect", ..., t, warn, from }
@@ -55,6 +55,14 @@ var Bosses = (function () {
     }
     if (e.state === "warn") { // 大突進の予告：赤い線
       e.t -= dt;
+      // 走り出す 0.3 秒前までは、プレイヤーのほうへ向きを合わせ直す（早めに動いてもよけきれないように。2026-10-18）
+      if (e.t > 0.3 && !p.down && e.chargeLine) {
+        var ax = p.x - e.x, ay = p.y - e.y, al = Math.sqrt(ax * ax + ay * ay) || 1;
+        ax /= al; ay /= al;
+        e.aim = { x: ax, y: ay }; e.face = { x: ax, y: ay };
+        e.chargeLen = Math.min(260, rayLength(room, e.x, e.y, ax, ay, e.r));
+        e.chargeLine.x2 = e.x + ax * e.chargeLen; e.chargeLine.y2 = e.y + ay * e.chargeLen;
+      }
       if (e.t <= 0) { e.state = "charge"; e.travel = 0; e.hitDone = false; }
       return;
     }
@@ -84,7 +92,8 @@ var Bosses = (function () {
       // 大突進：プレイヤーへ向けて、壁まで（最大260ドット）走る。線で予告する
       e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
       e.chargeLen = Math.min(260, rayLength(room, e.x, e.y, ux, uy, e.r));
-      hazards.push({ kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 4, t: 0, warn: d.chargeWarn });
+      e.chargeLine = { kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 4, t: 0, warn: d.chargeWarn };
+      hazards.push(e.chargeLine);
       e.state = "warn"; e.t = d.chargeWarn; e.ai.charge = d.chargeEvery + Math.random() * 2;
       Battle.pop(e.x, e.y - 30, "大突進の構え！", "#ef5b5b", 9);
       return;
