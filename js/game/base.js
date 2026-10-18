@@ -277,15 +277,34 @@ var Base = (function () {
     if (trial) Adventure.settings.minutes = GameState.parent().minutes;
     if (tryOpt) { Adventure.settings.minutes = tryOpt.minutes; GameState.beginTry(); }
     baseEl.hidden = true;
-    Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
-      tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true } :
-      trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
+    // ダンジョンに入る前にロード画面（Tips）を2秒出す。冒険の時間は、ダンジョンに入ってから数える
+    Loading.show(GameData.floorLabel(floor) + "へ", function () {
+      Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
+        tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true } :
+        trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
+    });
   }
 
-  // 冒険から拠点にもどる
+  // 冒険から拠点にもどる：持ち帰った物と経験値は、ここで先に受け取る（このあと閉じても、もらいそこねない）。
+  // そのあと、レベルアップなどを1行ずつ → ロード画面（Tips）→ 拠点（2026-10-18 保護者の案）
   function returnFrom(result) {
     var report = GameState.applyAdventure(result);
-    showBase({ result: result, people: report, note: result.tryMode ? "試しモードだったので、出発する前のセーブにもどした（記録にもセーブにも残らない）。" : "" });
+    baseEl.hidden = true; createEl.hidden = true;
+    var list = [], lvSound = false;
+    (report || []).forEach(function (p) {
+      p.lines.forEach(function (t) {
+        var lv = /^レベルが (\d+) → (\d+)/.exec(t), sk = /^スキル「(.+)」を覚えた/.exec(t);
+        var text = lv ? p.name + " は Lv" + lv[2] + " になった！" : sk ? p.name + " は「" + sk[1] + "」を覚えた！" : p.name + " の" + t;
+        list.push({ text: text, sound: lv && !lvSound ? "levelup" : "" });
+        if (lv) lvSound = true;
+      });
+    });
+    Loading.lines(list, "", function () {
+      Loading.show(GameData.PLACES.base + "へ帰る", function () {
+        showBase(null);
+        if (result.tryMode) document.getElementById("baseNote").textContent = "試しモードだったので、出発する前のセーブにもどした（記録にもセーブにも残らない）。";
+      });
+    });
   }
 
   // もどったときの知らせ
