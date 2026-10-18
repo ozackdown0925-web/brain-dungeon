@@ -68,7 +68,7 @@ var Sync = (function () {
   // retry：「もう一度」を押したときにやること
   function showOffline(msg, retry) {
     var box = $("netScreen");
-    $("netText").textContent = msg || "インターネットにつないでね。つないだら「もう一度」を押してください。";
+    $("netText").textContent = msg || "インターネットにつながっていません。つないでから「もう一度」を押してください。";
     $("netRetry").hidden = !retry;
     $("netRetry").onclick = function () { box.hidden = true; if (retry) retry(); };
     $("netOk").hidden = true;

@@ -140,12 +140,12 @@ var GameData = (function () {
     goblin_sword: {
       name: "ゴブリンの剣士", kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2,
       res: { strike: 1.5, pierce: 0.5 }, speed: 24, r: 6,
-      reach: 14, windup: 0.45, cooldown: 1.6, color: "#6f8f3e"
+      reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#6f8f3e"   // 2026-10-18：休み1.6→1.1秒、構え0.45→0.35秒、一歩ふみこむ
     },
     goblin_spear: {
       name: "ゴブリンの槍兵", kind: "spear", hp: 32, patk: 9, pdef: 3, mdef: 2,
       res: { slash: 1.5 }, speed: 28, r: 6,
-      reach: 30, keep: 20, windup: 0.6, cooldown: 1.9, color: "#7d8f4a"
+      reach: 30, keep: 20, windup: 0.5, cooldown: 1.4, lunge: 4, color: "#7d8f4a"   // 2026-10-18：休み1.9→1.4秒、構え0.6→0.5秒
     },
     goblin_archer: {
       name: "ゴブリンの弓兵", kind: "archer", hp: 36, patk: 7, pdef: 2, mdef: 2,
@@ -184,13 +184,13 @@ var GameData = (function () {
       name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 17, pdef: 6, mdef: 4,
       res: { slash: 1.5, fire: 1.5 }, speed: 34, r: 12,
       reach: 18, windup: 0.5, cooldown: 1.1, color: "#6e7280",
-      chargeWarn: 1.5, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 5.5, howlEvery: 13
+      chargeWarn: 0.9, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 5.5, howlEvery: 13
     },
     tree_boss: {
       name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 23, pdef: 7, mdef: 5,
       res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 18,
       reach: 40, windup: 0.6, cooldown: 1.25, color: "#5a3d22",
-      rootWarn: 2.0, rootMult: 3.0, rootEvery: 8, rootEveryHalf: 5, pollenEvery: 10, pollenRadius: 80, seedSpeed: 110
+      rootWarn: 1.2, rootMult: 3.0, rootEvery: 8, rootEveryHalf: 5, pollenEvery: 10, pollenRadius: 80, seedSpeed: 110
     }
   };
 

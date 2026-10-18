@@ -118,7 +118,7 @@ var Base = (function () {
     document.getElementById("createNote").textContent = "同じ職業を2人以上にしてもだいじょうぶ。職業は、あとで拠点の転職の神殿で変えられる。";
     document.getElementById("createGo").onclick = function () {
       var bad = picks.filter(function (p) { return !p.name || !p.name.replace(/\s/g, ""); });
-      if (bad.length) { document.getElementById("createNote").textContent = "3人とも名前を入れてね"; return; }
+      if (bad.length) { document.getElementById("createNote").textContent = "3人とも名前を入れてください"; return; }
       GameState.newGame(picks.map(function (p) { return { name: p.name.replace(/^\s+|\s+$/g, ""), job: p.job, face: p.face }; }));
       createEl.hidden = true;
       showBase(null);

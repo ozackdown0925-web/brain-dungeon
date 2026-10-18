@@ -653,7 +653,7 @@
     choosing = true; A.down = true; Input.releaseAll();
     var box = document.getElementById("chooseList"); box.textContent = "";
     document.getElementById("chooseTitle").textContent = fallen.name + " はたおれた…";
-    document.getElementById("chooseLead").textContent = "次に戦う仲間を選んでね";
+    document.getElementById("chooseLead").textContent = "次に戦う仲間を選んでください";
     Party.members().forEach(function (m, i) {
       if (m.down) return;
       var b = document.createElement("button");
