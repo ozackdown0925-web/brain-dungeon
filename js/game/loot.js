@@ -2,12 +2,12 @@
 // 拾った装備は、拠点とセーブ（段階5）ができるまでは、冒険の終わりに一覧で見せるだけ。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Loot = (function () {
-  // レア度（draft 1.5）
+  // レア度（draft 1.5）。表記は なし・R・SR・UR（2026-10-18 決定）。long＝手に入れたときの言い方
   var RARITY = [
-    { name: "ノーマル", color: "#ece7da", mult: 1.00, buff: [0, 1], debuff: [0, 1] },
-    { name: "レア", color: "#5aa9ff", mult: 1.15, buff: [1, 2], debuff: [0, 1] },
-    { name: "エピック", color: "#b48cf0", mult: 1.30, buff: [2, 2], debuff: [0, 1] },
-    { name: "レジェンド", color: "#f2c14e", mult: 1.50, buff: [2, 2], debuff: [0, 0] }
+    { name: "ノーマル", tag: "",   long: "",               color: "#ece7da", mult: 1.00, buff: [0, 1], debuff: [0, 1] },
+    { name: "R",        tag: "R",  long: "レア装備",         color: "#5aa9ff", mult: 1.15, buff: [1, 2], debuff: [0, 1] },
+    { name: "SR",       tag: "SR", long: "スーパーレア装備", color: "#b48cf0", mult: 1.30, buff: [2, 2], debuff: [0, 1] },
+    { name: "UR",       tag: "UR", long: "ウルトラレア装備", color: "#f2c14e", mult: 1.50, buff: [2, 2], debuff: [0, 0] }
   ];
   var STAT_NAMES = { patk: "物攻", pdef: "物防", matk: "魔攻", mdef: "魔防", hp: "HP", mp: "MP" };
   var STATS = ["patk", "pdef", "matk", "mdef", "hp", "mp"];
@@ -64,13 +64,13 @@ var Loot = (function () {
     return out;
   }
 
-  // 装備の名前（例：「銅の剣」「銅の剣＋2〈レア〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
+  // 装備の名前（例：「銅の剣」「銅の剣＋2〈SR〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
   function baseName(item) {
     var def = item.slot === "weapon" ? GameData.WEAPONS[item.base] : GameData.ARMORS[item.base];
     return def ? (def.item || def.name) : item.name;
   }
   function label(item) {
-    return baseName(item) + (item.plus ? "＋" + item.plus : "") + (item.r > 0 ? "〈" + RARITY[item.r].name + "〉" : "");
+    return baseName(item) + (item.plus ? "＋" + item.plus : "") + (item.r > 0 ? "〈" + RARITY[item.r].tag + "〉" : "");
   }
   // 装備の種類の名前（図鑑などで使う）
   function typeName(key) {
@@ -78,7 +78,7 @@ var Loot = (function () {
     return def ? (def.item || def.name) : key;
   }
 
-  // 装備を1行で書く（例：「銅の剣〈レア〉 Lv3  物攻11（物攻+3・魔防−3）」）
+  // 装備を1行で書く（例：「銅の剣〈R〉 Lv3  物攻11（物攻+3・魔防−3）」）
   function describe(item) {
     var main = item.slot === "weapon"
       ? (item.patk ? "物攻" + item.patk : "") + (item.matk ? (item.patk ? "・" : "") + "魔攻" + item.matk : "")

@@ -155,7 +155,7 @@ var Town = (function () {
       });
       bodyEl.appendChild(row);
     });
-    bodyEl.appendChild(el("h3", "", "ふつうの装備（ノーマル。いちばん深く行った階層の強さ）"));
+    bodyEl.appendChild(el("h3", "", "ふつうの装備（いちばん深く行った階層の強さ）"));
     GameState.shopEquipList().forEach(function (it) {
       var price = GameState.itemValue(it);
       var row = itemLine(it);

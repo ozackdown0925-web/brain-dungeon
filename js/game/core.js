@@ -379,8 +379,9 @@
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
       var R = Loot.RARITY[got.equip.r];
-      say("宝箱：" + Loot.label(got.equip) + " を手に入れた！"); snapshot();
-      Battle.pop(b.x, b.y - 22, R.name + "！", R.color, 10);
+      // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
+      say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！"); snapshot();
+      Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
       Sound.play("chest");
     });
