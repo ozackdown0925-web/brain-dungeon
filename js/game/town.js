@@ -170,10 +170,14 @@ var Town = (function () {
       row.appendChild(button("売却（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
         // 強化してあって、同じ種類の装備に移せるときは、売る前に確かめる（2026-10-18 保護者の希望）
         var to = (it.plus || 0) > 0 ? GameState.transferTargets(it) : [];
-        if (to.length && !window.confirm(Loot.label(it) + " の強化（＋" + it.plus + "）は、鍛冶屋の「強化を移す」で " + Loot.label(to[0].item) +
-          (to.length > 1 ? " など" : "") + " に移せます。\n売却すると、強化は移せなくなります（強化に使った分の8割は、ゴールドと素材でもどります）。\n売却しますか？")) return;
-        var r = GameState.release(it.id); if (!r) return;
-        say(Loot.label(it) + "を売却した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
+        function sellNow() {
+          var r = GameState.release(it.id); if (!r) return;
+          say(Loot.label(it) + "を売却した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
+        }
+        if (!to.length) { sellNow(); return; }
+        Dialog.confirm(Loot.label(it) + " の強化（＋" + it.plus + "）は、鍛冶屋の「強化を移す」で " + Loot.label(to[0].item) +
+          (to.length > 1 ? " など" : "") + " に移せます。\n売却すると、強化は移せなくなります（強化に使った分の8割は、ゴールドと素材でもどります）。\n売却しますか？",
+          sellNow, null, { yes: "売却する", no: "売却しない" });
       }));
       bodyEl.appendChild(row);
     });
@@ -267,11 +271,12 @@ var Town = (function () {
     GameState.transferTargets(from).forEach(function (t) {
       var row = itemLine(t.item, whereText(t));
       row.appendChild(button("ここに移す", function () {
-        if (!window.confirm(Loot.label(from) + " の強化を " + Loot.label(t.item) + " に移します。" + Loot.label(from) + " はなくなります。よいですか？")) return;
-        var r = GameState.transferPlus(from, t.item);
-        if (!r) { say("ゴールドが足りない"); return; }
-        moveFrom = null;
-        say(Loot.label(t.item) + "になった！" + (r.equipped ? "（" + r.equipped.name + "が装備した）" : "")); render();
+        Dialog.confirm(Loot.label(from) + " の強化を " + Loot.label(t.item) + " に移します。\n" + Loot.label(from) + " はなくなります。よいですか？", function () {
+          var r = GameState.transferPlus(from, t.item);
+          if (!r) { say("ゴールドが足りない"); return; }
+          moveFrom = null;
+          say(Loot.label(t.item) + "になった！" + (r.equipped ? "（" + r.equipped.name + "が装備した）" : "")); render();
+        }, null, { yes: "移す" });
       }));
       bodyEl.appendChild(row);
     });
