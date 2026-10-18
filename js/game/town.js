@@ -168,6 +168,10 @@ var Town = (function () {
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
       var v = GameState.releaseValue(it);
       row.appendChild(button("売却（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
+        // 強化してあって、同じ種類の装備に移せるときは、売る前に確かめる（2026-10-18 保護者の希望）
+        var to = (it.plus || 0) > 0 ? GameState.transferTargets(it) : [];
+        if (to.length && !window.confirm(Loot.label(it) + " の強化（＋" + it.plus + "）は、鍛冶屋の「強化を移す」で " + Loot.label(to[0].item) +
+          (to.length > 1 ? " など" : "") + " に移せます。\n売却すると、強化は移せなくなります（強化に使った分の8割は、ゴールドと素材でもどります）。\n売却しますか？")) return;
         var r = GameState.release(it.id); if (!r) return;
         say(Loot.label(it) + "を売却した（+" + r.gold + "G" + (r.n ? "・" + Loot.MATERIALS[r.mat] + "+" + r.n : "") + "）"); render();
       }));
