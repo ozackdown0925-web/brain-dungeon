@@ -212,7 +212,7 @@ var Trial = (function () {
     shownKey = k;
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
     DrillCore.renderQuestion(holder, q, {
-      answerRoot: ansBox,
+      answerRoot: ansBox, keypad: true,   // 数字の答えは、画面の数字のボタンで入れる（2026-10-19）
       imageLoader: loadImage, saved: saved, review: pick.review,
       extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
       reviewNote: "正解するまで、また出てきます。",
