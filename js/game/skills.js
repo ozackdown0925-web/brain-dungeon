@@ -101,18 +101,31 @@ var Combat = (function () {
   }
 
   // ---------- ふつうの攻撃 ----------
+  // 遠くへ飛ばす攻撃（弓・魔法弾）は、狙いを定めるあいだ（撃つ前）と撃ったあと、少しのあいだ動けない
+  // （逃げながら撃つと、敵が追いつけなかったため。2026-10-18 保護者の案）
+  var AIM = { bow: { before: 0.25, after: 0.2 }, bolt: { before: 0.2, after: 0.15 } };
+  function shootAfterAim(c, aim, spec) {
+    var a = A();
+    a.busy = aim.before + aim.after;
+    effects.push({ kind: "charge", t: aim.before, max: aim.before });
+    later(aim.before, function () {
+      if (Party.current() !== c || c.down) return;   // 狙っているあいだに入れかえた・たおれた
+      Sound.play("swing");
+      var r = shotRange(c), ang = r ? aimAt(r) : Math.atan2(a.face.y, a.face.x);   // 撃つときに狙い直す
+      addShot(c, spec, ang);
+    });
+  }
   function normalAttack(c) {
     var a = A();
     var w = GameData.WEAPONS[c.weapon];
     a.wait = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait");
-    Sound.play("swing");
-    var ang = shotRange(c) ? aimAt(shotRange(c)) : Math.atan2(a.face.y, a.face.x);
     // 1回の強さは武器ごとの倍率（data.js の power）
-    if (w.shot) { addShot(c, { stat: "p", mult: w.power || 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }, ang); return; }
+    if (w.shot) { shootAfterAim(c, AIM.bow, { stat: "p", mult: w.power || 1, elem: "weapon", speed: w.shot.speed, range: w.shot.range }); return; }
     if (w.bolt && GameData.inLine(c.job, w.boltFor)) {
-      addShot(c, { stat: "m", mult: w.bolt.power || 1, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff" }, ang);
+      shootAfterAim(c, AIM.bolt, { stat: "m", mult: w.bolt.power || 1, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff" });
       return;
     }
+    Sound.play("swing");
     a.swing = 0.15; a.swingArc = w.arc; a.swingReach = w.reach; a.swingColor = "#ffffff";
     hitArc(c, { stat: "p", mult: w.power || 1, elem: "weapon" }, w.reach, w.arc);
   }

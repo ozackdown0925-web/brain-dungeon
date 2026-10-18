@@ -105,10 +105,10 @@ var Loot = (function () {
     return label(item) + " Lv" + item.ilv + "  " + main + (mods.length ? "（" + mods.join("・") + "）" : "");
   }
 
-  // 素材の量の倍率：深い階ほど多い（14階で1階の2倍）、正解1問ごとに＋25%（2026-10-18 決定）
+  // 素材の量の倍率：深い階ほど多い（14階で1階の2倍）、正解1問ごとに＋15%（2026-10-18 決定。前は＋25%）
   function matScale(floor, correct) {
     var t = (Math.max(1, Math.min(14, floor || 1)) - 1) / 13;
-    return (1 + t) * (1 + 0.25 * Math.max(0, Math.min(4, correct || 0)));
+    return (1 + t) * (1 + 0.15 * Math.max(0, Math.min(4, correct || 0)));
   }
   // 道具（宝箱は3つに1つくらい、敵はまれに）
   function rollTool() {

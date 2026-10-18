@@ -220,7 +220,7 @@ var GameState = (function () {
   function sellPrice(it) { return Math.round(itemValue(it) * 0.25); } // 売る：値段の 25%
   // 素材：杖と魔法装備は魔石、それ以外は鉱石
   function matOf(it) { return it.base === "staff" || it.base === "magic" ? "stone" : "iron"; }
-  function dismantleCount(it) { return [1, 2, 2, 3][it.r]; }
+  function dismantleCount(it) { return [0, 1, 1, 1][it.r]; }   // 手放したときの素材：ふつう0、R以上1（2026-10-18 に 1〜3 から変更）
   // 手放す（売ると分解を1つに。2026-10-18 決定）：ゴールド（値段の25%）と素材（1〜3）に加えて、強化に使ったゴールドと素材の8割がもどる
   function spentOn(it) {
     var gold = 0, n = 0;
@@ -269,8 +269,11 @@ var GameState = (function () {
   }
   function useTool(key) { if (game.items[key] <= 0) return false; game.items[key]--; save(); return true; }
 
-  // 鍛冶屋：強化 ＋1〜＋10。必ず成功。＋n にするのに、素材 n×(段＋1) 個と 10×n G（2026-10-18 決定。ゴールドは少なめで、素材が中心）
-  function upgradeCostAt(it, plus) { var n = plus + 1; return { mat: matOf(it), n: n * ((it.tier || 0) + 1), gold: 10 * n }; }
+  // 鍛冶屋：強化 ＋1〜＋10。必ず成功。ゴールドは少なめ（＋n に 10×n G）で、素材が中心（2026-10-18 決定）
+  // 素材は＋が上がるほど1.4倍ずつ増える（案A）：2・3・4・5・8・11・15・21・30・41（＋10まで合計140）。鉄は2倍、鋼は3倍
+  // （1つだけ＋10にするより、ほかの仲間の装備も上げたくなるように）
+  function upgradeMatCount(plus) { return Math.max(1, Math.round(2 * Math.pow(1.4, plus))); }
+  function upgradeCostAt(it, plus) { var n = plus + 1; return { mat: matOf(it), n: upgradeMatCount(plus) * ((it.tier || 0) + 1), gold: 10 * n }; }
   function upgradeCost(it) { return upgradeCostAt(it, it.plus || 0); }
   function upgradeItem(it) {
     if ((it.plus || 0) >= Loot.PLUS_MAX) return false;
