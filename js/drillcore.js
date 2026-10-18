@@ -31,7 +31,8 @@
       .toLowerCase();
   }
   function parseNum(raw, suffix) {
-    var s = String(raw == null ? "" : raw).normalize("NFKC").trim().replace(/,/g, "");
+    // iPad の日本語キーボードでは「.」が「。」になるので、「。」「｡」も小数点として読む（2026-10-19）
+    var s = String(raw == null ? "" : raw).normalize("NFKC").trim().replace(/,/g, "").replace(/[。｡]/g, ".");
     if (suffix) { var sf = String(suffix).normalize("NFKC"); if (sf && s.slice(-sf.length) === sf) s = s.slice(0, -sf.length).trim(); }
     var m;
     if ((m = s.match(/^(-?\d+)\/(\d+)$/))) { var d = +m[2]; return d ? +m[1] / d : null; }
@@ -247,6 +248,18 @@
       inp.autocomplete = "off"; inp.spellcheck = false; inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off");
       inp.inputMode = t === "number" ? "decimal" : "text";
       inp.setAttribute("aria-label", "答え");
+      if (t === "number") {
+        // 数字の欄：日本語キーボードの「。」「．」を、その場で小数点「.」に直す（2026-10-19。小数点が打てなかったため）
+        var fixDot = function (e) {
+          if (e && e.isComposing) return;
+          var v = inp.value, nv = v.replace(/[。｡．]/g, ".").replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+          if (nv === v) return;
+          var pos = inp.selectionStart; inp.value = nv;
+          try { inp.setSelectionRange(pos, pos); } catch (err) { /* そのまま */ }
+        };
+        inp.addEventListener("input", fixDot);
+        inp.addEventListener("compositionend", function () { setTimeout(function () { fixDot(); onChange(); }, 0); });
+      }
       inp.addEventListener("input", onChange);
       row.append(inp); if (p.suffix) row.append(el("span", "dq-suffix", p.suffix));
       return { node: row, get: function () { return inp.value.trim(); }, set: function (v) { inp.value = v == null ? "" : v; }, lock: function () { inp.disabled = true; } };
