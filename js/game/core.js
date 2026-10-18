@@ -457,7 +457,7 @@
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
   }
 
-  // 罠・宝箱・鍵（ドット絵は props.js。2026-10-18 に仮の絵から差しかえ）
+  // 罠・宝箱・鍵（宝箱・鍵・落とし穴のドット絵は props.js。2026-10-18 に仮の絵から差しかえ）
   function drawThings() {
     var c = dg.cells[curKey], T = World.TILE, ctx = Render.ctx;
     c.traps.forEach(function (t, i) {
@@ -465,10 +465,11 @@
       var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
       if (t.type === "pit") {
         ctx.drawImage(Props.get("pit"), x, y);
-      } else {
-        var seed = t.tx * 7 + t.ty * 13;
-        ctx.drawImage(Props.swamp(t.w * T, t.h * T, seed), x, y);
-        Props.swampBubbles(ctx, x, y, t.w * T, t.h * T, glow, seed);
+      } else {   // 毒の沼：床の上に重ねる半とうめいの紫（2026-10-18 保護者の希望で、ドット絵にせず前の描き方のまま）
+        Render.rect(x, y, t.w * T, t.h * T, "rgba(120,60,140,0.75)");
+        var bb = Math.floor(glow * 2) % 3;
+        Render.rect(x + 6 + bb * 5, y + 8, 3, 3, "#c89ae0");
+        Render.rect(x + 18 - bb * 3, y + 20, 2, 2, "#c89ae0");
       }
     });
     c.chests.forEach(function (b) {
@@ -487,13 +488,19 @@
     }
   }
 
-  // 出口：石の輪の門（props.js）
+  // 出口：床の上に重ねる光るまるい門（2026-10-18 保護者の希望で、ドット絵にせずこの描き方のまま）
   var glow = 0;
   function drawExit() {
-    var ex = dg.cells[curKey].center;
+    var ex = dg.cells[curKey].center, ctx = Render.ctx;
     var x = Math.round(ex.x - cam.x), y = Math.round(ex.y - cam.y);
-    Props.drawExit(Render.ctx, x, y, 0.5 + 0.5 * Math.sin(glow * 4));
-    Render.text("出口", x, y - 30, { size: 8, align: "center", bold: true, color: "#f2c14e" });
+    var pulse = 0.5 + 0.5 * Math.sin(glow * 4);
+    ctx.fillStyle = "rgba(242,193,78," + (0.25 + 0.25 * pulse).toFixed(2) + ")";
+    ctx.beginPath(); ctx.arc(x, y, 13 + pulse * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#1a1408";
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#f2c14e"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.stroke();
+    Render.text("出口", x, y - 26, { size: 8, align: "center", bold: true, color: "#f2c14e" });
   }
 
   function bar(x, y, w, h, v, color) {
