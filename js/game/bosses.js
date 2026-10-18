@@ -196,34 +196,7 @@ var Bosses = (function () {
   function bossDown() { hazards.length = 0; dust.length = 0; }
 
   // ---------- 描画 ----------
-  // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光、本番（つき出る根・土けむり）はドット絵
-  // 地面からつき出る根（9×12。光は左上から。大木の魔物と同じ色）
-  var ROOT = [
-    "....A....",
-    "...AtA...",
-    "...AtuA..",
-    "..AttuA..",
-    "..AtuvA..",
-    "..AtuvA..",
-    ".AttuvvA.",
-    ".AtuuvvA.",
-    ".AtuvvwA.",
-    "AttuvvwwA",
-    "AtuuvvwwA",
-    "AtuvvwwwA"
-  ];
-  var ROOT_PAL = { A: "#140c1c", t: "#a87a4a", u: "#7a5230", v: "#4a3020", w: "#2a1a12" };
-  var rootImg = null;
-  function rootSprite() {
-    if (rootImg) return rootImg;
-    var cv = document.createElement("canvas"); cv.width = 9; cv.height = ROOT.length;
-    var c = cv.getContext("2d");
-    for (var y = 0; y < ROOT.length; y++) for (var x = 0; x < 9; x++) {
-      var ch = ROOT[y].charAt(x); if (ch === ".") continue;
-      c.fillStyle = ROOT_PAL[ch]; c.fillRect(x, y, 1, 1);
-    }
-    rootImg = cv; return cv;
-  }
+  // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光。本番は、根の大波が太いつる、大突進のあとは土けむり（ドット）
   function rnd(n) { var v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); }
 
   function drawHazards(cam, glow) {
@@ -299,23 +272,39 @@ var Bosses = (function () {
     ctx.stroke();
   }
 
-  // 根の大波の本番：地面から根（ドット絵）が何本もつき出て、引っこむ
+  // 根の大波の本番：予告のひび割れと同じギザギザの形で、太いつる（緑）がのびて、すぐ引っこむ（2026-10-18 保護者の案）
   function drawRootErupt(ctx, h, x, y) {
     var q = (h.t - h.warn) / h.erupt;
-    var rise = q < 0.35 ? q / 0.35 : q > 0.75 ? Math.max(0, (1 - q) / 0.25) : 1;
+    var rise = q < 0.3 ? q / 0.3 : q > 0.7 ? Math.max(0, (1 - q) / 0.3) : 1;
     var along = h.w > h.h, len = along ? h.w : h.h, thick = along ? h.h : h.w;
-    var img = rootSprite(), H = img.height, show = Math.max(1, Math.round(H * rise));
-    ctx.fillStyle = "rgba(60,40,20,0.35)"; ctx.fillRect(x, y, h.w, h.h);   // 土がもり上がったところ
-    for (var s = 6; s < len - 4; s += 12) {
-      var i = Math.floor(s / 12), j = (rnd(h.seed + i * 7) - 0.5) * thick * 0.5;
-      var bx = Math.round(along ? x + s : x + thick / 2 + j), by = Math.round(along ? y + thick / 2 + j + 4 : y + s + 4);
-      // 根もとの土
-      ctx.fillStyle = "rgba(42,26,18,0.85)"; ctx.fillRect(bx - 6, by - 1, 12, 3);
-      ctx.fillStyle = "rgba(110,74,44,0.9)"; ctx.fillRect(bx - 5, by - 2, 3, 1); ctx.fillRect(bx + 2, by - 2, 3, 1);
-      // 根：下から見えている分だけ描く（地面から出てくるように）
-      var sc = 1 + (rnd(h.seed + i * 3) > 0.5 ? 0.3 : 0);
-      ctx.drawImage(img, 0, 0, 9, show, Math.round(bx - 4.5 * sc), Math.round(by - show * sc), Math.round(9 * sc), Math.round(show * sc));
+    ctx.fillStyle = "rgba(40,28,14," + (0.3 * rise).toFixed(2) + ")"; ctx.fillRect(x, y, h.w, h.h);   // 土がわれたところ
+    function path(seed, sway) {
+      ctx.beginPath();
+      for (var s = 0; s <= len; s += 6) {
+        var j = (rnd(seed + Math.floor(s / 6)) - 0.5) * thick * sway;
+        var px = along ? x + s : x + thick / 2 + j, py = along ? y + thick / 2 + j : y + s;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
     }
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // 2本のつるがからみ合う。ふち（暗い緑）→ 本体（緑）→ 光（明るい緑）の順に重ねる
+    [[h.seed, 0.35], [h.seed + 50, 0.5]].forEach(function (v, i) {
+      var w = (i === 0 ? 7 : 5) * rise;
+      if (w < 0.5) return;
+      path(v[0], v[1]);
+      ctx.strokeStyle = "#0e1e10"; ctx.lineWidth = w + 2; ctx.stroke();
+      ctx.strokeStyle = i === 0 ? "#2f6a2a" : "#3a7a30"; ctx.lineWidth = w; ctx.stroke();
+      ctx.strokeStyle = "rgba(122,170,74,0.9)"; ctx.lineWidth = Math.max(1, w * 0.3); ctx.stroke();
+    });
+    // とげ（短い線）をところどころに
+    ctx.strokeStyle = "#1f3a1c"; ctx.lineWidth = 2;
+    for (var s2 = 9; s2 < len; s2 += 18) {
+      var j2 = (rnd(h.seed + Math.floor(s2 / 6)) - 0.5) * thick * 0.35, side = rnd(h.seed + s2) > 0.5 ? 1 : -1, tl = 5 * rise;
+      var bx = along ? x + s2 : x + thick / 2 + j2, by = along ? y + thick / 2 + j2 : y + s2;
+      ctx.beginPath(); ctx.moveTo(bx, by);
+      ctx.lineTo(along ? bx + 2 : bx + side * tl, along ? by + side * tl : by + 2); ctx.stroke();
+    }
+    ctx.lineCap = "butt"; ctx.lineJoin = "miter";
   }
 
   // ボスの絵
