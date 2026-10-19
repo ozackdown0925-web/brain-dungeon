@@ -44,7 +44,7 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
 /* 左の上に問い、左の下にメモ、右に答え（右はスクロールしても見えたまま） */
 .tpage { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-areas: "q a" "m a"; gap: 10px; align-items: start; }
 #trialCard { grid-area: q; }
-#trialAnswer { grid-area: a; position: -webkit-sticky; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#trialAnswer { grid-area: a; position: -webkit-sticky; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; -webkit-overflow-scrolling: touch; scroll-padding-bottom: 330px; scroll-padding-top: 48px; box-sizing: border-box; }   /* 下の数字のボタンにかくれないように。高さはふちもこみで */
 .tpage .memo { grid-area: m; }
 #trialAnswer:empty { display: none; }
 /* ゲームは横向きで遊ぶので、スマホの横向きでも左右に並べる。とてもせまい画面（縦向きなど）だけ1列に */

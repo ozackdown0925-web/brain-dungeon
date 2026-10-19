@@ -255,6 +255,8 @@
     if (!kp) return;
     kp.target = inp;
     kp.inputs.forEach(function (x) { x.classList.toggle("kp-on", x === inp); });
+    // 数字のボタンは答えの欄の下にくっついている（2026-10-20）。選んだ欄がボタンにかくれないように、見えるところまで動かす
+    if (inp && inp.scrollIntoView && kp.node) { try { inp.scrollIntoView({ block: "nearest" }); } catch (e) { /* そのまま */ } }
   }
   function kpPress(key) {
     var inp = kp && kp.target; if (!inp || inp.disabled) return;
