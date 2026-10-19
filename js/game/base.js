@@ -170,7 +170,7 @@ var Base = (function () {
       info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : GameData.WEAPONS[GameState.starterWeapon(h.job)].starter) +
         "　防具：" + (h.equip.armor ? Loot.describe(h.equip.armor) : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name)));
       info.appendChild(el("div", "hero-skills", "スキル：" + h.set.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") +
-        ""));
+        "　パッシブ：" + (h.pset || []).map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・")));
       card.appendChild(info);
       pbox.appendChild(card);
     });

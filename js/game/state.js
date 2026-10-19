@@ -15,14 +15,27 @@ var GameState = (function () {
     return {
       name: name, face: face, job: job, level: 1, exp: 0,
       base: { str: 10, vit: 10, mag: 10, int: 10 },
-      mastery: {}, learned: [], set: [null, null, null],
+      mastery: {}, learned: [], set: [null, null, null], pset: [null, null],
       equip: { weapon: null, armor: null } // null は、はじめから持っている武器・防具
     };
   }
 
   // 古いセーブに、あとから足した項目を入れる
   function upgrade(g) {
-    g.party.forEach(function (h) { if (!h.equip) h.equip = { weapon: null, armor: null }; learnSkills(h); });
+    g.party.forEach(function (h) {
+      if (!h.equip) h.equip = { weapon: null, armor: null };
+      // パッシブの枠（2026-10-19）：前はアクティブだったスキルがパッシブに変わったので、スキル1〜3から外してパッシブの枠へ
+      if (!h.pset) h.pset = [];
+      while (h.pset.length < passiveSlots(h)) h.pset.push(null);
+      h.learned = h.learned.filter(function (id) { return !!GameData.SKILL[id]; });
+      h.set = h.set.map(function (id) {
+        var sk = id && GameData.SKILL[id];
+        if (!sk) return null;
+        if (sk.passive) { var f = h.pset.indexOf(null); if (f >= 0 && h.pset.indexOf(id) < 0) h.pset[f] = id; return null; }
+        return id;
+      });
+      learnSkills(h);
+    });
     if (!g.items) g.items = {};
     TOOL_ORDER.forEach(function (k) { if (typeof g.items[k] !== "number") g.items[k] = 0; });   // 新しい道具（MP回復薬など）
     if (!g.today) g.today = { date: todayStr(), adventure: null };
@@ -52,6 +65,8 @@ var GameState = (function () {
 
   // ---------- 成長 ----------
   function expNeed(level) { return 100 + 48 * level; }
+  // パッシブの枠の数：基本職は2つ（上級職3・最上級職4は、上級職を作るときに）
+  function passiveSlots(h) { return 2; }
   function stars(h, job) { return Math.min(MAX_STAR, Math.floor((h.mastery[job || h.job] || 0) / STAR_NEED)); }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
 
@@ -62,8 +77,10 @@ var GameState = (function () {
     GameData.SKILLS.forEach(function (sk) {
       if (sk.job !== h.job || sk.star > st + 1 || h.learned.indexOf(sk.id) >= 0) return;
       h.learned.push(sk.id); got.push(sk.name);
-      var free = h.set.indexOf(null);
-      if (free >= 0 && GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) h.set[free] = sk.id;
+      // 覚えたスキルは、空いている枠に自動でセットする（アクティブはスキル1〜3、パッシブはパッシブの枠）
+      var slots = sk.passive ? h.pset : h.set;
+      var free = slots ? slots.indexOf(null) : -1;
+      if (free >= 0 && GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) slots[free] = sk.id;
     });
     return got;
   }
@@ -177,8 +194,26 @@ var GameState = (function () {
       it.buff.forEach(function (b) { s[b[0]] += b[1]; });
       it.debuff.forEach(function (d) { s[d[0]] = Math.max(0, s[d[0]] - d[1]); });
     });
+    // パッシブスキル（2026-10-19）
+    var p = passiveFx(h);
+    ["hp", "mp", "patk", "pdef", "matk", "mdef"].forEach(function (k) { if (p[k]) s[k] = Math.round(s[k] * (1 + p[k])); });
+    s.crit += p.crit || 0;
+    s.waitMul = 1 - (p.wait || 0);     // ふつうの攻撃の待ち時間
+    s.rangeMul = 1 + (p.range || 0);   // 矢と魔法の玉のとどく距離
+    s.healMul = 1 + (p.heal || 0);     // 回復のスキルの量
+    s.roomHp = p.roomHp || 0; s.roomMp = p.roomMp || 0; // 部屋の敵を全部たおしたときの回復
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
+  }
+  // セットしているパッシブの効き目を合わせる
+  function passiveFx(h) {
+    var p = {};
+    (h.pset || []).forEach(function (id) {
+      var sk = id && GameData.SKILL[id];
+      if (!sk || !sk.passive || !GameData.canSet(sk, h.job, heroWeaponType(h))) return;
+      Object.keys(sk.passive).forEach(function (k) { p[k] = (p[k] || 0) + sk.passive[k]; });
+    });
+    return p;
   }
   function heroWeaponType(h) { return h.equip.weapon ? h.equip.weapon.base : starterWeapon(h.job); }
 
@@ -208,6 +243,10 @@ var GameState = (function () {
   function fixSkills(h) {
     var removed = [];
     h.set = h.set.map(function (id) {
+      if (id && !GameData.canSet(GameData.SKILL[id], h.job, heroWeaponType(h))) { removed.push(GameData.SKILL[id].name); return null; }
+      return id;
+    });
+    h.pset = (h.pset || []).map(function (id) {
       if (id && !GameData.canSet(GameData.SKILL[id], h.job, heroWeaponType(h))) { removed.push(GameData.SKILL[id].name); return null; }
       return id;
     });
@@ -356,10 +395,22 @@ var GameState = (function () {
   function setSkill(h, i, id) {
     if (id) {
       var sk = GameData.SKILL[id];
-      if (h.learned.indexOf(id) < 0 || !GameData.canSet(sk, h.job, heroWeaponType(h))) return false;
+      if (!sk || sk.passive || h.learned.indexOf(id) < 0 || !GameData.canSet(sk, h.job, heroWeaponType(h))) return false;
       h.set = h.set.map(function (x, k) { return k !== i && x === id ? null : x; });
     }
     h.set[i] = id || null;
+    save();
+    return true;
+  }
+  // パッシブの枠 i 番目をセットする（id が null なら外す）。ほかの職で覚えたパッシブもつけられる
+  function setPassive(h, i, id) {
+    if (i < 0 || i >= passiveSlots(h)) return false;
+    if (id) {
+      var sk = GameData.SKILL[id];
+      if (!sk || !sk.passive || h.learned.indexOf(id) < 0 || !GameData.canSet(sk, h.job, heroWeaponType(h))) return false;
+      h.pset = h.pset.map(function (x, k) { return k !== i && x === id ? null : x; });
+    }
+    h.pset[i] = id || null;
     save();
     return true;
   }
@@ -521,7 +572,7 @@ var GameState = (function () {
     history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
-    changeJob: changeJob, setSkill: setSkill, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
+    changeJob: changeJob, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,

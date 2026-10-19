@@ -62,7 +62,7 @@ var Combat = (function () {
 
   function addShot(c, spec, angle) {
     var a = A();
-    var speed = spec.speed || 170, range = spec.range || 150;
+    var speed = spec.speed || 170, range = (spec.range || 150) * rangeMul(c);
     shots.push({
       c: c, spec: spec, x: a.x + Math.cos(angle) * 6, y: a.y - 3 + Math.sin(angle) * 6,
       vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: range / speed,
@@ -93,10 +93,12 @@ var Combat = (function () {
   // ふつうの攻撃が飛ぶ武器なら、その届く距離（飛ばない武器は 0）
   function shotRange(c) {
     var w = GameData.WEAPONS[c.weapon];
-    if (w.shot) return w.shot.range;
-    if (w.bolt && GameData.inLine(c.job, w.boltFor)) return w.bolt.range;
+    if (w.shot) return w.shot.range * rangeMul(c);
+    if (w.bolt && GameData.inLine(c.job, w.boltFor)) return w.bolt.range * rangeMul(c);
     return 0;
   }
+  // 矢と魔法の玉のとどく距離の倍率（パッシブ「たかの目」）
+  function rangeMul(c) { return (c && c.stats && c.stats.rangeMul) || 1; }
   // 今のキャラが狙っている敵（印を出すため）
   function targetFor(c) {
     var r = shotRange(c);
@@ -200,7 +202,7 @@ var Combat = (function () {
       case "shot":
         // 遠くへ飛ばすスキルも、ふつうの攻撃と同じく撃つ前後に少し止まる（2026-10-19 保護者の希望）
         aimThen(c, f.stat === "m" ? AIM.bolt : AIM.bow, function () {
-          var ang2 = aimAt(f.range || 150); // いちばん近い敵へ向けて飛ばす
+          var ang2 = aimAt((f.range || 150) * rangeMul(c)); // いちばん近い敵へ向けて飛ばす
           var n = f.count || 1, spread = f.spread || 0;
           for (var k = 0; k < n; k++) addShot(c, f, ang2 + (k - (n - 1) / 2) * spread);
         });
@@ -219,7 +221,7 @@ var Combat = (function () {
         break;
       case "heal":
         targets(c, f.party).forEach(function (m) {
-          var amt = Math.round(m.stats.hp * f.pct);
+          var amt = Math.round(m.stats.hp * f.pct * (c.stats.healMul || 1)); // healMul：パッシブ「いやしの力」
           m.hp = Math.min(m.stats.hp, m.hp + amt);
           if (m === c || m === Party.current()) Battle.pop(a.x, a.y - 20, "+" + amt, "#6fd08c", 10);
         });
@@ -230,7 +232,7 @@ var Combat = (function () {
         effects.push({ kind: "glow", t: 0.4, max: 0.4, color: "#ffffff" });
         break;
       case "regen":
-        targets(c, f.party).forEach(function (m) { m.regens.push({ perSec: m.stats.hp * f.pct / f.dur, t: f.dur }); });
+        targets(c, f.party).forEach(function (m) { m.regens.push({ perSec: m.stats.hp * f.pct * (c.stats.healMul || 1) / f.dur, t: f.dur }); });
         effects.push({ kind: "glow", t: 0.5, max: 0.5, color: "#9be36a" });
         break;
       case "buff":

@@ -299,39 +299,100 @@ var Town = (function () {
     top.appendChild(info);
     bodyEl.appendChild(top);
 
-    // スキルのセット
-    var box = el("div", "slot");
-    box.appendChild(el("h3", "", "スキル（覚えたスキルから3つ。いまの職業と武器の条件に合うものだけ）"));
-    var wt = GameState.heroWeaponType(h);
-    [0, 1, 2].forEach(function (i) {
-      var row = el("div", "item-line");
-      row.appendChild(el("span", "item-name", "スキル" + (i + 1)));
-      var sel = el("select");
-      var none = el("option", "", "（なし）"); none.value = ""; sel.appendChild(none);
-      h.learned.forEach(function (id) {
-        var sk = GameData.SKILL[id];
-        if (!GameData.canSet(sk, h.job, wt)) return;
-        var o = el("option", "", sk.name + "（MP" + sk.mp + "）"); o.value = id; if (h.set[i] === id) o.selected = true; sel.appendChild(o);
-      });
-      sel.addEventListener("change", function () { GameState.setSkill(h, i, sel.value || null); say("スキル" + (i + 1) + "を「" + (sel.value ? GameData.SKILL[sel.value].name : "なし") + "」にした"); render(); });
-      row.appendChild(sel);
-      var cur = h.set[i] && GameData.SKILL[h.set[i]];
-      if (cur) row.appendChild(el("span", "item-extra", skillNote(cur)));
-      box.appendChild(row);
+    // 宿屋の中のタブ：「装備」「アクティブ」「パッシブ」（2026-10-19 保護者の案。横長の画面で、左に名前・右にくわしく）
+    var tabs = el("div", "tabs");
+    [["equip", "装備"], ["active", "アクティブスキル"], ["passive", "パッシブスキル"]].forEach(function (t) {
+      tabs.appendChild(button(t[1], function () { innTab = t[0]; say(""); render(); }, "chip" + (innTab === t[0] ? " sel" : "")));
     });
-    // 覚えたスキルの一覧（セットできないものは理由つき）
-    box.appendChild(el("div", "sub", "覚えたスキル"));
-    h.learned.forEach(function (id) {
-      var sk = GameData.SKILL[id], ok = GameData.canSet(sk, h.job, wt);
-      var row = el("div", "item-line" + (ok ? "" : " dim-line"));
-      row.appendChild(el("span", "item-name", GameData.JOBS[sk.job].name + "★" + sk.star + "　" + sk.name));
-      row.appendChild(el("span", "item-extra", skillNote(sk) + (ok ? "" : "　→ いまはセットできない（" + GameData.condText(sk) + "）")));
-      box.appendChild(row);
-    });
-    bodyEl.appendChild(box);
-    renderEquip(g, true);
+    bodyEl.appendChild(tabs);
+    if (innTab === "equip") { renderEquip(g, true); return; }
+    renderSkillTab(h, innTab === "passive");
   }
-  function skillNote(sk) { return "MP" + sk.mp + "・待ち" + (sk.once ? "1回の冒険で1回" : sk.ct + "秒") + (sk.cond ? "・条件：" + GameData.condText(sk) : "・条件なし"); }
+
+  var innTab = "equip", selSkill = { active: null, passive: null };
+  function slotsOf(h, passive) { return passive ? h.pset : h.set; }
+  function slotName(passive, i) { return (passive ? "パッシブ" : "スキル") + (i + 1); }
+
+  function renderSkillTab(h, passive) {
+    var key = passive ? "passive" : "active";
+    var wt = GameState.heroWeaponType(h), slots = slotsOf(h, passive);
+    // セットしているスキル
+    var setRow = el("div", "sk-setrow");
+    setRow.appendChild(el("span", "sk-setlabel", passive ? "セット中（いつも効く）" : "セット中（ボタンで使う）"));
+    slots.forEach(function (id, i) {
+      var b = button(slotName(passive, i) + "：" + (id ? GameData.SKILL[id].name : "なし"), function () { if (id) { selSkill[key] = id; render(); } },
+        "sk-slot" + (id && selSkill[key] === id ? " sel" : "") + (id ? "" : " empty"));
+      setRow.appendChild(b);
+    });
+    bodyEl.appendChild(setRow);
+
+    // 左：名前だけの一覧（職ごと）。今の職でまだ覚えていないスキルは、うすく出す
+    var wrap = el("div", "sk-wrap");
+    var list = el("div", "sk-list");
+    var shown = [];
+    GameData.JOB_ORDER.forEach(function (job) {
+      var items = GameData.SKILLS.filter(function (sk) {
+        if (sk.job !== job || !!sk.passive !== passive) return false;
+        return h.learned.indexOf(sk.id) >= 0 || job === h.job;
+      });
+      if (!items.length) return;
+      list.appendChild(el("div", "sk-job", GameData.JOBS[job].name));
+      var grid = el("div", "sk-grid");
+      items.forEach(function (sk) {
+        var got = h.learned.indexOf(sk.id) >= 0, ok = got && GameData.canSet(sk, h.job, wt);
+        var at = slots.indexOf(sk.id);
+        var b = button((at >= 0 ? (at + 1) + " " : "") + sk.name, function () { selSkill[key] = sk.id; render(); },
+          "sk-item" + (selSkill[key] === sk.id ? " sel" : "") + (at >= 0 ? " on" : "") + (got ? (ok ? "" : " ng") : " locked"));
+        grid.appendChild(b);
+        shown.push(sk.id);
+      });
+      list.appendChild(grid);
+    });
+    if (!shown.length) list.appendChild(el("p", "sub", passive ? "まだパッシブスキルを覚えていない。" : "まだスキルを覚えていない。"));
+    wrap.appendChild(list);
+
+    // 右：選んだスキルのくわしい説明とセットのボタン
+    if (shown.indexOf(selSkill[key]) < 0) selSkill[key] = slots.filter(function (x) { return x; })[0] || shown[0] || null;
+    var det = el("div", "sk-detail");
+    var sk = selSkill[key] && GameData.SKILL[selSkill[key]];
+    if (!sk) det.appendChild(el("p", "sub", "左のスキルを押すと、ここにくわしく出る。"));
+    else {
+      var got = h.learned.indexOf(sk.id) >= 0, ok = got && GameData.canSet(sk, h.job, wt);
+      det.appendChild(el("div", "sk-name", sk.name));
+      det.appendChild(el("div", "sk-kind", (sk.passive ? "パッシブ（セットしておくと、いつも効く）" : "アクティブ（ボタンを押して使う）")));
+      det.appendChild(el("p", "sk-desc", sk.desc || ""));
+      var info = el("div", "sk-info");
+      var line = function (k, v) { var d = el("div", "sk-line"); d.appendChild(el("span", "sk-k", k)); d.appendChild(el("span", "sk-v", v)); info.appendChild(d); };
+      line("覚える", GameData.JOBS[sk.job].name + (sk.star === 1 ? "になったとき" : "の★" + (sk.star - 1)));
+      if (!sk.passive) {
+        line("MP", String(sk.mp));
+        line("待ち", sk.once ? "1回の冒険で1回" : sk.ct + "秒");
+      }
+      line("条件", GameData.condText(sk) + (sk.passive ? "（ほかの職でもつけられる）" : ""));
+      det.appendChild(info);
+      if (!got) det.appendChild(el("p", "sk-why", GameData.JOBS[sk.job].name + "の熟練度が★" + (sk.star - 1) + "になると覚える。"));
+      else if (!ok) det.appendChild(el("p", "sk-why", "いまはセットできない（" + GameData.condText(sk) + "）"));
+      else {
+        var row = el("div", "sk-btns");
+        slots.forEach(function (x, i) {
+          var b = button(slotName(passive, i) + "にセット", function () {
+            var done = passive ? GameState.setPassive(h, i, sk.id) : GameState.setSkill(h, i, sk.id);
+            say(done ? slotName(passive, i) + "を「" + sk.name + "」にした" : "セットできない");
+            render();
+          }, "small-btn" + (x === sk.id ? " sel" : ""));
+          row.appendChild(b);
+        });
+        var at = slots.indexOf(sk.id);
+        if (at >= 0) row.appendChild(button("外す", function () {
+          if (passive) GameState.setPassive(h, at, null); else GameState.setSkill(h, at, null);
+          say(slotName(passive, at) + "を外した"); render();
+        }, "small-btn"));
+        det.appendChild(row);
+      }
+    }
+    wrap.appendChild(det);
+    bodyEl.appendChild(wrap);
+  }
 
   // ---------- 転職の神殿 ----------
   // 転職の神殿：「基本職」「上級職」「最上級職」のタブ（2026-10-19 保護者の案）
@@ -465,7 +526,7 @@ var Town = (function () {
       "いらない装備は倉庫で売却すると、ゴールドと素材になる。"]],
     ["拠点", ["宿屋：仲間のようす・装備・スキルのセット", "お店：薬とふつうの装備を買う", "鍛冶屋：装備を強くする", "転職の神殿：職業を変える",
       "倉庫：装備・道具・素材を見る", "書庫：モンスター図鑑・装備図鑑・称号の棚"]],
-    ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。",
+    ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。", "スキルは2種類：アクティブ（ボタンで使う。3つまで）と、パッシブ（セットしておくと、いつも効く。2つまで）。パッシブは、ほかの職で覚えたものもつけられる。",
       "★7 で職業を極めると、上級職への道が開く。"]]
   ];
   function renderHelp() {
