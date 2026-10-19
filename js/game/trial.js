@@ -82,6 +82,7 @@ var Trial = (function () {
   function start(questions, records) {
     Q = (questions || []).filter(function (q) { return q && q.id && q.enabled !== false; });
     byId = {}; Q.forEach(function (q) { byId[q.id] = q; });
+    makeTestAt();
     days = {};
     (records || []).forEach(function (r) {
       if (!r || !r.date || !r.subject) return;
@@ -121,7 +122,33 @@ var Trial = (function () {
     if (!r.length) return 50;
     return r.reduce(function (s, v) { return s + v; }, 0) / r.length;
   }
-  function priority(q) { var r = rateOf(q); return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0); }
+  // テスト名（出典の最初の空白まで。例「組分け第6回」）と、そのテストを取りこんだ日時（同じテストの問題でいちばん早い書きこみ日時）
+  // 問題を直すと書きこみ日時は新しくなるが、いちばん早いものを使うので、テストの日付はほとんど動かない（2026-10-20）
+  function testOf(q) { return String(q.source || "").split(" ")[0]; }
+  var testAt = {};
+  function makeTestAt() {
+    testAt = {};
+    Q.forEach(function (q) {
+      var t = testOf(q), at = String(q.updatedAt || "");
+      if (!t || !at) return;
+      var k = q.subject + "|" + t;
+      if (!testAt[k] || at < testAt[k]) testAt[k] = at;
+    });
+  }
+  // 教科ごとに、いちばん新しいテスト（2026-10-20 保護者の希望：直近のテストを優先して出す）
+  function latestTest(subject) {
+    var best = "", at = "";
+    Object.keys(testAt).forEach(function (k) {
+      var p = k.split("|");
+      if (p[0] === subject && testAt[k] > at) { at = testAt[k]; best = p.slice(1).join("|"); }
+    });
+    return best;
+  }
+  // 点数：正答率＋テストでまちがえた（30%以上のとき）100＋直近のテスト 200
+  function priority(q, latest) {
+    var r = rateOf(q);
+    return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0) + (latest && testOf(q) === latest ? 200 : 0);
+  }
   function choose(subject) {
     var t = itemOf(subject);
     if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
@@ -133,7 +160,8 @@ var Trial = (function () {
     if (fresh.length) pool = fresh;
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
-    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b) - priority(a) || hash(a.id + today) - hash(b.id + today); });
+    var latest = latestTest(subject);
+    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
     var top = pool[0], th = h[top.id];
     return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }

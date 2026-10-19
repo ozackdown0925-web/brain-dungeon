@@ -428,6 +428,15 @@ var Town = (function () {
     b.addEventListener("click", fn);
     return b;
   }
+  // 立ち絵（2026-10-20 保護者の案）：そのキャラの髪の色で、その職の前向きの絵と武器。16×24 の絵を4倍で
+  function portrait(h, job) {
+    var cv = el("canvas", "job-portrait"); cv.width = 24; cv.height = 30;
+    var ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = false;
+    var w = job === h.job ? GameState.heroWeaponType(h) : GameState.starterWeapon(job), f = { x: 0, y: 1 };
+    Sprites.drawHero(ctx, job, h.face, f, "stand", 12, 29);
+    Sprites.drawWeapon(ctx, w, f, 12, 29, "hold");
+    return cv;
+  }
   function detLine(det, k, v, cls) {
     var d = el("div", "sk-line"); d.appendChild(el("span", "sk-k", k)); d.appendChild(el("span", "sk-v" + (cls ? " " + cls : ""), v)); det.appendChild(d);
   }
@@ -443,6 +452,7 @@ var Town = (function () {
     });
     list.appendChild(grid);
     var j = selJob.base, J = GameData.JOBS[j], st = GameState.stars(h, j), m = h.mastery[j] || 0;
+    det.appendChild(portrait(h, j));
     det.appendChild(el("div", "sk-name", J.name));
     det.appendChild(el("div", "sk-kind", "基本職" + (j === h.job ? "　いまの職業" : "")));
     detLine(det, "熟練度", starText(st) + "　" + m + (st < GameState.MAX_STAR ? "（次の★まで " + ((st + 1) * GameState.starNeed(j) - m) + "）" : "（極めた！）"));
@@ -494,6 +504,7 @@ var Town = (function () {
       list.appendChild(grid);
     });
     var u = U.filter(function (x) { return x.name === selJob.upper; })[0] || U[0], done = upperDone(h, u);
+    if (u.id) det.appendChild(portrait(h, u.id));   // 作った上級職だけ（組み合わせは、まだ絵がない）
     det.appendChild(el("div", "sk-name", u.name));
     det.appendChild(el("div", "sk-kind", "上級職（" + (u.need.length > 1 ? "組み合わせ" : "一本道") + "）　★1つに熟練度 " + GameState.STAR_NEED_UPPER));
     det.appendChild(el("p", "sk-desc", u.note));
