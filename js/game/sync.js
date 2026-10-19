@@ -22,7 +22,8 @@ var Sync = (function () {
   function player() { return meta().player || ""; }
   function playerLabel() { return PLAYER_NAME[player()] || ""; }
   // GameState.save() のたびに呼ぶ：まだ GAS に送っていない変更がある
-  function markDirty() { var m = meta(); if (!m.dirty) { m.dirty = true; setMeta(m); } }
+  function markDirty() {
+    if (GameState.inSandbox && GameState.inSandbox()) return; var m = meta(); if (!m.dirty) { m.dirty = true; setMeta(m); } }
 
   // つなぎ先の画面（はじめて開いたとき・鍵が変わったとき・保護者画面から入れ直すとき）
   function showConnect(msg, then) {
@@ -120,6 +121,7 @@ var Sync = (function () {
   // label：区切りの名前（あれば GAS の「セーブの控え」にも残す）。もどり値：Promise（送れたら resolve）
   var chain = Promise.resolve();
   function save(label, summary) {
+    if (GameState.inSandbox && GameState.inSandbox()) return Promise.resolve();   // 全開放の試しのあいだは送らない
     var p = chain.then(function () { return sendOnce(label, summary); });
     chain = p.then(null, function () { /* 次の送信は続ける */ });
     return p;
@@ -149,6 +151,7 @@ var Sync = (function () {
   // ---------- 冒険の記録 ----------
   // entry：{ date, kind, floor, correct, subjects }
   function log(entry) {
+    if (GameState.inSandbox && GameState.inSandbox()) return;
     var list = readJSON(LOG_KEY, []);
     list.push(entry);
     writeJSON(LOG_KEY, list);

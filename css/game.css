@@ -428,3 +428,10 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .job-sk-chip.got { opacity: 1; color: #ece7da; }
 .job-sk-chip.pas { color: #e6c86a; }
 .btn.sk-item.wait { opacity: 0.75; }
+
+/* 転職の神殿：右の説明の立ち絵（2026-10-20）。16×24 の絵を4倍に、ぼかさずに */
+.job-portrait { float: right; width: 96px; height: 120px; margin: 0 0 6px 10px; image-rendering: pixelated; image-rendering: crisp-edges;
+  background: radial-gradient(circle at 50% 70%, rgba(127, 200, 255, 0.18), rgba(0, 0, 0, 0) 70%); border-radius: 8px; }
+
+/* 全開放の試しのとちゅう（2026-10-20） */
+.sandbox-bar { background: rgba(127, 200, 255, 0.15); border: 1px solid var(--pick); border-radius: 8px; padding: 6px 10px; color: #cfe8ff; }
