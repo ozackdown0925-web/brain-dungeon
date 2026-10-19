@@ -36,10 +36,40 @@ var Sprites = (function () {
                  // かぶとの上の赤い羽かざり：[x, y, 色]（向きごと）
                  add: { down: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]], up: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]],
                         side: [[6, 0, "K"], [7, 0, "K"], [8, 0, "K"], [5, 0, "A"], [9, 0, "A"]] },
-                 rows: { down: { 5: { "1": "S", "2": "S", "3": "S", "4": "S" } }, side: { 5: { "1": "S", "2": "S", "3": "S", "4": "S" } } } },
-    blackmage: { from: "mage",    swap: { L: "Y", N: "Z", M: "A" } },
-    sniper:    { from: "hunter",  swap: { O: "s", Q: "g", R: "h", "1": "O", "2": "s", "3": "A", "4": "Q" } },
-    monk:      { from: "fighter", swap: { W: "K", V: "X", K: "B" }, body: { F: "Z" } },   // body：12行めから下（道着）だけおきかえる
+                 // 顔までおおう四角いかぶと（頭は丸くしない。目の高さに細いすきま）。2026-10-19 保護者の希望
+                 head: {
+                   down: { 1: "...AAAAAAAAAA...", 2: "...AHUUUUUUTA...", 3: "..AHUUUUUUUUTA..", 4: "..AUUUUUUUUUTA..", 5: "..AUUUUUUUUUTA..",
+                           6: "..ASSSSSSSSSSA..", 7: "..AUUUUUUUUUTA..", 8: "..AUAAAAAAAATA..", 9: "..AUUUUSSUUUTA..", 10: "..ATUUUSSUUTTA..",
+                           11: "...ATTUUUUTTA...", 12: ".AHIJAASSAAJIHA." },
+                   up:   { 1: "...AAAAAAAAAA...", 2: "...AHUUUUUUTA...", 3: "..AHUUUUUUUUTA..", 4: "..AUUUUUUUUUTA..", 5: "..AUUUUUUUUUTA..",
+                           6: "..ASSSSSSSSSSA..", 7: "..AUUUUUUUUUTA..", 8: "..AUUUUUUUUUTA..", 9: "..AUUUUUUUUUTA..", 10: "..ATUUUUUUUTTA..",
+                           11: "...ATTTTTTTTA..." },
+                   side: { 1: "...AAAAAAAA.....", 2: "..AHUUUUUUTA....", 3: ".AHUUUUUUUUTA...", 4: ".AUUUUUUUUUTA...", 5: ".AUUUUUUUUUTA...",
+                           6: ".ASSSSSSSSSSA...", 7: ".AAAAAUUUUUTA...", 8: ".AUUUSUUUUTA....", 9: "..AUUSUUUUTA....", 10: "...ATUUUTTA.....",
+                           11: "....ASAHIJAA...." } } },
+    blackmage: { from: "mage",    swap: { L: "Y", N: "Z", M: "A" },
+                 // フードを2ドット深くかぶり、ふちと先に金のかざり（B）。2026-10-19 保護者の希望
+                 head: {
+                   down: { 5: "..ALLNLLLLLMMA..", 6: "..ALLLLBBLLLMA..", 7: "..ALBBBBBBBBMA..", 12: "..ABLAAFFAALBA.." },
+                   up:   { 12: "..ABLMMLLMMLBA.." },
+                   side: { 5: ".ANMLMNLBLMMA...", 7: ".ABBBBBBMMMMA..." } } },
+    sniper:    { from: "hunter",  swap: { O: "s", Q: "g", R: "h", "1": "O", "2": "s", "3": "A", "4": "Q" },
+                 // 片目に黒い眼帯と、ななめのひも（put：[x, y, 色]）。2026-10-19 保護者の希望
+                 put: {
+                   down: [[5, 9, "A"], [6, 9, "A"], [5, 10, "A"], [6, 10, "A"], [4, 8, "A"], [7, 7, "A"], [8, 6, "A"], [9, 6, "A"], [10, 5, "A"], [11, 5, "A"]],
+                   up:   [[3, 7, "A"], [4, 7, "A"], [5, 7, "A"], [6, 7, "A"], [7, 7, "A"], [8, 7, "A"], [9, 7, "A"], [10, 7, "A"], [11, 7, "A"], [12, 7, "A"]],
+                   side: [[5, 8, "A"], [6, 8, "A"], [5, 9, "A"], [8, 7, "A"], [9, 7, "A"], [10, 6, "A"], [11, 6, "A"]] } },
+    monk:      { from: "fighter", swap: { W: "K", V: "X", K: "B" }, body: { F: "Z" },   // body：12行めから下（道着）だけおきかえる
+                 // はちまきを外して坊主、目を閉じる。2026-10-19 保護者の希望
+                 head: {
+                   down: { 0: "................", 1: "................", 2: ".....AAAAAA.....", 3: "....AHEEEEEA....", 4: "...AHEEEEEEEA...",
+                           5: "...AEEEEEEEFA...", 6: "...AEEEEEEEFA...", 7: "...AEEEEEEEFA...", 8: "..AEEFFEEFFEEA..", 9: "..AEEAAEEAAEEA..",
+                           10: "...AFEEEEEEFA...", 11: "....AFEEEEFA...." },
+                   up:   { 0: "................", 1: "................", 2: ".....AAAAAA.....", 3: "....AHEEEEEA....", 4: "...AHEEEEEEEA...",
+                           5: "...AEEEEEEEFA...", 6: "...AEEEEEEEFA...", 7: "...AEEEEEEEFA...", 8: "..AEEEEEEEEEFA..", 9: "..AEEEEEEEEFFA..",
+                           10: "...AFEEEEEEFA...", 11: "....AFFEEFFA...." },
+                   side: { 0: "................", 1: "................", 2: ".....AAAAA......", 3: "...AAHEEEEAA....", 4: "..AHEEEEEEEA....",
+                           5: "..AEEEEEEEEFA...", 6: ".AEEEEEEEEEFA...", 7: ".AEEEEEEEEEFA...", 8: "..AEAAEEEEFA....", 9: "...AEEEEFFA....." } } },
     whitemage: { from: "priest",  swap: { I: "K", J: "X", "1": "H", "2": "U", "3": "T", "4": "H" },
                  rows: { down: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } }, side: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } } } }
   };
@@ -490,9 +520,13 @@ var Sprites = (function () {
     for (var y = 0; y <= rows; y++) { g[y].shift(); g[y].push("."); }
   }
 
-  function frameMap(job, dir, frame) {
+  function frameMap(job0, dir, frame) {
+    var job = baseJob(job0), lk = LOOK[job0] || null;
     var base = (MAP[job] || MAP.warrior)[dir];
     var g = grid(base), y, x;
+    // 上級職：頭の行をおきかえる（head）・点を打つ（put）。歩く・走るの形を作る前に行う（2026-10-19）
+    if (lk && lk.head && lk.head[dir]) Object.keys(lk.head[dir]).forEach(function (r) { g[+r] = lk.head[dir][r].split(""); });
+    if (lk && lk.put && lk.put[dir]) lk.put[dir].forEach(function (pt) { g[pt[1]][pt[0]] = pt[2]; });
     var walk = frame === "walkA" || frame === "runA" ? 1 : frame === "walkB" || frame === "runB" ? -1 : 0;
     var run = frame === "runA" || frame === "runB";
     if (dir !== "side") {
@@ -518,7 +552,7 @@ var Sprites = (function () {
   }
 
   function paint(job, hairId, dir, frame) {
-    var g = frameMap(baseJob(job), dir, frame);
+    var g = frameMap(job, dir, frame);
     var lk = LOOK[job] || null, sw = lk ? lk.swap : null, bodySw = lk ? lk.body : null;
     if (lk && lk.add && lk.add[dir]) lk.add[dir].forEach(function (pt) { if (g[pt[1]][pt[0]] === ".") g[pt[1]][pt[0]] = pt[2]; });
     var hair = HAIR[(hairId | 0) % HAIR.length];
