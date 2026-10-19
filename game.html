@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=52">
-<link rel="stylesheet" href="css/drillcore.css?v=52">
-<link rel="stylesheet" href="css/trial.css?v=52">
+<link rel="stylesheet" href="css/game.css?v=55">
+<link rel="stylesheet" href="css/drillcore.css?v=55">
+<link rel="stylesheet" href="css/trial.css?v=55">
 </head>
 <body>
 <div id="stage">
@@ -71,7 +71,7 @@
         <h3>地図</h3>
         <canvas id="bigMap"></canvas>
         <p class="note"><span class="key cur"></span>いまいる部屋　<span class="key start"></span>入口　<span class="key exit"></span>出口　<span class="key seen"></span>通った部屋</p>
-        <p class="note"><span class="key dot keyitem"></span>鍵　<span class="key dot chest"></span>宝箱　<span class="key dot trap"></span>見つけた罠　<span class="key locked"></span>鍵のかかった扉</p>
+        <p class="note"><span class="key dot keyitem"></span>出口の鍵　<span class="key dot ckeyitem"></span>宝箱の鍵　<span class="key dot chest"></span>宝箱　<span class="key dot goldchest"></span>金の宝箱　<span class="key dot trap"></span>見つけた罠　<span class="key locked"></span>出口の扉（鍵）</p>
         <p id="floorInfo" class="note"></p>
         <p id="chestInfo" class="note"></p>
       </div>
@@ -299,40 +299,40 @@
   </div>
 </div>
 
-<script src="config.js?v=52"></script>
-<script src="js/api.js?v=52"></script>
-<script src="js/game/furigana.js?v=52"></script>
-<script src="js/game/sync.js?v=52"></script>
-<script src="js/game/sound.js?v=52"></script>
-<script src="js/drillcore.js?v=52"></script>
-<script src="js/game/input.js?v=52"></script>
-<script src="js/game/render.js?v=52"></script>
-<script src="js/game/tiles.js?v=52"></script>
-<script src="js/game/world.js?v=52"></script>
-<script src="js/game/rooms.js?v=52"></script>
-<script src="js/game/dungeon.js?v=52"></script>
-<script src="js/game/loot.js?v=52"></script>
-<script src="js/game/data.js?v=52"></script>
-<script src="js/game/state.js?v=52"></script>
-<script src="js/game/faces.js?v=52"></script>
-<script src="js/game/battle.js?v=52"></script>
-<script src="js/game/enemies.js?v=52"></script>
-<script src="js/game/bosses.js?v=52"></script>
-<script src="js/game/sprites.js?v=52"></script>
-<script src="js/game/monsters.js?v=52"></script>
-<script src="js/game/props.js?v=52"></script>
-<script src="js/game/party.js?v=52"></script>
-<script src="js/game/skills.js?v=52"></script>
-<script src="js/game/town.js?v=52"></script>
-<script src="js/game/trial.js?v=52"></script>
-<script src="js/game/parent.js?v=52"></script>
-<script src="js/game/worldmap.js?v=52"></script>
-<script src="js/game/mapart.js?v=52"></script>
-<script src="js/game/dialog.js?v=52"></script>
-<script src="js/game/loading.js?v=52"></script>
-<script src="js/game/base.js?v=52"></script>
-<script src="js/game/titleart.js?v=52"></script>
-<script src="js/game/title.js?v=52"></script>
-<script src="js/game/core.js?v=52"></script>
+<script src="config.js?v=55"></script>
+<script src="js/api.js?v=55"></script>
+<script src="js/game/furigana.js?v=55"></script>
+<script src="js/game/sync.js?v=55"></script>
+<script src="js/game/sound.js?v=55"></script>
+<script src="js/drillcore.js?v=55"></script>
+<script src="js/game/input.js?v=55"></script>
+<script src="js/game/render.js?v=55"></script>
+<script src="js/game/tiles.js?v=55"></script>
+<script src="js/game/world.js?v=55"></script>
+<script src="js/game/rooms.js?v=55"></script>
+<script src="js/game/dungeon.js?v=55"></script>
+<script src="js/game/loot.js?v=55"></script>
+<script src="js/game/data.js?v=55"></script>
+<script src="js/game/state.js?v=55"></script>
+<script src="js/game/faces.js?v=55"></script>
+<script src="js/game/battle.js?v=55"></script>
+<script src="js/game/enemies.js?v=55"></script>
+<script src="js/game/bosses.js?v=55"></script>
+<script src="js/game/sprites.js?v=55"></script>
+<script src="js/game/monsters.js?v=55"></script>
+<script src="js/game/props.js?v=55"></script>
+<script src="js/game/party.js?v=55"></script>
+<script src="js/game/skills.js?v=55"></script>
+<script src="js/game/town.js?v=55"></script>
+<script src="js/game/trial.js?v=55"></script>
+<script src="js/game/parent.js?v=55"></script>
+<script src="js/game/worldmap.js?v=55"></script>
+<script src="js/game/mapart.js?v=55"></script>
+<script src="js/game/dialog.js?v=55"></script>
+<script src="js/game/loading.js?v=55"></script>
+<script src="js/game/base.js?v=55"></script>
+<script src="js/game/titleart.js?v=55"></script>
+<script src="js/game/title.js?v=55"></script>
+<script src="js/game/core.js?v=55"></script>
 </body>
 </html>

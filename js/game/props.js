@@ -7,7 +7,7 @@ var Props = (function () {
   var PAL = {
     A: "#140c1c",                                        // ふち
     d: "#2a1a12", w: "#4a3020", W: "#6e4a2c", h: "#94683c", // 木（暗い→明るい）
-    S: "#8e8a96", s: "#4a4452",                          // 鉄の帯
+    S: "#8e8a96", s: "#4a4452", U: "#e4e8f0",            // 鉄の帯・銀
     g: "#7a5a18", G: "#c8a040", y: "#f0d070",            // 金
     k: "#0b0906", K: "#1c140c",                          // 穴・箱の中
     e: "#4a3420", f: "#6a4c2e", F: "#8a6840"             // 土
@@ -96,6 +96,10 @@ var Props = (function () {
     else if (name === "chestOpen") img = fromMap(CHEST_OPEN);
     else if (name === "chestOpenRare") img = fromMap(CHEST_OPEN, { S: "G", s: "g" });
     else if (name === "key") img = fromMap(KEY);
+    // 宝箱の鍵（銀）と、金の宝箱（2026-10-19）
+    else if (name === "keySilver") img = fromMap(KEY, { y: "U", G: "S", g: "s" });
+    else if (name === "chestGold") img = fromMap(CHEST, { h: "y", W: "G", w: "g", d: "w", S: "W", s: "w" });
+    else if (name === "chestOpenGold") img = fromMap(CHEST_OPEN, { h: "y", W: "G", w: "g", d: "w", S: "W", s: "w" });
     else if (name === "pit") img = fromMap(PIT);
     cache[name] = img;
     return img;

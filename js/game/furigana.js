@@ -34,6 +34,12 @@ var Furi = (function () {
     "攻撃": "こうげき", "一撃": "いちげき", "連撃": "れんげき", "防御": "ぼうぎょ", "突進": "とっしん", "大突進": "だいとっしん", "大技": "おおわざ",
     "呼吸": "こきゅう", "応急手当": "おうきゅうてあて", "系統": "けいとう", "条件": "じょうけん", "無効": "むこう", "効果音": "こうかおん",
     "斬": "ざん", "刺": "し", "姿": "すがた", "髪": "かみ", "得意": "とくい", "平均": "へいきん",
+    // 上級職・最上級職（2026-10-19）
+    "職": "しょく", "騎士": "きし", "聖騎士": "せいきし", "竜騎士": "りゅうきし", "黒魔道士": "くろまどうし", "白魔道士": "しろまどうし",
+    "大魔導師": "だいまどうし", "魔剣聖": "まけんせい", "修行僧": "しゅぎょうそう", "忍者": "にんじゃ", "剣闘士": "けんとうし", "剣闘王": "けんとうおう",
+    "賢者": "けんじゃ", "聖剣士": "せいけんし", "武神": "ぶしん", "召喚士": "しょうかんし", "槍": "やり", "闇": "やみ", "状態異常": "じょうたいいじょう",
+    "大旋風": "だいせんぷう", "一段": "いちだん", "段": "だん",
+    "支え": "ささ", "聖な": "せい", "減ら": "へ", "減る": "へ", "呼ん": "よ", "呼ぶ": "よ",
     // 設定
     "保護者": "ほごしゃ", "設定": "せってい", "制限": "せいげん", "端末": "たんまつ", "暗証番号": "あんしょうばんごう", "準備": "じゅんび", "売却": "ばいきゃく", "切替": "きりかえ",
     // 漢字＋ひらがな（読みは漢字の部分）
@@ -112,6 +118,7 @@ var Furi = (function () {
     for (var e = node; e && e.nodeType === 1; e = e.parentNode) {
       if (SKIP_TAGS[e.tagName]) return true;
       if (e.hasAttribute("data-noruby")) return true;
+      if (e.classList && e.classList.contains("fr")) return true;   // もうふりがなをつけた所
       if (e.isContentEditable) return true;
     }
     return false;
@@ -130,10 +137,14 @@ var Furi = (function () {
     var frag = document.createDocumentFragment();
     segs.forEach(function (s) {
       if (s.r == null) { frag.appendChild(document.createTextNode(s.t)); return; }
-      var rb = document.createElement("ruby");
+      // ふりがなは漢字の上に重ねて置く（ruby だと、読みが長いときに漢字の間が広がってしまうため。2026-10-19）
+      var rb = document.createElement("span"); rb.className = "fr";
       rb.appendChild(document.createTextNode(s.t));
-      var rt = document.createElement("rt");
+      var rt = document.createElement("span"); rt.className = "fr-t";
       rt.appendChild(document.createTextNode(s.r));
+      // 読みが漢字よりかなり長いときは、横を少しちぢめる（読みは漢字の半分の大きさ）
+      var room = s.t.length + 0.8, need = s.r.length * 0.5;
+      if (need > room) rt.style.transform = "translateX(-50%) scaleX(" + (room / need).toFixed(2) + ")";
       rb.appendChild(rt);
       frag.appendChild(rb);
     });
