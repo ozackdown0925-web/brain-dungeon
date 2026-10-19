@@ -451,6 +451,13 @@ var Town = (function () {
     var w = job === h.job ? GameState.heroWeaponType(h) : GameState.starterWeapon(job), f = { x: 0, y: 1 };
     Sprites.drawHero(ctx, job, h.face, f, "stand", 12, 29);
     Sprites.drawWeapon(ctx, w, f, 12, 29, "hold");
+    // まだなれない職は、黒いかげ（シルエット）だけ（2026-10-20 保護者の案）。なれるようになったら色つき
+    if (!GameState.canBecome(h, job)) {
+      ctx.globalCompositeOperation = "source-in";
+      ctx.fillStyle = "#0b0f1a"; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.globalCompositeOperation = "source-over";
+      cv.className += " locked";
+    }
     return cv;
   }
   function detLine(det, k, v, cls) {
