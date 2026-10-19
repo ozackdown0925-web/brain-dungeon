@@ -447,3 +447,4 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-slots .btn.sk-slot.empty .sk-slot-name { color: var(--muted); font-weight: normal; }
 .sk-filter { display: block; font-size: 13px; color: var(--muted); margin: 2px 0 4px; }
 .btn.sk-setbtn { background: var(--pick-bg); border-color: var(--pick); font-size: 15px; padding: 8px 14px; }
+.job-portrait.locked { background: radial-gradient(circle at 50% 70%, rgba(160, 170, 200, 0.22), rgba(0, 0, 0, 0) 70%); }
