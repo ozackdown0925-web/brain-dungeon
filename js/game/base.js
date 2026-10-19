@@ -149,6 +149,7 @@ var Base = (function () {
     var g = GameState.get();
     createEl.hidden = true;
     baseEl.hidden = false;
+    document.getElementById("sandboxBar").hidden = !GameState.inSandbox();   // 全開放の試しのとちゅうなら、上に知らせる
     // 上の行はゴールドと素材だけ（道具と装備の数は倉庫で見る。称号は書庫。2026-10-18 保護者の案）
     document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone;
 

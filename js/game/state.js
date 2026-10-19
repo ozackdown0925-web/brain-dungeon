@@ -479,6 +479,31 @@ var GameState = (function () {
   // minutes：冒険の時間（分）、perDay：1日に出発できる回数、restWeek：休みの曜日（0＝日〜6＝土）、restDates：休みの日（"2026-10-20" の形）
   var LOG_MAX = 100;
   var TRY_KEY = "bd-try-backup"; // 試しモードで出発する前のセーブ
+  // 全開放の試し（2026-10-20 保護者の希望）：本当のセーブを iPad の中にしまってから、職業とスキルを全部開放する。
+  // そのあいだは、セーブも記録も GAS に送らない（save・pushHistory・Sync を止める）。「試しを終える」か、開きなおすと、しまったセーブにもどる
+  var SANDBOX_KEY = "bd-sandbox-backup", sandbox = false;
+  function inSandbox() { return sandbox; }
+  function beginSandbox() {
+    if (sandbox || !game) return false;
+    try { localStorage.setItem(SANDBOX_KEY, JSON.stringify(game)); } catch (e) { return false; }
+    sandbox = true;
+    var all = GameData.SKILLS.map(function (sk) { return sk.id; });
+    game.party.forEach(function (h) {
+      Object.keys(GameData.JOBS).forEach(function (j) { h.mastery[j] = MAX_STAR * starNeed(j); });
+      h.learned = all.slice();
+      fitPassiveSlots(h);
+    });
+    return true;
+  }
+  function endSandbox() {
+    var back = null;
+    try { back = JSON.parse(localStorage.getItem(SANDBOX_KEY) || "null"); } catch (e) { back = null; }
+    try { localStorage.removeItem(SANDBOX_KEY); localStorage.removeItem(TRY_KEY); } catch (e) { /* そのまま */ }
+    sandbox = false;
+    if (back) game = upgrade(back);
+    save();
+    return !!back;
+  }
   function defaultParent() { return { minutes: 5, perDay: 2, restWeek: [], restDates: [] }; }
   function parent() { return game ? game.parent : defaultParent(); }
   function setParent(p) {
@@ -526,7 +551,7 @@ var GameState = (function () {
     try { var s = localStorage.getItem(HISTORY_KEY); return s ? JSON.parse(s) : []; } catch (e) { return []; }
   }
   function pushHistory(label) {
-    if (!game) return;
+    if (!game || sandbox) return;
     var list = readHistory();
     list.unshift({ at: new Date().toISOString(), label: label, data: JSON.stringify(game) });
     if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
@@ -553,6 +578,7 @@ var GameState = (function () {
 
   // ---------- iPad の中の控え ----------
   function save() {
+    if (sandbox) return;   // 全開放の試しのあいだは、本当のセーブを書きかえない
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (e) { /* 保存できない端末では、そのまま遊ぶ */ }
     if (window.Sync) Sync.markDirty(); // まだ GAS に送っていない変更がある（区切りで送る）
   }
@@ -561,8 +587,8 @@ var GameState = (function () {
     var g = null;
     try { g = JSON.parse(json); } catch (e) { return false; }
     if (!g || !Array.isArray(g.party)) return false;
-    game = upgrade(g);
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (e) { /* そのまま */ }
+    game = upgrade(g); sandbox = false;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); localStorage.removeItem(SANDBOX_KEY); } catch (e) { /* そのまま */ }
     return true;
   }
   // この iPad の中のゲームのデータを捨てる（はじめて GAS につないだとき・GAS にセーブがないとき）
@@ -576,6 +602,8 @@ var GameState = (function () {
     return game.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + game.gold + "G　" + game.progress.deepest + "階まで";
   }
   function load() {
+    // 全開放の試しのとちゅうで閉じたとき：試しのあいだは本当のセーブを書きかえていないので、しまった控えを捨てるだけでよい
+    try { localStorage.removeItem(SANDBOX_KEY); } catch (e) { /* そのまま */ }
     try {
       var s = localStorage.getItem(SAVE_KEY);
       if (s) { game = upgrade(JSON.parse(s)); return game; }
@@ -591,6 +619,7 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,

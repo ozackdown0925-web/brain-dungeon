@@ -232,6 +232,13 @@
             <label>時間 <select id="tryMinutes"></select></label>
             <button type="button" id="tryGo" class="btn">試しモードで出発</button>
           </div>
+          <h3>全開放の試し（動作チェック）</h3>
+          <p class="note">3人とも、全部の職業（上級職も）とスキルを開放する。拠点で自由に転職・スキルのセットをして、森の門から好きな階へ（知恵の試練なし・10分）。
+            このあいだはセーブも記録も残らない。「試しを終える」で、もとのセーブにもどる（とちゅうで閉じても、もどる）。</p>
+          <div class="test-foot">
+            <button type="button" id="sandboxGo" class="btn">全開放の試しをはじめる</button>
+            <button type="button" id="sandboxEnd" class="btn">試しを終える（もとのセーブにもどす）</button>
+          </div>
         </section>
         <section class="pp">
           <h3>テスト用の設定</h3>
@@ -286,6 +293,7 @@
       <p class="note town-hint">建物を押すと開く。冒険には「森の門」から出発する。</p>
       <div class="parent-entry sound-row"><button type="button" class="btn small-btn sound-bgm">BGM：オン</button><button type="button" class="btn small-btn sound-se">効果音：オン</button><button type="button" id="parentBtn" class="btn small-btn">保護者</button></div>
       <div id="baseParty" class="party"></div>
+      <p id="sandboxBar" class="note sandbox-bar" hidden>全開放の試しのとちゅう（セーブも記録も残らない）　<button type="button" id="sandboxEnd2" class="btn small-btn">試しを終える</button></p>
       <p id="baseNote" class="note"></p>
     </div>
   </div>

@@ -230,6 +230,26 @@ var Parent = (function () {
     }, null, { yes: "入れ直す" });
   });
 
+  // 全開放の試し（2026-10-20）
+  document.getElementById("sandboxGo").addEventListener("click", function () {
+    if (GameState.inSandbox()) { document.getElementById("parentNote").textContent = "もう全開放の試しのとちゅうです"; return; }
+    Dialog.confirm("全開放の試しをはじめますか？\n3人とも、全部の職業とスキルが開放されます。\nこのあいだはセーブも記録も残りません。「試しを終える」で、もとのセーブにもどります。", function () {
+      if (!GameState.beginSandbox()) { document.getElementById("parentNote").textContent = "はじめられませんでした"; return; }
+      screen.hidden = true;
+      Base.showBase(null);
+      document.getElementById("baseNote").textContent = "全開放の試しをはじめた。転職の神殿と宿屋で、職業とスキルを自由にセットしてから、森の門へ。";
+    }, null, { yes: "はじめる" });
+  });
+  function endSandbox() {
+    if (!GameState.inSandbox()) { document.getElementById("parentNote").textContent = "全開放の試しはしていません"; return; }
+    GameState.endSandbox();
+    screen.hidden = true;
+    Base.showBase(null);
+    document.getElementById("baseNote").textContent = "全開放の試しを終えた。もとのセーブにもどした。";
+  }
+  document.getElementById("sandboxEnd").addEventListener("click", endSandbox);
+  document.getElementById("sandboxEnd2").addEventListener("click", endSandbox);
+
   // 試しモードで出発
   document.getElementById("tryGo").addEventListener("click", function () {
     var floor = Number(document.getElementById("tryFloor").value) || 1;

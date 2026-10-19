@@ -89,7 +89,7 @@ var WorldMap = (function () {
     if (s.kind === "base") { close(); return; }
     if (!s.open) { showNote("まだ行けない場所。森の主をたおすと、道が開けるかも…？"); return; }
     // 休みの日と、1日に出発できる回数（保護者画面で決める。テスト用の設定で外せる）
-    if (!GameState.unlimited()) {
+    if (!GameState.unlimited() && !GameState.inSandbox()) {
       if (GameState.restToday()) { toRestTrial(); return; } // 休みの日：知恵の試練だけ
       if (GameState.adventuredToday()) { showNote("今日の冒険は終了しました。また明日！"); return; }
     }
@@ -128,6 +128,8 @@ var WorldMap = (function () {
   function toTrial(floor) {
     dlg.hidden = true;
     el.hidden = true;
+    // 全開放の試し：知恵の試練はなし（4問正解・4教科の加護あり）。もどると出発する前にもどり、記録にもセーブにも残らない
+    if (GameState.inSandbox()) { Base.depart(floor, null, { minutes: 10, correct: 4, subjects: ["math", "japanese", "science", "social"] }); return; }
     // 出発ごとに新しい4問（1日に出発できる回数まで。テスト用に回数の制限をはずしたときは、最後の回をくり返す）
     var round = Math.min(GameState.adventuresToday() + 1, GameState.parent().perDay);
     Trial.open(floor, function (res) { Base.depart(floor, res); }, { round: round });
