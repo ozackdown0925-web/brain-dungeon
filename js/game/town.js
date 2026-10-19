@@ -334,11 +334,20 @@ var Town = (function () {
   function skillNote(sk) { return "MP" + sk.mp + "・待ち" + (sk.once ? "1回の冒険で1回" : sk.ct + "秒") + (sk.cond ? "・条件：" + GameData.condText(sk) : "・条件なし"); }
 
   // ---------- 転職の神殿 ----------
+  // 転職の神殿：「基本職」「上級職」「最上級職」のタブ（2026-10-19 保護者の案）
+  var jobTab = "base";
   function renderJob(g) {
     var h = g.party[heroIdx];
     bodyEl.appendChild(heroTabs(g));
+    var tabs = el("div", "tabs");
+    [["base", "基本職"], ["upper", "上級職"], ["top", "最上級職"]].forEach(function (t) {
+      tabs.appendChild(button(t[1], function () { jobTab = t[0]; say(""); render(); }, "chip" + (jobTab === t[0] ? " sel" : "")));
+    });
+    bodyEl.appendChild(tabs);
+    if (jobTab === "upper") { renderUpperJobs(h); return; }
+    if (jobTab === "top") { renderTopJobs(h); return; }
     bodyEl.appendChild(el("p", "sub", "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。レベルと、育った能力はそのまま。" +
-      "レベルが上がるときの能力の伸び方は、そのときの職業で決まる。上級職は、職業を極めると開く（これから作る）。"));
+      "レベルが上がるときの能力の伸び方は、そのときの職業で決まる。"));
     GameData.JOB_ORDER.forEach(function (j) {
       var J = GameData.JOBS[j], st = GameState.stars(h, j);
       var row = el("div", "item-line" + (j === h.job ? " cur-line" : ""));
@@ -356,6 +365,34 @@ var Town = (function () {
         if (r.learned.length) t += "　スキル「" + r.learned.join("」「") + "」を覚えた！";
         say(t); render();
       }));
+      bodyEl.appendChild(row);
+    });
+  }
+  // 上級職：条件と、今の★（まだ転職はできない）
+  function renderUpperJobs(h) {
+    bodyEl.appendChild(el("p", "sub", "一本道の上級職は、もとの職を★7（極める）にすると開く。組み合わせの上級職は、2つの職がどちらも★5以上で開く。" +
+      "上級職は、もとの職のスキルもセットできる。（上級職は、これから作る。今は、なるための条件と今の★だけ見られる）"));
+    GameData.UPPER_JOBS.forEach(function (u) {
+      var row = el("div", "item-line");
+      row.appendChild(el("span", "item-name", u.name + (u.need.length > 1 ? "（組み合わせ）" : "（一本道）")));
+      var done = true;
+      var cond = u.need.map(function (n) {
+        var st = GameState.stars(h, n[0]); if (st < n[1]) done = false;
+        return GameData.JOBS[n[0]].name + " ★" + n[1] + "（いま★" + st + "）";
+      }).join("＋");
+      row.appendChild(el("span", "item-extra", "条件：" + cond));
+      row.appendChild(el("span", "item-extra", "装備：" + u.arms + "　" + u.note));
+      row.appendChild(el("span", "item-extra" + (done ? " job-ready" : ""), done ? "条件はそろった（これから作る）" : "まだなれない"));
+      bodyEl.appendChild(row);
+    });
+  }
+  function renderTopJobs(h) {
+    bodyEl.appendChild(el("p", "sub", "最上級職は、上級職を★5にすると、その上級職から一段上がれる。（最上級職は、これから作る）"));
+    GameData.TOP_JOBS.forEach(function (t) {
+      var row = el("div", "item-line");
+      row.appendChild(el("span", "item-name", t.name));
+      row.appendChild(el("span", "item-extra", "条件：" + t.from + " ★5　" + t.note));
+      row.appendChild(el("span", "item-extra", "まだなれない"));
       bodyEl.appendChild(row);
     });
   }

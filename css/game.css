@@ -354,6 +354,10 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 /* ふりがな（段階7-3。js/game/furigana.js が自動でつける） */
 ruby { ruby-position: over; }
 rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; text-transform: none; }
+/* 漢字の上に重ねるふりがな（furigana.js）。漢字の間が広がらないように、読みは漢字の上にはみ出してよい */
+.fr { position: relative; display: inline-block; padding-top: 0.55em; line-height: 1; text-indent: 0; }   /* 上に読みの分のすきまをとる（前のルビと同じ高さ） */
+.fr-t { position: absolute; left: 50%; top: 0; transform: translateX(-50%); font-size: 0.5em; line-height: 1.1; font-weight: normal;
+  letter-spacing: 0; white-space: nowrap; pointer-events: none; text-indent: 0; -webkit-user-select: none; user-select: none; }
 
 /* ロード画面と、1行ずつの知らせ（段階7-3。js/game/loading.js） */
 .load-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px;
@@ -382,3 +386,4 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .dlg-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
 .dlg-row .btn { border-radius: 8px; padding: 10px 22px; min-width: 96px; }
 .dlg-input { width: 100%; box-sizing: border-box; font-size: 1.2rem; padding: 10px 12px; margin-top: 4px; border-radius: 8px; border: 2px solid #4a5068; background: #10131c; color: #ece7da; letter-spacing: 0.3em; }
+.item-extra.job-ready { color: #6fd08c; font-weight: 700; }

@@ -48,6 +48,32 @@ var GameData = (function () {
                growth: { str: 1.0, vit: 1.5, mag: 1.5, int: 1.0 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
+  // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
+  // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
+  var UPPER_JOBS = [
+    { name: "騎士",       need: [["warrior", 7]], arms: "剣・槍／重装備",               note: "槍も使える。守りが強い" },
+    { name: "黒魔道士",   need: [["mage", 7]],    arms: "杖／魔法装備",                 note: "強い攻撃魔法と、闇・状態異常の魔法" },
+    { name: "スナイパー", need: [["hunter", 7]],  arms: "弓／軽装備",                   note: "遠くから強い一発。会心が出やすい" },
+    { name: "修行僧",     need: [["fighter", 7]], arms: "拳／軽装備",                   note: "拳で戦いながら、自分も回復できる" },
+    { name: "白魔道士",   need: [["priest", 7]],  arms: "杖／魔法装備",                 note: "回復と、仲間を強くする魔法" },
+    { name: "魔法剣士",   need: [["warrior", 5], ["mage", 5]],    arms: "剣・杖／重装備・魔法装備", note: "剣に火や水の力をのせる" },
+    { name: "忍者",       need: [["warrior", 5], ["hunter", 5]],  arms: "剣・弓（2つ持てる）／軽装備", note: "近くは剣、遠くは弓で戦う" },
+    { name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・拳／重装備・軽装備", note: "剣と拳の連続わざ" },
+    { name: "聖騎士",     need: [["warrior", 5], ["priest", 5]],  arms: "剣・杖／重装備",           note: "守りと回復で仲間を支える" },
+    { name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",             note: "攻撃と回復の大きな魔法" }
+  ];
+  var TOP_JOBS = [
+    { name: "聖剣士",     from: "騎士",       note: "光の剣でたたかう" },
+    { name: "大魔導師",   from: "黒魔道士",   note: "画面全体に火の魔法" },
+    { name: "天弓",       from: "スナイパー", note: "画面のすべての敵に矢" },
+    { name: "武神",       from: "修行僧",     note: "攻撃がとても速くなる" },
+    { name: "大司教",     from: "白魔道士",   note: "全員を守る聖なる場所" },
+    { name: "魔剣聖",     from: "魔法剣士",   note: "火と水と光の3連撃" },
+    { name: "竜騎士",     from: "忍者",       note: "ジャンプと、敵を通りぬける突進" },
+    { name: "剣闘王",     from: "剣闘士",     note: "まわりを何度も斬る大旋風" },
+    { name: "聖騎士長",   from: "聖騎士",     note: "全員の受けるダメージを大きく減らす" },
+    { name: "召喚士",     from: "賢者",       note: "たおしたボスを呼んで大技を使わせる" }
+  ];
   // 系統：その職と、その職からつながる上級職・最上級職
   var LINES = { warrior: ["warrior"], mage: ["mage"], hunter: ["hunter"], fighter: ["fighter"], priest: ["priest"] };
 
@@ -266,7 +292,7 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, LINES: LINES,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, canSet: canSet, condText: condText
   };
