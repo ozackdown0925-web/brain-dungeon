@@ -399,7 +399,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-job { font-size: 13px; color: var(--gold); margin: 8px 0 4px; font-weight: 700; }
 .sk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn.sk-item { font-size: 14px; padding: 6px 10px; border-radius: 8px; min-width: 6.5em; text-align: left; }
-.sk-mark { color: var(--gold); font-weight: 700; }
+.sk-mark { display: inline-block; background: #3f9a5a; color: #ffffff; font-size: 11px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 3px; margin-right: 5px; vertical-align: 1px; }
 .btn.sk-item.sel { background: var(--pick-bg); border-color: var(--pick); box-shadow: 0 0 0 2px var(--pick) inset; }
 .btn.sk-item.ng { opacity: 0.6; }
 .btn.sk-item.locked { opacity: 0.4; border-style: dashed; }
