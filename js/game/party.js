@@ -40,7 +40,7 @@ var Party = (function () {
   function eff(c, stat) {
     var add = 0;
     c.buffs.forEach(function (b) { if (b.stat === stat) add += b.pct; });
-    if (stat === "wait") return Math.max(0.3, 1 + add);
+    if (stat === "wait") return Math.max(0.3, (1 + add) * (c.stats.waitMul || 1)); // waitMul：パッシブ「身軽」
     if (stat === "crit") return c.stats.crit + add;
     return c.stats[stat] * (1 + add);
   }

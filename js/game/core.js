@@ -172,6 +172,7 @@
       e.slot = slot;
       if (slot.boss) { e.face = { x: -1, y: 0 }; boss = e; }
     });
+    run.roomAlive = Enemies.alive().length; // 部屋の敵を全部たおしたか見るため（パッシブ「めいそう」）
     run.fade = 0.3;
     snapshot();
     // ボスの部屋：入るとつるが道をふさぎ、短い文章が出る
@@ -185,6 +186,18 @@
     }
   }
   var boss = null; // 今の部屋のボス（いなければ null）
+
+  // 部屋の敵を全部たおしたとき：パッシブ「めいそう」などで少し回復する（2026-10-19）
+  function roomCleared() {
+    var who = [];
+    Party.members().forEach(function (m) {
+      if (m.down || !(m.stats.roomHp || m.stats.roomMp)) return;
+      m.hp = Math.min(m.stats.hp, m.hp + Math.round(m.stats.hp * (m.stats.roomHp || 0)));
+      m.mp = Math.min(m.stats.mp, m.mp + Math.round(m.stats.mp * (m.stats.roomMp || 0)));
+      who.push(m.name);
+    });
+    if (who.length) { say(who.join("と") + "は、めいそうで少し回復した"); Sound.play("heal"); }
+  }
 
   function setDoor(c, dir, ch) {
     Dungeon.doorTiles(c.room.w, c.room.h, dir).forEach(function (p) { c.room.setTile(p.x, p.y, ch); });
@@ -390,7 +403,10 @@
     A.busy = Math.max(0, A.busy - dt);
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
-    A.running = Enemies.alive().length === 0; // 部屋の敵を全滅させたら走る
+    var nAlive = Enemies.alive().length;
+    A.running = nAlive === 0; // 部屋の敵を全滅させたら走る
+    if (run.roomAlive > 0 && nAlive === 0) roomCleared();
+    run.roomAlive = nAlive;
     var a = Input.axis();
     A.turn = Math.max(0, (A.turn || 0) - dt);
     if (Math.abs(a.x) > 0.05 || Math.abs(a.y) > 0.05) {

@@ -387,3 +387,29 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .dlg-row .btn { border-radius: 8px; padding: 10px 22px; min-width: 96px; }
 .dlg-input { width: 100%; box-sizing: border-box; font-size: 1.2rem; padding: 10px 12px; margin-top: 4px; border-radius: 8px; border: 2px solid #4a5068; background: #10131c; color: #ece7da; letter-spacing: 0.3em; }
 .item-extra.job-ready { color: #6fd08c; font-weight: 700; }
+
+/* 宿屋のスキル（2026-10-19）：横長の画面で、左に名前だけの一覧、右にくわしい説明 */
+.sk-setrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 8px; }
+.sk-setlabel { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.btn.sk-slot { font-size: 14px; padding: 5px 10px; border-radius: 8px; border-color: var(--gold); }
+.btn.sk-slot.empty { border-color: #343b55; color: var(--muted); }
+.btn.sk-slot.sel { background: var(--btn-on); }
+.sk-wrap { display: flex; gap: 10px; align-items: flex-start; }
+.sk-list { flex: 1 1 56%; min-width: 0; background: rgba(36, 42, 61, 0.85); border: 1px solid #343b55; border-radius: 10px; padding: 6px 10px 10px; }
+.sk-job { font-size: 13px; color: var(--gold); margin: 8px 0 4px; font-weight: 700; }
+.sk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn.sk-item { font-size: 14px; padding: 6px 10px; border-radius: 8px; min-width: 6.5em; text-align: left; }
+.btn.sk-item.on { border-color: var(--gold); }
+.btn.sk-item.sel { background: var(--btn-on); border-color: var(--gold); }
+.btn.sk-item.ng { opacity: 0.6; }
+.btn.sk-item.locked { opacity: 0.4; border-style: dashed; }
+.sk-detail { flex: 0 0 40%; min-width: 0; position: sticky; top: 0; background: rgba(36, 42, 61, 0.95); border: 1px solid var(--gold); border-radius: 10px; padding: 10px 12px; }
+.sk-name { font-size: 18px; font-weight: 700; color: var(--gold); }
+.sk-kind { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.sk-desc { font-size: 15px; margin: 8px 0; line-height: 1.7; }
+.sk-info { border-top: 1px solid #2c3249; padding-top: 4px; }
+.sk-line { display: flex; gap: 8px; font-size: 13px; padding: 3px 0; }
+.sk-k { color: var(--muted); flex: 0 0 3.5em; }
+.sk-why { font-size: 13px; color: #e8a06a; margin: 8px 0 0; }
+.sk-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sk-btns .btn.sel { background: var(--btn-on); border-color: var(--gold); }
