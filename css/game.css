@@ -393,14 +393,14 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-setlabel { font-size: 13px; color: var(--muted); margin-right: 4px; }
 .btn.sk-slot { font-size: 14px; padding: 5px 10px; border-radius: 8px; border-color: var(--gold); }
 .btn.sk-slot.empty { border-color: #343b55; color: var(--muted); }
-.btn.sk-slot.sel { background: var(--btn-on); }
+.btn.sk-slot.sel { background: var(--pick-bg); border-color: var(--pick); box-shadow: 0 0 0 2px var(--pick) inset; }
 .sk-wrap { display: flex; gap: 10px; align-items: flex-start; }
 .sk-list { flex: 1 1 56%; min-width: 0; background: rgba(36, 42, 61, 0.85); border: 1px solid #343b55; border-radius: 10px; padding: 6px 10px 10px; }
 .sk-job { font-size: 13px; color: var(--gold); margin: 8px 0 4px; font-weight: 700; }
 .sk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn.sk-item { font-size: 14px; padding: 6px 10px; border-radius: 8px; min-width: 6.5em; text-align: left; }
-.btn.sk-item.on { border-color: var(--gold); }
-.btn.sk-item.sel { background: var(--btn-on); border-color: var(--gold); }
+.btn.sk-item.on { border-color: var(--gold); color: var(--gold); }
+.btn.sk-item.sel { background: var(--pick-bg); border-color: var(--pick); box-shadow: 0 0 0 2px var(--pick) inset; }
 .btn.sk-item.ng { opacity: 0.6; }
 .btn.sk-item.locked { opacity: 0.4; border-style: dashed; }
 .sk-detail { flex: 0 0 40%; min-width: 0; position: sticky; top: 0; background: rgba(36, 42, 61, 0.95); border: 1px solid var(--gold); border-radius: 10px; padding: 10px 12px; }
@@ -412,4 +412,20 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-k { color: var(--muted); flex: 0 0 3.5em; }
 .sk-why { font-size: 13px; color: #e8a06a; margin: 8px 0 0; }
 .sk-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.sk-btns .btn.sel { background: var(--btn-on); border-color: var(--gold); }
+.sk-btns .btn.sel { border-color: var(--gold); color: var(--gold); }
+
+/* 選んでいるもの（水色）と、セット中・いまの職（金色）を分ける（2026-10-19 保護者の感想） */
+:root { --pick: #7fc8ff; --pick-bg: #23476b; }
+.sk-detail { border-color: var(--pick); }
+.btn.sk-item.ready .job-item-small { color: #6fd08c; }
+.btn.job-item { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 7.5em; }
+.job-item-name { font-weight: 700; }
+.job-item-small { font-size: 11px; color: var(--muted); letter-spacing: 0; }
+.btn.sk-item.on .job-item-small { color: var(--gold); }
+.sk-v.ok, .sk-why.ok { color: #6fd08c; }
+.job-sk-head { display: block; margin-top: 8px; font-size: 13px; }
+.job-sk { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.job-sk-chip { font-size: 12px; padding: 2px 7px; border-radius: 8px; border: 1px solid #343b55; color: var(--muted); opacity: 0.6; }
+.job-sk-chip.got { opacity: 1; color: #ece7da; }
+.job-sk-chip.pas { color: #e6c86a; }
+.btn.sk-item.wait { opacity: 0.75; }
