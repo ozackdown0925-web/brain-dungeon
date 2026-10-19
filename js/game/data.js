@@ -2,7 +2,7 @@
 // 段階3：基本職5つ・武器・防具・スキル35・森の敵4種。
 var GameData = (function () {
   // 属性の名前（表示用）
-  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", none: "なし" };
+  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", dark: "闇", none: "なし" };   // 闇は 2026-10-19 に足した（黒魔道士）
 
   // 武器（ノーマル・アイテムレベル1）。reach＝届く距離（ドット）、arc＝ふりの広さ（左右それぞれのラジアン）
   // shot：ふつうの攻撃が飛ぶもの（弓の矢、魔術師の系統の杖の魔法弾）
@@ -14,6 +14,8 @@ var GameData = (function () {
     greatsword: { name: "大剣", item: "銅の大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
     axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
     bow:        { name: "弓",   item: "木の弓",   starter: "古い弓", element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
+    // 槍（2026-10-19。騎士の武器）：細く長く届く突き。刺
+    spear:      { name: "槍",   item: "銅の槍",   starter: "古い槍", element: "pierce", patk: 10, matk: 0, wait: 0.75, power: 1.25, reach: 28, arc: 0.45 },
     fist:       { name: "拳",   item: "革のこて", starter: "古いこて", element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
     // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9・待ち1.0秒）、それ以外の職は近くをたたく（物攻・打・倍率1.15・待ち0.7秒）
     // 弓と魔法弾の待ち時間は 2026-10-18 保護者と決定（弓 0.8→1.1秒、魔法弾 0.7→1.0秒）
@@ -45,17 +47,30 @@ var GameData = (function () {
     fighter: { name: "武術家", weapons: ["fist"], armor: "light", color: "#ff9a4d",
                growth: { str: 2.0, vit: 1.5, mag: 0.5, int: 1.0 } },
     priest:  { name: "僧侶",   weapons: ["staff"], armor: "magic", color: "#f2e6a0",
-               growth: { str: 1.0, vit: 1.5, mag: 1.5, int: 1.0 } }
+               growth: { str: 1.0, vit: 1.5, mag: 1.5, int: 1.0 } },
+    // 一本道の上級職（2026-10-19）。tier：1 基本職・2 上級職。from：もとの職。伸び方は基本職より少しよい
+    knight:    { name: "騎士",       weapons: ["spear", "sword"], armor: "heavy", color: "#c8ccd4", tier: 2, from: "warrior",
+                 growth: { str: 2.0, vit: 2.5, mag: 0.5, int: 0.5 } },
+    blackmage: { name: "黒魔道士",   weapons: ["staff"], armor: "magic", color: "#8a2a4a", tier: 2, from: "mage",
+                 growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 1.5 } },
+    sniper:    { name: "スナイパー", weapons: ["bow"], armor: "light", color: "#9a7a50", tier: 2, from: "hunter",
+                 growth: { str: 2.0, vit: 1.5, mag: 1.0, int: 1.0 } },
+    monk:      { name: "修行僧",     weapons: ["fist"], armor: "light", color: "#d04648", tier: 2, from: "fighter",
+                 growth: { str: 2.0, vit: 2.0, mag: 0.5, int: 1.5 } },
+    whitemage: { name: "白魔道士",   weapons: ["staff"], armor: "magic", color: "#ffffff", tier: 2, from: "priest",
+                 growth: { str: 1.0, vit: 1.5, mag: 2.0, int: 1.5 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
+  var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage"];   // 作った上級職
+  function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
   var UPPER_JOBS = [
-    { name: "騎士",       need: [["warrior", 7]], arms: "剣・槍／重装備",               note: "槍も使える。守りが強い" },
-    { name: "黒魔道士",   need: [["mage", 7]],    arms: "杖／魔法装備",                 note: "強い攻撃魔法と、闇・状態異常の魔法" },
-    { name: "スナイパー", need: [["hunter", 7]],  arms: "弓／軽装備",                   note: "遠くから強い一発。会心が出やすい" },
-    { name: "修行僧",     need: [["fighter", 7]], arms: "拳／軽装備",                   note: "拳で戦いながら、自分も回復できる" },
-    { name: "白魔道士",   need: [["priest", 7]],  arms: "杖／魔法装備",                 note: "回復と、仲間を強くする魔法" },
+    { id: "knight", name: "騎士",       need: [["warrior", 7]], arms: "剣・槍／重装備",               note: "槍も使える。守りが強い" },
+    { id: "blackmage", name: "黒魔道士",   need: [["mage", 7]],    arms: "杖／魔法装備",                 note: "強い攻撃魔法と、闇・状態異常の魔法" },
+    { id: "sniper", name: "スナイパー", need: [["hunter", 7]],  arms: "弓／軽装備",                   note: "遠くから強い一発。会心が出やすい" },
+    { id: "monk", name: "修行僧",     need: [["fighter", 7]], arms: "拳／軽装備",                   note: "拳で戦いながら、自分も回復できる" },
+    { id: "whitemage", name: "白魔道士",   need: [["priest", 7]],  arms: "杖／魔法装備",                 note: "回復と、仲間を強くする魔法" },
     { name: "魔法剣士",   need: [["warrior", 5], ["mage", 5]],    arms: "剣・杖／重装備・魔法装備", note: "剣に火や水の力をのせる" },
     { name: "忍者",       need: [["warrior", 5], ["hunter", 5]],  arms: "剣・弓（2つ持てる）／軽装備", note: "近くは剣、遠くは弓で戦う" },
     { name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・拳／重装備・軽装備", note: "剣と拳の連続わざ" },
@@ -75,7 +90,8 @@ var GameData = (function () {
     { name: "召喚士",     from: "賢者",       note: "たおしたボスを呼んで大技を使わせる" }
   ];
   // 系統：その職と、その職からつながる上級職・最上級職
-  var LINES = { warrior: ["warrior"], mage: ["mage"], hunter: ["hunter"], fighter: ["fighter"], priest: ["priest"] };
+  var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage"], hunter: ["hunter", "sniper"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage"],
+                knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"] };
 
   // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
   // fx＝効果の並び。t の種類：
@@ -142,12 +158,78 @@ var GameData = (function () {
       fx: [{ t: "cure", party: true }] },
     { id: "p.calm",    job: "priest", star: 3, name: "いやしの力", short: "いやし力", cond: null, passive: { heal: 0.20 }, desc: "回復のスキルで回復する量が、いつも20%ふえる。" },
     { id: "p.protect", job: "priest", star: 4, name: "まもりの心", short: "まもり", cond: null, passive: { pdef: 0.08, mdef: 0.08 }, desc: "物防と魔防が、いつも8%上がる。" },
-    { id: "p.regen",  job: "priest", star: 5, name: "リジェネ", desc: "仲間みんなのHPが、しばらく少しずつ回復する。",         short: "リジェネ", cond: { line: "priest" }, mp: 10, ct: 20,
+    { id: "p.regen",  job: "priest", star: 5, name: "ヒールウィンド", desc: "仲間みんなのHPが、しばらく少しずつ回復する。",         short: "ヒール風", cond: { line: "priest" }, mp: 10, ct: 20,
       fx: [{ t: "regen", pct: 0.2, dur: 10, party: true }] },
     { id: "p.revive", job: "priest", star: 6, name: "よみがえりの祈り", desc: "たおれた仲間を1人よみがえらせる。1回の冒険で1回だけ。", short: "よみがえり", cond: { line: "priest" }, mp: 20, ct: 0, once: true,
       fx: [{ t: "revive", pct: 0.3 }] },
     { id: "p.grand",  job: "priest", star: 7, name: "大いなるいやし", desc: "仲間みんなのHPを大きく回復して、状態異常も治す。",   short: "大いやし", cond: { line: "priest" }, mp: 20, ct: 40,
-      fx: [{ t: "heal", pct: 0.6, party: true }, { t: "cure", party: true }] }
+      fx: [{ t: "heal", pct: 0.6, party: true }, { t: "cure", party: true }] },
+    // ---------- 一本道の上級職（2026-10-19 保護者と決定。docs/game-design.md） ----------
+    // 騎士：剣と槍が半々
+    { id: "k.thrust", job: "knight", star: 1, name: "いなずま突き", desc: "槍で、前へ一直線に突く。", short: "突き", cond: { weapons: ["spear"] }, mp: 6, ct: 3,
+      fx: [{ t: "arc", stat: "p", mult: 1.6, elem: "pierce", reach: 36, arc: 0.22, vis: "lance" }] },
+    { id: "k.wall",   job: "knight", star: 2, name: "鉄壁", desc: "物防が、いつも20%上がる。", short: "鉄壁", cond: null, passive: { pdef: 0.20 } },
+    { id: "k.cross",  job: "knight", star: 3, name: "十字斬り", desc: "たてと横に、すばやく2回斬る。", short: "十字", cond: { weapons: ["sword"] }, mp: 7, ct: 5,
+      fx: [{ t: "rapid", count: 2, interval: 0.14, hit: { t: "arc", stat: "p", mult: 1.0, elem: "weapon" } }] },
+    { id: "k.cry",    job: "knight", star: 4, name: "ときの声", desc: "仲間みんなの物攻と物防が、60秒のあいだ10%上がる。交代しても続く。", short: "ときの声", cond: null, mp: 10, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }] },
+    { id: "k.vow",    job: "knight", star: 5, name: "守りの誓い", desc: "受けるダメージが、いつも10%へる。", short: "誓い", cond: null, passive: { cut: 0.10 } },
+    { id: "k.bash",   job: "knight", star: 6, name: "シールドバッシュ", desc: "盾でなぐる。しびれさせることがある。", short: "盾", cond: { weapons: ["sword"] }, mp: 7, ct: 7,
+      fx: [{ t: "arc", stat: "p", mult: 1.2, elem: "strike", vis: "smash", status: { type: "para", chance: 0.4, dur: 2 } }] },
+    { id: "k.charge", job: "knight", star: 7, name: "グランドチャージ", desc: "槍をかまえて長く突進し、通った敵をみんなつらぬく。", short: "突進", cond: { weapons: ["spear"] }, mp: 14, ct: 14,
+      fx: [{ t: "pierceDash", dist: 72, stat: "p", mult: 2.4, elem: "pierce" }] },
+    // 黒魔道士
+    { id: "bm.bomb",  job: "blackmage", star: 1, name: "フレイムボム", desc: "大きな火の玉。当たると爆発して、まわりの敵にもダメージ（火）。", short: "ボム", cond: { line: "blackmage" }, mp: 9, ct: 4,
+      fx: [{ t: "shot", stat: "m", mult: 2.0, elem: "fire", speed: 130, range: 140, size: 5, color: "#ff8a3d", explode: 20 }] },
+    { id: "bm.mist",  job: "blackmage", star: 2, name: "ポイズンミスト", desc: "前に毒の霧を出す。中にいる敵が毒になる。", short: "毒霧", cond: { line: "blackmage" }, mp: 8, ct: 10,
+      fx: [{ t: "zone", look: "mist", stat: "m", mult: 0.2, elem: "none", dist: 30, radius: 22, dur: 4, tick: 0.5, status: { type: "poison", chance: 0.5, dur: 8 } }] },
+    { id: "bm.mana",  job: "blackmage", star: 3, name: "魔力の泉", desc: "最大MPが、いつも20%上がる。", short: "泉", cond: null, passive: { mp: 0.20 } },
+    { id: "bm.dark",  job: "blackmage", star: 4, name: "ダーク", desc: "闇の玉を飛ばす（闇）。", short: "ダーク", cond: { line: "blackmage" }, mp: 7, ct: 3,
+      fx: [{ t: "shot", stat: "m", mult: 1.8, elem: "dark", speed: 140, range: 130, size: 4, color: "#9a5ad0" }] },
+    { id: "bm.focus", job: "blackmage", star: 5, name: "魔力集中", desc: "魔攻が、いつも15%上がる。", short: "集中", cond: null, passive: { matk: 0.15 } },
+    { id: "bm.drain", job: "blackmage", star: 6, name: "ドレイン", desc: "闇の玉を飛ばす。与えたダメージの半分だけ、自分のHPが回復する（闇）。", short: "ドレイン", cond: { line: "blackmage" }, mp: 9, ct: 6,
+      fx: [{ t: "shot", stat: "m", mult: 1.4, elem: "dark", speed: 140, range: 130, size: 4, color: "#d05a8a", drain: 0.5 }] },
+    { id: "bm.hole",  job: "blackmage", star: 7, name: "ダークホール", desc: "前に闇の渦を出す。まわりの敵を吸いよせながらダメージ（闇）。", short: "ホール", cond: { line: "blackmage" }, mp: 16, ct: 16,
+      fx: [{ t: "zone", look: "hole", stat: "m", mult: 0.6, elem: "dark", dist: 40, radius: 34, dur: 3, tick: 0.5, pull: 45 }] },
+    // スナイパー
+    { id: "s.pierce", job: "sniper", star: 1, name: "貫通矢", desc: "一直線に、何体でもつらぬく矢。", short: "貫通", cond: { weapons: ["bow"] }, mp: 6, ct: 4,
+      fx: [{ t: "shot", stat: "p", mult: 1.5, elem: "weapon", speed: 230, range: 200, size: 2, pierce: true }] },
+    { id: "s.crit",   job: "sniper", star: 2, name: "急所の心得", desc: "会心のときのダメージが、いつも30%ふえる。", short: "急所", cond: null, passive: { critDmg: 0.30 } },
+    { id: "s.fire",   job: "sniper", star: 3, name: "炎の矢", desc: "火の矢を撃つ（火）。", short: "炎矢", cond: { weapons: ["bow"] }, mp: 6, ct: 4,
+      fx: [{ t: "shot", stat: "p", mult: 1.6, elem: "fire", color: "#ff8a3d" }] },
+    { id: "s.push",   job: "sniper", star: 4, name: "はじき矢", desc: "当たった敵を、大きくおし返す矢。", short: "はじき", cond: { weapons: ["bow"] }, mp: 5, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.0, elem: "weapon", push: 40, color: "#a8d8ff" }] },
+    { id: "s.steady", job: "sniper", star: 5, name: "狙撃の構え", desc: "止まっているあいだ、物攻が20%上がる。", short: "構え", cond: null, passive: { still: 0.20 } },
+    { id: "s.head",   job: "sniper", star: 6, name: "ヘッドショット", desc: "1.5秒ためて、強い一発を撃つ。会心が出やすい。", short: "ヘッド", cond: { weapons: ["bow"] }, mp: 10, ct: 10,
+      fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.0, elem: "weapon", crit: 0.4, speed: 260, range: 220, size: 2 }] },
+    { id: "s.blast",  job: "sniper", star: 7, name: "爆裂矢", desc: "当たると爆発して、まわりの敵にもダメージを与える矢。", short: "爆裂", cond: { weapons: ["bow"] }, mp: 14, ct: 12,
+      fx: [{ t: "shot", stat: "p", mult: 2.5, elem: "weapon", speed: 200, range: 180, size: 2, color: "#ffb84a", explode: 28 }] },
+    // 修行僧
+    { id: "mk.chi",   job: "monk", star: 1, name: "気の拳", desc: "強くなぐって、自分のHPも少し回復する。", short: "気拳", cond: { weapons: ["fist"] }, mp: 6, ct: 4,
+      fx: [{ t: "arc", stat: "p", mult: 1.6, elem: "weapon", color: "#ffe7a0" }, { t: "heal", pct: 0.05 }] },
+    { id: "mk.flow",  job: "monk", star: 2, name: "気のめぐり", desc: "部屋の敵を全部たおすと、HPが8%回復する。", short: "めぐり", cond: null, passive: { roomHp: 0.08 } },
+    { id: "mk.gale",  job: "monk", star: 3, name: "疾風脚", desc: "前へ、すばやく6回ける。", short: "疾風", cond: { weapons: ["fist"] }, mp: 8, ct: 7,
+      fx: [{ t: "rapid", count: 6, interval: 0.08, hit: { t: "arc", stat: "p", mult: 0.5, elem: "weapon", color: "#a8d8ff" } }] },
+    { id: "mk.zen",   job: "monk", star: 4, name: "瞑想", desc: "1.5秒だけ止まって、HPとMPを回復する。", short: "瞑想", cond: null, mp: 0, ct: 30,
+      fx: [{ t: "charge", time: 1.5 }, { t: "heal", pct: 0.25 }, { t: "mpheal", pct: 0.15 }] },
+    { id: "mk.body",  job: "monk", star: 5, name: "金剛の体", desc: "物防と魔防が、いつも12%上がる。", short: "金剛", cond: null, passive: { pdef: 0.12, mdef: 0.12 } },
+    { id: "mk.wave",  job: "monk", star: 6, name: "気功波", desc: "前へ気の玉を飛ばす（打）。", short: "気功", cond: { weapons: ["fist"] }, mp: 8, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.5, elem: "strike", speed: 150, range: 120, size: 4, color: "#ffe7a0", orb: true }] },
+    { id: "mk.heaven",job: "monk", star: 7, name: "天地の拳", desc: "力をためて、大きな一撃。まわりの敵もふきとばす。", short: "天地", cond: { weapons: ["fist"] }, mp: 16, ct: 16,
+      fx: [{ t: "charge", time: 0.8 }, { t: "arc", stat: "p", mult: 3.0, elem: "weapon", reach: 24, arc: 0.9, vis: "smash" }, { t: "around", stat: "p", mult: 0.5, radius: 34, push: 30, color: "#ffe7a0" }] },
+    // 白魔道士
+    { id: "wm.high",  job: "whitemage", star: 1, name: "ハイヒール", desc: "仲間みんなのHPを40%回復する。", short: "ハイヒール", cond: { line: "whitemage" }, mp: 14, ct: 8,
+      fx: [{ t: "heal", pct: 0.4, party: true }] },
+    { id: "wm.protect",job: "whitemage", star: 2, name: "プロテクト", desc: "仲間みんなの物防が、60秒のあいだ12%上がる。交代しても続く。", short: "プロテクト", cond: { line: "whitemage" }, mp: 10, ct: 20,
+      fx: [{ t: "buff", stat: "pdef", pct: 0.12, dur: 60, party: true }] },
+    { id: "wm.barrier",job: "whitemage", star: 3, name: "マジックバリア", desc: "仲間みんなの魔防が、60秒のあいだ12%上がる。交代しても続く。", short: "バリア", cond: { line: "whitemage" }, mp: 10, ct: 20,
+      fx: [{ t: "buff", stat: "mdef", pct: 0.12, dur: 60, party: true }] },
+    { id: "wm.save",  job: "whitemage", star: 4, name: "MPの節約", desc: "スキルで使うMPが、いつも15%へる。", short: "節約", cond: null, passive: { mpcut: 0.15 } },
+    { id: "wm.rapid", job: "whitemage", star: 5, name: "ラピッド", desc: "仲間みんなの攻撃の待ち時間が、60秒のあいだ10%短くなる。交代しても続く。", short: "ラピッド", cond: { line: "whitemage" }, mp: 12, ct: 20,
+      fx: [{ t: "buff", stat: "wait", pct: -0.10, dur: 60, party: true }] },
+    { id: "wm.holy",  job: "whitemage", star: 6, name: "聖なる守り", desc: "仲間みんなが、毒・しびれ・眠りにかかりにくくなる（これをつけた人が仲間にいれば効く）。", short: "聖なる", cond: null, passive: { aura: 0.5 } },
+    { id: "wm.full",  job: "whitemage", star: 7, name: "フルケア", desc: "仲間みんなを全快にして、状態異常も治す。1回の冒険で1回だけ。", short: "フルケア", cond: { line: "whitemage" }, mp: 30, ct: 0, once: true,
+      fx: [{ t: "heal", pct: 1.0, party: true }, { t: "cure", party: true }] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });
@@ -284,7 +366,7 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, canSet: canSet, condText: condText
   };

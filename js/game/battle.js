@@ -15,7 +15,7 @@ var Battle = (function () {
     if (elem === 0) return { amount: 0, crit: false, label: "無効" };
     var crit = Math.random() < (opt.crit || 0);
     var raw = atk * mult - def * 0.5;
-    var amount = raw * elem * (0.9 + Math.random() * 0.2) * (crit ? 1.5 : 1);
+    var amount = raw * elem * (0.9 + Math.random() * 0.2) * (crit ? (opt.critMul || 1.5) : 1);   // critMul：パッシブ「急所の心得」
     amount = Math.max(1, Math.round(amount));
     var label = elem > 1 ? "弱点！" : elem < 1 ? "いまひとつ" : "";
     return { amount: amount, crit: crit, label: label };

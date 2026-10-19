@@ -196,7 +196,7 @@
       m.mp = Math.min(m.stats.mp, m.mp + Math.round(m.stats.mp * (m.stats.roomMp || 0)));
       who.push(m.name);
     });
-    if (who.length) { say(who.join("と") + "は、めいそうで少し回復した"); Sound.play("heal"); }
+    if (who.length) { say(who.join("と") + "は、少し回復した"); Sound.play("heal"); }
   }
 
   function setDoor(c, dir, ch) {
@@ -376,7 +376,7 @@
       if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
       return;
     }
-    var res = Battle.damage(e.patk * (opts.mult || 1), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });
+    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - (c.stats.cut || 0)), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });   // cut：パッシブ「守りの誓い」
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
     Sound.play("hurt");
@@ -724,7 +724,7 @@
         var sk = GameData.SKILL[id];
         if (!sk) { s.push(keys[i] + ":なし"); return; }
         var ct = c.ct[id] || 0;
-        s.push(keys[i] + ":" + sk.name + (sk.once && c.used[id] ? "(使用済)" : ct > 0 ? "(" + ct.toFixed(0) + ")" : "") + " MP" + sk.mp);
+        s.push(keys[i] + ":" + sk.name + (sk.once && c.used[id] ? "(使用済)" : ct > 0 ? "(" + ct.toFixed(0) + ")" : "") + " MP" + Combat.mpCost(c, sk));
       });
       Render.text(s.join("　"), view.w / 2, view.h - 22, { size: 7, align: "center", color: "#ffe7a0" });
       Render.text("移動 WASD/矢印　攻撃 J（押しっぱなしでも）　切替 K　メニュー Esc", view.w / 2, view.h - 11, { size: 7, align: "center", color: "#a3a8bd" });
@@ -777,7 +777,7 @@
       var sk = GameData.SKILL[c.skills[i]];
       var ct = sk ? (c.ct[sk.id] || 0) : 0;
       var label = !sk ? "なし" : (sk.once && c.used[sk.id]) ? sk.short + "\n済" : ct > 0 ? sk.short + "\n" + Math.ceil(ct) : sk.short;
-      var dim = !sk || ct > 0 || c.mp < sk.mp || (sk.once && c.used[sk.id]);
+      var dim = !sk || ct > 0 || c.mp < Combat.mpCost(c, sk) || (sk.once && c.used[sk.id]);
       if (force || label + dim !== lastLabels[i]) {
         b.textContent = label; b.classList.toggle("dim", !!dim); lastLabels[i] = label + dim;
       }

@@ -26,8 +26,7 @@ var GameState = (function () {
     g.party.forEach(function (h) {
       if (!h.equip) h.equip = { weapon: null, armor: null };
       // パッシブの枠（2026-10-19）：前はアクティブだったスキルがパッシブに変わったので、スキル1〜3から外してパッシブの枠へ
-      if (!h.pset) h.pset = [];
-      while (h.pset.length < passiveSlots(h)) h.pset.push(null);
+      fitPassiveSlots(h);
       h.learned = h.learned.filter(function (id) { return !!GameData.SKILL[id]; });
       h.set = h.set.map(function (id) {
         var sk = id && GameData.SKILL[id];
@@ -67,8 +66,28 @@ var GameState = (function () {
   // ---------- 成長 ----------
   function expNeed(level) { return 100 + 48 * level; }
   // パッシブの枠の数：基本職は2つ（上級職3・最上級職4は、上級職を作るときに）
-  function passiveSlots(h) { return 2; }
-  function stars(h, job) { return Math.min(MAX_STAR, Math.floor((h.mastery[job || h.job] || 0) / STAR_NEED)); }
+  function passiveSlots(h) { return GameData.tierOf(h.job) >= 2 ? 3 : 2; }
+  // ★1つに必要な熟練度：基本職40・上級職60（2026-10-19 決定）
+  function starNeed(job) { var t = GameData.tierOf(job); return t >= 3 ? STAR_NEED_TOP : t >= 2 ? STAR_NEED_UPPER : STAR_NEED; }
+  function stars(h, job) { job = job || h.job; return Math.min(MAX_STAR, Math.floor((h.mastery[job] || 0) / starNeed(job))); }
+  // パッシブの枠の数を、今の職に合わせる（上級職は3つ。基本職にもどると3つ目は外れる）
+  function fitPassiveSlots(h) {
+    if (!h.pset) h.pset = [];
+    var n = passiveSlots(h);
+    while (h.pset.length < n) h.pset.push(null);
+    var off = h.pset.slice(n).filter(function (x) { return x; });
+    h.pset.length = n;
+    return off.map(function (id) { return GameData.SKILL[id].name; });
+  }
+  // その職になれるか（基本職はいつでも。上級職は、もとの職の★が足りているとき）
+  function canBecome(h, job) {
+    var J = GameData.JOBS[job];
+    if (!J) return false;
+    if (GameData.tierOf(job) === 1) return true;
+    var u = GameData.UPPER_JOBS.filter(function (x) { return x.id === job; })[0];
+    if (!u) return false;
+    return u.need.every(function (n) { return stars(h, n[0]) >= n[1]; });
+  }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
 
   // 今の職業のスキルを、★の数に合わせて上から順に覚える。覚えたスキルは、空いているスキル1〜3に自動でセットする。
@@ -203,6 +222,8 @@ var GameState = (function () {
     s.rangeMul = 1 + (p.range || 0);   // 矢と魔法の玉のとどく距離
     s.healMul = 1 + (p.heal || 0);     // 回復のスキルの量
     s.roomHp = p.roomHp || 0; s.roomMp = p.roomMp || 0; // 部屋の敵を全部たおしたときの回復
+    // 上級職のパッシブ（2026-10-19）：受けるダメージ・会心のダメージ・止まっているときの物攻・MP・仲間の状態異常よけ
+    s.cut = p.cut || 0; s.critDmg = p.critDmg || 0; s.still = p.still || 0; s.mpcut = p.mpcut || 0; s.aura = p.aura || 0;
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
   }
@@ -379,6 +400,7 @@ var GameState = (function () {
   // 新しい職業で装備できない武器・防具は倉庫へ。条件に合わなくなったスキルは外す。新しい職業の1つ目のスキルはすぐ覚える。
   function changeJob(h, job) {
     if (h.job === job) return { ok: false, why: "いまの職業と同じ" };
+    if (!canBecome(h, job)) return { ok: false, why: "まだその職業にはなれない" };
     var J = GameData.JOBS[job], back = [];
     ["weapon", "armor"].forEach(function (slot) {
       var it = h.equip[slot];
@@ -387,7 +409,7 @@ var GameState = (function () {
     if (game.storage.length + back.length > STORAGE_MAX) return { ok: false, why: "倉庫がいっぱいで、装備をしまえない" };
     var moved = back.map(function (slot) { var it = h.equip[slot]; h.equip[slot] = null; game.storage.push(it); return Loot.label(it); });
     h.job = job;
-    var removed = fixSkills(h);
+    var removed = fitPassiveSlots(h).concat(fixSkills(h));
     var learned = learnSkills(h);
     save();
     return { ok: true, moved: moved, removed: removed, learned: learned };
@@ -573,7 +595,7 @@ var GameState = (function () {
     history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
-    changeJob: changeJob, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
+    changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,

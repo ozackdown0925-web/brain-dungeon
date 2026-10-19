@@ -12,13 +12,15 @@ var Combat = (function () {
   // ---------- 敵に当たる ----------
   // spec：{ stat, mult, elem, crit, status, push }、ox/oy：押し返す向きの元
   function hitEnemy(e, c, spec, ox, oy) {
-    if (e.dead) return;
+    if (e.dead) return 0;
+    var dealt = 0;
     var weapon = GameData.WEAPONS[c.weapon];
     var elem = spec.elem === "weapon" ? weapon.element : spec.elem;
     var atk = spec.stat === "m" ? Party.eff(c, "matk") : Party.eff(c, "patk");
     var def = spec.stat === "m" ? e.mdef : e.pdef * (e.status["break"] ? 0.7 : 1);
     if (spec.mult > 0) {
-      var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0) });
+      var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
+      dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;
       e.swingsTaken = (e.swingsTaken || 0) + 1;
@@ -36,7 +38,10 @@ var Combat = (function () {
       hooks.room.move(e, dx / d * push, dy / d * push);
     }
     if (e.hp <= 0) { e.dead = true; Sound.play("kill"); hooks.onKill(e); }
+    return dealt;
   }
+  // スキルで使うMP（パッシブ「MPの節約」でへる）
+  function mpCost(c, s) { return Math.round((s.mp || 0) * (1 - ((c.stats && c.stats.mpcut) || 0))); }
 
   // 扇の範囲（reach・arc）の敵に当てる
   function hitArc(c, spec, reach, arc) {
@@ -151,9 +156,10 @@ var Combat = (function () {
     if (c.status.sleep) return "眠っている";
     if (s.once && c.used[id]) return "この冒険ではもう使った";
     if ((c.ct[id] || 0) > 0) return "まだ使えない";
-    if (c.mp < s.mp) return "MPがたりない";
+    var cost = mpCost(c, s);
+    if (c.mp < cost) return "MPがたりない";
     if (s.fx[0].t === "revive" && !Party.members().some(function (m) { return m.down; })) return "倒れた仲間がいない";
-    c.mp -= s.mp;
+    c.mp -= cost;
     c.ct[id] = s.ct;
     if (s.once) c.used[id] = true;
     Battle.pop(A().x, A().y - 30, s.name, "#ffe7a0", 8);
@@ -185,6 +191,7 @@ var Combat = (function () {
         a.swing = 0.18; a.swingMax = 0.18; a.swingFlip = !a.swingFlip; a.swingArc = f.arc || w.arc || 1; a.swingReach = f.reach || w.reach || 18; a.swingColor = f.color || "#ffe7a0";
         var rch = f.reach || w.reach || 18;
         if (f.vis === "smash") effects.push({ kind: "smash", x: a.x + a.face.x * rch * 0.7, y: a.y + a.face.y * rch * 0.7, t: 0.45, max: 0.45 });
+        if (f.vis === "lance") effects.push({ kind: "lance", reach: rch, t: 0.22, max: 0.22 });
         if (f.vis === "quake") effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(ang, rch * 1.3, f.arc || 0.8), t: 0.7, max: 0.7 });
         hitArc(c, f, rch, f.arc || w.arc || 1);
         break;
@@ -230,6 +237,30 @@ var Combat = (function () {
         aimThen(c, AIM.bolt, function () {
           zones.push({ c: c, f: f, x: a.x + a.face.x * f.dist, y: a.y + a.face.y * f.dist, t: f.dur, max: f.dur, tick: 0 });
         });
+        break;
+      case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
+        var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
+        for (var st = 0; st < stepN; st++) {
+          var bx = a.x, by = a.y;
+          hooks.room.move(a, a.face.x * 3, a.face.y * 3);
+          if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.5) break;   // かべ
+          Enemies.alive().forEach(function (e) {
+            if (hitList.indexOf(e) >= 0) return;
+            var ddx = e.x - a.x, ddy = e.y - a.y;
+            if (ddx * ddx + ddy * ddy <= (e.r + a.r + 4) * (e.r + a.r + 4)) { hitList.push(e); hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, px0, py0); }
+          });
+        }
+        a.inv = Math.max(a.inv, 0.5);
+        effects.push({ kind: "trail", x0: px0, y0: py0, x1: a.x, y1: a.y, t: 0.45, max: 0.45 });
+        effects.push({ kind: "lance", reach: 22, t: 0.25, max: 0.25 });
+        break;
+      case "mpheal":
+        targets(c, f.party).forEach(function (m) {
+          var amt = Math.round(m.stats.mp * f.pct);
+          m.mp = Math.min(m.stats.mp, m.mp + amt);
+          if (m === c || m === Party.current()) Battle.pop(a.x + 10, a.y - 28, "MP+" + amt, "#a3c8ff", 9);
+        });
+        effects.push({ kind: "glow", t: 0.5, max: 0.5, color: "#5aa9ff" });
         break;
       case "heal":
         targets(c, f.party).forEach(function (m) {
@@ -323,13 +354,41 @@ var Combat = (function () {
         var dx = e.x - s.x, dy = (e.y - 3) - s.y;
         if (dx * dx + dy * dy <= (e.r + s.size + 1) * (e.r + s.size + 1)) hit = e;
       });
-      if (hit) { hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy); shots.splice(i, 1); continue; }
+      if (hit && s.spec.pierce) {   // つらぬく矢：同じ敵には1回だけ当たって、そのまま飛ぶ
+        s.hitIds = s.hitIds || [];
+        if (s.hitIds.indexOf(hit) < 0) { s.hitIds.push(hit); hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy); }
+        hit = null;
+      }
+      if (hit) {
+        if (s.spec.explode) {   // 当たると爆発：まわりの敵にもまとめて当てる
+          effects.push({ kind: "boom", x: s.x, y: s.y, r: s.spec.explode, t: 0.45, max: 0.45 });
+          Sound.play("hit");
+          hitAround(s.c, { stat: s.spec.stat, mult: s.spec.mult, elem: s.spec.elem, push: 8, color: s.spec.color }, s.x, s.y, s.spec.explode);
+        } else {
+          var got = hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy);
+          if (s.spec.drain && got > 0 && !s.c.down) {   // ドレイン：与えたダメージの一部で回復
+            var back = Math.max(1, Math.round(got * s.spec.drain));
+            s.c.hp = Math.min(s.c.stats.hp, s.c.hp + back);
+            if (s.c === Party.current()) Battle.pop(A().x, A().y - 20, "+" + back, "#6fd08c", 10);
+          }
+        }
+        shots.splice(i, 1); continue;
+      }
       if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) shots.splice(i, 1);
     }
     for (var z = zones.length - 1; z >= 0; z--) {
       var zn = zones[z];
       zn.t -= dt; zn.tick -= dt;
-      if (zn.tick <= 0) { zn.tick = zn.f.tick; hitAround(zn.c, { stat: zn.f.stat, mult: zn.f.mult, elem: zn.f.elem, push: 0 }, zn.x, zn.y, zn.f.radius); }
+      if (zn.tick <= 0) { zn.tick = zn.f.tick; hitAround(zn.c, { stat: zn.f.stat, mult: zn.f.mult, elem: zn.f.elem, push: 0, status: zn.f.status }, zn.x, zn.y, zn.f.radius); }
+      if (zn.f.pull && hooks.room) {   // ダークホール：まわりの敵を、まんなかへ吸いよせる
+        Enemies.alive().forEach(function (e) {
+          if (e.def && e.def.boss) return;
+          var dx = zn.x - e.x, dy = zn.y - e.y, d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 3 || d > zn.f.radius * 1.7) return;
+          var mv = Math.min(d - 2, zn.f.pull * dt);
+          hooks.room.move(e, dx / d * mv, dy / d * mv);
+        });
+      }
       if (zn.t <= 0) zones.splice(z, 1);
     }
     for (var k = effects.length - 1; k >= 0; k--) { effects[k].t -= dt; if (effects[k].t <= 0) effects.splice(k, 1); }
@@ -356,6 +415,7 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
+      if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）
         drawBigArrow(ctx, s, x, y, cam);
         return;
@@ -392,7 +452,7 @@ var Combat = (function () {
       var k = (i + 1) / all.length, jx = Math.sin(clock * 40 + i) * 1.5;
       glowDot(ctx, t.x - cam.x + jx, t.y - cam.y - (1 - k) * 3, 2 + 4 * k, "#ffd27a", "#ff5a1f", 0.35 * k);
     });
-    var f = 0.85 + 0.2 * Math.sin(clock * 45);
+    var f = (0.85 + 0.2 * Math.sin(clock * 45)) * Math.max(1, (s.size || 3) / 3.5);   // フレイムボムは大きい
     glowDot(ctx, x, y, 10 * f, "#fff3c4", "#ff6a1f", 0.9);
     glowDot(ctx, x + Math.sin(clock * 50) * 1.2, y - 1, 4, "#ffffff", "#ffd27a", 0.9);
     for (var i = 0; i < 3; i++) {   // 火の粉
@@ -405,6 +465,33 @@ var Combat = (function () {
   function drawZone(ctx, zn, cam) {
     var x = zn.x - cam.x, y = zn.y - cam.y, r = zn.f.radius;
     var life = Math.min(1, (zn.max - zn.t) / 0.2, zn.t / 0.3);   // 出てくるときと消えるときは、うすく
+    if (zn.f.look === "mist") {   // ポイズンミスト：ゆっくり動く緑の霧
+      for (var m = 0; m < 9; m++) {
+        var am = m / 9 * Math.PI * 2 + clock * 0.6, dm = r * (0.25 + 0.55 * ((m * 7) % 9) / 9);
+        glowDot(ctx, x + Math.cos(am) * dm, y + Math.sin(am) * dm * 0.7 - 2, r * 0.55, "#c8f0a0", "#5a9a3e", 0.35 * life);
+      }
+      for (var b2 = 0; b2 < 5; b2++) {   // 小さな泡
+        var ph = (clock * 0.8 + b2 / 5) % 1;
+        glowDot(ctx, x + Math.sin(b2 * 9) * r * 0.6, y - ph * 12, 2, "#ffffff", "#9be36a", (1 - ph) * life);
+      }
+      return;
+    }
+    if (zn.f.look === "hole") {   // ダークホール：回る闇の渦
+      var hg = ctx.createRadialGradient(x, y, 0, x, y, r);
+      hg.addColorStop(0, rgba("#000000", 0.85 * life)); hg.addColorStop(0.35, rgba("#3a1a5a", 0.6 * life)); hg.addColorStop(1, rgba("#6a3a98", 0));
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 1.5;
+      for (var k2 = 0; k2 < 4; k2++) {
+        ctx.strokeStyle = rgba(k2 % 2 ? "#c9a8ff" : "#9a5ad0", 0.7 * life);
+        ctx.beginPath();
+        for (var q2 = 0; q2 <= 16; q2++) {
+          var tq = q2 / 16, aq = k2 / 4 * Math.PI * 2 - clock * 4 + tq * 2.6, rq = r * (0.95 - tq * 0.85);
+          if (q2 === 0) ctx.moveTo(x + Math.cos(aq) * rq, y + Math.sin(aq) * rq * 0.8); else ctx.lineTo(x + Math.cos(aq) * rq, y + Math.sin(aq) * rq * 0.8);
+        }
+        ctx.stroke();
+      }
+      return;
+    }
     var base = ctx.createRadialGradient(x, y, 0, x, y, r);
     base.addColorStop(0, rgba("#ff8a3d", 0.35 * life)); base.addColorStop(1, rgba("#ff5a1f", 0));
     ctx.fillStyle = base; ctx.beginPath(); ctx.arc(x, y + 2, r, 0, Math.PI * 2); ctx.fill();
@@ -528,6 +615,23 @@ var Combat = (function () {
         var an6 = sp2 / 14 * Math.PI * 2 + ef.seed, rs = tr + 3 + 6 * q * ((sp2 * 7) % 5) / 5;
         glowDot(ctx, tx + Math.cos(an6) * rs, ty + Math.sin(an6) * rs - 4 * Math.sin(q * Math.PI), 2.5, "#ffffff", "#9fd0ff", 0.8 * p);
       }
+    } else if (ef.kind === "boom") {   // 爆発：はじける火の玉と、広がる輪と、火花
+      var ox = ef.x - cam.x, oy = ef.y - cam.y, orr = ef.r * (0.4 + 0.8 * Math.sqrt(q));
+      glowDot(ctx, ox, oy, orr, "#fff3c4", "#ff6a1f", 0.85 * p);
+      ctx.strokeStyle = rgba("#ffe7a0", 0.8 * p); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ox, oy, orr * 1.05, 0, Math.PI * 2); ctx.stroke();
+      for (var bs = 0; bs < 10; bs++) {
+        var ab = bs / 10 * Math.PI * 2 + ef.r, db = orr * (0.8 + 0.6 * q);
+        glowDot(ctx, ox + Math.cos(ab) * db, oy + Math.sin(ab) * db, 2.5, "#ffffff", "#ffb84a", p);
+      }
+    } else if (ef.kind === "lance") {   // いなずま突き・グランドチャージ：前へ一直線にのびる光
+      var lx = a.x - cam.x, ly = a.y - cam.y - 4, la = Math.atan2(a.face.y, a.face.x), lr = (ef.reach + 6) * Math.min(1, q * 2.5);
+      var nx4 = -Math.sin(la), ny4 = Math.cos(la), w4 = 3 * p;
+      ctx.fillStyle = rgba("#e8f4ff", 0.85 * p);
+      ctx.beginPath();
+      ctx.moveTo(lx + nx4 * w4, ly + ny4 * w4); ctx.lineTo(lx + Math.cos(la) * lr, ly + Math.sin(la) * lr); ctx.lineTo(lx - nx4 * w4, ly - ny4 * w4);
+      ctx.closePath(); ctx.fill();
+      glowDot(ctx, lx + Math.cos(la) * lr, ly + Math.sin(la) * lr, 6, "#ffffff", "#a8d8ff", 0.9 * p);
     } else if (ef.kind === "trail") {   // とっしん：通ったあとに残る残像と、出だしの土けむり
       var ddx = ef.x1 - ef.x0, ddy = ef.y1 - ef.y0, dl = Math.sqrt(ddx * ddx + ddy * ddy) || 1, nx3 = -ddy / dl, ny3 = ddx / dl;
       for (var g3 = 0; g3 < 4; g3++) {
@@ -618,5 +722,5 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot, mpCost: mpCost };
 })();
