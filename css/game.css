@@ -399,7 +399,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-job { font-size: 13px; color: var(--gold); margin: 8px 0 4px; font-weight: 700; }
 .sk-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn.sk-item { font-size: 14px; padding: 6px 10px; border-radius: 8px; min-width: 6.5em; text-align: left; }
-.btn.sk-item.on { border-color: var(--gold); color: var(--gold); }
+.sk-mark { color: var(--gold); font-weight: 700; }
 .btn.sk-item.sel { background: var(--pick-bg); border-color: var(--pick); box-shadow: 0 0 0 2px var(--pick) inset; }
 .btn.sk-item.ng { opacity: 0.6; }
 .btn.sk-item.locked { opacity: 0.4; border-style: dashed; }
@@ -421,7 +421,6 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .btn.job-item { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 7.5em; }
 .job-item-name { font-weight: 700; }
 .job-item-small { font-size: 11px; color: var(--muted); letter-spacing: 0; }
-.btn.sk-item.on .job-item-small { color: var(--gold); }
 .sk-v.ok, .sk-why.ok { color: #6fd08c; }
 .job-sk-head { display: block; margin-top: 8px; font-size: 13px; }
 .job-sk { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
