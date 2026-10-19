@@ -14,6 +14,16 @@ var Trial = (function () {
   };
 
   var screen = document.getElementById("trialScreen");
+  // 答えの欄の高さを、いつも画面の中におさまるようにする（下にくっつけた数字のボタンが画面の外に出ないように。2026-10-20）
+  function fitAnswer() {
+    var a = document.getElementById("trialAnswer");
+    if (!a || screen.hidden) return;
+    if (window.innerWidth <= 600) { a.style.maxHeight = ""; return; }   // せまい画面は1列（ページごとスクロール）
+    var top = Math.max(8, a.getBoundingClientRect().top);
+    a.style.maxHeight = Math.max(240, window.innerHeight - top - 8) + "px";
+  }
+  window.addEventListener("resize", fitAnswer);
+  document.addEventListener("scroll", fitAnswer, true);   // 画面のどこがスクロールしても合わせる
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
@@ -252,6 +262,7 @@ var Trial = (function () {
         renderTabs(); renderDone(); appendNext(ansBox);
       }
     });
+    fitAnswer(); setTimeout(fitAnswer, 50);
     if (saved) appendNext(ansBox);
   }
   function appendNext(card) {
