@@ -309,31 +309,32 @@ var Town = (function () {
     renderSkillTab(h, innTab === "passive");
   }
 
-  var innTab = "equip", selSkill = { active: null, passive: null };
+  var innTab = "equip", selSkill = { active: null, passive: null }, selSlot = { active: 0, passive: 0 }, onlyUsable = true;
   function slotsOf(h, passive) { return passive ? h.pset : h.set; }
   function slotName(passive, i) { return (passive ? "パッシブ" : "スキル") + (i + 1); }
 
+  // スキルのセット（2026-10-20 保護者の案）：右の上でセットする枠を選んでから、左でスキルを選ぶ。
+  // 右（枠とくわしい説明）は、左の一覧をスクロールしても見えたまま
   function renderSkillTab(h, passive) {
     var key = passive ? "passive" : "active";
     var wt = GameState.heroWeaponType(h), slots = slotsOf(h, passive);
-    // セットしているスキル
-    var setRow = el("div", "sk-setrow");
-    setRow.appendChild(el("span", "sk-setlabel", passive ? "セット中（いつも効く）" : "セット中（ボタンで使う）"));
-    slots.forEach(function (id, i) {
-      var b = button(slotName(passive, i) + "：" + (id ? GameData.SKILL[id].name : "なし"), function () { if (id) { selSkill[key] = id; render(); } },
-        "sk-slot" + (id && selSkill[key] === id ? " sel" : "") + (id ? "" : " empty"));
-      setRow.appendChild(b);
-    });
-    bodyEl.appendChild(setRow);
+    if (selSlot[key] >= slots.length) selSlot[key] = 0;
+    var si = selSlot[key];
 
-    // 左：名前だけの一覧（職ごと）。今の職でまだ覚えていないスキルは、うすく出す
+    // 左：名前だけの一覧（職ごと）
     var wrap = el("div", "sk-wrap");
     var list = el("div", "sk-list");
+    var tg = el("label", "sk-filter"), cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = onlyUsable;
+    cb.addEventListener("change", function () { onlyUsable = cb.checked; render(); });
+    tg.appendChild(cb); tg.appendChild(document.createTextNode(" いまセットできるスキルだけ出す"));
+    list.appendChild(tg);
     var shown = [];
     GameData.JOB_ORDER.concat(GameData.UPPER_ORDER).forEach(function (job) {
       var items = GameData.SKILLS.filter(function (sk) {
         if (sk.job !== job || !!sk.passive !== passive) return false;
-        return h.learned.indexOf(sk.id) >= 0 || job === h.job;
+        var got = h.learned.indexOf(sk.id) >= 0;
+        if (onlyUsable) return got && GameData.canSet(sk, h.job, wt);
+        return got || job === h.job;
       });
       if (!items.length) return;
       list.appendChild(el("div", "sk-job", GameData.JOBS[job].name));
@@ -350,14 +351,27 @@ var Town = (function () {
       });
       list.appendChild(grid);
     });
-    if (!shown.length) list.appendChild(el("p", "sub", passive ? "まだパッシブスキルを覚えていない。" : "まだスキルを覚えていない。"));
+    if (!shown.length) list.appendChild(el("p", "sub", onlyUsable ? "いまセットできるスキルがない。上のチェックを外すと、全部出る。" :
+      passive ? "まだパッシブスキルを覚えていない。" : "まだスキルを覚えていない。"));
     wrap.appendChild(list);
 
-    // 右：選んだスキルのくわしい説明とセットのボタン
-    if (shown.indexOf(selSkill[key]) < 0) selSkill[key] = slots.filter(function (x) { return x; })[0] || shown[0] || null;
+    // 右：セットする枠と、選んだスキルのくわしい説明
+    var side = el("div", "sk-side");
+    var slotBox = el("div", "sk-slots");
+    slotBox.appendChild(el("div", "sk-slots-head", passive ? "① セットする枠を選ぶ（いつも効く）" : "① セットする枠を選ぶ（ボタンで使う）"));
+    slots.forEach(function (id, i) {
+      var b = el("button", "btn sk-slot" + (i === si ? " sel" : "") + (id ? "" : " empty")); b.type = "button";
+      b.appendChild(el("span", "sk-slot-no", slotName(passive, i)));
+      b.appendChild(el("span", "sk-slot-name", id ? GameData.SKILL[id].name : "空き"));
+      b.addEventListener("click", function () { selSlot[key] = i; if (id) selSkill[key] = id; say(""); render(); });
+      slotBox.appendChild(b);
+    });
+    side.appendChild(slotBox);
+
+    if (shown.indexOf(selSkill[key]) < 0 && !(selSkill[key] && slots.indexOf(selSkill[key]) >= 0)) selSkill[key] = null;
     var det = el("div", "sk-detail");
     var sk = selSkill[key] && GameData.SKILL[selSkill[key]];
-    if (!sk) det.appendChild(el("p", "sub", "左のスキルを押すと、ここにくわしく出る。"));
+    if (!sk) det.appendChild(el("p", "sub", "② 左のスキルを押すと、ここにくわしく出る。"));
     else {
       var got = h.learned.indexOf(sk.id) >= 0, ok = got && GameData.canSet(sk, h.job, wt);
       det.appendChild(el("div", "sk-name", sk.name));
@@ -376,23 +390,25 @@ var Town = (function () {
       else if (!ok) det.appendChild(el("p", "sk-why", "いまはセットできない（" + GameData.condText(sk) + "）"));
       else {
         var row = el("div", "sk-btns");
-        slots.forEach(function (x, i) {
-          var b = button(slotName(passive, i) + "にセット", function () {
-            var done = passive ? GameState.setPassive(h, i, sk.id) : GameState.setSkill(h, i, sk.id);
-            say(done ? slotName(passive, i) + "を「" + sk.name + "」にした" : "セットできない");
-            render();
-          }, "small-btn" + (x === sk.id ? " sel" : ""));
-          row.appendChild(b);
-        });
         var at = slots.indexOf(sk.id);
+        if (at === si) row.appendChild(el("span", "sk-why ok", slotName(passive, si) + "にセット中"));
+        else row.appendChild(button(slotName(passive, si) + "にセット", function () {
+          var done = passive ? GameState.setPassive(h, si, sk.id) : GameState.setSkill(h, si, sk.id);
+          say(done ? slotName(passive, si) + "を「" + sk.name + "」にした" : "セットできない");
+          // 入れたら、次の空いている枠を選ぶ
+          if (done) { var nx = slotsOf(h, passive).indexOf(null); if (nx >= 0) selSlot[key] = nx; }
+          render();
+        }, "small-btn sk-setbtn"));
         if (at >= 0) row.appendChild(button("外す", function () {
           if (passive) GameState.setPassive(h, at, null); else GameState.setSkill(h, at, null);
+          selSlot[key] = at;
           say(slotName(passive, at) + "を外した"); render();
         }, "small-btn"));
         det.appendChild(row);
       }
     }
-    wrap.appendChild(det);
+    side.appendChild(det);
+    wrap.appendChild(side);
     bodyEl.appendChild(wrap);
   }
 
