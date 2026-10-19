@@ -183,11 +183,21 @@ var Combat = (function () {
     switch (f.t) {
       case "arc":
         a.swing = 0.18; a.swingMax = 0.18; a.swingFlip = !a.swingFlip; a.swingArc = f.arc || w.arc || 1; a.swingReach = f.reach || w.reach || 18; a.swingColor = f.color || "#ffe7a0";
-        hitArc(c, f, f.reach || w.reach || 18, f.arc || w.arc || 1);
+        var rch = f.reach || w.reach || 18;
+        if (f.vis === "smash") effects.push({ kind: "smash", x: a.x + a.face.x * rch * 0.7, y: a.y + a.face.y * rch * 0.7, t: 0.45, max: 0.45 });
+        if (f.vis === "quake") effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(ang, rch * 1.3, f.arc || 0.8), t: 0.7, max: 0.7 });
+        hitArc(c, f, rch, f.arc || w.arc || 1);
         break;
       case "around":
-        effects.push({ kind: "wave", x: a.x, y: a.y, r: f.radius, t: f.stat === "m" ? 0.5 : 0.25, max: f.stat === "m" ? 0.5 : 0.25,
-          color: f.color || "#ffe7a0", magic: f.stat === "m", seed: Math.random() * 6 });
+        if (f.vis === "spin" || f.vis === "sweep") {
+          effects.push({ kind: "spin", low: f.vis === "sweep", r: f.radius, flip: (a.swingFlip = !a.swingFlip), t: 0.3, max: 0.3,
+            color: f.vis === "sweep" ? "#ffcf8a" : "#ffe7a0" });
+        } else if (f.vis === "tidal") {
+          effects.push({ kind: "tidal", x: a.x, y: a.y, r: f.radius, t: 0.7, max: 0.7, seed: Math.random() * 6 });
+        } else {
+          effects.push({ kind: "wave", x: a.x, y: a.y, r: f.radius, t: f.stat === "m" ? 0.5 : 0.25, max: f.stat === "m" ? 0.5 : 0.25,
+            color: f.color || "#ffe7a0", magic: f.stat === "m", seed: Math.random() * 6 });
+        }
         hitAround(c, f, a.x, a.y, f.radius);
         break;
       case "dash":
@@ -196,8 +206,10 @@ var Combat = (function () {
         if (dir < 0) aimAt(150); // 下がるときは、いちばん近い敵の方を向いてから、その反対へ
         // 踏みこむときは、前にいる敵の手前で止まる（通りぬけない）
         if (dir > 0) { var front = nearestInFront(f.dist + 20, 0.6); if (front) go = Math.max(0, Math.min(go, front.dist - front.e.r - a.r - 4)); }
+        var sx0 = a.x, sy0 = a.y;
         Enemies.moveBlocked(hooks.room, a, a.face.x * go * dir, a.face.y * go * dir); // 敵はすり抜けない
         a.inv = Math.max(a.inv, 0.2);
+        effects.push({ kind: "trail", x0: sx0, y0: sy0, x1: a.x, y1: a.y, t: 0.35, max: 0.35 });   // 残像と土けむり
         break;
       case "shot":
         // 遠くへ飛ばすスキルも、ふつうの攻撃と同じく撃つ前後に少し止まる（2026-10-19 保護者の希望）
@@ -258,12 +270,13 @@ var Combat = (function () {
     var a = A();
     var tgt = nearestInFront(f.dist + 50, 0.8);
     var cx = tgt ? tgt.e.x : a.x + a.face.x * f.dist, cy = tgt ? tgt.e.y : a.y + a.face.y * f.dist;
-    effects.push({ kind: "ring", x: cx, y: cy, r: f.radius, t: 0.6, max: 0.6, color: "#e8d8b0" });
+    effects.push({ kind: "ring", x: cx, y: cy, r: f.radius, t: 0.15 + f.count * 0.12 + 0.3, max: 0.15 + f.count * 0.12 + 0.3, color: "#e8d8b0" });
     for (var m = 0; m < f.count; m++) {
-      later(0.15 + m * 0.12, function () {
+      later(0.05 + m * 0.12, function () {
         var px = cx + (Math.random() - 0.5) * f.radius * 1.4, py = cy + (Math.random() - 0.5) * f.radius * 1.4;
-        effects.push({ kind: "ring", x: px, y: py, r: 6, t: 0.2, max: 0.2, color: "#e8d8b0" });
-        hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0 }, px, py, 12);
+        // 空から矢が落ちてきて、刺さったときに当たる（2026-10-19）
+        effects.push({ kind: "arrowfall", x: px, y: py, t: 0.45, max: 0.45 });
+        later(0.12, function () { hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0 }, px, py, 12); });
       });
     }
   }
@@ -343,8 +356,8 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
-      if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：今のまま
-        ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(x, y, s.size, 0, Math.PI * 2); ctx.fill();
+      if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）
+        drawBigArrow(ctx, s, x, y, cam);
         return;
       }
       if (s.spec.elem === "fire") drawFireball(ctx, s, x, y, cam); else drawOrb(ctx, s, x, y, cam);
@@ -408,13 +421,129 @@ var Combat = (function () {
       ctx.closePath(); ctx.fill();
     }
   }
+  // 大地斬りの割れめ：前の扇の中に、ぎざぎざの線を3本（作るときに形を決める）
+  function crackLines(ang, len, arc) {
+    var out = [];
+    for (var i = 0; i < 3; i++) {
+      var a0 = ang + (i - 1) * arc * 0.55, pts = [{ d: 4, o: 0 }], n = 6;
+      for (var k = 1; k <= n; k++) pts.push({ d: 4 + len * k / n, o: (Math.random() - 0.5) * 6 });
+      out.push({ ang: a0, pts: pts });
+    }
+    return out;
+  }
+  function drawBigArrow(ctx, s, x, y, cam) {
+    var len = Math.sqrt(s.vx * s.vx + s.vy * s.vy) || 1, ux = s.vx / len, uy = s.vy / len;
+    (s.trail || []).forEach(function (t, i, all) {
+      var k = (i + 1) / all.length;
+      glowDot(ctx, t.x - cam.x, t.y - cam.y, 2 + 4 * k, "#ffffff", "#ffe066", 0.3 * k);
+    });
+    glowDot(ctx, x, y, 9, "#ffffff", "#ffe066", 0.6);
+    ctx.strokeStyle = "#fff3c4"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * 13, y - uy * 13); ctx.stroke();
+    ctx.lineCap = "butt";
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.moveTo(x + ux * 4, y + uy * 4); ctx.lineTo(x - uy * 3, y + ux * 3); ctx.lineTo(x + uy * 3, y - ux * 3); ctx.closePath(); ctx.fill();
+  }
   function drawEffect(ctx, ef, a, cam) {
     var p = ef.t / ef.max, q = 1 - p;   // p：のこり、q：すすみぐあい
-    if (ef.kind === "ring") {   // 矢の雨の印（今のまま）
-      ctx.globalAlpha = Math.max(0, p);
-      ctx.strokeStyle = ef.color; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ef.x - cam.x, ef.y - cam.y - 3, ef.r * (1.1 - p * 0.3), 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
+    if (ef.kind === "ring") {   // 矢の雨のねらう場所：地面のうすい輪
+      ctx.strokeStyle = rgba(ef.color, 0.5 * Math.min(1, p * 3)); ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.ellipse) ctx.ellipse(ef.x - cam.x, ef.y - cam.y, ef.r, ef.r * 0.6, 0, 0, Math.PI * 2); else ctx.arc(ef.x - cam.x, ef.y - cam.y, ef.r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (ef.kind === "arrowfall") {   // 矢の雨：空から落ちてきて刺さる
+      var fx0 = ef.x - cam.x, fy0 = ef.y - cam.y, fall = Math.min(1, q / 0.27);
+      if (fall < 1) {
+        var yy = fy0 - 50 * (1 - fall);
+        var tl = ctx.createLinearGradient(0, yy - 26, 0, yy);   // 落ちてくる光の尾
+        tl.addColorStop(0, "rgba(255,255,255,0)"); tl.addColorStop(1, "rgba(255,246,220,0.7)");
+        ctx.fillStyle = tl; ctx.fillRect(fx0 - 1.5, yy - 26, 3, 26);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(fx0 + 1, yy - 12); ctx.lineTo(fx0, yy); ctx.stroke();
+        glowDot(ctx, fx0, yy, 5, "#ffffff", "#ffe7a0", 0.7);
+      } else {
+        var st = (q - 0.27) / 0.73;   // 刺さった矢と、土けむり
+        ctx.strokeStyle = rgba("#ffffff", 1 - st); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(fx0 + 1, fy0 - 8); ctx.lineTo(fx0, fy0); ctx.stroke();
+        for (var dd0 = 0; dd0 < 4; dd0++) glowDot(ctx, fx0 + (dd0 - 1.5) * 3 * (1 + st * 2), fy0 - st * 3, 3, "#d8c8a0", "#8a6840", 0.6 * (1 - st));
+      }
+    } else if (ef.kind === "spin") {   // 回転ぎり・足ばらい：自分のまわりを一回転する光
+      var spx = a.x - cam.x, spy = a.y - cam.y + (ef.low ? 3 : -3);
+      drawSlash(ctx, spx, spy, a.face, Math.PI, ef.r - 4, ef.color, q / 0.85, ef.flip);
+      if (ef.low) for (var du = 0; du < 6; du++) {   // 足もとの土けむり
+        var an0 = du / 6 * Math.PI * 2 + q * 4;
+        glowDot(ctx, spx + Math.cos(an0) * ef.r * 0.8, spy + 2 + Math.sin(an0) * ef.r * 0.4, 4, "#e8d8b0", "#8a6840", 0.5 * p);
+      }
+    } else if (ef.kind === "smash") {   // かぶと割り：上からたたきつける光と、地面の衝撃
+      var smx = ef.x - cam.x, smy = ef.y - cam.y;
+      if (q < 0.25) {
+        var dk = q / 0.25, top = smy - 34 + 30 * dk;
+        var lg = ctx.createLinearGradient(0, smy - 34, 0, top + 4);
+        lg.addColorStop(0, rgba("#ffe7a0", 0)); lg.addColorStop(1, rgba("#ffffff", 0.95));
+        ctx.fillStyle = lg; ctx.fillRect(smx - 2, smy - 34, 4, top + 4 - (smy - 34));
+      } else {
+        var sk = (q - 0.25) / 0.75;
+        glowDot(ctx, smx, smy, 8 + 6 * (1 - sk), "#ffffff", "#ffb84a", 0.9 * (1 - sk));
+        ctx.strokeStyle = rgba("#ffe7a0", 0.8 * (1 - sk)); ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.ellipse) ctx.ellipse(smx, smy + 2, 4 + 18 * sk, 2 + 8 * sk, 0, 0, Math.PI * 2); else ctx.arc(smx, smy + 2, 4 + 18 * sk, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = rgba("#ffffff", 1 - sk); ctx.lineWidth = 1.5; ctx.lineCap = "round";
+        for (var rr = 0; rr < 6; rr++) {
+          var an4 = -Math.PI / 2 + (rr - 2.5) * 0.45, r0 = 4 + 6 * sk, r1 = r0 + 7;
+          ctx.beginPath(); ctx.moveTo(smx + Math.cos(an4) * r0, smy + Math.sin(an4) * r0); ctx.lineTo(smx + Math.cos(an4) * r1, smy + Math.sin(an4) * r1); ctx.stroke();
+        }
+        ctx.lineCap = "butt";
+      }
+    } else if (ef.kind === "crack") {   // 大地斬り：地面に走る光の割れめ
+      var cx0 = ef.x - cam.x, cy0 = ef.y - cam.y + 2, grow = Math.min(1, q / 0.35), fade2 = q < 0.6 ? 1 : 1 - (q - 0.6) / 0.4;
+      ef.lines.forEach(function (ln) {
+        var ca = Math.cos(ln.ang), sa = Math.sin(ln.ang), upto = Math.max(1, Math.round((ln.pts.length - 1) * grow));
+        [[4, rgba("#ff8a3d", 0.35 * fade2)], [1.5, rgba("#fff3c4", 0.95 * fade2)]].forEach(function (pen) {
+          ctx.strokeStyle = pen[1]; ctx.lineWidth = pen[0]; ctx.lineJoin = "round";
+          ctx.beginPath();
+          for (var i = 0; i <= upto; i++) {
+            var pt = ln.pts[i], px2 = cx0 + ca * pt.d - sa * pt.o, py2 = cy0 + sa * pt.d * 0.8 + ca * pt.o;
+            if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+          }
+          ctx.stroke();
+        });
+        var end = ln.pts[upto];
+        glowDot(ctx, cx0 + ca * end.d, cy0 + sa * end.d * 0.8, 7, "#ffe7a0", "#8a6840", 0.6 * fade2);
+      });
+      ctx.lineJoin = "miter";
+    } else if (ef.kind === "tidal") {   // タイダルウェーブ：まわりに広がる水の波としぶき
+      var tx = ef.x - cam.x, ty = ef.y - cam.y - 2, tr = ef.r * (0.25 + 0.85 * Math.sqrt(q));
+      var tg2 = ctx.createRadialGradient(tx, ty, tr * 0.6, tx, ty, tr);
+      tg2.addColorStop(0, rgba("#5aa9ff", 0)); tg2.addColorStop(0.7, rgba("#5aa9ff", 0.4 * p + 0.1)); tg2.addColorStop(0.92, rgba("#cfe8ff", 0.7 * p)); tg2.addColorStop(1, rgba("#5aa9ff", 0));
+      ctx.fillStyle = tg2; ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rgba("#ffffff", 0.75 * p); ctx.lineWidth = 1.5;   // 波がしら（ゆれる白い線）
+      ctx.beginPath();
+      for (var w2 = 0; w2 <= 36; w2++) {
+        var an5 = w2 / 36 * Math.PI * 2, rw = tr * 0.9 + Math.sin(an5 * 8 + ef.seed + q * 10) * 2;
+        if (w2 === 0) ctx.moveTo(tx + Math.cos(an5) * rw, ty + Math.sin(an5) * rw); else ctx.lineTo(tx + Math.cos(an5) * rw, ty + Math.sin(an5) * rw);
+      }
+      ctx.stroke();
+      for (var sp2 = 0; sp2 < 14; sp2++) {   // しぶき
+        var an6 = sp2 / 14 * Math.PI * 2 + ef.seed, rs = tr + 3 + 6 * q * ((sp2 * 7) % 5) / 5;
+        glowDot(ctx, tx + Math.cos(an6) * rs, ty + Math.sin(an6) * rs - 4 * Math.sin(q * Math.PI), 2.5, "#ffffff", "#9fd0ff", 0.8 * p);
+      }
+    } else if (ef.kind === "trail") {   // とっしん：通ったあとに残る残像と、出だしの土けむり
+      var ddx = ef.x1 - ef.x0, ddy = ef.y1 - ef.y0, dl = Math.sqrt(ddx * ddx + ddy * ddy) || 1, nx3 = -ddy / dl, ny3 = ddx / dl;
+      for (var g3 = 0; g3 < 4; g3++) {
+        var k3 = g3 / 4, gx3 = ef.x0 + ddx * k3 - cam.x, gy3 = ef.y0 + ddy * k3 - cam.y - 6;
+        glowDot(ctx, gx3, gy3, 9, "#ffffff", "#a8d8ff", 0.6 * p * (0.4 + k3));
+      }
+      ctx.strokeStyle = rgba("#ffffff", 0.8 * p); ctx.lineWidth = 1.5; ctx.lineCap = "round";   // 走ったあとの白い線
+      [-5, 0, 5].forEach(function (o, i) {
+        var s0 = 0.15 + i * 0.1 + q * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(ef.x0 + ddx * s0 + nx3 * o - cam.x, ef.y0 + ddy * s0 + ny3 * o - cam.y - 6);
+        ctx.lineTo(ef.x0 + ddx * 0.95 + nx3 * o - cam.x, ef.y0 + ddy * 0.95 + ny3 * o - cam.y - 6);
+        ctx.stroke();
+      });
+      ctx.lineCap = "butt";
+      for (var d3 = 0; d3 < 4; d3++) glowDot(ctx, ef.x0 - cam.x + (d3 - 1.5) * 4 * (1 + q), ef.y0 - cam.y + 4 - q * 4, 4, "#e8d8b0", "#8a6840", 0.5 * p);
     } else if (ef.kind === "wave") {   // まわりの敵に：広がる光の輪（魔法は、ただよう光の粒も）
       var x = ef.x - cam.x, y = ef.y - cam.y - 3, r = ef.r * (0.35 + 0.75 * Math.sqrt(q));
       var g = ctx.createRadialGradient(x, y, r * 0.55, x, y, r);
@@ -489,5 +618,5 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot };
 })();

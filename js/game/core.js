@@ -382,6 +382,7 @@
     Sound.play("hurt");
     if (opts.big) Battle.pop(A.x, A.y - 40, "大ダメージ！", "#ef5b5b", 9);
     A.inv = opts.big ? 0.8 : 0.35;
+    A.hurtT = 0.3;   // 当たったとき、少し赤く光る（2026-10-19）
     var fell = Party.hurtActive(res.amount);
     var st = opts.status || e.def.onHit;
     if (!fell && st && Math.random() < st.chance) Party.addStatus(c, st.type, st.dur);
@@ -400,6 +401,7 @@
     A.wait = Math.max(0, A.wait - dt);
     A.swing = Math.max(0, A.swing - dt);
     A.inv = Math.max(0, A.inv - dt);
+    A.hurtT = Math.max(0, (A.hurtT || 0) - dt);
     A.busy = Math.max(0, A.busy - dt);
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
@@ -739,6 +741,8 @@
     var c = Party.current();
     var px = Math.round(A.x - cam.x), py = Math.round(A.y - cam.y);
     var ctx = Render.ctx;
+    // 攻撃を受けたとき：キャラのまわりが少し赤く光る（2026-10-19）
+    if (A.hurtT > 0) Combat.glowDot(ctx, px, py - 6, 16, "#ffffff", "#ef3b3b", 0.75 * A.hurtT / 0.3);
     if (A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
     Render.rect(px - 6, py + 5, 12, 3, "rgba(0,0,0,0.35)");
     // 段階7-2b：ドット絵（sprites.js）。歩く・走る・攻撃でコマを変える
