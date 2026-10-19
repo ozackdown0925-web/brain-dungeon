@@ -3,6 +3,7 @@
 // 数字は docs/draft.md 1.1（成長の速さ）。iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var GameState = (function () {
   var STAR_NEED = 40;  // 基本職：★1つに必要な熟練度
+  var STAR_NEED_UPPER = 60, STAR_NEED_TOP = 80; // 上級職・最上級職（2026-10-19 決定。上級職を作るときに使う）
   var MAX_STAR = 7;    // 基本職の★の数（スキルの数と同じ）
   var MAX_LEVEL = 100;
   var SAVE_KEY = "brain-dungeon-save-v1";       // iPad の中の控え（こまめに書きかえる）
@@ -566,7 +567,7 @@ var GameState = (function () {
   }
 
   return {
-    STAR_NEED: STAR_NEED, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
+    STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,
