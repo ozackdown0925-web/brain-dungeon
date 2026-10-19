@@ -42,6 +42,7 @@ var Party = (function () {
     c.buffs.forEach(function (b) { if (b.stat === stat) add += b.pct; });
     if (stat === "wait") return Math.max(0.3, (1 + add) * (c.stats.waitMul || 1)); // waitMul：パッシブ「身軽」
     if (stat === "crit") return c.stats.crit + add;
+    if (stat === "patk" && c.stats.still && actor.move < 0.1) add += c.stats.still;   // パッシブ「狙撃の構え」：止まっているあいだ
     return c.stats[stat] * (1 + add);
   }
 
@@ -100,6 +101,10 @@ var Party = (function () {
   }
 
   function addStatus(c, type, dur) {
+    // パッシブ「聖なる守り」：それをつけた仲間がいれば、毒・しびれ・眠りにかかりにくい（2026-10-19）
+    var aura = 0;
+    members.forEach(function (m) { if (!m.down && m.stats && m.stats.aura > aura) aura = m.stats.aura; });
+    if (aura && Math.random() < aura) { Battle.pop(actor.x, actor.y - 28, "ふせいだ", "#ffffff", 8); return; }
     if (type === "poison") c.status.poison = { t: dur, tick: 2 };
     else c.status[type] = { t: dur };
     Battle.pop(actor.x, actor.y - 28, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);

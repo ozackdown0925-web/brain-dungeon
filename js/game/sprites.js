@@ -19,8 +19,31 @@ var Sprites = (function () {
     L: "#6a3a98", M: "#3a1a5a", N: "#9a5ad0",   // むらさき（魔法使い）
     O: "#2a5a2e", Q: "#4e8a40", R: "#7aaa4a",   // 緑（狩人）
     T: "#8595a1", U: "#c8ccd4",                 // 白い布の影（僧侶）
-    V: "#a04a14", W: "#f8a040"                  // オレンジの道着（格闘家）
+    V: "#a04a14", W: "#f8a040",                 // オレンジの道着（格闘家）
+    // 上級職（2026-10-19）
+    S: "#5a6078", X: "#5a1424", Y: "#2a1838", Z: "#8a2a4a",   // 鉄の影・暗い赤・黒むらさき・えんじ
+    g: "#6a5038", h: "#9a7a50", s: "#3a4a3e"                  // 革（こげ茶・茶）・暗い緑
   };
+  // 上級職の見た目（2026-10-19）：もとの職の地図をもとに、色をおきかえる（1〜4 の髪も、かぶとやフードにおきかえる）
+  //  騎士：銀のよろいと銀のかぶと（赤いマントはそのまま）
+  //  黒魔道士：黒むらさきとえんじのフードとローブ
+  //  スナイパー：暗い緑のフードと、革の服
+  //  修行僧：赤い道着と、金のはちまき
+  //  白魔道士：白いフードと、おでこの赤いふち
+  //  rows：その行だけ色をおきかえる（騎士のかぶとのふち・白魔道士のフードのふち。2026-10-19）
+  var LOOK = {
+    knight:    { from: "warrior", swap: { I: "U", J: "T", "1": "U", "2": "T", "3": "S", "4": "H" },
+                 // かぶとの上の赤い羽かざり：[x, y, 色]（向きごと）
+                 add: { down: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]], up: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]],
+                        side: [[6, 0, "K"], [7, 0, "K"], [8, 0, "K"], [5, 0, "A"], [9, 0, "A"]] },
+                 rows: { down: { 5: { "1": "S", "2": "S", "3": "S", "4": "S" } }, side: { 5: { "1": "S", "2": "S", "3": "S", "4": "S" } } } },
+    blackmage: { from: "mage",    swap: { L: "Y", N: "Z", M: "A" } },
+    sniper:    { from: "hunter",  swap: { O: "s", Q: "g", R: "h", "1": "O", "2": "s", "3": "A", "4": "Q" } },
+    monk:      { from: "fighter", swap: { W: "K", V: "X", K: "B" }, body: { F: "Z" } },   // body：12行めから下（道着）だけおきかえる
+    whitemage: { from: "priest",  swap: { I: "K", J: "X", "1": "H", "2": "U", "3": "T", "4": "H" },
+                 rows: { down: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } }, side: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } } } }
+  };
+  function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
     ["#b08050", "#704626", "#3e2414", "#e8d0a8"],   // 0 茶
@@ -495,13 +518,19 @@ var Sprites = (function () {
   }
 
   function paint(job, hairId, dir, frame) {
-    var g = frameMap(job, dir, frame);
+    var g = frameMap(baseJob(job), dir, frame);
+    var lk = LOOK[job] || null, sw = lk ? lk.swap : null, bodySw = lk ? lk.body : null;
+    if (lk && lk.add && lk.add[dir]) lk.add[dir].forEach(function (pt) { if (g[pt[1]][pt[0]] === ".") g[pt[1]][pt[0]] = pt[2]; });
     var hair = HAIR[(hairId | 0) % HAIR.length];
     var cv = document.createElement("canvas"); cv.width = SW; cv.height = SH;
     var ctx = cv.getContext("2d");
     var flip = dir === "side";   // 地図は左向き。絵は右向きにする
     for (var y = 0; y < SH; y++) for (var x = 0; x < SW; x++) {
       var ch = g[y][x], col = null;
+      var rw = lk && lk.rows && lk.rows[dir] ? lk.rows[dir][y] : null;
+      if (rw && rw[ch]) ch = rw[ch];
+      else if (bodySw && y >= 12 && bodySw[ch]) ch = bodySw[ch];
+      else if (sw && sw[ch]) ch = sw[ch];
       if (ch >= "1" && ch <= "4") col = hair[ch.charCodeAt(0) - 49];
       else if (PAL[ch]) col = PAL[ch];
       if (!col) continue;
@@ -549,6 +578,12 @@ var Sprites = (function () {
       bar(ctx, hx, hy, dx, dy, 11, 1, WCOL.wood);
       var ax = hx + dx * 8, ay = hy + dy * 8;
       for (var i = 0; i < 4; i++) bar(ctx, ax + dx * i, ay + dy * i, -dy * (sx || 1), dx * (sx || 1), 4 - Math.abs(i - 1.5) > 2 ? 4 : 3, 1, WCOL.blade);
+    }
+    if (weapon === "spear") {   // 槍（2026-10-19）：長い木の柄と、銀の穂先
+      bar(ctx, hx - dx * 4, hy - dy * 4, dx, dy, 15, 1, WCOL.wood);
+      var sx2 = hx + dx * 11, sy2 = hy + dy * 11;
+      bar(ctx, sx2, sy2, dx, dy, 4, 1, WCOL.blade);
+      px(ctx, sx2 - dy, sy2 + dx, WCOL.blade[1]); px(ctx, sx2 + dy, sy2 - dx, WCOL.blade[1]);
     }
     if (weapon === "staff") { bar(ctx, hx - dx * 3, hy - dy * 3, dx, dy, 14, 1, WCOL.wood); var gx = hx + dx * 11, gy = hy + dy * 11; px(ctx, gx, gy, WCOL.gem[1]); px(ctx, gx + 1, gy, WCOL.gem[0]); px(ctx, gx, gy - 1, WCOL.gem[2]); px(ctx, gx + 1, gy - 1, WCOL.gem[1]); }
     if (weapon === "bow") {

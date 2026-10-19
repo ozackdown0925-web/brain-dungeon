@@ -330,7 +330,7 @@ var Town = (function () {
     var wrap = el("div", "sk-wrap");
     var list = el("div", "sk-list");
     var shown = [];
-    GameData.JOB_ORDER.forEach(function (job) {
+    GameData.JOB_ORDER.concat(GameData.UPPER_ORDER).forEach(function (job) {
       var items = GameData.SKILLS.filter(function (sk) {
         if (sk.job !== job || !!sk.passive !== passive) return false;
         return h.learned.indexOf(sk.id) >= 0 || job === h.job;
@@ -410,7 +410,7 @@ var Town = (function () {
     });
     bodyEl.appendChild(tabs);
     var lead = { base: "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。",
-                 upper: "上級職は、もとの職の★で開く（これから作る。今は、なるための条件と今の★が見られる）。",
+                 upper: "上級職は、もとの職の★で開く。もとの職のスキルもセットできる。パッシブは3つまで（組み合わせの上級職は、これから作る）。",
                  top: "最上級職は、上級職から一段上がる（これから作る）。" }[jobTab];
     bodyEl.appendChild(el("p", "sub", lead));
     var wrap = el("div", "sk-wrap"), list = el("div", "sk-list"), det = el("div", "sk-detail");
@@ -445,10 +445,14 @@ var Town = (function () {
     var j = selJob.base, J = GameData.JOBS[j], st = GameState.stars(h, j), m = h.mastery[j] || 0;
     det.appendChild(el("div", "sk-name", J.name));
     det.appendChild(el("div", "sk-kind", "基本職" + (j === h.job ? "　いまの職業" : "")));
-    detLine(det, "熟練度", starText(st) + "　" + m + (st < GameState.MAX_STAR ? "（次の★まで " + ((st + 1) * GameState.STAR_NEED - m) + "）" : "（極めた！）"));
+    detLine(det, "熟練度", starText(st) + "　" + m + (st < GameState.MAX_STAR ? "（次の★まで " + ((st + 1) * GameState.starNeed(j) - m) + "）" : "（極めた！）"));
     detLine(det, "装備", J.weapons.map(function (w) { return GameData.WEAPONS[w].name; }).join("・") + "／" + GameData.ARMORS[J.armor].name);
     detLine(det, "伸びる", growthText(J.growth) + "（レベルが上がるとき）");
-    // 覚えるスキル（覚えたものは明るく）
+    jobSkillsAndButton(h, j, det);
+  }
+  // 覚えるスキル（覚えたものは明るく）と、転職のボタン
+  function jobSkillsAndButton(h, j, det) {
+    var J = GameData.JOBS[j];
     det.appendChild(el("div", "sk-k job-sk-head", "覚えるスキル"));
     var chips = el("div", "job-sk");
     GameData.SKILLS.filter(function (sk) { return sk.job === j; }).forEach(function (sk) {
@@ -458,13 +462,14 @@ var Town = (function () {
     det.appendChild(chips);
     det.appendChild(el("p", "sk-kind", "黄色の名前はパッシブ。うすい名前は、まだ覚えていない。"));
     if (j === h.job) { det.appendChild(el("p", "sk-why ok", "いまの職業")); return; }
+    if (!GameState.canBecome(h, j)) { det.appendChild(el("p", "sk-why", "まだなれない")); return; }
     var row = el("div", "sk-btns");
     row.appendChild(button(J.name + "に転職する", function () {
       var r = GameState.changeJob(h, j);
       if (!r.ok) { say(r.why); return; }
       var t = h.name + "は" + J.name + "になった！";
       if (r.moved.length) t += "　装備できない「" + r.moved.join("」「") + "」は倉庫へ。";
-      if (r.removed.length) t += "　スキル「" + r.removed.join("」「") + "」は条件に合わないので外した。";
+      if (r.removed.length) t += "　スキル「" + r.removed.join("」「") + "」は外した。";
       if (r.learned.length) t += "　スキル「" + r.learned.join("」「") + "」を覚えた！";
       say(t); render();
     }, "small-btn"));
@@ -480,8 +485,11 @@ var Town = (function () {
       list.appendChild(el("div", "sk-job", grp[0]));
       var grid = el("div", "sk-grid");
       U.filter(function (u) { return u.need.length === grp[1]; }).forEach(function (u) {
-        var done = upperDone(h, u);
-        grid.appendChild(jobItem(u.name, done ? "条件そろった" : "まだ", (done ? "ready" : "wait") + (selJob.upper === u.name ? " sel" : ""), function () { selJob.upper = u.name; say(""); render(); }));
+        var done = upperDone(h, u), made = !!u.id;
+        var small = made && (h.mastery[u.id] || h.job === u.id) ? starText(GameState.stars(h, u.id)) : done ? (made ? "なれる！" : "条件そろった") : "まだ";
+        var it = jobItem(u.name, small, (done ? "ready" : "wait") + (selJob.upper === u.name ? " sel" : ""), function () { selJob.upper = u.name; say(""); render(); });
+        if (u.id && u.id === h.job) { var nm = it.querySelector(".job-item-name"); nm.insertBefore(el("span", "sk-mark", "E"), nm.firstChild); }
+        grid.appendChild(it);
       });
       list.appendChild(grid);
     });
@@ -494,7 +502,11 @@ var Town = (function () {
       detLine(det, i ? "" : "条件", GameData.JOBS[n[0]].name + " ★" + n[1] + "（いま★" + st + "）" + (st >= n[1] ? " ✓" : ""), st >= n[1] ? "ok" : "");
     });
     detLine(det, "装備", u.arms);
-    det.appendChild(el("p", "sk-why" + (done ? " ok" : ""), done ? "条件はそろった（上級職は、これから作る）" : "まだなれない"));
+    if (!u.id) { det.appendChild(el("p", "sk-why" + (done ? " ok" : ""), done ? "条件はそろった（この職は、これから作る）" : "まだなれない")); return; }
+    var st2 = GameState.stars(h, u.id), m2 = h.mastery[u.id] || 0;
+    detLine(det, "熟練度", starText(st2) + "　" + m2 + (st2 < GameState.MAX_STAR ? "（次の★まで " + ((st2 + 1) * GameState.starNeed(u.id) - m2) + "）" : "（極めた！）"));
+    detLine(det, "パッシブ", "3つまでセットできる");
+    jobSkillsAndButton(h, u.id, det);
   }
   function jobTop(h, list, det) {
     var T = GameData.TOP_JOBS;
@@ -581,7 +593,8 @@ var Town = (function () {
     ["拠点", ["宿屋：仲間のようす・装備・スキルのセット", "お店：薬とふつうの装備を買う", "鍛冶屋：装備を強くする", "転職の神殿：職業を変える",
       "倉庫：装備・道具・素材を見る", "書庫：モンスター図鑑・装備図鑑・称号の棚"]],
     ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。", "スキルは2種類：アクティブ（ボタンで使う。3つまで）と、パッシブ（セットしておくと、いつも効く。2つまで）。パッシブは、ほかの職で覚えたものもつけられる。",
-      "★7 で職業を極めると、上級職への道が開く。"]]
+      "★7 で職業を極めると、上級職（騎士・黒魔道士・スナイパー・修行僧・白魔道士）になれる。転職の神殿の「上級職」から。",
+      "上級職は、もとの職のスキルもセットできる。パッシブは3つまで。★は少し上がりにくい。"]]
   ];
   function renderHelp() {
     HELP.forEach(function (sec) {
