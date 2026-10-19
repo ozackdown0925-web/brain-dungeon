@@ -3,6 +3,7 @@
 var Enemies = (function () {
   var list = [];
   var arrows = [];
+  var fxs = [];     // 敵の攻撃の見た目（剣の斬り・かみつき・針。2026-10-19）
 
   // depth：強さの深さ（docs/draft.md 2。深さ d で HP ×(1＋0.12×(d−1))、攻撃 ×(1＋0.10×(d−1))）。省くと1。
   function spawn(type, x, y, depth) {
@@ -20,7 +21,7 @@ var Enemies = (function () {
     return e;
   }
 
-  function clear() { list.length = 0; arrows.length = 0; Bosses.clear(); }
+  function clear() { list.length = 0; arrows.length = 0; fxs.length = 0; Bosses.clear(); }
 
   // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
   function addArrow(e, angle, speed, opts) {
@@ -66,12 +67,14 @@ var Enemies = (function () {
   var hooksRoom = null;   // 攻撃のときにふみこむために、今の部屋を覚えておく
   function update(dt, room, p, hurt, onKill) {
     hooksRoom = room;
+    updateFx(dt);
     list.forEach(function (e) {
       e.flash = Math.max(0, e.flash - dt);
       e.lash = Math.max(0, (e.lash || 0) - dt);
       e.sweep = Math.max(0, (e.sweep || 0) - dt);
       e.pollenFx = Math.max(0, (e.pollenFx || 0) - dt);
       e.puff = Math.max(0, (e.puff || 0) - dt);
+      e.thrust = Math.max(0, (e.thrust || 0) - dt);
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
@@ -185,8 +188,12 @@ var Enemies = (function () {
       if (gap < 0) { hooksRoom.move(e, -e.aim.x * Math.min(stepped, -gap), -e.aim.y * Math.min(stepped, -gap)); gap = 0; }
     }
     if (!p.down && gap <= d.reach + 2) hurt(e, p.x, p.y - 8);
-    if (d.kind === "vine") e.lash = 0.25;
+    if (d.kind === "vine") e.lash = 0.3;
     if (d.kind === "spore") e.puff = 0.45;   // 胞子の雲を少しのあいだ見せる
+    // 攻撃の見た目（2026-10-19）：剣士は赤い斬り、子オオカミはかみつき、蜂は針、槍兵は槍をつき出す
+    if (d.kind === "spear") e.thrust = 0.22;
+    else if (d.kind === "melee") fxs.push({ kind: e.type === "wolf_pup" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
+    else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
 
   // キャラを動かす。生きている敵にめりこむ方向には進めない（すり抜けない）。
@@ -237,8 +244,10 @@ var Enemies = (function () {
       var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
       var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
-        // 槍：木の柄と、鉄の穂先
-        var ex = hx + e.face.x * 16, ey = hy + e.face.y * 16;
+        // 槍：木の柄と、鉄の穂先。突くときは前へのびる（2026-10-19）
+        var ext = e.thrust > 0 ? Math.sin((1 - e.thrust / 0.22) * Math.PI) * (d.reach - 10) : 0;
+        var ex = hx + e.face.x * (16 + ext), ey = hy + e.face.y * (16 + ext);
+        if (ext > 2) { ctx.strokeStyle = "rgba(255,200,190,0.5)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx + e.face.x * 10, hy + e.face.y * 10); ctx.lineTo(ex, ey); ctx.stroke(); }
         ctx.strokeStyle = "#7a5230"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(hx - e.face.x * 4, hy - e.face.y * 4); ctx.lineTo(ex, ey); ctx.stroke();
         Render.rect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2, "#c8ccd4");
@@ -267,10 +276,17 @@ var Enemies = (function () {
         ctx.beginPath(); ctx.moveTo(hx + Math.cos(ang - 1.2) * 5, hy + Math.sin(ang - 1.2) * 5); ctx.lineTo(hx + Math.cos(ang + 1.2) * 5, hy + Math.sin(ang + 1.2) * 5); ctx.stroke();
       }
       if (d.kind === "vine" && e.lash > 0) {
-        // つるをのばす
-        ctx.strokeStyle = "#2a5a2e"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x, y - 2);
-        ctx.lineTo(x + e.face.x * (10 + d.reach), y - 2 + e.face.y * (10 + d.reach)); ctx.stroke();
+        // つるをのばす：しなりながら伸びて、もどる（2026-10-19）
+        var lk = 1 - e.lash / 0.3, reachK = Math.sin(Math.min(1, lk * 1.4) * Math.PI * 0.5) * (lk > 0.7 ? 1 - (lk - 0.7) / 0.3 * 0.6 : 1);
+        var L = (10 + d.reach) * reachK, nx = -e.face.y, ny = e.face.x, bend = Math.sin(lk * Math.PI * 2) * 8;
+        var tx2 = x + e.face.x * L, ty2 = y - 2 + e.face.y * L, cx2 = x + e.face.x * L * 0.5 + nx * bend, cy2 = y - 2 + e.face.y * L * 0.5 + ny * bend;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#1e3f22"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(cx2, cy2, tx2, ty2); ctx.stroke();
+        ctx.strokeStyle = "#5a9a4e"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(cx2, cy2, tx2, ty2); ctx.stroke();
+        ctx.lineCap = "butt";
+        Render.rect(Math.round(tx2) - 2, Math.round(ty2) - 2, 4, 3, "#8fd07a");   // 先の葉
       }
       // 状態異常の印
       var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
@@ -291,6 +307,7 @@ var Enemies = (function () {
       }
     });
     ctx.globalAlpha = 1;
+    fxs.forEach(function (f) { drawFx(ctx, f, cam); });
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
@@ -299,6 +316,27 @@ var Enemies = (function () {
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();
     });
   }
+
+  // 敵の攻撃の見た目
+  function drawFx(ctx, f, cam) {
+    var e = f.e, x = e.x - cam.x, y = e.y - cam.y - 3, k = 1 - f.t / f.max, p = f.t / f.max;
+    if (f.kind === "slash") {
+      Combat.drawSlash(ctx, x, y, f.aim, 0.9, f.reach + e.r + 2, "#ff7a6a", k, f.flip);
+    } else if (f.kind === "bite") {   // かみつき：上と下のきばが、前で閉じる
+      var bx = x + f.aim.x * (e.r + f.reach * 0.7), by = y + f.aim.y * (e.r + f.reach * 0.7), gap = 6 * (1 - Math.min(1, k * 1.6));
+      ctx.strokeStyle = "rgba(255,255,255," + p.toFixed(2) + ")"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(bx, by - gap, 5, 0.3, Math.PI - 0.3); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx, by + gap, 5, Math.PI + 0.3, Math.PI * 2 - 0.3); ctx.stroke();
+      ctx.lineCap = "butt";
+      if (k > 0.5) Combat.glowDot(ctx, bx, by, 6, "#ffffff", "#ff7a6a", 0.7 * p);
+    } else if (f.kind === "sting") {  // 針：前へ、黄色い光がすっと出る
+      var L = (e.r + f.reach) * Math.min(1, k * 1.8);
+      ctx.strokeStyle = "rgba(255,230,120," + p.toFixed(2) + ")"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x + f.aim.x * 4, y + f.aim.y * 4); ctx.lineTo(x + f.aim.x * L, y + f.aim.y * L); ctx.stroke();
+      Combat.glowDot(ctx, x + f.aim.x * L, y + f.aim.y * L, 4, "#ffffff", "#ffe066", 0.8 * p);
+    }
+  }
+  function updateFx(dt) { for (var i = fxs.length - 1; i >= 0; i--) { fxs[i].t -= dt; if (fxs[i].t <= 0) fxs.splice(i, 1); } }
 
   return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, list: list, update: update, draw: draw, addStatus: addStatus };
 })();

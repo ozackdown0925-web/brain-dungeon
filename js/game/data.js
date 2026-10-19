@@ -81,22 +81,23 @@ var GameData = (function () {
   // fx＝効果の並び。t の種類：
   //   arc（前の扇）、around（まわり）、dash（踏みこむ）、shot（飛ばす）、rapid（何回も）、charge（ためる）、backstep（下がる）
   //   heal（回復）、cure（状態異常を治す）、regen（少しずつ回復）、revive（復活）、buff（強くする）、zone（その場に残る）、rain（降らせる）
+  // vis＝見た目の種類（spin 回転・sweep 足もとを回る・smash たたきつけ・quake 地面の割れめ・tidal 大波。2026-10-19）
   // stat：p＝物攻、m＝魔攻。elem：weapon＝武器の属性。status：{ type: poison/para/sleep/break, chance, dur }
   var EDGE = ["sword", "greatsword", "axe"];
   var HEAVY = ["greatsword", "axe"];
   var SKILLS = [
     // 戦士
     { id: "w.spin",   job: "warrior", star: 1, name: "回転ぎり", desc: "まわりの敵を、まとめて斬る。",   short: "回転",   cond: { weapons: EDGE }, mp: 6, ct: 4,
-      fx: [{ t: "around", stat: "p", mult: 1.2, radius: 26, elem: "weapon" }] },
+      fx: [{ t: "around", vis: "spin", stat: "p", mult: 1.2, radius: 26, elem: "weapon" }] },
     { id: "w.focus",  job: "warrior", star: 2, name: "気合い", desc: "自分のHPを少し回復する。",     short: "気合",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
     { id: "w.rush",   job: "warrior", star: 3, name: "とっしん", desc: "前へふみこんで斬る。",   short: "突進",   cond: { weapons: EDGE }, mp: 7, ct: 6,
       fx: [{ t: "dash", dist: 36 }, { t: "arc", stat: "p", mult: 1.5, elem: "weapon" }] },
     { id: "w.power",   job: "warrior", star: 4, name: "力の心得",   short: "力",     cond: null, passive: { patk: 0.10 }, desc: "物攻が、いつも10%上がる。" },
     { id: "w.crush",  job: "warrior", star: 5, name: "かぶと割り", desc: "強くたたいて、敵の守りを下げる。", short: "割り",   cond: { weapons: HEAVY }, mp: 8, ct: 8,
-      fx: [{ t: "arc", stat: "p", mult: 1.8, elem: "strike", status: { type: "break", chance: 1, dur: 10 } }] },
+      fx: [{ t: "arc", vis: "smash", stat: "p", mult: 1.8, elem: "strike", status: { type: "break", chance: 1, dur: 10 } }] },
     { id: "w.guard",   job: "warrior", star: 6, name: "鉄の守り",   short: "鉄",     cond: null, passive: { pdef: 0.15 }, desc: "物防が、いつも15%上がる。" },
     { id: "w.quake",  job: "warrior", star: 7, name: "大地斬り", desc: "前の広いところを、強く斬る。",   short: "大地",   cond: { weapons: HEAVY }, mp: 14, ct: 15,
-      fx: [{ t: "arc", stat: "p", mult: 2.0, elem: "weapon", reach: 44, arc: 0.8 }] },
+      fx: [{ t: "arc", vis: "quake", stat: "p", mult: 2.0, elem: "weapon", reach: 44, arc: 0.8 }] },
     // 魔術師
     { id: "m.fire",   job: "mage", star: 1, name: "ファイア", desc: "火の玉を飛ばす（火）。",         short: "ファイア", cond: { line: "mage" }, mp: 5, ct: 2,
       fx: [{ t: "shot", stat: "m", mult: 1.3, elem: "fire", speed: 150, range: 130, size: 3, color: "#ff8a3d" }] },
@@ -109,7 +110,7 @@ var GameData = (function () {
     { id: "m.wall",   job: "mage", star: 6, name: "フレイムウォール", desc: "前に炎の壁を出す。さわった敵が焼ける（火）。", short: "炎の壁",   cond: { line: "mage" }, mp: 12, ct: 12,
       fx: [{ t: "zone", stat: "m", mult: 0.5, elem: "fire", dist: 28, radius: 18, dur: 3, tick: 0.5, color: "#ff8a3d" }] },
     { id: "m.tidal",  job: "mage", star: 7, name: "タイダルウェーブ", desc: "まわりに大波を起こす（水）。", short: "大波",     cond: { line: "mage" }, mp: 16, ct: 18,
-      fx: [{ t: "around", stat: "m", mult: 2.0, radius: 60, elem: "water", push: 20, color: "#5aa9ff" }] },
+      fx: [{ t: "around", vis: "tidal", stat: "m", mult: 2.0, radius: 60, elem: "water", push: 20, color: "#5aa9ff" }] },
     // 狩人
     { id: "h.triple", job: "hunter", star: 1, name: "三本撃ち", desc: "矢を扇の形に3本撃つ。",   short: "三本",   cond: { weapons: ["bow"] }, mp: 5, ct: 3,
       fx: [{ t: "shot", stat: "p", mult: 0.8, elem: "weapon", count: 3, spread: 0.28 }] },
@@ -127,7 +128,7 @@ var GameData = (function () {
       fx: [{ t: "rapid", count: 3, interval: 0.09, hit: { t: "arc", stat: "p", mult: 0.6, elem: "weapon" } }] },
     { id: "f.breath", job: "fighter", star: 2, name: "いきをととのえる", desc: "自分のHPを少し回復する。", short: "呼吸",   cond: null, mp: 5, ct: 20, fx: [{ t: "heal", pct: 0.15 }] },
     { id: "f.sweep",  job: "fighter", star: 3, name: "足ばらい", desc: "まわりの敵をはらう。しびれさせることがある。",         short: "足ばらい", cond: { weapons: ["fist"] }, mp: 6, ct: 8,
-      fx: [{ t: "around", stat: "p", mult: 0.5, radius: 24, elem: "weapon", status: { type: "para", chance: 0.5, dur: 2 } }] },
+      fx: [{ t: "around", vis: "sweep", stat: "p", mult: 0.5, radius: 24, elem: "weapon", status: { type: "para", chance: 0.5, dur: 2 } }] },
     { id: "f.stance",  job: "fighter", star: 4, name: "身軽",      short: "身軽",   cond: null, passive: { wait: 0.15 }, desc: "ふつうの攻撃の待ち時間が、いつも15%短くなる。" },
     { id: "f.punch",  job: "fighter", star: 5, name: "せいけん突き", desc: "強い一発。会心が出やすい。",     short: "突き",   cond: { weapons: ["fist"] }, mp: 7, ct: 6,
       fx: [{ t: "arc", stat: "p", mult: 2.0, elem: "weapon", crit: 0.2 }] },
