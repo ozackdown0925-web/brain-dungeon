@@ -341,10 +341,10 @@ var Town = (function () {
       items.forEach(function (sk) {
         var got = h.learned.indexOf(sk.id) >= 0, ok = got && GameData.canSet(sk, h.job, wt);
         var at = slots.indexOf(sk.id);
-        // セット中は、色をつけずに「★1」のような印だけ（2026-10-19 保護者の案）
+        // セット中は、色をつけずに「E」の印だけ（RPG の「装備中」。2026-10-19 保護者が決定）
         var b = button(sk.name, function () { selSkill[key] = sk.id; render(); },
           "sk-item" + (selSkill[key] === sk.id ? " sel" : "") + (got ? (ok ? "" : " ng") : " locked"));
-        if (at >= 0) { var mk = el("span", "sk-mark", "★ "); b.insertBefore(mk, b.firstChild); }
+        if (at >= 0) { var mk = el("span", "sk-mark", "E"); b.insertBefore(mk, b.firstChild); }
         grid.appendChild(b);
         shown.push(sk.id);
       });
@@ -438,7 +438,7 @@ var Town = (function () {
     GameData.JOB_ORDER.forEach(function (j) {
       var cls = selJob.base === j ? "sel" : "";
       var it = jobItem(GameData.JOBS[j].name, starText(GameState.stars(h, j)), cls, function () { selJob.base = j; say(""); render(); });
-      if (j === h.job) { var nm = it.querySelector(".job-item-name"); nm.insertBefore(el("span", "sk-mark", "★ "), nm.firstChild); }   // いまの職業は、宿屋と同じ★の印
+      if (j === h.job) { var nm = it.querySelector(".job-item-name"); nm.insertBefore(el("span", "sk-mark", "E"), nm.firstChild); }   // いまの職業は、宿屋と同じ「E」の印
       grid.appendChild(it);
     });
     list.appendChild(grid);
