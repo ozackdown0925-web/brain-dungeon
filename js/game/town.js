@@ -341,8 +341,10 @@ var Town = (function () {
       items.forEach(function (sk) {
         var got = h.learned.indexOf(sk.id) >= 0, ok = got && GameData.canSet(sk, h.job, wt);
         var at = slots.indexOf(sk.id);
-        var b = button((at >= 0 ? (at + 1) + " " : "") + sk.name, function () { selSkill[key] = sk.id; render(); },
-          "sk-item" + (selSkill[key] === sk.id ? " sel" : "") + (at >= 0 ? " on" : "") + (got ? (ok ? "" : " ng") : " locked"));
+        // セット中は、色をつけずに「★1」のような印だけ（2026-10-19 保護者の案）
+        var b = button(sk.name, function () { selSkill[key] = sk.id; render(); },
+          "sk-item" + (selSkill[key] === sk.id ? " sel" : "") + (got ? (ok ? "" : " ng") : " locked"));
+        if (at >= 0) { var mk = el("span", "sk-mark", "★" + (at + 1) + " "); b.insertBefore(mk, b.firstChild); }
         grid.appendChild(b);
         shown.push(sk.id);
       });
@@ -434,7 +436,7 @@ var Town = (function () {
     if (!selJob.base) selJob.base = h.job;
     var grid = el("div", "sk-grid");
     GameData.JOB_ORDER.forEach(function (j) {
-      var cls = (j === h.job ? "on" : "") + (selJob.base === j ? " sel" : "");
+      var cls = selJob.base === j ? "sel" : "";
       grid.appendChild(jobItem(GameData.JOBS[j].name + (j === h.job ? "（いま）" : ""), starText(GameState.stars(h, j)), cls, function () { selJob.base = j; say(""); render(); }));
     });
     list.appendChild(grid);
