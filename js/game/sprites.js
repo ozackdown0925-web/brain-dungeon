@@ -24,54 +24,41 @@ var Sprites = (function () {
     S: "#5a6078", X: "#5a1424", Y: "#2a1838", Z: "#8a2a4a",   // 鉄の影・暗い赤・黒むらさき・えんじ
     g: "#6a5038", h: "#9a7a50", s: "#3a4a3e"                  // 革（こげ茶・茶）・暗い緑
   };
-  // 上級職の見た目（2026-10-19）：もとの職の地図をもとに、色をおきかえる（1〜4 の髪も、かぶとやフードにおきかえる）
-  //  騎士：銀のよろいと銀のかぶと（赤いマントはそのまま）
-  //  黒魔道士：黒むらさきとえんじのフードとローブ
-  //  スナイパー：暗い緑のフードと、革の服
-  //  修行僧：赤い道着と、金のはちまき
-  //  白魔道士：白いフードと、おでこの赤いふち
-  //  rows：その行だけ色をおきかえる（騎士のかぶとのふち・白魔道士のフードのふち。2026-10-19）
+  // 上級職の見た目：保護者がペイントで描いた絵（2026-10-20）を、そのまま地図にした（map）。
+  //  騎士：顔までおおうかぶと・銀のよろい・赤いマント。黒魔道士：深いフードと金のかざり。スナイパー：暗い緑のフードと眼帯。
+  //  修行僧：坊主で目を閉じた顔・赤い道着。白魔道士：白いフードと赤いかざり。
+  //  swap は、歩く・攻撃のコマで足や腕を描きかえるときの色だけに使う（もとの職の足・腕の地図を、上級職の色にする）。
   var LOOK = {
-    knight:    { from: "warrior", swap: { I: "U", J: "T", "1": "U", "2": "T", "3": "S", "4": "H" },
-                 // かぶとの上の赤い羽かざり：[x, y, 色]（向きごと）
-                 add: { down: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]], up: [[7, 0, "K"], [8, 0, "K"], [6, 0, "A"], [9, 0, "A"]],
-                        side: [[6, 0, "K"], [7, 0, "K"], [8, 0, "K"], [5, 0, "A"], [9, 0, "A"]] },
-                 // 顔までおおう四角いかぶと（頭は丸くしない。目の高さに細いすきま）。2026-10-19 保護者の希望
-                 head: {
-                   down: { 1: "...AAAAAAAAAA...", 2: "...AHUUUUUUTA...", 3: "..AHUUUUUUUUTA..", 4: "..AUUUUUUUUUTA..", 5: "..AUUUUUUUUUTA..",
-                           6: "..ASSSSSSSSSSA..", 7: "..AUUUUUUUUUTA..", 8: "..AUAAAAAAAATA..", 9: "..AUUUUSSUUUTA..", 10: "..ATUUUSSUUTTA..",
-                           11: "...ATTUUUUTTA...", 12: ".AHIJAASSAAJIHA." },
-                   up:   { 1: "...AAAAAAAAAA...", 2: "...AHUUUUUUTA...", 3: "..AHUUUUUUUUTA..", 4: "..AUUUUUUUUUTA..", 5: "..AUUUUUUUUUTA..",
-                           6: "..ASSSSSSSSSSA..", 7: "..AUUUUUUUUUTA..", 8: "..AUUUUUUUUUTA..", 9: "..AUUUUUUUUUTA..", 10: "..ATUUUUUUUTTA..",
-                           11: "...ATTTTTTTTA..." },
-                   side: { 1: "...AAAAAAAA.....", 2: "..AHUUUUUUTA....", 3: ".AHUUUUUUUUTA...", 4: ".AUUUUUUUUUTA...", 5: ".AUUUUUUUUUTA...",
-                           6: ".ASSSSSSSSSSA...", 7: ".AAAAAUUUUUTA...", 8: ".AUUUSUUUUTA....", 9: "..AUUSUUUUTA....", 10: "...ATUUUTTA.....",
-                           11: "....ASAHIJAA...." } } },
-    blackmage: { from: "mage",    swap: { L: "Y", N: "Z", M: "A" },
-                 // フードを2ドット深くかぶり、ふちと先に金のかざり（B）。2026-10-19 保護者の希望
-                 head: {
-                   down: { 5: "..ALLNLLLLLMMA..", 6: "..ALLLLBBLLLMA..", 7: "..ALBBBBBBBBMA..", 12: "..ABLAAFFAALBA.." },
-                   up:   { 12: "..ABLMMLLMMLBA.." },
-                   side: { 5: ".ANMLMNLBLMMA...", 7: ".ABBBBBBMMMMA..." } } },
-    sniper:    { from: "hunter",  swap: { O: "s", Q: "g", R: "h", "1": "O", "2": "s", "3": "A", "4": "Q" },
-                 // 片目に黒い眼帯と、ななめのひも（put：[x, y, 色]）。2026-10-19 保護者の希望
-                 put: {
-                   down: [[5, 9, "A"], [6, 9, "A"], [5, 10, "A"], [6, 10, "A"], [4, 8, "A"], [7, 7, "A"], [8, 6, "A"], [9, 6, "A"], [10, 5, "A"], [11, 5, "A"]],
-                   up:   [[3, 7, "A"], [4, 7, "A"], [5, 7, "A"], [6, 7, "A"], [7, 7, "A"], [8, 7, "A"], [9, 7, "A"], [10, 7, "A"], [11, 7, "A"], [12, 7, "A"]],
-                   side: [[5, 8, "A"], [6, 8, "A"], [5, 9, "A"], [8, 7, "A"], [9, 7, "A"], [10, 6, "A"], [11, 6, "A"]] } },
-    monk:      { from: "fighter", swap: { W: "K", V: "X", K: "B" }, body: { F: "Z" },   // body：12行めから下（道着）だけおきかえる
-                 // はちまきを外して坊主、目を閉じる。2026-10-19 保護者の希望
-                 head: {
-                   down: { 0: "................", 1: "................", 2: ".....AAAAAA.....", 3: "....AHEEEEEA....", 4: "...AHEEEEEEEA...",
-                           5: "...AEEEEEEEFA...", 6: "...AEEEEEEEFA...", 7: "...AEEEEEEEFA...", 8: "..AEEFFEEFFEEA..", 9: "..AEEAAEEAAEEA..",
-                           10: "...AFEEEEEEFA...", 11: "....AFEEEEFA...." },
-                   up:   { 0: "................", 1: "................", 2: ".....AAAAAA.....", 3: "....AHEEEEEA....", 4: "...AHEEEEEEEA...",
-                           5: "...AEEEEEEEFA...", 6: "...AEEEEEEEFA...", 7: "...AEEEEEEEFA...", 8: "..AEEEEEEEEEFA..", 9: "..AEEEEEEEEFFA..",
-                           10: "...AFEEEEEEFA...", 11: "....AFFEEFFA...." },
-                   side: { 0: "................", 1: "................", 2: ".....AAAAA......", 3: "...AAHEEEEAA....", 4: "..AHEEEEEEEA....",
-                           5: "..AEEEEEEEEFA...", 6: ".AEEEEEEEEEFA...", 7: ".AEEEEEEEEEFA...", 8: "..AEAAEEEEFA....", 9: "...AEEEEFFA....." } } },
-    whitemage: { from: "priest",  swap: { I: "K", J: "X", "1": "H", "2": "U", "3": "T", "4": "H" },
-                 rows: { down: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } }, side: { 5: { "1": "K", "2": "K", "3": "K", "4": "K" } } } }
+    knight: { from: "warrior", swap: { I: "U", J: "T", "1": "U", "2": "T", "3": "S", "4": "H" },
+                 // 保護者がペイントで描いた絵（2026-10-20）。前・後ろ・横（地図は左向き）の 16×24。1〜4 は髪の色
+                 map: {
+                   down: ["......AKKA......", "....AAAKKAAA....", "...AHUTAATUTA...", "...HUUUAAUUUT...", "..AUUUUTTUUUTA..", "..AAUUUUUUUUAA..", "..ASSSUUUUSSSA..", "..AUAATTTTAATA..", "..AUAAAAAAAATA..", "..AUUUUAAUUUTA..", "..AAUUUSSUUTAA..", ".AAATTUUUUTTAAA.", ".AHUTAASSAATUHA.", ".ASASTUBBUTSASA.", ".AUTAUUTTUUATUA.", ".AUTACCBBCCATUA.", ".AEEATUTTUTAEEA.", ".AFFATUTTUTAFFA.", "..AAATTAATTAAA..", ".AKKADDAADDAKKA.", ".AAAADCAACDAAAA.", "...AADDAADDAA...", "...ATUTAATUTA...", "...AAAAAAAAAA..."],
+                   up: ["......AKKA......", "....AAAKKAAA....", "...AHUAKKAUTA...", "..AHUUAKKAUUTA..", "..AUUUAKKAUUTA..", "..ASUUUAAUUUSA..", "..ASUSUASUSUSA..", "..ASUUSUUSUUSA..", "..ASSSUSSUSSSA..", "..AUUUUSSUUUTA..", "...TUSSUUSSTT...", ".AAASSTTTTSSAAA.", ".AHUAKKKKKKAUHA.", ".ASAAKKKKKDAASA.", ".AUAKKKDKKDKAUA.", ".AUAKKKDKKDKAUA.", ".AEAKKKDKKDKAEA.", ".AFAKKDKKKDKAFA.", "..AKKKDKKDDKKA..", ".AAKKDKKKDKDKA..", "...AKAKKAKDAA...", "...AADDAADDAA...", "...ATUTAATUTA...", "...AAAAAAAAAA..."],
+                   side: [".....AKKKKKA....", "....AAAAAAAKA...", "...AHUUUUUTAKA..", "..AHUUUUUUTTAK..", "..AHUUUUTTTSAK..", "..AUUUTTTTSTAK..", "..ASSASSSSTTAA..", "..AAAAUUUTUTA...", "..AAUSUUSSTSA...", "..AUUSUUSSSA....", "..AUTUUSTTS.....", "...AASASUTAA....", ".....ATUTAAKA...", "....AAUTUTTAKA..", "....AUUTUTAAKA..", "....ATCBCCAAKKA.", ".....ATAEEFACKA.", "......AAEFAACKA.", ".....ATUTTAACKK.", ".....ATADDATACA.", ".....AAADDAA.A..", ".....AAAADA.....", "......ATUTA.....", ".....AAAAAA....."] } },
+    blackmage: { from: "mage", swap: { L: "Y", N: "Z", M: "A" },
+                 // 保護者がペイントで描いた絵（2026-10-20）。前・後ろ・横（地図は左向き）の 16×24。1〜4 は髪の色
+                 map: {
+                   down: ["................", ".....AAAAAA.....", "....AZYYYYAA....", "...AZYYYYYAAA...", "..AZYZYYYYYAAA..", "..AYYZYYYYYAAA..", "..AYYYYBBYYYAA..", "..AYBBBBBBBBAA..", "..AY3AAEEAA3AA..", "..AAAHJEEJHAAA..", "..AAFEJEEJEFAA..", "..AAAFEEEEFAAA..", "..ABYAAFFAAYBA..", ".AYAAAYBBYAAAYA.", ".AYAAAYZYYAAAYA.", ".AYAAAAABAAAAYA.", ".AYZAAYYAYAAZYA.", ".AEEAYZYAYAAEEA.", "..AAAAYYAYAAAA..", "...AAYZYAYYAA...", "...AYAYYAZYAA...", "..AAYYAYYAYAAA..", "..ABABAAABABAA..", "....AJJAAJJA...."],
+                   up: ["................", ".....AAAAAA.....", "....AZYYYYAA....", "...AZYZYYYYAA...", "..AZYYYYYAYAAA..", "..AYZYYYAYYAAA..", "..AYYYAYYYAYAA..", "..AYYAYYYAYYAA..", "..AAYYYAYYAYAA..", "..AAYYAYYYAYAA..", "..AAAYYYAYYAAA..", "..AAYAYYYAYAAA..", "..ABYAAYYAAYBA..", ".AYAAAYYAYAAAYA.", ".AYAAAYZYYAAAYA.", ".AYAAAAAYAAAAYA.", ".AYZAAYYAYAAZYA.", ".AEEAYZYAYAAEEA.", "..AAAAYYAYAAAA..", "...AAYZYAYYAA...", "...AYAYYAZYAA...", "..AAYYAYYAYAAA..", "..ABABAAABABAA..", "....AJJAAJJA...."],
+                   side: ["................", "....AAAAA.......", "..AAZYYAAAA.....", ".AYZYYAYYAAA....", ".AZAYYZYAAAA....", ".AZAYYYYYYAAA...", ".AAAYYAZYAAAA...", ".ABBBBBYAAAAA...", "..AAEJHFAAYA....", "...AEJEFAAAA....", "...AEEFAAAAA....", "....AFAAYAAA....", ".....AYAYAAA....", "....AAYAZYAAA...", "....AYAYZYYAA...", "....AAAABAAAA...", "....AYAZEEFA....", "....AYAYAEFA....", "....AAYYAYAA....", "...AAYZYAYYAA...", "...AYAYYAZYAA...", "..AAYYAYYAYAA...", "..ABABAABABAA...", "....AAJJAJJA...."] } },
+    sniper: { from: "hunter", swap: { O: "s", Q: "g", R: "h", "1": "O", "2": "s", "3": "A", "4": "Q" },
+                 // 保護者がペイントで描いた絵（2026-10-20）。前・後ろ・横（地図は左向き）の 16×24。1〜4 は髪の色
+                 map: {
+                   down: ["................", ".....AAAAAA.....", "....AsAssOsA....", "...AsAOOsOssA...", "..AsAsOQOsOsAA..", "..AAsssOOsAAAA..", ".AAsAEEAAAssAAA.", ".AAsAFEAAssAsAA.", ".AAsAAAEEAAAsAA.", "..AAAAAEEJHAAA..", "...AFAAEEJEFA...", "....AFEEEEFA....", "..AhgAAFFAAghA..", ".AgsAsCgggsAsgA.", ".AgsAggCggsAsgA.", ".AgsACCDCBCAsgA.", ".ACCAsggsgsACCA.", ".ADDAgsAAsgADDA.", "..AAACCAACCAAA..", "....ACDAADCA....", "....ACDAADCA....", "...ADDDAADDDA...", "...ADCDAADCDA...", "...AAAAAAAAAA..."],
+                   up: ["................", ".....AAAAAA.....", "....AsOOssAA....", "...AsOQOsssAA...", "..AsOOsOssAsAA..", "..AssOssAssAAA..", ".AAsssAssAssAAA.", ".AAAAAAAAAAAAAA.", ".AAAsAsAAsAsAAA.", "..AAAsAAsAAAAA..", "...AAAAAsAAHKA..", "....AAFEEFAKHA..", "..AhghghgACDhA..", ".AgsAghgACDAsgA.", ".AgsAggACDgAsgA.", ".AgsACDDCCCAsgA.", ".ACCAsggsgsACCA.", ".ADDAgsgsgsADDA.", "..AAACCAACCAAA..", "....ACDAADCA....", "....ACDAADCA....", "...ADDDAADDDA...", "...ADCDAADCDA...", "...AAAAAAAAAA..."],
+                   side: ["................", "....AAAAA.......", "..AAOssAAAA.....", ".AsOOsAssAAA....", ".AOAsQOsAAAA....", ".AOAsAOssAAAA...", ".AAAssAOsAAAA...", ".AAAFAAAAAAAA...", "..AAEAAFAFAA....", "...AEAEFFAAA....", "...AEEFAAAhHA...", "....AFAghhhKA...", ".....AsgsAhCDA..", "....AAgsgsACDA..", "....AggsgsACDA..", "....AsCDCCACDA..", ".....AsACCDAA...", "......AAgDAA....", ".....AgsgsAA....", ".....ACADCA.....", ".....ACADCA.....", ".....ADDADA.....", "......ADCDA.....", ".....AAAAAA....."] } },
+    monk: { from: "fighter", swap: { W: "K", V: "X", K: "B", F: "Z" },
+                 // 保護者がペイントで描いた絵（2026-10-20）。前・後ろ・横（地図は左向き）の 16×24。1〜4 は髪の色
+                 map: {
+                   down: ["................", "................", ".....AAAAAA.....", "....AHEEEEEA....", "...AHEFEFEEEA...", "...AEEEEEEEFA...", "...AEEFEFEEFA...", "...AEEEEEEEFA...", "..AEEFFEEFFEEA..", "..AEEAAEEAAEEA..", "...AFEEEEEEFA...", "....AFEEEEFA....", ".AKZXAAZZAAXZKA.", ".AZXAKZEEZXAXZA.", ".AEZAKZZEZXAZEA.", ".AEZAJJDJJJAZEA.", ".AHHAZKZZXZAHHA.", ".AEZAZKZXXZAZEA.", "..AAAZZAAXZAAA..", "....AKZAAXZA....", "....AZXAAZXA....", "....AHHAAHHA....", "...AEEZAAEEZA...", "...AAAAAAAAAA..."],
+                   up: ["................", "................", ".....AAAAAA.....", "....AHEEEEEA....", "...AHEEEEEEEA...", "...AEEEEEEEFA...", "...AEEEEEEEFA...", "...AEEEEEEEFA...", "..AEEEEEEEEEFA..", "..AEEEEEEEEFFA..", "...AFEEEEEEFA...", "....AFFEEFFA....", ".AKZXKZKZZXXZKA.", ".AZXAKZZKZXAXZA.", ".AEZAZKZZXZAZEA.", ".AEZAJJDJJJAZEA.", ".AHHAZKZZXZAHHA.", ".AEZAZKZXXZAZEA.", "..AAAZZAAXZAAA..", "....AKZAAXZA....", "....AZXAAZXA....", "....AHHAAHHA....", "...AZEEAAZEEA...", "...AAAAAAAAAA..."],
+                   side: ["................", "................", ".....AAAAA......", "...AAHEEEEAA....", "..AFEEEEEEFA....", "..AEEEEEEEEFA...", "..AFEEEEFEEFA...", "..AEFFEEAFFFA...", "..AFAAEEEAFFA...", "...AEEEEFAFA....", "...AEEFAAAAA....", "....AFAKFXAA....", ".....AXZKZXA....", "....AAZKZXZXA...", "....AZKZZXZA....", "....AJJDJJJJA...", ".....AZAEEZA....", "......AAHHAA....", ".....AKZXZA.....", ".....AKZAXZA....", ".....AZXAZXA....", ".....AHHAHHA....", ".....AEEZEEA....", ".....AAAAAAA...."] } },
+    whitemage: { from: "priest", swap: { I: "K", J: "X", "1": "H", "2": "U", "3": "T", "4": "H" },
+                 // 保護者がペイントで描いた絵（2026-10-20）。前・後ろ・横（地図は左向き）の 16×24。1〜4 は髪の色
+                 map: {
+                   down: ["................", "...AAAAAAAAAA...", "..AATUUUUUTTAA..", "..ATUHUUTUUTTA..", "..AUHHUUHUTUTA..", "..AKKKKKKKKKKA..", ".ATUAFFEFFFATTA.", ".ATUAFEEEFFATTA.", ".ATUAAAEEAAAUTA.", "..ATAHXEEXHATA..", "...AFEXEEXEFA...", "....AFEEEEFA....", "..AHUAAFFAAUHA..", ".AUTAKHUUHKATUA.", ".AUTAKHUUTXATUA.", ".AUTAXUHUUXATUA.", ".AHUAKUHUTKAUHA.", ".AEEAXHUUTXAEEA.", "..AAAKUHUTKAAA..", "...AUXUHUTXTA...", "...AHKUHUTKTA...", "...AUXHUUTXTA...", "...AKXKKXKXKA...", "....AXXAAXXA...."],
+                   up: ["................", "...AAAAAAAAAA...", "..ATTUUHUUTTTA..", "..ATUHUUUTUTTA..", "..AUHUUTUUTUTA..", "..AKKKKKKKKKKA..", "..AUUUUUUUUUTA..", "..AUTUUTUUTUTA..", "..ATUUUTUUTUTA..", "..ATTUTTUTTTTA..", "...ATTTTUTTTA...", "....ATFEEFTA....", "..AHUKKXXKKUHA..", ".AUTAHUUHUTATUA.", ".AUTAUHUUTUATUA.", ".AUTAKXKKXKATUA.", ".AHUAUHUTUTAUHA.", ".AEEAHUUTUTAEEA.", "..AAAUHUUTTAAA..", "...AUHUUTUTTA...", "...AHUHUUTUTA...", "...AUUHUTUTTA...", "...AKXKKXKXKA...", "....AXXAAXXA...."],
+                   side: ["................", "..AAAAAAAAAA....", "..AAHUUTTTTTA...", "..AHHUTUUTTTA...", "..ATUHHUTTTTA...", ".AKKKKKKKKKKA...", ".ATAFATHUTTTA...", ".ATAFAAATETTA...", "..AAEXHFAFTA....", "...AEXEFFTTA....", "...AEEFAAAA.....", "....AFAHUTAA....", ".....AKHUTTA....", "....AAKHUUTTA...", "....AUXHUTUTA...", "....AUKXKXKXA...", ".....AXHAEEFA...", "....AUKUHAEFA...", "....AUXHUTTA....", "...AUKHUUTTA....", "...AHXUHUTTTA...", "...AUKUHUTUTA...", "...AKXKKXKXA....", "....AXXAXXA....."] } }
   };
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
@@ -520,9 +507,10 @@ var Sprites = (function () {
     for (var y = 0; y <= rows; y++) { g[y].shift(); g[y].push("."); }
   }
 
+  function swapStr(str, sw) { if (!str || !sw) return str; return str.split("").map(function (c) { return sw[c] || c; }).join(""); }
   function frameMap(job0, dir, frame) {
-    var job = baseJob(job0), lk = LOOK[job0] || null;
-    var base = (MAP[job] || MAP.warrior)[dir];
+    var job = baseJob(job0), lk = LOOK[job0] || null, sw = lk ? lk.swap : null;
+    var base = lk && lk.map ? lk.map[dir] : (MAP[job] || MAP.warrior)[dir];
     var g = grid(base), y, x;
     // 上級職：頭の行をおきかえる（head）・点を打つ（put）。歩く・走るの形を作る前に行う（2026-10-19）
     if (lk && lk.head && lk.head[dir]) Object.keys(lk.head[dir]).forEach(function (r) { g[+r] = lk.head[dir][r].split(""); });
@@ -539,11 +527,12 @@ var Sprites = (function () {
     } else {
       var st = STRIDE[job] || STRIDE.warrior;
       var stride = walk > 0 || frame === "attack";
-      if (stride) for (y = 0; y < 5; y++) if (st[y]) g[19 + y] = st[y].split("");
+      if (stride) for (y = 0; y < 5; y++) if (st[y]) g[19 + y] = swapStr(st[y], sw).split("");
       if (walk < 0) lift(g, 8, 11);
       if (run) lean(g, 17);
       if (frame === "attack") {
         var s = SLEEVE[job] || SLEEVE.warrior;
+        if (sw) s = [sw[s[0]] || s[0], sw[s[1]] || s[1]];
         var arm = [["A", "A", "A", "A", "A"], ["A", "E", s[0], s[0], s[0]], ["A", "F", s[1], s[1], s[1]], ["A", "A", "A", "A", "A"]];
         for (y = 0; y < 4; y++) for (x = 0; x < 5; x++) g[13 + y][x] = arm[y][x];
       }
@@ -554,6 +543,7 @@ var Sprites = (function () {
   function paint(job, hairId, dir, frame) {
     var g = frameMap(job, dir, frame);
     var lk = LOOK[job] || null, sw = lk ? lk.swap : null, bodySw = lk ? lk.body : null;
+    if (lk && lk.map) { sw = null; bodySw = null; }   // 描いた地図は、もう上級職の色になっている
     if (lk && lk.add && lk.add[dir]) lk.add[dir].forEach(function (pt) { if (g[pt[1]][pt[0]] === ".") g[pt[1]][pt[0]] = pt[2]; });
     var hair = HAIR[(hairId | 0) % HAIR.length];
     var cv = document.createElement("canvas"); cv.width = SW; cv.height = SH;
