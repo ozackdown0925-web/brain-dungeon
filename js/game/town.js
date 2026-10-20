@@ -447,7 +447,7 @@ var Town = (function () {
     });
     bodyEl.appendChild(tabs);
     var lead = { base: "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。",
-                 upper: "上級職は、もとの職の★で開く。もとの職のスキルもセットできる。パッシブは3つまで（組み合わせの上級職は、これから作る）。",
+                 upper: "上級職は、もとの職の★で開く。一本道はもとの職を★7、組み合わせは2つの職を★5。もとの職のスキルもセットできる。パッシブは3つまで。",
                  top: "最上級職は、上級職から一段上がる（これから作る）。" }[jobTab];
     bodyEl.appendChild(el("p", "sub", lead));
     var wrap = el("div", "sk-wrap"), list = el("div", "sk-list"), det = el("div", "sk-detail");
@@ -548,7 +548,7 @@ var Town = (function () {
       list.appendChild(grid);
     });
     var u = U.filter(function (x) { return x.name === selJob.upper; })[0] || U[0], done = upperDone(h, u);
-    if (u.id) det.appendChild(portrait(h, u.id));   // 作った上級職だけ（組み合わせは、まだ絵がない）
+    if (u.id) det.appendChild(portrait(h, u.id));   // 作った上級職だけ（組み合わせの5つは、絵が決まるまで色ちがいの仮の絵）
     det.appendChild(el("div", "sk-name", u.name));
     det.appendChild(el("div", "sk-kind", "上級職（" + (u.need.length > 1 ? "組み合わせ" : "一本道") + "）　★1つに熟練度 " + GameState.STAR_NEED_UPPER));
     det.appendChild(el("p", "sk-desc", u.note));
@@ -649,6 +649,7 @@ var Town = (function () {
       "倉庫：装備・道具・素材を見る", "書庫：モンスター図鑑・装備図鑑・称号の棚"]],
     ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。", "スキルは2種類：アクティブ（ボタンで使う。3つまで）と、パッシブ（セットしておくと、いつも効く。2つまで）。パッシブは、ほかの職で覚えたものもつけられる。",
       "★7 で職業を極めると、上級職（騎士・黒魔道士・スナイパー・修行僧・白魔道士）になれる。転職の神殿の「上級職」から。",
+      "2つの職をどちらも★5にすると、組み合わせの上級職（魔法剣士・忍者・剣闘士・聖騎士・賢者）になれる。",
       "上級職は、もとの職のスキルもセットできる。パッシブは3つまで。★は少し上がりにくい。"]]
   ];
   function renderHelp() {

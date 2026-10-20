@@ -42,7 +42,10 @@ var Party = (function () {
     c.buffs.forEach(function (b) { if (b.stat === stat) add += b.pct; });
     if (stat === "wait") return Math.max(0.3, (1 + add) * (c.stats.waitMul || 1)); // waitMul：パッシブ「身軽」
     if (stat === "crit") return c.stats.crit + add;
+    if (stat === "evade") return Math.max(0, add);   // 身躱しの術：よける確率
     if (stat === "patk" && c.stats.still && actor.move < 0.1) add += c.stats.still;   // パッシブ「狙撃の構え」：止まっているあいだ
+    // パッシブ「背水」（2026-10-20）：HPが半分より少ないと物攻が上がる。HPが少ないほど上がり、0に近いとき最大
+    if (stat === "patk" && c.stats.backwater && c.hp < c.stats.hp * 0.5) add += c.stats.backwater * (1 - c.hp / (c.stats.hp * 0.5));
     return c.stats[stat] * (1 + add);
   }
 
@@ -68,7 +71,7 @@ var Party = (function () {
     if (members[i].down) return;
     active = i; switchCd = SWITCH_CD;
     actor.inv = Math.max(actor.inv, 1); // 入れかわった直後1秒は無敵
-    actor.wait = 0; actor.swing = 0; actor.busy = 0;
+    actor.wait = 0; actor.swing = 0; actor.busy = 0; actor.hidden = 0;   // 隠れみの術は、交代すると終わる
   }
 
   function tick(dt) {
@@ -78,6 +81,11 @@ var Party = (function () {
       if (c.down) return;
       c.mp = Math.min(c.stats.mp, c.mp + c.stats.mp * MP_REGEN * dt);
       for (var b = c.buffs.length - 1; b >= 0; b--) { c.buffs[b].t -= dt; if (c.buffs[b].t <= 0) c.buffs.splice(b, 1); }
+      if (c.enchant) { c.enchant.t -= dt; if (c.enchant.t <= 0) c.enchant = null; }   // 魔法剣士の火炎剣など
+      if (c.guts > 0) c.guts = Math.max(0, c.guts - dt);                                 // 不屈の光
+      // パッシブ「オートヒール」（5秒ごとに HP）・「オートチャージ」（10秒ごとに MP）（2026-10-20）。待機中の仲間にも効く
+      if (c.stats.autoHeal) { c.autoHealT = (c.autoHealT || 0) + dt; if (c.autoHealT >= 5) { c.autoHealT -= 5; c.hp = Math.min(c.stats.hp, c.hp + c.stats.hp * c.stats.autoHeal); } }
+      if (c.stats.autoMp) { c.autoMpT = (c.autoMpT || 0) + dt; if (c.autoMpT >= 10) { c.autoMpT -= 10; c.mp = Math.min(c.stats.mp, c.mp + c.stats.mp * c.stats.autoMp); } }
       for (var r = c.regens.length - 1; r >= 0; r--) {
         var g = c.regens[r];
         c.hp = Math.min(c.stats.hp, c.hp + g.perSec * dt);
@@ -116,7 +124,8 @@ var Party = (function () {
     var c = current();
     c.hp = Math.max(0, c.hp - amount);
     if (c.status.sleep) { delete c.status.sleep; } // 眠りはダメージで起きる
-    if (c.hp <= 0) { c.down = true; c.status = {}; c.buffs = []; c.regens = []; return true; }
+    if (c.hp <= 0 && c.guts > 0) { c.hp = 1; Battle.pop(actor.x, actor.y - 34, "持ちこたえた！", "#fff2a0", 8); }   // 不屈の光
+    if (c.hp <= 0) { c.down = true; c.status = {}; c.buffs = []; c.regens = []; c.enchant = null; c.guts = 0; return true; }
     return false;
   }
 
@@ -126,9 +135,9 @@ var Party = (function () {
     members.forEach(function (c) {
       recalc(c);
       c.hp = c.stats.hp; c.mp = c.stats.mp; c.down = false;
-      c.ct = {}; c.used = {}; c.buffs = []; c.regens = []; c.status = {};
+      c.ct = {}; c.used = {}; c.buffs = []; c.regens = []; c.status = {}; c.enchant = null; c.guts = 0;
     });
-    active = 0; switchCd = 0;
+    active = 0; switchCd = 0; actor.hidden = 0;
   }
 
   return {

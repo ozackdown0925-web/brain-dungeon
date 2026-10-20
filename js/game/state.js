@@ -230,6 +230,9 @@ var GameState = (function () {
     s.roomHp = p.roomHp || 0; s.roomMp = p.roomMp || 0; // 部屋の敵を全部たおしたときの回復
     // 上級職のパッシブ（2026-10-19）：受けるダメージ・会心のダメージ・止まっているときの物攻・MP・仲間の状態異常よけ
     s.cut = p.cut || 0; s.critDmg = p.critDmg || 0; s.still = p.still || 0; s.mpcut = p.mpcut || 0; s.aura = p.aura || 0;
+    // 組み合わせの上級職のパッシブ（2026-10-20）：魔力吸収・影分身・疾走・背水・闘志・オートヒール・聖なる盾（HPが少ないとき）・オートチャージ・賢者の知恵
+    s.mpOnHit = p.mpOnHit || 0; s.double = p.double || 0; s.speedMul = 1 + (p.speed || 0); s.backwater = p.backwater || 0; s.fervor = p.fervor || 0;
+    s.autoHeal = p.autoHeal || 0; s.cutLow = p.cutLow || 0; s.autoMp = p.autoMp || 0; s.ctcut = p.ctcut || 0;
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
   }

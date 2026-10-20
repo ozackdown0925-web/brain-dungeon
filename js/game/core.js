@@ -382,7 +382,12 @@
       if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
       return;
     }
-    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - (c.stats.cut || 0)), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // cut：パッシブ「守りの誓い」。minPct：最低でも攻撃力の30%
+    // 身躱しの術（2026-10-20）：決まった確率で、敵の攻撃をよける
+    var ev = Party.eff(c, "evade");
+    if (ev > 0 && Math.random() < ev) { Battle.pop(A.x, A.y - 28, "よけた", "#a8d8ff", 8); A.inv = 0.35; return; }
+    // cut：パッシブ「守りの誓い」「聖なる盾」。cutLow：聖なる盾の、HPが半分より少ないときの上のせ
+    var cut = (c.stats.cut || 0) + (c.hp < c.stats.hp * 0.5 ? (c.stats.cutLow || 0) : 0);
+    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - cut), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // minPct：最低でも攻撃力の30%
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
     Sound.play("hurt");
@@ -409,6 +414,7 @@
     A.inv = Math.max(0, A.inv - dt);
     A.hurtT = Math.max(0, (A.hurtT || 0) - dt);
     A.busy = Math.max(0, A.busy - dt);
+    A.hidden = Math.max(0, (A.hidden || 0) - dt);   // 隠れみの術
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
     var nAlive = Enemies.alive().length;
@@ -430,7 +436,7 @@
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
         // 部屋の敵を全滅させたら、武器をしまって走る（探索しやすいように。2026-10-17）
-        var sp = SPEED * (A.running ? CLEAR_SPEED : 1);
+        var sp = SPEED * (A.running ? CLEAR_SPEED : 1) * (c.stats.speedMul || 1);   // speedMul：パッシブ「疾走」
         Enemies.moveBlocked(room, A, a.x * sp * A.move * dt, a.y * sp * A.move * dt); // 敵はすり抜けない
         A.walk += dt * 8 * A.move * (A.running ? 1.8 : 1);
       }
@@ -692,6 +698,9 @@
     bar(8, 23, 60, 3, c.mp / c.stats.mp, "#5aa9ff");
     var tags = Object.keys(c.status).map(function (k) { return GameData.STATUS[k].name; })
       .concat(c.buffs.map(function (b) { return buffName(b); }));
+    if (c.enchant) tags.push(GameData.ELEMENTS[c.enchant.elem] + "の剣");   // 魔法剣士（2026-10-20）
+    if (c.guts > 0) tags.push("不屈");
+    if (A.hidden > 0) tags.push("かくれている");
     if (tags.length) Render.text(tags.join(" "), 8, 29, { size: 6, color: "#ffe7a0" });
 
     // その下：待機中の2人
@@ -763,7 +772,7 @@
   }
 
   function buffName(b) {
-    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心" };
+    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心", evade: "よける" };
     return names[b.stat] + (b.pct > 0 ? "↑" : "↓");
   }
 
@@ -783,9 +792,14 @@
     // 武器：ふつうは手に、攻撃中はつき出し、敵を全滅させた部屋で走るときは背中にしまう
     var mode = A.swing > 0 ? "attack" : A.running ? "back" : "hold";
     var behind = mode === "back" ? d.dir !== "up" : mode === "hold" ? d.dir !== "down" : d.dir === "up";   // 横で持つときも体の後ろ
+    if (A.hidden > 0) ctx.globalAlpha = 0.45;   // 隠れみの術：半分すける
     if (behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
     Sprites.drawHero(ctx, c.job, hair, A.face, frame, px, py + 6);
     if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
+    ctx.globalAlpha = 1;
+    // 剣に属性がのっているとき（魔法剣士）：武器のまわりがその色に光る
+    if (c.enchant) Combat.glowDot(ctx, px + A.face.x * 6, py - 2 + A.face.y * 4, 8, "#ffffff", ({ fire: "#ff8a3d", water: "#5aa9ff", grass: "#9be36a" })[c.enchant.elem] || "#ffffff", 0.35 + 0.1 * Math.sin(Date.now() / 90));
+    if (c.guts > 0) Combat.glowDot(ctx, px, py - 6, 14, "#ffffff", "#fff2a0", 0.25);   // 不屈の光
     if (c.status.sleep) Render.text("Zz", px + 7, py - 20, { size: 7, color: "#b48cf0" });
     if (A.swing > 0) {   // 振った方向へ流れる三日月の光（skills.js の drawSlash。2026-10-19）
       var sm = A.swingMax || 0.15;

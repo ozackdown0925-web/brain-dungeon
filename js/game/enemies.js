@@ -60,13 +60,55 @@ var Enemies = (function () {
     ["para", "sleep", "break"].forEach(function (k) { if (s[k]) { s[k].t -= dt; if (s[k].t <= 0) delete s[k]; } });
   }
   function alive() { return list.filter(function (e) { return !e.dead; }); }
+  // 味方にした敵（チャーム）をのぞいた、たたかう相手（2026-10-20）
+  function hostile() { return list.filter(function (e) { return !e.dead && !e.charm; }); }
+  // チャーム：敵1体を、決まった時間だけ味方にする（ほかの敵を攻撃し、ほかの敵にもねらわれる）
+  function charm(e, dur) {
+    if (e.dead || e.def.boss) return;
+    e.charm = { t: dur };
+    e.state = "chase"; e.t = 0; e.cd = 0.3;
+    Battle.pop(e.x, e.y - 30, "仲間になった！", "#ff8ac8", 8);
+  }
+  function uncharm(e) {
+    delete e.charm;
+    e.state = "chase"; e.t = 0; e.cd = 0.8;
+    Battle.pop(e.x, e.y - 30, "元にもどった", "#a3a8bd", 8);
+  }
+  // 敵が敵にダメージを与える（チャームした敵と、ほかの敵のあいだ）
+  var killHook = function () {};
+  function hitFoe(from, v, opts) {
+    if (v.dead) return;
+    opts = opts || {};
+    var res = Battle.damage(from.patk * (opts.mult || 1), v.pdef, { element: "none", res: null, crit: 0, minPct: 0.3 });
+    v.hp -= res.amount; v.flash = 0.1;
+    Battle.showHit(v.x, v.y - 20, res, false);
+    Sound.play("hit");
+    var st = opts.status || from.def.onHit;
+    if (st && Math.random() < st.chance) addStatus(v, st.type, st.dur);
+    if (v.hp <= 0) { v.dead = true; Sound.play("kill"); killHook(v); }   // 味方がたおした敵のごほうびも、もらえる
+  }
+  // e のねらう相手：ふつうの敵はプレイヤーかチャームした敵のうち近いほう、チャームした敵はいちばん近い敵。いなければ null
+  // プレイヤーは、隠れみの術のあいだはねらわれない
+  function pickTarget(e, p) {
+    var best = null, bd = 0;
+    function consider(t) {
+      var dx = t.x - e.x, dy = t.y - e.y, d = dx * dx + dy * dy;
+      if (!best || d < bd) { best = t; bd = d; }
+    }
+    if (e.charm) { hostile().forEach(function (o) { if (o !== e) consider(o); }); return best; }
+    if (!p.down && !(p.hidden > 0)) consider(p);
+    list.forEach(function (o) { if (!o.dead && o.charm) consider(o); });
+    return best;
+  }
 
   // 毎フレーム：p はプレイヤー、hurt(e, amount元の攻撃力) はプレイヤーにダメージを与える関数
-  var api = { spawn: function (t, x, y, depth) { return spawn(t, x, y, depth); }, alive: function () { return alive(); },
+  var api = { spawn: function (t, x, y, depth) { return spawn(t, x, y, depth); }, alive: function () { return hostile(); },
               addArrow: function (e, a, s, o) { addArrow(e, a, s, o); } };
   var hooksRoom = null;   // 攻撃のときにふみこむために、今の部屋を覚えておく
   function update(dt, room, p, hurt, onKill) {
     hooksRoom = room;
+    killHook = onKill;
+    var foes = hostile().length;
     updateFx(dt);
     list.forEach(function (e) {
       e.flash = Math.max(0, e.flash - dt);
@@ -80,22 +122,28 @@ var Enemies = (function () {
       if (e.dead) return;
       if (e.status.sleep) return; // 眠っているあいだは何もしない
       if (Bosses.isBoss(e)) { Bosses.update(e, dt, room, p, hurt, api); return; }
-      var dx = p.x - e.x, dy = p.y - e.y;
+      // チャーム（2026-10-20）：時間が来るか、部屋のほかの敵がいなくなったら元にもどる
+      if (e.charm) { e.charm.t -= dt; if (e.charm.t <= 0 || foes === 0) uncharm(e); }
+      var P = p, hit = hurt;
+      var tg = pickTarget(e, p);
+      if (tg && tg !== p) { P = { x: tg.x, y: tg.y, r: tg.r, down: tg.dead }; hit = function (from, x, y, opts) { hitFoe(from, tg, opts); }; }
+      else if (!tg) { P = { x: e.x + e.face.x * 999, y: e.y + e.face.y * 999, r: 0, down: true }; if (e.state === "windup") { e.state = "recover"; e.t = 0.3; } }
+      var dx = P.x - e.x, dy = P.y - e.y;
       var dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
       var ux = dx / dist, uy = dy / dist;
-      var gap = dist - e.r - p.r; // おたがいのふちの間の距離
+      var gap = dist - e.r - P.r; // おたがいのふちの間の距離
       var d = e.def;
       e.cd = Math.max(0, e.cd - dt);
       var mx = 0, my = 0;
 
       if (e.state === "windup") {
         e.t -= dt;
-        if (e.t <= 0) attack(e, p, gap, hurt);
+        if (e.t <= 0) attack(e, P, gap, hit);
       } else if (e.state === "recover") {
         e.t -= dt;
         if (e.t <= 0) e.state = "chase";
-      } else if (p.down) {
-        // プレイヤーが倒れているあいだは様子を見る
+      } else if (P.down) {
+        // プレイヤーが倒れているあいだ（ねらう相手がいないとき）は様子を見る
       } else if (d.kind === "melee") {
         // 届くところまで来たら構える（2026-10-18：前は届くところより少し手前まで近づいてから）
         if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
@@ -155,8 +203,16 @@ var Enemies = (function () {
       ar.x += ar.vx * dt; ar.y += ar.vy * dt;
       var tx = Math.floor(ar.x / World.TILE), ty = Math.floor(ar.y / World.TILE);
       var hitWall = room.blocksShot(tx, ty);
+      // 矢が当たる相手：チャームした敵の矢はほかの敵に、ふつうの敵の矢はプレイヤーとチャームした敵に
+      var foe = null;
+      list.forEach(function (o) {
+        if (foe || o.dead || o === ar.from || !!o.charm === !!ar.ally) return;
+        var ox = ar.x - o.x, oy = ar.y - (o.y - 3);
+        if (ox * ox + oy * oy < (o.r + 2) * (o.r + 2)) foe = o;
+      });
+      if (foe) { hitFoe(ar.from, foe, ar.opts); arrows.splice(k, 1); continue; }
       var ddx = ar.x - p.x, ddy = ar.y - p.y;
-      if (!p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y, ar.opts); arrows.splice(k, 1); continue; }
+      if (!ar.ally && !p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y, ar.opts); arrows.splice(k, 1); continue; }
       if (hitWall || ar.life <= 0) arrows.splice(k, 1);
     }
 
@@ -175,7 +231,7 @@ var Enemies = (function () {
     var d = e.def;
     e.state = "recover"; e.t = 0.35; e.cd = d.cooldown;
     if (d.kind === "archer") {
-      arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e });
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
       return;
     }
     // 近い攻撃：構えたときの向きのまま。届けば当たる。剣士・槍兵は一歩ふみこんで振る（2026-10-18）
@@ -292,6 +348,11 @@ var Enemies = (function () {
       var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
       if (marks.length && !e.dead) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 7, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
       if (e.status.sleep && !e.dead) Render.text("Zz", x + 7, y - top - 4, { size: 7, color: "#b48cf0" });
+      if (e.charm && !e.dead) {   // チャーム：頭の上にハートと、足もとにピンクの輪
+        Render.text("♥", x, y - top - 10, { size: 8, align: "center", color: "#ff8ac8" });
+        ctx.strokeStyle = "rgba(255,138,200,0.7)"; ctx.lineWidth = 1;
+        ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 3, e.r + 2, (e.r + 2) * 0.45, 0, 0, Math.PI * 2); else ctx.arc(x, y + 3, e.r + 2, 0, Math.PI * 2); ctx.stroke();
+      }
       // 構え（予告）
       if (e.state === "windup" && !e.dead) {
         Render.text("！", x, y - top - 9, { size: 9, align: "center", bold: true, color: "#ffd24a" });
@@ -338,5 +399,5 @@ var Enemies = (function () {
   }
   function updateFx(dt) { for (var i = fxs.length - 1; i >= 0; i--) { fxs[i].t -= dt; if (fxs[i].t <= 0) fxs.splice(i, 1); } }
 
-  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, list: list, update: update, draw: draw, addStatus: addStatus };
+  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, hostile: hostile, charm: charm, list: list, update: update, draw: draw, addStatus: addStatus };
 })();

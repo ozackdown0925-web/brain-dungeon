@@ -60,6 +60,12 @@ var Sprites = (function () {
                    up: ["................", "...AAAAAAAAAA...", "..ATTUUHUUTTTA..", "..ATUHUUUTUTTA..", "..AUHUUTUUTUTA..", "..AKKKKKKKKKKA..", "..AUUUUUUUUUTA..", "..AUTUUTUUTUTA..", "..ATUUUTUUTUTA..", "..ATTUTTUTTTTA..", "...ATTTTUTTTA...", "....ATFEEFTA....", "..AHUKKXXKKUHA..", ".AUTAHUUHUTATUA.", ".AUTAUHUUTUATUA.", ".AUTAKXKKXKATUA.", ".AHUAUHUTUTAUHA.", ".AEEAHUUTUTAEEA.", "..AAAUHUUTTAAA..", "...AUHUUTUTTA...", "...AHUHUUTUTA...", "...AUUHUTUTTA...", "...AKXKKXKXKA...", "....AXXAAXXA...."],
                    side: ["................", "..AAAAAAAAAA....", "..AAHUUTTTTTA...", "..AHHUTUUTTTA...", "..ATUHHUTTTTA...", ".AKKKKKKKKKKA...", ".ATAFATHUTTTA...", ".ATAFAAATETTA...", "..AAEXHFAFTA....", "...AEXEFFTTA....", "...AEEFAAAA.....", "....AFAHUTAA....", ".....AKHUTTA....", "....AAKHUUTTA...", "....AUXHUTUTA...", "....AUKXKXKXA...", ".....AXHAEEFA...", "....AUKUHAEFA...", "....AUXHUTTA....", "...AUKHUUTTA....", "...AHXUHUTTTA...", "...AUKUHUTUTA...", "...AKXKKXKXA....", "....AXXAXXA....."] } }
   };
+  // 組み合わせの上級職（2026-10-20）：絵が決まるまでの仮。もとの職の絵の色だけを変える（保護者の絵ができたら map にさしかえる）
+  LOOK.magicknight = { from: "warrior", swap: { I: "N", J: "L" } };            // むらさきのよろい
+  LOOK.ninja       = { from: "hunter",  swap: { O: "J", Q: "S", R: "T" } };    // 紺とはがね色の忍び装束
+  LOOK.gladiator   = { from: "warrior", swap: { I: "K", J: "X" } };            // 赤いよろい
+  LOOK.paladin     = { from: "warrior", swap: { I: "H", J: "B" } };            // 白と金のよろい
+  LOOK.sage        = { from: "priest",  swap: { I: "Q", J: "O" } };            // 緑のかざりのローブ
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
