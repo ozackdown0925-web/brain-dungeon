@@ -88,14 +88,14 @@
     GameState.setAdventure({
       state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
       timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
-      lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown, bossRetried: !!run.bossRetried, bossSave: run.bossSave || null,
+      lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown, bossRetried: !!run.bossRetried, bossSave: run.bossSave || null, bossBest: Math.max(run.bossBest || 0, curKey === dg.exit && !dg.bossDown ? bossDamaged() : 0),
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
       party: Party.members().map(function (m) { return { hp: m.hp, mp: m.mp, down: m.down }; })
     });
   }
   function applyResume(a) {
     run.timeLeft = a.timeLeft;
-    run.bossRetried = !!a.bossRetried; run.bossSave = a.bossSave || null;
+    run.bossRetried = !!a.bossRetried; run.bossSave = a.bossSave || null; run.bossBest = a.bossBest || 0;
     var r = a.run;
     run.gold = r.gold; run.mat = r.mat; run.got = r.got; run.exp = r.exp; run.mastery = r.mastery; run.byType = r.byType; run.kills = r.kills;
     if (r.title) run.title = r.title;
@@ -857,6 +857,12 @@
   // ---------- 倒れたときの選択・全滅 ----------
   var chooseEl = document.getElementById("choose");
   // ボスへのやり直し（2026-10-21 保護者の案）：ボスの部屋で3人ともたおれたら、1回の冒険で1回だけ、ボスに挑んだときにもどれる
+  // ボスのHPをどれだけけずったか（0〜1）。やり直したときは、よいほうを残す（2026-10-21 保護者が決定）
+  function bossDamaged() {
+    var b = Enemies.alive().filter(function (e) { return e.def && e.def.boss; })[0];
+    return b ? Math.max(0, Math.min(1, 1 - b.hp / b.maxHp)) : 0;
+  }
+  function noteBossBest() { run.bossBest = Math.max(run.bossBest || 0, bossDamaged()); }
   function canBossRetry() { return dg.boss && curKey === dg.exit && !dg.bossDown && !run.bossRetried && !!run.bossSave; }
   function showBossRetry() {
     choosing = true; A.down = true; Input.releaseAll();
@@ -874,6 +880,7 @@
     chooseEl.hidden = false;
   }
   function bossRetry() {
+    noteBossBest();
     run.bossRetried = true;
     var sv = run.bossSave;
     run.timeLeft = sv.time;
@@ -921,12 +928,25 @@
       var ce = (20 + 5 * dg.floor) * (1 + 0.25 * settings.correct);
       Party.members().forEach(function (m, i) { if (!m.down) { run.exp[i] += ce; run.mastery[i] += 10; } });
     }
+    // チャレンジボーナス（2026-10-21 保護者と決定）：ボスに挑んで負けた（たおれた・時間切れ）とき。けずった割合で変わる。クリアよりはっきり少ない
+    run.challenge = null;
+    if ((kind === "wipe" || kind === "timeout") && dg.boss && run.bossSave && !dg.bossDown && !trial.tryMode) {
+      if (curKey === dg.exit) noteBossBest();
+      var best = run.bossBest || 0, rate = 0.2 + 0.4 * best;
+      var ce2 = (20 + 5 * dg.floor) * (1 + 0.25 * settings.correct) * rate;
+      var cg = Math.round(Loot.clearGold(dg.floor, settings.correct) * rate), nm = 2 + Math.round(3 * best);
+      run.gold += cg;
+      for (var mi = 0; mi < nm; mi++) run.mat[Math.random() < 0.6 ? "iron" : "stone"]++;
+      Party.members().forEach(function (m, i) { run.exp[i] += ce2; run.mastery[i] += 5; });
+      run.challenge = { best: best, gold: cg, mat: nm };
+    }
     var tl = Math.ceil(run.timeLeft);
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
       "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "") +
         (trial.subjects.length ? "　加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・") : ""),
       run.title ? "称号「" + run.title + "」を手に入れた！（書庫の称号の棚に飾られる）" : "",
+      run.challenge ? "チャレンジボーナス：ボスのHPを" + Math.round(run.challenge.best * 100) + "%けずった！（" + run.challenge.gold + "G・素材" + run.challenge.mat + "こ・経験値と熟練度も少し）" : "",
       "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉱石 " + run.mat.iron + "　魔石 " + run.mat.stone + (run.mat.gem ? "　宝玉 " + run.mat.gem : ""),
       "経験値 " + Party.members().map(function (m, i) { return m.name + " +" + Math.round(run.exp[i]); }).join("　"),
       trial.tryMode ? "試しモードなので、拾った物も経験値も持ち帰らない（記録にもセーブにも残らない）。" :
