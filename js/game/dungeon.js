@@ -234,6 +234,9 @@ var Dungeon = (function () {
     // ボスは部屋のまんなか（入ってすぐ見えるように）
     bc.enemies = [{ type: info.enemy, tx: 0, ty: 0, x: bc.center.x + 10, y: bc.center.y, dead: false, boss: true }];
     bc.bossCell = true;
+    // 回復の泉（2026-10-21 保護者の案）：ボスの部屋の1つ手前の部屋のまんなか。ふれると全員のHP・MPが全快
+    var mc = cells[key(2, 1)];
+    mc.spring = { x: mc.center.x, y: mc.center.y };
     return {
       floor: floor, seed: seed, cells: cells, start: key(1, 1), exit: key(3, 1), boss: true, bossInfo: info,
       bossDown: false, bossMet: false, lock: null, hasKey: false, hasCKey: false
