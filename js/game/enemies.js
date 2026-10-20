@@ -10,12 +10,14 @@ var Enemies = (function () {
     var d = GameData.ENEMIES[type];
     var k = Math.max(0, (depth || 1) - 1);
     var hp = Math.round(d.hp * (1 + 0.12 * k)), patk = Math.round(d.patk * (1 + 0.10 * k) * 10) / 10;
+    var matk = Math.round((d.matk || 0) * (1 + 0.10 * k) * 10) / 10;   // 魔攻（魔法で攻撃する敵。2026-10-21）
     var e = {
       type: type, def: d, x: x, y: y, r: d.r,
-      hp: hp, maxHp: hp, patk: patk, pdef: d.pdef, mdef: d.mdef, res: d.res,
+      hp: hp, maxHp: hp, patk: patk, matk: matk, pdef: d.pdef, mdef: d.mdef, res: d.res,
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
-      strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {}
+      strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {},
+      fly: d.kind === "wisp"   // 瘴気の霊は浮いている（水の上も通る）
     };
     list.push(e);
     return e;
@@ -79,7 +81,8 @@ var Enemies = (function () {
   function hitFoe(from, v, opts) {
     if (v.dead) return;
     opts = opts || {};
-    var res = Battle.damage(from.patk * (opts.mult || 1), v.pdef, { element: "none", res: null, crit: 0, minPct: 0.3 });
+    var mag = opts.magic;   // 魔法の攻撃は、魔攻と魔防で
+    var res = Battle.damage((mag ? from.matk : from.patk) * (opts.mult || 1), mag ? v.mdef : v.pdef, { element: "none", res: null, crit: 0, minPct: 0.3 });
     v.hp -= res.amount; v.flash = 0.1;
     Battle.showHit(v.x, v.y - 20, res, false);
     Sound.play("hit");
@@ -117,6 +120,7 @@ var Enemies = (function () {
       e.pollenFx = Math.max(0, (e.pollenFx || 0) - dt);
       e.puff = Math.max(0, (e.puff || 0) - dt);
       e.thrust = Math.max(0, (e.thrust || 0) - dt);
+      e.burst = Math.max(0, (e.burst || 0) - dt);
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
@@ -179,6 +183,20 @@ var Enemies = (function () {
           var hy2 = gap > d.keep + 10 ? uy : gap < d.keep - 10 ? -uy : ux * e.strafe;
           e.hopDir = { x: hx2, y: hy2 }; e.hop = d.hopTime; e.hopCd = d.hopEvery; e.strafe = -e.strafe;
         }
+      } else if (d.kind === "caster") {
+        // 影の魔導士（2026-10-21）：弓兵と同じく離れて回りこみ、闇の玉を撃つ
+        if (gap < d.keepMin) { mx = -ux; my = -uy; }
+        else if (gap > d.keepMax) { mx = ux; my = uy; }
+        else { mx = -uy * e.strafe * 0.5; my = ux * e.strafe * 0.5; }
+        if (gap <= d.keepMax + 20 && e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "wisp") {
+        // 瘴気の霊（2026-10-21）：ゆらゆらしながら近づき、とどくところで瘴気をはじけさせる
+        e.zig = (e.zig || Math.random() * 6) + dt * 3;
+        var sw2 = Math.sin(e.zig) * 0.6;
+        if (gap > d.reach - 4) { mx = ux - uy * sw2; my = uy + ux * sw2; var ml2 = Math.sqrt(mx * mx + my * my) || 1; mx /= ml2; my /= ml2; }
+        // 岩などにつかえたら、しばらく横へ回りこむ
+        if (e.detour > 0) { e.detour -= dt; mx = -uy * e.strafe; my = ux * e.strafe; }
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
       } else if (d.kind === "archer") {
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
         else if (gap > d.keepMax) { mx = ux; my = uy; }
@@ -189,10 +207,14 @@ var Enemies = (function () {
       if (e.state === "chase" || mx || my) {
         if (mx || my) {
           e.face = { x: mx, y: my };
-          if ((d.kind !== "archer" || gap >= d.keepMin) && d.kind !== "bee") e.face = { x: ux, y: uy };
+          if (((d.kind !== "archer" && d.kind !== "caster") || gap >= d.keepMin) && d.kind !== "bee") e.face = { x: ux, y: uy };
           var before = { x: e.x, y: e.y };
           room.move(e, mx * d.speed * dt, my * d.speed * dt);
-          if (d.kind === "archer" && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
+          if ((d.kind === "archer" || d.kind === "caster") && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
+          if (d.kind === "wisp" && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < d.speed * dt * 0.3) {
+            if (e.detour > 0) e.strafe = -e.strafe;   // 回りこんでもつかえたら、反対へ
+            e.detour = 0.9;
+          }
           e.walk += dt * 8;
         }
       }
@@ -246,6 +268,15 @@ var Enemies = (function () {
     e.state = "recover"; e.t = 0.35; e.cd = d.cooldown;
     if (d.kind === "archer") {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
+      return;
+    }
+    if (d.kind === "caster") {   // 闇の玉（魔法のダメージ）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { orb: true, magic: true } });
+      return;
+    }
+    if (d.kind === "wisp") {   // 瘴気がはじける：まわりにとどけば当たる（魔法のダメージ）
+      e.burst = 0.4;
+      if (!p.down && gap <= d.reach + 4) hurt(e, p.x, p.y - 8, { magic: true });
       return;
     }
     if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）
@@ -314,7 +345,7 @@ var Enemies = (function () {
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
       var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
@@ -328,7 +359,30 @@ var Enemies = (function () {
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
+      if (d.kind === "wisp") {   // 瘴気の霊：ふわふわ上下にゆれて、少しすけている
+        lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
+        ctx.globalAlpha = ctx.globalAlpha * 0.85;
+      }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
+      if (d.kind === "wisp") ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (d.kind === "caster" && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
+        var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
+        Combat.glowDot(ctx, ox2, oy2, 4 + kc * 7, "#e0c0ff", "#c890f0", 0.6 + 0.4 * kc);
+        Render.rect(Math.round(ox2) - 1 - Math.round(kc), Math.round(oy2) - 1 - Math.round(kc), 2 + Math.round(kc) * 2, 2 + Math.round(kc) * 2, "#2a1040");
+      }
+      if (d.kind === "wisp" && !e.dead) {
+        var rr3 = d.reach + e.r;
+        if (e.state === "windup") {   // とどく範囲が、だんだん濃くなる
+          var kw = 1 - e.t / d.windup;
+          ctx.fillStyle = "rgba(150,100,200," + (0.08 + 0.2 * kw).toFixed(2) + ")";
+          ctx.beginPath(); ctx.arc(x, y - 2, rr3, 0, Math.PI * 2); ctx.fill();
+        }
+        if (e.burst > 0) {   // はじける瘴気の輪
+          var kb = 1 - e.burst / 0.4;
+          ctx.strokeStyle = "rgba(200,154,224," + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(x, y - 2, rr3 * (0.5 + 0.6 * kb), 0, Math.PI * 2); ctx.stroke();
+        }
+      }
       if (d.kind === "spore" && !e.dead) {
         // 胞子：構えのあいだは、とどく範囲がだんだん濃くなる。まいたあとは、点の雲
         var rr2 = d.reach + e.r;
@@ -392,6 +446,11 @@ var Enemies = (function () {
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
+      if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光
+        Combat.glowDot(ctx, x, y, 7, "#1a0a2a", "#9a5ad0", 0.85);
+        Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#2a1040");
+        return;
+      }
       if (a.opts && a.opts.spit) {   // 毒のつば：紫と緑のしずく
         Render.rect(Math.round(x - a.vx * 0.03) - 1, Math.round(y - a.vy * 0.03) - 1, 2, 2, "rgba(160,110,200,0.5)");
         Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#9a5ad0"); Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#b8e870");

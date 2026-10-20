@@ -73,15 +73,17 @@ var World = (function () {
     var y0 = Math.floor(y / TILE), y1 = Math.floor((y + h - 0.001) / TILE);
     for (var ty = y0; ty <= y1; ty++) {
       for (var tx = x0; tx <= x1; tx++) {
-        if (this.solidAt(tx, ty)) return true;
+        if (this.solidAt(tx, ty) && !(this._fly && this.tile(tx, ty) === "~")) return true;   // 浮いているもの（瘴気の霊）は水の上も通る
       }
     }
     return false;
   };
   // 動くもの（e.x, e.y は中心、e.r は半分の大きさ）を、壁にめりこまないように動かす。横と縦を別々に動かすので、壁ぞいにすべる。
   Room.prototype.move = function (e, dx, dy) {
+    this._fly = !!e.fly;
     if (dx !== 0) e.x = this.reach(e.x, e.y, e.r, dx, 0);
     if (dy !== 0) e.y = this.reach(e.x, e.y, e.r, 0, dy);
+    this._fly = false;
   };
   // (x, y) から (dx, dy) だけ進もうとして、壁の手前で止まった位置（動かした方の座標）を返す
   Room.prototype.reach = function (x, y, r, dx, dy) {

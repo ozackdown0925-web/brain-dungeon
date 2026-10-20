@@ -376,6 +376,21 @@ var GameData = (function () {
       windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#4e8a40",
       onHit: { type: "poison", chance: 0.6, dur: 6 }
     },
+    // ---- 瘴気の森の魔法の敵（段階3、2026-10-21）。matk＝魔攻。魔法の攻撃は、仲間の魔防で受ける ----
+    // 影の魔導士：離れたところから、闇の玉を撃つ（ゆっくり飛ぶ。魔法のダメージ）。体は弱い。光が弱点
+    shadow_mage: {
+      name: "影の魔導士", kind: "caster", hp: 30, patk: 4, matk: 10, pdef: 2, mdef: 6,
+      res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 24, r: 6,
+      keepMin: 70, keepMax: 130, windup: 0.8, cooldown: 2.6, orbSpeed: 85, color: "#6a3a98"
+    },
+    // 瘴気の霊（6階から）：ふわふわ浮いて近づき、まわりに瘴気をはじけさせる（魔法のダメージ。毒になることがある）。
+    // 物理（斬・刺・打）は半減、光が大きな弱点、火も少し効く
+    wisp: {
+      name: "瘴気の霊", kind: "wisp", hp: 26, patk: 4, matk: 9, pdef: 6, mdef: 2,
+      res: { slash: 0.5, pierce: 0.5, strike: 0.5, light: 1.75, fire: 1.25, dark: 0 }, speed: 30, r: 6,
+      reach: 18, windup: 0.6, cooldown: 2.0, color: "#b49ad8",
+      onHit: { type: "poison", chance: 0.3, dur: 6 }
+    },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
