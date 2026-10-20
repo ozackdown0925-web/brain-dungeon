@@ -102,6 +102,13 @@ var Combat = (function () {
     });
     return best;
   }
+  // range より近い敵がいれば、その方を向く（槍の突き。向きに関係なく、いちばん近い敵）
+  function faceNearest(range) {
+    var a = A(), t = autoTarget(range);
+    if (!t) return;
+    var dx = t.x - a.x, dy = t.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    a.face = { x: dx / d, y: dy / d };
+  }
   // いちばん近い敵の方を向いて、その向き（角度）を返す。敵がいなければ今の向き
   function aimAt(range) {
     var a = A(), t = autoTarget(range);
@@ -164,13 +171,17 @@ var Combat = (function () {
       return;
     }
     Sound.play("swing");
+    if (w.thrust) faceNearest(w.reach + 12);   // 槍：いちばん近い敵の方を向いてから突く（2026-10-21）
     a.swing = 0.15; a.swingMax = 0.15; a.swingFlip = !a.swingFlip; a.swingArc = w.arc; a.swingReach = w.reach;
+    a.swingKind = w.thrust ? "thrust" : "";
     a.swingColor = c.enchant ? ELEM_COLOR[c.enchant.elem] : "#ffffff";
+    if (w.thrust) effects.push({ kind: "lance", reach: w.reach, t: 0.16, max: 0.16, thin: true, color: c.enchant ? ELEM_COLOR[c.enchant.elem] : "#e8f4ff" });
     var spec = { stat: "p", mult: (w.power || 1) * k, elem: "weapon" };
     if (hitArc(c, spec, w.reach, w.arc)) mpOnHit(c);
     if (dbl) later(0.1, function () {   // 影分身：少しおくれて、もう1回
       if (Party.current() !== c || c.down) return;
       a.swing = 0.15; a.swingMax = 0.15; a.swingFlip = !a.swingFlip; a.swingColor = "#9a8ad0";
+      if (w.thrust) effects.push({ kind: "lance", reach: w.reach, t: 0.16, max: 0.16, thin: true, color: "#9a8ad0" });
       if (hitArc(c, spec, w.reach, w.arc)) mpOnHit(c);
     });
   }
@@ -223,10 +234,12 @@ var Combat = (function () {
     var ang = Math.atan2(a.face.y, a.face.x);
     switch (f.t) {
       case "arc":
-        a.swing = 0.18; a.swingMax = 0.18; a.swingFlip = !a.swingFlip; a.swingArc = f.arc || w.arc || 1; a.swingReach = f.reach || w.reach || 18; a.swingColor = f.color || "#ffe7a0";
         var rch = f.reach || w.reach || 18;
+        if (f.vis === "lance") { faceNearest(rch + 12); ang = Math.atan2(a.face.y, a.face.x); }   // 槍の突きのスキルも、近い敵の方を向く
+        a.swing = 0.18; a.swingMax = 0.18; a.swingFlip = !a.swingFlip; a.swingArc = f.arc || w.arc || 1; a.swingReach = rch; a.swingColor = f.color || "#ffe7a0";
+        a.swingKind = f.vis === "lance" ? "thrust" : "";
         if (f.vis === "smash") effects.push({ kind: "smash", x: a.x + a.face.x * rch * 0.7, y: a.y + a.face.y * rch * 0.7, t: 0.45, max: 0.45 });
-        if (f.vis === "lance") effects.push({ kind: "lance", reach: rch, t: 0.22, max: 0.22 });
+        if (f.vis === "lance") effects.push({ kind: "lance", reach: rch, t: 0.22, max: 0.22, color: f.color });
         if (f.vis === "quake") effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(ang, rch * 1.3, f.arc || 0.8), t: 0.7, max: 0.7 });
         hitArc(c, f, rch, f.arc || w.arc || 1);
         break;
@@ -268,7 +281,11 @@ var Combat = (function () {
         // hits：1回ごとにちがう斬り（エレメントブレイク）。step：1回ごとに前へ進む（迅雷斬。敵はすりぬけない）
         for (var r = 0; r < f.count; r++) later(r * f.interval, (function (r) { return function () {
           if (Party.current() !== c || c.down) return;
-          if (f.step) Enemies.moveBlocked(hooks.room, a, a.face.x * f.step, a.face.y * f.step);
+          if (f.step) {   // 迅雷斬：一歩ふみこむ（残像を少し残す）
+            var sx0 = a.x, sy0 = a.y;
+            Enemies.moveBlocked(hooks.room, a, a.face.x * f.step, a.face.y * f.step);
+            effects.push({ kind: "trail", x0: sx0, y0: sy0, x1: a.x, y1: a.y, t: 0.25, max: 0.25 });
+          }
           apply(c, f.hits ? f.hits[r % f.hits.length] : f.hit);
         }; })(r));
         a.busy = f.count * f.interval;
@@ -325,6 +342,25 @@ var Combat = (function () {
       case "buff":
         targets(c, f.party).forEach(function (m) { addBuff(m, f, f.src || curSkill); });
         effects.push({ kind: "glow", t: 0.4, max: 0.4, color: f.pct < 0 ? "#ff9a4d" : "#f2c14e" });
+        break;
+      case "beam":      // グランドクロス（2026-10-21）：十字の光のあと、前へ太い光のビーム。とどくところの敵みんなに1回ずつ当たる
+        faceNearest(f.length);
+        a.busy = Math.max(a.busy, 0.75);
+        var bang = Math.atan2(a.face.y, a.face.x), bx0 = a.x, by0 = a.y - 4;
+        effects.push({ kind: "crossflash", t: 0.35, max: 0.35, color: f.color });
+        later(0.3, function () {
+          if (Party.current() !== c || c.down) return;
+          var ux = Math.cos(bang), uy = Math.sin(bang), len = f.length;
+          for (var d0 = 8; d0 < f.length; d0 += 4) {   // かべで止まる
+            if (hooks.room.blocksShot(Math.floor((bx0 + ux * d0) / World.TILE), Math.floor((by0 + 4 + uy * d0) / World.TILE))) { len = d0; break; }
+          }
+          effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, t: 0.55, max: 0.55, color: f.color });
+          Sound.play("hit");
+          Enemies.hostile().forEach(function (e) {
+            var ex = e.x - bx0, ey = (e.y - 3) - by0, along = ex * ux + ey * uy, side = Math.abs(-ex * uy + ey * ux);
+            if (along > -e.r && along < len + e.r && side <= f.width / 2 + e.r) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6, color: f.color }, bx0, by0);
+          });
+        });
         break;
       case "enchant":   // 魔法剣士：剣に属性をのせる（新しくかけると前のものは消える）
         c.enchant = { elem: f.elem, t: f.dur };
@@ -665,6 +701,30 @@ var Combat = (function () {
       }
       return;
     }
+    if (ef.kind === "crossflash") {   // グランドクロスのため：キャラの前に光の十字が広がる
+      var cx2 = a.x - cam.x + a.face.x * 8, cy2 = a.y - cam.y - 6 + a.face.y * 6, s2 = 4 + 10 * Math.min(1, q * 1.6);
+      glowDot(ctx, cx2, cy2, s2 * 1.8, "#ffffff", ef.color, 0.7);
+      ctx.fillStyle = rgba("#ffffff", 0.95);
+      ctx.fillRect(cx2 - 1.5, cy2 - s2, 3, s2 * 2); ctx.fillRect(cx2 - s2 * 0.7, cy2 - s2 * 0.35, s2 * 1.4, 3);
+      return;
+    }
+    if (ef.kind === "beam") {   // グランドクロス：前へのびる太い光のビーム（出たときがいちばん太く、だんだん細くなって消える）
+      var bx = ef.x - cam.x, by = ef.y - cam.y, grow = Math.min(1, q / 0.12), L = ef.len * grow, W = ef.w * (q < 0.15 ? 1.15 : p * 1.1);
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(ef.ang);
+      var lg = ctx.createLinearGradient(0, -W, 0, W);
+      lg.addColorStop(0, rgba(ef.color, 0)); lg.addColorStop(0.3, rgba(ef.color, 0.55)); lg.addColorStop(0.5, rgba("#ffffff", 0.95));
+      lg.addColorStop(0.7, rgba(ef.color, 0.55)); lg.addColorStop(1, rgba(ef.color, 0));
+      ctx.fillStyle = lg; ctx.fillRect(4, -W, L, W * 2);
+      ctx.fillStyle = rgba("#ffffff", Math.min(1, p * 1.5)); ctx.fillRect(4, -W * 0.18, L, W * 0.36);   // まんなかの白い芯
+      glowDot(ctx, 6, 0, W * 1.4, "#ffffff", ef.color, 0.8 * p);   // 出口の光
+      glowDot(ctx, 4 + L, 0, W, "#ffffff", ef.color, 0.6 * p);     // 先の光
+      for (var bp = 0; bp < 8; bp++) {   // 流れる光の粒
+        var ph = (q * 3 + bp / 8) % 1;
+        glowDot(ctx, 4 + L * ph, Math.sin(bp * 5.1) * W * 0.7, 2.5, "#ffffff", ef.color, 0.8 * p);
+      }
+      ctx.restore();
+      return;
+    }
     if (ef.kind === "meteor") {   // メテオ：ななめ上から落ちてくる、燃える岩
       var mx = ef.x - cam.x, my = ef.y - cam.y, fall = Math.min(1, q / 0.4);
       if (fall < 1) {
@@ -770,8 +830,8 @@ var Combat = (function () {
       }
     } else if (ef.kind === "lance") {   // いなずま突き・グランドチャージ：前へ一直線にのびる光
       var lx = a.x - cam.x, ly = a.y - cam.y - 4, la = Math.atan2(a.face.y, a.face.x), lr = (ef.reach + 6) * Math.min(1, q * 2.5);
-      var nx4 = -Math.sin(la), ny4 = Math.cos(la), w4 = 3 * p;
-      ctx.fillStyle = rgba("#e8f4ff", 0.85 * p);
+      var nx4 = -Math.sin(la), ny4 = Math.cos(la), w4 = (ef.thin ? 1.6 : 3) * p;
+      ctx.fillStyle = rgba(ef.color || "#e8f4ff", 0.85 * p);
       ctx.beginPath();
       ctx.moveTo(lx + nx4 * w4, ly + ny4 * w4); ctx.lineTo(lx + Math.cos(la) * lr, ly + Math.sin(la) * lr); ctx.lineTo(lx - nx4 * w4, ly - ny4 * w4);
       ctx.closePath(); ctx.fill();
