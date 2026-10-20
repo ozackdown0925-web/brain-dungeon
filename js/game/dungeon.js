@@ -151,6 +151,9 @@ var Dungeon = (function () {
       if (rnd() < 0.6) types[types.length - 1] = "frog";
       if (n >= 5 && rnd() < 0.35) types[types.length - 2] = "frog";
       if (rnd() < 0.3) types[0] = "mushroom";
+      // 魔法の敵（段階3）：影の魔導士はどの階でも、瘴気の霊は6階から
+      if (rnd() < 0.45) types[1] = "shadow_mage";
+      if (floor >= 6 && rnd() < 0.55) { types[2] = "wisp"; if (n >= 5 && rnd() < 0.35) types[0] = "wisp"; }
     } else {
       for (var i = 0; i < n; i++) types.push(SQUAD[i % 3]);
       if (rnd() < 0.35) types[types.length - 1] = "vine";

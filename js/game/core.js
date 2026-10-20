@@ -392,7 +392,10 @@
     if (ev > 0 && Math.random() < ev) { Battle.pop(A.x, A.y - 28, "よけた", "#a8d8ff", 8); A.inv = 0.35; return; }
     // cut：パッシブ「守りの誓い」「聖なる盾」。cutLow：聖なる盾の、HPが半分より少ないときの上のせ
     var cut = (c.stats.cut || 0) + (c.hp < c.stats.hp * 0.5 ? (c.stats.cutLow || 0) : 0);
-    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - cut), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // minPct：最低でも攻撃力の30%
+    // 魔法の攻撃（影の魔導士・瘴気の霊。2026-10-21）は、敵の魔攻と仲間の魔防で計算する。ほかは物攻と物防
+    var res = opts.magic
+      ? Battle.damage((e.matk || e.patk) * (opts.mult || 1) * (1 - cut), Party.eff(c, "mdef"), { element: "dark", res: null, crit: 0, minPct: 0.3 })
+      : Battle.damage(e.patk * (opts.mult || 1) * (1 - cut), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // minPct：最低でも攻撃力の30%
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
     Sound.play("hurt");
