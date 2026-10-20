@@ -12,7 +12,8 @@ var Props = (function () {
     k: "#0b0906", K: "#1c140c",                          // 穴・箱の中
     e: "#4a3420", f: "#6a4c2e", F: "#8a6840",            // 土
     q: "#2a5a2e", Q: "#4e8a40", r: "#7aaa4a", R: "#b0dc70", // 葉（薬草。2026-10-20）
-    b: "#30346d", B: "#597dce", c: "#a8d8ff", m: "#deeed6"  // 青いかさ・白いじく（魔力のキノコ）
+    b: "#30346d", B: "#597dce", c: "#a8d8ff", m: "#deeed6", // 青いかさ・白いじく（魔力のキノコ）
+    n: "#1e4a52", N: "#2e7a7a", o: "#5ab8a8", O: "#b8f4e4"  // 水色の葉（毒消し草。2026-10-21）
   };
 
   // 宝箱（閉じた）16×13。鉄の帯（S）は、R以上が出る宝箱では金（G）になる
@@ -130,6 +131,7 @@ var Props = (function () {
     else if (name === "pit") img = fromMap(PIT);
     else if (name === "herb") img = fromMap(HERB);
     else if (name === "mush") img = fromMap(MUSH);
+    else if (name === "cure") img = fromMap(HERB, { q: "n", Q: "N", r: "o", R: "O" });   // 毒消し草：薬草の形で、水色の葉
     cache[name] = img;
     return img;
   }

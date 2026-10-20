@@ -355,6 +355,27 @@ var GameData = (function () {
       reach: 12, windup: 0.3, cooldown: 1.5, color: "#dad45e",
       onHit: { type: "poison", chance: 0.3, dur: 6 }
     },
+    // ---- 瘴気の森（段階2、2026-10-21）。闇の骸骨は、打と光が弱点・刺は半減・闇は効かない ----
+    // 骸骨の剣士：ゴブリンの剣士と同じ近づいて斬る敵。少しかたい
+    skeleton_sword: {
+      name: "骸骨の剣士", kind: "melee", hp: 42, patk: 8, pdef: 5, mdef: 3,
+      res: { strike: 1.5, light: 1.5, pierce: 0.5, dark: 0 }, speed: 22, r: 6,
+      reach: 14, windup: 0.4, cooldown: 1.2, lunge: 6, color: "#c8ccd4"
+    },
+    // 骸骨の弓兵：離れて矢を撃つ。紫のフード
+    skeleton_archer: {
+      name: "骸骨の弓兵", kind: "archer", hp: 34, patk: 7, pdef: 3, mdef: 3,
+      res: { strike: 1.5, light: 1.5, pierce: 0.5, dark: 0 }, speed: 28, r: 6,
+      keepMin: 64, keepMax: 120, windup: 0.55, cooldown: 2.4, arrowSpeed: 120, color: "#6a3a98"
+    },
+    // 毒ガエル：はねて近づき（はねているあいだだけ動く）、少し離れたところから毒のつばを吐く（中距離）。水は半減
+    frog: {
+      name: "毒ガエル", kind: "frog", hp: 30, patk: 7, pdef: 2, mdef: 2,
+      res: { water: 0.5, strike: 0.75, slash: 1.25 }, speed: 0, r: 6,
+      reach: 72, keep: 44, hopSpeed: 95, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#4e8a40",
+      onHit: { type: "poison", chance: 0.6, dur: 6 }
+    },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
@@ -427,11 +448,12 @@ var GameData = (function () {
   //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
   //   depthBase：強さの深さ＝depthBase＋階。敵の強さ・ごほうび・拾う装備のレベルに使う（樹海は 0 で、今までと同じ）
-  // 瘴気の森の敵・部屋・ボスは、まだ樹海のものを仮に使う（段階2〜4で作る）。深さも仮（段階6で直す）。
+  //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫。tiles.js・rooms.js）
+  // 瘴気の森のボスは、まだ樹海のものを仮に使う（段階4で作る）。深さも仮（段階6で直す）。
   var DUNGEONS = {
-    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0 },
+    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest" },
     shouki: {
-      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14,
+      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp",
       bosses: {
         5: { enemy: "wolf_boss", title: "沼をしずめし者",   // 仮：大ガマを作るまで大オオカミ（段階4）
              before: ["（かり）沼の奥で、何かが動いた。"], after: ["（かり）沼が、少し静かになった。"] },
