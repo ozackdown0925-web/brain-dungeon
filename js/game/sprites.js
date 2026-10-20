@@ -60,12 +60,44 @@ var Sprites = (function () {
                    up: ["................", "...AAAAAAAAAA...", "..ATTUUHUUTTTA..", "..ATUHUUUTUTTA..", "..AUHUUTUUTUTA..", "..AKKKKKKKKKKA..", "..AUUUUUUUUUTA..", "..AUTUUTUUTUTA..", "..ATUUUTUUTUTA..", "..ATTUTTUTTTTA..", "...ATTTTUTTTA...", "....ATFEEFTA....", "..AHUKKXXKKUHA..", ".AUTAHUUHUTATUA.", ".AUTAUHUUTUATUA.", ".AUTAKXKKXKATUA.", ".AHUAUHUTUTAUHA.", ".AEEAHUUTUTAEEA.", "..AAAUHUUTTAAA..", "...AUHUUTUTTA...", "...AHUHUUTUTA...", "...AUUHUTUTTA...", "...AKXKKXKXKA...", "....AXXAAXXA...."],
                    side: ["................", "..AAAAAAAAAA....", "..AAHUUTTTTTA...", "..AHHUTUUTTTA...", "..ATUHHUTTTTA...", ".AKKKKKKKKKKA...", ".ATAFATHUTTTA...", ".ATAFAAATETTA...", "..AAEXHFAFTA....", "...AEXEFFTTA....", "...AEEFAAAA.....", "....AFAHUTAA....", ".....AKHUTTA....", "....AAKHUUTTA...", "....AUXHUTUTA...", "....AUKXKXKXA...", ".....AXHAEEFA...", "....AUKUHAEFA...", "....AUXHUTTA....", "...AUKHUUTTA....", "...AHXUHUTTTA...", "...AUKUHUTUTA...", "...AKXKKXKXA....", "....AXXAXXA....."] } }
   };
-  // 組み合わせの上級職（2026-10-20）：絵が決まるまでの仮。もとの職の絵の色だけを変える（保護者の絵ができたら map にさしかえる）
-  LOOK.magicknight = { from: "warrior", swap: { I: "N", J: "L" } };            // むらさきのよろい
-  LOOK.ninja       = { from: "hunter",  swap: { O: "J", Q: "S", R: "T" } };    // 紺とはがね色の忍び装束
-  LOOK.gladiator   = { from: "warrior", swap: { I: "K", J: "X" } };            // 赤いよろい
-  LOOK.paladin     = { from: "warrior", swap: { I: "H", J: "B" } };            // 白と金のよろい
-  LOOK.sage        = { from: "priest",  swap: { I: "Q", J: "O" } };            // 緑のかざりのローブ
+  // 組み合わせの上級職：保護者がペイントで描いた絵（2026-10-21。前・横・後ろの 16×24。横は右向きに描いたので、左右を反転して入れた）。
+  // 絵の色が多いので、職ごとの色の一覧（pal。小文字 a〜）を持つ。髪の色は絵のまま（顔の番号では変わらない）。
+  // swap は歩くときの足の色、sleeve は横向きで攻撃するときの腕の色（そで・そでの影）。
+  // 保護者の絵（2026-10-21）：黒いよろいと赤いマント
+  LOOK.magicknight = { from: "warrior", swap: { D: "f", C: "a", J: "l", I: "e" }, sleeve: ["d", "g"],
+    pal: { a: "#f1f1ed", b: "#080009", c: "#1f2130", d: "#907a74", e: "#625258", f: "#a43a39", g: "#000010", h: "#872427", i: "#bfa9a2", j: "#060815", k: "#030210", l: "#232639", m: "#19192b", n: "#41293c", o: "#34060c", p: "#b97a57" },
+    map: {
+      down: [".....AAAAAA.....", "....AccgmncA....", "...AcnegceecA...", "...AkcemkcecA...", "..AkccbppbcckA..", "..AjnmedpekmgA..", "...AmkmppleggA..", "....AfnppedeA...", ".AA.AoppppdbAAA.", ".AaAabbddbkaeaA.", "..AlbdlaajbblA..", "..AacmeddeniaaA.", "..AjjllednngAA..", ".AelgAjnnjmgmdA.", ".AibkklddmbjbaA.", ".AnAbjndibbkgnA.", ".AdbjngnejAgbeA.", ".AhelaideaajnbA.", "..AbiebiigbionA.", "..AobdikkdiboiA.", ".AboonndbcncooA.", ".AbAjcllAcjkAoA.", ".AA.AelAAleA.AA.", "....AAAA.AAA..A."],
+      up: [".....AAAAAA.....", "....AbeecmjA....", "...AkeeecAmA....", "...AceccgcggA...", "..AjccgccmckA...", "..AAAccgcAmjA...", "...AmkmgjjmgA...", "....AgkgcggA....", ".AA.AkggkgkA.A..", ".AaAdbiaaddbAA..", "..AlmbfoofdmnA..", "..AdohhffhibiA..", "..AjAoiooaijkA..", "..AcdohaifibmA..", ".AjbahfaafhablA.", ".AlgiffaafhajeA.", ".AlahffaafhhiAA.", "..AahffaafhhA.A.", "..AhhffaafhfaA..", "..AhhfhaahfhiA..", "..AhhfdaaofhhA..", ".AihhfdaaofhhaA.", ".AidhfdaaohhdiA.", "..AAAAAAAAAAAA.."],
+      side: ["....AAAAAA......", "...AjAcjceAA....", "..AkkjcceelA....", "..AgjmcmgcgA....", "..AkkmeblckA....", "..AedegbgcgA....", "...AnbAibjA.....", "...AeifbkA......", "...AidbaadAA....", "....AdamibA.....", "....AdbeilA.....", "...AdAelljaA....", "...AnlbaaaaA....", "....AmgddmaA....", "....AblkAeaA....", "....AbjlebbfA...", "....AcgddbbfA...", "....AibfdbbfA...", "....AAdddobafA..", "....AeiccooafA..", ".....AjdgknafA..", ".....AlmnkAafA..", ".....AlelA.AA...", ".....AAAAA.A...."] } };
+  // 保護者の絵（2026-10-21）：顔をおおう紺の忍び装束
+  LOOK.ninja = { from: "hunter", swap: { C: "e", D: "c" }, sleeve: ["n", "l"],
+    pal: { a: "#3d314a", b: "#16192c", c: "#1e1830", d: "#987565", e: "#000013", f: "#41394d", g: "#333147", h: "#232738", i: "#050518", j: "#2e293f", k: "#1b132b", l: "#201e31", m: "#06000d", n: "#030213", o: "#111022" },
+    map: {
+      down: [".....AAAAAA.....", "....AafaaagA....", "...AjgaaaajgA...", "...AgjaaagghA...", "...AjkkkkkcbA...", "...AjjddddaoA...", "...AcmmddmmbA...", "...AcfoffcfAA...", "....AlhffjdA....", "....AicffliA....", "...A.AiggiA.A...", "...AAhbehehAA...", "..AdmhbbghifA...", "..AdmibhbhnfdA..", "..AleehnbbeifA..", "..AiebgeifiilA..", ".AflnAehjjehdA..", ".AAflbleeAbidAA.", "...AiAbeA.AnA...", "...AA.AeiAjA....", "....AAbAibcA....", "....AfA.AbfA....", "....AbA..AbA....", "....AAA..AAA...."],
+      up: [".....AAAAAA.....", "....AgaaaagA....", "...AhfhaaaahA...", "...AajaaaaaaA...", "...AgkaaaacfA...", "...AcccgacclA...", "...AckckkkccA...", "....AocccciA....", "....AgekcigA....", "...AAnngaknA....", "...A.AAAgoA.A...", "...AA...AA.AA...", "...AdAAAA.AddA..", "..AdfblglAmfdA..", "..AkeilcbbiedA..", "..AbihgAAebncA..", "..AmihA..AlioA..", "..AmnA...AbnAA..", "...AbbAAAlAA....", "....AbfeiA.A....", "....AcbeebAA....", "....AjjAAohA....", "....AbA..AbA....", "....AAA..AAA...."],
+      side: [".....AAAAA......", "....AjaaajA.....", "...AgfajaagA....", "...AagafgaajA...", "...AkckbkakcA...", "...AddddbgkcA...", "...AdmddbgccA...", "...AfgafhcoA....", "...AafachcA.....", "....AfoeleA.....", ".....AleeAhA....", ".....AbhddiA....", "....AhhjddA.....", "....AlhnddA.....", ".....AlehfA.....", ".....AjnAjA.....", "....AneA.AA.....", "....AmmA.AA.....", ".....AkmAiA.....", ".....AighcA.....", ".....AbecbA.....", "......AeelA.....", "......AbeiA.....", "......AAAAA....."] } };
+  // 保護者の絵（2026-10-21）：はだかの上半身と茶色の腰布
+  LOOK.gladiator = { from: "warrior", swap: { D: "e", C: "d", J: "d", I: "d" }, sleeve: ["c", "i"],
+    pal: { a: "#010215", b: "#714032", c: "#c28d6d", d: "#523b35", e: "#422826", f: "#c0896a", g: "#06020d", h: "#1c0103", i: "#855940", j: "#141423", k: "#00010d", l: "#a9785d", m: "#c49579", n: "#3e1a22", o: "#0e1120", p: "#c3c3c3", q: "#000000" },
+    map: {
+      down: [".....aAAAAA.....", "....aAdjjjjA....", "...aadAjjdojA...", "..aAkAqAageaA...", "..aAkjAmmigjkA..", "..aAjkcmccigoA..", "..aAjakddhkaoA..", "...aApkddkpiA...", "....aidmcdiA....", "...AAailliaiA...", "..AcfcaiiafcmA..", "..AcbcfffclbcA..", ".AfmdlfllfieclA.", ".AmbeicfflbgicA.", ".AmkghhhhhhgefA.", ".AighnbbnbngnlA.", ".AfhkghanehadcA.", ".AlAeddhebngAAA.", "..A.AbnbebdA....", "...AbbeggnbA....", "...AbbekgebbA...", "....AeAAAeeA....", "....AdA..AA.....", "....AAA..AAA...."],
+      up: ["......AAAA......", "....AAaaaaA.....", "....AjakaojA....", "...AaajajjaAA...", "...AaaakaaaaA...", "...AaaaaaaaaA...", "...AaaaaaaaaA...", "...AAaaaaaaAA...", "....AAaakkAA....", "...AAAmAAAiAA...", "..AmccccffffmA..", "..AfiffcfccifA..", "..AcbifilcibfA..", "..AfgfcflclhlA..", ".AmlkhhhhhhgbmA.", ".AlbabbenbnaelA.", ".AcdgddbbbegbfA.", ".AAAgebbbbegAAA.", "....AdeneebA....", "....AbbkabbA....", "....AbekjeieA...", "....AeeAAedA....", "....AeA..AeA....", "....AAA..AAA...."],
+      side: ["......AAAAA.....", "....AAddjdjA....", "...AkjooodjjA...", "...AakkkgkejA...", "...AgmmgakjjA...", "....AmmcgkaaA...", "....AdhdgmaaA...", "....AdhpigaAA...", "....AcdcigAA....", ".....AlbbcAA....", "......AffccA....", ".....AmmnllA....", ".....AfidlclA...", ".....AflbncfA...", "......AhhdfA....", "......AnnlcA....", "......AneciA....", "......AnlchgA...", "......AnhihA....", ".......AddeA....", ".......AdbeA....", ".......AhenA....", "........AddA....", ".......AAAAA...."] } };
+  // 保護者の絵（2026-10-21）：白と金のよろい、金の髪
+  LOOK.paladin = { from: "warrior", swap: { D: "l", C: "g", J: "k", I: "o" }, sleeve: ["f", "b"],
+    pal: { a: "#d8c678", b: "#a9a99d", c: "#959286", d: "#f4fcf2", e: "#b6945a", f: "#090205", g: "#010109", h: "#987b48", i: "#fafdf7", j: "#c7b37b", k: "#716f70", l: "#4e4948", m: "#ded296", n: "#1e181b", o: "#f2f0d3" },
+    map: {
+      down: [".....AAAAAA.....", "....AmahamhA....", "...AammhamjhA...", "...AemaahaahA...", "..AeaaheehaaA...", "..AeaeeeehamhA..", "...AjlgjjfhmA...", "...AhecjjbhfA...", "...AjejejjhdA...", "..AicmfhhficiA..", "..AbchcjbcecbcA.", "..AnncmhaebnnA..", "..AnnbhhehbgnA..", ".AblgkbaeekgkbA.", ".AdcggkjjkggkoA.", ".AcAAkljblAAnbA.", ".AlgkicobconglA.", ".AggbfcbbcfbAkA.", ".AlnngAbcfggAlA.", ".AdglkbnnckglkA.", ".AillbjkgjbglcA.", ".AiglcfkckcglcA.", ".AoAAcicgocgAcA.", "..A..AAAAAAA.A.."],
+      up: ["....AAAAAA......", "....AaaaajA.....", "...AaaaaaajA....", "..AaaaaaaaaA....", "..AaaaaaaaaA....", "..AaeahaaeaeA...", "..AeaehaaeaA....", "...AneeeeehA....", "...AcfeaaefoA...", "..AdoogffffcdA..", "..AbbcbodbncbkA.", ".AlffkbcbdbnnA..", "AclnncbidobinA..", "AkfkgoimooikgbA.", "AcfofiiidddmfbA.", ".AlcfbiddddcfA..", "..AnmbbddiocmA..", "..AkiboddddcoA..", "..AbciddddddbA..", "..AocdidddiibiA.", "..AcididddiddcA.", ".AjbdbiddddbdcmA", "..AembidddibmcA.", "...AAAAAAAAAAA.."],
+      side: [".....AAAAA......", "....AaeaaaAA....", "...AaameaaaA....", "..AmeamahaaA....", "..AmhhamhaaA....", "...AejhaheaA....", "....AffaheeA....", "....AcmhleeA....", "....AjjfffA.....", ".....AfkccA.....", "....AbbbmdbA....", "....AjbjAnbA....", "....AhofjjfA....", "....AcbglmkA....", "....AblfeojA....", ".....AfgmbniA...", "....AkdfobgiA...", "....AllbbbfiA...", "....AlggkkliA...", "....AkongglmA...", ".....AccgAljdA..", ".....AfkblgjaA..", ".....AkobcfaA...", ".....AAAAAAA...."] } };
+  // 保護者の絵（2026-10-21）：むらさきのローブ、銀の髪
+  LOOK.sage = { from: "priest", swap: { J: "e" }, sleeve: ["a", "g"],
+    pal: { a: "#5f2656", b: "#8f918f", c: "#6b5d56", d: "#c59f86", e: "#3c1133", f: "#0b010c", g: "#2a182d", h: "#582b50", i: "#757572", j: "#54254d", k: "#451c3e", l: "#937a6e", m: "#220c1e", n: "#644343", o: "#140512" },
+    map: {
+      down: [".....AAAAAA.....", "....AibcibbA....", "....AbiiiiiiA...", "...AbibccbbcA...", "...AcbbclcbiiA..", "...AcbcddlcbbA..", "...AccfddffbA...", "....AldddidiA...", "...AfldddddkdA..", "...AmmkccfndA...", "..AijedemjdahA..", "...AodlibednmA..", "..AjeocnmdffjnAA", "AAcljgcgkfefhcdA", "AdlcjglkifeonmcA", "AffnojlcdokmmffA", "AlfcfalghfkgmffA", ".AofgalghfeamffA", ".AgkeacgafkhklA.", "..AjaadkjgdajmA.", "..AkajdjaedaahA.", ".AjhadfaakfjaejA", ".AkjalfaajfcakkA", ".AAAAAAAAAAAAAA."],
+      up: [".....AAAAA......", "....AbbbbbA.....", "...AbbbbbbbA....", "...AbbbbbbbA....", "...AbbbbbbbcA...", "..AcicbbbibcA...", "...AiccbccbcA...", "....AlllllgA....", "...AdejjhkdfA...", "...AkaaaaahgA...", "..AghhooojhhA...", "..AfdaaaahkdmA..", "..AemdnnndcoA...", "..AjggAAAmgeA...", "..AhggeaaggghA..", ".AhgmjaahhhoeA..", "..AggaaaahhggA..", ".AnfkaaaaajeoA..", "..AAheaaaaejgA..", "..AgheaaaaejA...", "..AgaeaaaaehgA..", "..AjjhaaaaaaeA..", "..AnjaaaaaaacA..", "..AAAAAAAAAAAA.."],
+      side: ["....AAAAAA......", "...AccibbiA.....", "...AbibbbbcA....", "..AbibbiiibA....", "..AccbibbbbA....", "...AdiibicbA....", "...AdfbbcibA....", "...AdnlcmccA....", "...AAdcfddddA...", ".....AleffhA....", ".....AhddmgA....", "....AhlgelA.....", "....AcAhemA.....", "....AfgjagA.....", "....AggeaklA....", "....AhoaakcA....", "....AhckjknA....", "....AflejkkA....", "....AmdcdekA....", "....AdcffneeA...", "....AdgfbgeeA...", "...AgdeeegehA...", "...AkoleaeeenA..", "...AAAAAAAAAA..."] } };
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
@@ -538,7 +570,8 @@ var Sprites = (function () {
       if (run) lean(g, 17);
       if (frame === "attack") {
         var s = SLEEVE[job] || SLEEVE.warrior;
-        if (sw) s = [sw[s[0]] || s[0], sw[s[1]] || s[1]];
+        if (lk && lk.sleeve) s = lk.sleeve;   // 職ごとの腕の色（2026-10-21）
+        else if (sw) s = [sw[s[0]] || s[0], sw[s[1]] || s[1]];
         var arm = [["A", "A", "A", "A", "A"], ["A", "E", s[0], s[0], s[0]], ["A", "F", s[1], s[1], s[1]], ["A", "A", "A", "A", "A"]];
         for (y = 0; y < 4; y++) for (x = 0; x < 5; x++) g[13 + y][x] = arm[y][x];
       }
@@ -562,6 +595,7 @@ var Sprites = (function () {
       else if (bodySw && y >= 12 && bodySw[ch]) ch = bodySw[ch];
       else if (sw && sw[ch]) ch = sw[ch];
       if (ch >= "1" && ch <= "4") col = hair[ch.charCodeAt(0) - 49];
+      else if (lk && lk.pal && lk.pal[ch]) col = lk.pal[ch];   // 職ごとの色の一覧（組み合わせの上級職）
       else if (PAL[ch]) col = PAL[ch];
       if (!col) continue;
       ctx.fillStyle = col; ctx.fillRect(flip ? SW - 1 - x : x, y, 1, 1);

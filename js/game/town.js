@@ -548,7 +548,7 @@ var Town = (function () {
       list.appendChild(grid);
     });
     var u = U.filter(function (x) { return x.name === selJob.upper; })[0] || U[0], done = upperDone(h, u);
-    if (u.id) det.appendChild(portrait(h, u.id));   // 作った上級職だけ（組み合わせの5つは、絵が決まるまで色ちがいの仮の絵）
+    if (u.id) det.appendChild(portrait(h, u.id));   // 作った上級職だけ
     det.appendChild(el("div", "sk-name", u.name));
     det.appendChild(el("div", "sk-kind", "上級職（" + (u.need.length > 1 ? "組み合わせ" : "一本道") + "）　★1つに熟練度 " + GameState.STAR_NEED_UPPER));
     det.appendChild(el("p", "sk-desc", u.note));
