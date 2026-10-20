@@ -76,17 +76,18 @@
   var saveTimer = 0;
   function snapshot() {
     if (!dg || !active || run.over) return;
-    var opened = [], found = [];
+    var opened = [], found = [], picked = [];
     Object.keys(dg.cells).forEach(function (k) {
       var c = dg.cells[k];
       c.chests.forEach(function (b, i) { if (b.opened) opened.push(k + "#" + i); });
       c.traps.forEach(function (t, i) { if (t.found) found.push(k + "#" + i); });
+      (c.pickups || []).forEach(function (u, i) { if (u.taken) picked.push(k + "#" + i); });
     });
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
     var ckeyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].ckey && dg.cells[k].ckey.taken; });
     GameState.setAdventure({
       state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
-      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
+      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown,
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
       party: Party.members().map(function (m) { return { hp: m.hp, mp: m.mp, down: m.down }; })
@@ -109,6 +110,7 @@
     }
     a.opened.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.chests[+p[1]]) c.chests[+p[1]].opened = true; });
     a.found.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.traps[+p[1]]) c.traps[+p[1]].found = true; });
+    (a.picked || []).forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.pickups && c.pickups[+p[1]]) c.pickups[+p[1]].taken = true; });
     if (a.keyTaken) Object.keys(dg.cells).forEach(function (k) { if (dg.cells[k].key) dg.cells[k].key.taken = true; });
     dg.hasKey = !!a.hasKey;
     if (a.ckeyTaken) Object.keys(dg.cells).forEach(function (k) { if (dg.cells[k].ckey) dg.cells[k].ckey.taken = true; });
@@ -499,6 +501,21 @@
       Battle.pop(A.x, A.y - 30, "宝箱の鍵", "#dfe6ee", 9);
       Sound.play("key");
     }
+    // 薬草・魔力のキノコ（2026-10-20）：上を歩くと、全員が少し回復する。みんな満タンなら拾わずに残る
+    (c.pickups || []).forEach(function (u) {
+      if (u.taken || !near(u.x, u.y, 11)) return;
+      var herb = u.kind === "herb", alive = Party.members().filter(function (m) { return !m.down; });
+      var need = alive.some(function (m) { return herb ? m.hp < m.stats.hp : m.mp < m.stats.mp; });
+      if (!need) return;
+      u.taken = true;
+      alive.forEach(function (m) {
+        if (herb) m.hp = Math.min(m.stats.hp, m.hp + Math.max(1, Math.round(m.stats.hp * 0.10)));
+        else m.mp = Math.min(m.stats.mp, m.mp + Math.max(1, Math.round(m.stats.mp * 0.08)));
+      });
+      say(herb ? "薬草を見つけた！ みんなのHPが少し回復した" : "魔力のキノコを見つけた！ みんなのMPが少し回復した");
+      Battle.pop(A.x, A.y - 30, herb ? "HP回復" : "MP回復", herb ? "#6fd08c" : "#a3c8ff", 9);
+      Sound.play("heal"); snapshot();
+    });
     c.chests.forEach(function (b) {
       if (b.opened || !near(b.x, b.y, 14)) return;
       if (b.gold && !dg.hasCKey) {   // 金の宝箱は、宝箱の鍵がいる
@@ -621,6 +638,14 @@
       Render.rect(kx - 5, Math.round(c.key.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");   // かげ
       ctx.drawImage(Props.get("key"), kx - 6, ky - 3);
     }
+    (c.pickups || []).forEach(function (u) {   // 薬草・魔力のキノコ（少しゆれる）
+      if (u.taken) return;
+      var ux = Math.round(u.x - cam.x), uy = Math.round(u.y - cam.y);
+      // 草の地面にまぎれないように、足もとにうすい光（薬草は緑、キノコは青）
+      Combat.glowDot(ctx, ux, uy - 1, 12, "#ffffff", u.kind === "herb" ? "#d8ffa0" : "#bfe4ff", 0.7 + 0.2 * Math.sin(glow * 3 + u.x));
+      Render.rect(ux - 4, uy + 4, 8, 2, "rgba(20,12,28,0.3)");
+      ctx.drawImage(Props.get(u.kind === "herb" ? "herb" : "mush"), ux - 4, uy - 5 + Math.round(Math.sin(glow * 2 + u.x) * 0.6));
+    });
     if (c.ckey && !c.ckey.taken) {   // 宝箱の鍵（銀）
       var cx2 = Math.round(c.ckey.x - cam.x), cy2 = Math.round(c.ckey.y - cam.y - 2 - Math.sin(glow * 3 + 1) * 2);
       Render.rect(cx2 - 5, Math.round(c.ckey.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");
