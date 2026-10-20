@@ -22,7 +22,7 @@
   var run = newRun();
   function newRun() {
     return { timeLeft: settings.minutes * 60, kills: 0, over: false, fade: 0, entry: null,
-             gold: 0, clearGold: 0, mat: { iron: 0, stone: 0 }, got: [], swampCd: 0, lockMsg: 0, inPit: false,
+             gold: 0, clearGold: 0, mat: { iron: 0, stone: 0, gem: 0 }, got: [], swampCd: 0, lockMsg: 0, inPit: false,
              exp: [0, 0, 0], mastery: [0, 0, 0], byType: {} };
   }
   var active = false; // ダンジョンにいるあいだ true（拠点にいるあいだは止める）
@@ -233,6 +233,10 @@
     var g = 100 + 10 * dg.floor;
     run.gold += g;
     run.title = dg.bossInfo.title;
+    if (Math.random() < Loot.GEM_CHANCE.boss) {   // 宝玉（2026-10-20）：ボスは50%
+      run.mat.gem = (run.mat.gem || 0) + 1;
+      Battle.pop(e.x, e.y - 52, "宝玉 +1", "#ff9ad0", 9);
+    }
     Battle.pop(e.x, e.y - 40, "+" + g + "G", "#f2c14e", 9);
     var after = dg.bossInfo.after.concat(["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
     showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
@@ -531,6 +535,7 @@
       var R = Loot.RARITY[got.equip.r];
       // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
       var tool = got.tool && GameState.gainTool(got.tool) ? "（" + GameState.TOOLS[got.tool].name + "も）" : "";
+      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; tool += "（宝玉も！）"; }   // 金の宝箱は10%で宝玉
       say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！" + tool); snapshot();
       Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
@@ -850,7 +855,7 @@
       "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "") +
         (trial.subjects.length ? "　加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・") : ""),
       run.title ? "称号「" + run.title + "」を手に入れた！（書庫の称号の棚に飾られる）" : "",
-      "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉱石 " + run.mat.iron + "　魔石 " + run.mat.stone,
+      "手に入れたもの：" + run.gold + "G" + (run.clearGold ? "（クリア報酬 " + run.clearGold + "G をふくむ）" : "") + "　鉱石 " + run.mat.iron + "　魔石 " + run.mat.stone + (run.mat.gem ? "　宝玉 " + run.mat.gem : ""),
       "経験値 " + Party.members().map(function (m, i) { return m.name + " +" + Math.round(run.exp[i]); }).join("　"),
       trial.tryMode ? "試しモードなので、拾った物も経験値も持ち帰らない（記録にもセーブにも残らない）。" :
       kind === "clear" ? "拾った物と経験値を持って、拠点にもどろう。" : "拾った物と経験値は持ち帰れるが、階層は進まない。"

@@ -151,7 +151,7 @@ var Base = (function () {
     baseEl.hidden = false;
     document.getElementById("sandboxBar").hidden = !GameState.inSandbox();   // 全開放の試しのとちゅうなら、上に知らせる
     // 上の行はゴールドと素材だけ（道具と装備の数は倉庫で見る。称号は書庫。2026-10-18 保護者の案）
-    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone;
+    document.getElementById("baseMoney").textContent = (Sync.playerLabel() ? "（" + Sync.playerLabel() + "）" : "") + g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　宝玉 " + (g.mat.gem || 0);
 
     // 仲間
     var pbox = document.getElementById("baseParty"); pbox.textContent = "";
@@ -297,7 +297,7 @@ var Base = (function () {
     (report || []).forEach(function (p) {
       p.lines.forEach(function (t) {
         var lv = /^レベルが (\d+) → (\d+)/.exec(t), sk = /^スキル「(.+)」を覚えた/.exec(t);
-        var text = lv ? p.name + " は Lv" + lv[2] + " になった！" : sk ? p.name + " は「" + sk[1] + "」を覚えた！" : p.name + " の" + t;
+        var text = p.raw ? t : lv ? p.name + " は Lv" + lv[2] + " になった！" : sk ? p.name + " は「" + sk[1] + "」を覚えた！" : p.name + " の" + t;
         list.push({ text: text, sound: lv && !lvSound ? "levelup" : "" });
         if (lv) lvSound = true;
       });
@@ -316,7 +316,7 @@ var Base = (function () {
     var r = rep.result;
     box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
-    if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉱石 " + r.mat.iron + "　魔石 " + r.mat.stone + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
+    if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉱石 " + r.mat.iron + "　魔石 " + r.mat.stone + (r.mat.gem ? "　宝玉 " + r.mat.gem : "") + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     if (rep.people.some(function (p) { return p.lines.some(function (t) { return t.indexOf("レベルが") === 0; }); })) Sound.play("levelup");
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");

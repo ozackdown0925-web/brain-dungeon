@@ -19,7 +19,7 @@ var Loot = (function () {
   var STATS = ["patk", "pdef", "matk", "mdef", "hp", "mp"];
   // レジェンドの特別な効果（名前だけ。効き目は段階5で装備できるようになってから）
   var SPECIALS = ["会心が出やすい", "MPの回復が速い", "Wait Time が短い", "毒にならない"];
-  var MATERIALS = { iron: "鉱石", stone: "魔石" };   // iron は前のセーブとそろえるための名前（画面では「鉱石」）
+  var MATERIALS = { iron: "鉱石", stone: "魔石", gem: "宝玉" };   // 宝玉（2026-10-20）：鍛冶屋でレア度を上げる   // iron は前のセーブとそろえるための名前（画面では「鉱石」）
 
   // 鍛冶屋の強化：＋1ごとにもとの強さ＋6%、どの段も＋10まで（2026-10-18 決定）
   var PLUS_STEP = 0.06, PLUS_MAX = 10;
@@ -75,6 +75,32 @@ var Loot = (function () {
     for (var j = between(R.debuff); j > 0; j--) addMod(out.debuff);
     return out;
   }
+
+  // レア度を1段上げる（2026-10-20 保護者と決定）：もとの強さはレア度の倍率に合わせ、＋の強化はそのまま。
+  // バフ（＋のおまけ）は、そのレア度の少ないほうの数まで足す。UR になったらデバフ（−のおまけ）は消える
+  function raiseRarity(item) {
+    if (item.r >= 3) return false;
+    var to = RARITY[item.r + 1];
+    item.r++;
+    // もとの強さは、同じレア度で拾ったときと同じ計算で出しなおす（小さい数でも、四捨五入で上がりそこねないように）
+    var def = item.slot === "weapon" ? GameData.WEAPONS[item.base] : GameData.ARMORS[item.base];
+    if (def) {
+      var k = (1 + ILV_STEP * ((item.ilv || 1) - 1)) * to.mult * TIER_MULT[item.tier || 0];
+      if (item.slot === "weapon") { item.patk = Math.max(item.patk || 0, Math.round(def.patk * k)); item.matk = Math.max(item.matk || 0, Math.round(def.matk * k)); }
+      else { item.pdef = Math.max(item.pdef || 0, Math.round(def.pdef * k)); item.mdef = Math.max(item.mdef || 0, Math.round(def.mdef * k)); }
+    }
+    var size = Math.round(2 + (item.ilv || 1) * 0.5);
+    var used = item.buff.map(function (b) { return b[0]; }).concat(item.debuff.map(function (d) { return d[0]; }));
+    while (item.buff.length < to.buff[0]) {
+      var free = STATS.filter(function (x) { return used.indexOf(x) < 0; });
+      if (!free.length) break;
+      var s2 = pick(free); used.push(s2); item.buff.push([s2, size]);
+    }
+    if (item.r === 3) item.debuff = [];
+    return true;
+  }
+  // 宝玉が出る確率（2026-10-20 保護者と決定）
+  var GEM_CHANCE = { trial4: 0.15, trial3: 0.05, goldChest: 0.10, boss: 0.50 };
 
   // 装備の名前（例：「銅の剣」「銅の剣＋2〈SR〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
   function baseName(item) {
@@ -144,7 +170,7 @@ var Loot = (function () {
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   return {
-    RARITY: RARITY, MATERIALS: MATERIALS, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
+    RARITY: RARITY, MATERIALS: MATERIALS, raiseRarity: raiseRarity, GEM_CHANCE: GEM_CHANCE, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
     chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, TIER_MULT: TIER_MULT, ILV_STEP: ILV_STEP, PLUS_STEP: PLUS_STEP, PLUS_MAX: PLUS_MAX, typeName: typeName, STAT_NAMES: STAT_NAMES
   };
 })();

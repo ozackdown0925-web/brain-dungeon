@@ -37,7 +37,8 @@ var GameState = (function () {
       learnSkills(h);
     });
     if (!g.items) g.items = {};
-    TOOL_ORDER.forEach(function (k) { if (typeof g.items[k] !== "number") g.items[k] = 0; });   // 新しい道具（MP回復薬など）
+    TOOL_ORDER.forEach(function (k) { if (typeof g.items[k] !== "number") g.items[k] = 0; });
+    if (typeof g.mat.gem !== "number") g.mat.gem = 0;   // 宝玉（2026-10-20）   // 新しい道具（MP回復薬など）
     if (!g.today) g.today = { date: todayStr(), adventure: null };
     if (!g.parent) g.parent = defaultParent();
     if (!g.log) g.log = [];
@@ -48,7 +49,7 @@ var GameState = (function () {
     game = {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
-      gold: 0, mat: { iron: 0, stone: 0 }, storage: [], nextId: 1,
+      gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
       items: { potion: 0, ether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [] },
       titles: [],
@@ -141,6 +142,11 @@ var GameState = (function () {
     });
     game.gold += r.gold || 0;
     Object.keys(r.mat || {}).forEach(function (m) { game.mat[m] = (game.mat[m] || 0) + r.mat[m]; });
+    // 知恵の試練のごほうび：4問正解なら15%・3問正解なら5%で宝玉（テスト用の出発・試しモードはなし）
+    if (!r.test && !sandbox) {
+      var gc = (r.correct || 0) >= 4 ? Loot.GEM_CHANCE.trial4 : (r.correct || 0) === 3 ? Loot.GEM_CHANCE.trial3 : 0;
+      if (gc && Math.random() < gc) { game.mat.gem = (game.mat.gem || 0) + 1; report.push({ name: "", raw: true, lines: ["知恵の試練のごほうびに、宝玉を1こ手に入れた！"], exp: 0 }); }
+    }
     var lost = 0;
     (r.items || []).forEach(function (it) {
       if (game.storage.length >= STORAGE_MAX) { lost++; return; } // 倉庫がいっぱい（200）なら持ち帰れない
@@ -344,6 +350,16 @@ var GameState = (function () {
   }
   // 引き直し：魔石2＋100G で、バフ・デバフを全部引き直す（数はレア度の決まりのまま）
   var REROLL = { stone: 2, gold: 100 };
+  // レア度を上げる（鍛冶屋。2026-10-20）：ノーマル→R 宝玉1＋200G、R→SR 宝玉2＋500G、SR→UR 宝玉4＋1000G
+  var RARITY_UP = [{ gem: 1, gold: 200 }, { gem: 2, gold: 500 }, { gem: 4, gold: 1000 }];
+  function rarityUpCost(it) { return it.r >= 3 ? null : RARITY_UP[it.r]; }
+  function rarityUp(it) {
+    var c = rarityUpCost(it);
+    if (!c || game.gold < c.gold || (game.mat.gem || 0) < c.gem) return false;
+    game.gold -= c.gold; game.mat.gem -= c.gem;
+    Loot.raiseRarity(it);
+    save(); return true;
+  }
   function rerollItem(it) {
     if (game.gold < REROLL.gold || game.mat.stone < REROLL.stone) return false;
     game.gold -= REROLL.gold; game.mat.stone -= REROLL.stone;
@@ -628,6 +644,7 @@ var GameState = (function () {
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,
+    rarityUpCost: rarityUpCost, rarityUp: rarityUp,
     upgradeCost: upgradeCost, upgradeItem: upgradeItem, transferCost: transferCost, transferTargets: transferTargets, transferPlus: transferPlus, rerollItem: rerollItem, allItems: allItems
   };
 })();
