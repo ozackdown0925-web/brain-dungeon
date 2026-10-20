@@ -615,9 +615,14 @@ var Town = (function () {
     var tbox = el("div", "slot");
     tbox.appendChild(el("h3", "", "称号の棚"));
     var row3 = el("div", "chips");
-    Object.keys(GameData.BOSSES).forEach(function (f) {
-      var t = GameData.BOSSES[f].title, got = g.titles.indexOf(t) >= 0;
-      row3.appendChild(el("span", "chip-tag title" + (got ? " got" : ""), got ? "🏅 " + t : "？？？（" + f + "階のボス）"));
+    // ダンジョンごと（開いていないダンジョンのボスは出さない）
+    GameData.DUNGEON_ORDER.forEach(function (d) {
+      if (!GameState.unlocked(d)) return;
+      var dd = GameData.dungeonOf(d);
+      Object.keys(dd.bosses).forEach(function (f) {
+        var t = dd.bosses[f].title, got = g.titles.indexOf(t) >= 0;
+        row3.appendChild(el("span", "chip-tag title" + (got ? " got" : ""), got ? "🏅 " + t : "？？？（" + dd.short + " " + f + "階のボス）"));
+      });
     });
     tbox.appendChild(row3);
     bodyEl.appendChild(tbox);

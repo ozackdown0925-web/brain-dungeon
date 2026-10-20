@@ -42,7 +42,42 @@ var GameState = (function () {
     if (!g.today) g.today = { date: todayStr(), adventure: null };
     if (!g.parent) g.parent = defaultParent();
     if (!g.log) g.log = [];
+    if (!g.progress.dungeons) g.progress.dungeons = {};   // ダンジョンごとの進み具合（瘴気の森の段階1、2026-10-21）
     return g;
+  }
+
+  // ---------- ダンジョンごとの進み具合（2026-10-21） ----------
+  // 新緑の樹海は、前からある progress.deepest・progress.bosses をそのまま使う（今までのセーブがそのまま読めるように）。
+  // ほかのダンジョンは progress.dungeons[id] に { deepest, bosses } で持つ。
+  function progressOf(id, g) {
+    g = g || game;
+    if (!id || id === "forest1") return g.progress;
+    var d = g.progress.dungeons || (g.progress.dungeons = {});
+    return d[id] || (d[id] = { deepest: 0, bosses: [] });
+  }
+  // そのダンジョンに入れるか：needs のダンジョンの主（いちばん下の階）をたおしていれば開く
+  function unlocked(id) {
+    var dd = GameData.dungeonOf(id);
+    if (!dd.needs) return true;
+    return progressOf(dd.needs).deepest >= GameData.dungeonOf(dd.needs).floors;
+  }
+  // 今いちばん深く行った強さの深さ（お店の装備のレベルに使う）
+  function deepestPower(g) {
+    var best = 0;
+    GameData.DUNGEON_ORDER.forEach(function (id) {
+      var d = progressOf(id, g).deepest;
+      if (d > 0) best = Math.max(best, GameData.depthOf(id, d));
+    });
+    return best;
+  }
+  // 「新緑の樹海 14階まで」のような進み具合の短い文（いちばん奥に開いたダンジョン）
+  function progressText(g) {
+    var text = g.progress.deepest + "階まで";
+    GameData.DUNGEON_ORDER.forEach(function (id) {
+      if (id !== "forest1" && g.progress.dungeons && g.progress.dungeons[id] && g.progress.dungeons[id].deepest > 0)
+        text = GameData.dungeonOf(id).short + " " + g.progress.dungeons[id].deepest + "階まで";
+    });
+    return text;
   }
 
   function newGame(list) {
@@ -51,7 +86,7 @@ var GameState = (function () {
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
       items: { potion: 0, ether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
-      progress: { deepest: 0, bosses: [] },
+      progress: { deepest: 0, bosses: [], dungeons: {} },
       titles: [],
       book: { monsters: {}, items: [] },
       today: { date: todayStr(), adventure: null },
@@ -160,8 +195,9 @@ var GameState = (function () {
     });
     if (r.title && game.titles.indexOf(r.title) < 0) game.titles.push(r.title);
     if (r.cleared) {
-      game.progress.deepest = Math.max(game.progress.deepest, r.floor);
-      if (r.boss && game.progress.bosses.indexOf(r.floor) < 0) game.progress.bosses.push(r.floor);
+      var pg = progressOf(r.dungeon);
+      pg.deepest = Math.max(pg.deepest, r.floor);
+      if (r.boss && pg.bosses.indexOf(r.floor) < 0) pg.bosses.push(r.floor);
     }
     if (lost) report.push({ name: "倉庫", lines: ["倉庫がいっぱいで、装備を " + lost + "個 持ち帰れなかった"], exp: 0 });
     game.today = { date: todayStr(), adventure: null };
@@ -169,13 +205,15 @@ var GameState = (function () {
     if (!r.test) {
       game.adventureCount = { date: todayStr(), n: adventuresToday() + 1 }; game.lastAdventure = todayStr();
       // 遊んだ記録（保護者画面で見る）。最近の100回分
-      game.log.unshift({ date: todayStr(), at: new Date().toISOString(), floor: r.floor, kind: r.kind, cleared: !!r.cleared,
+      game.log.unshift({ date: todayStr(), at: new Date().toISOString(), dungeon: r.dungeon || "forest1", floor: r.floor, kind: r.kind, cleared: !!r.cleared,
                          correct: r.correct || 0, subjects: r.subjects || [] });
       if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
     }
     save();
-    pushHistory(r.cleared ? "森の" + r.floor + "階をクリア" : "森の" + r.floor + "階から帰った");
-    if (!r.test && window.Sync) Sync.log({ date: todayStr(), kind: r.kind, floor: r.floor, correct: r.correct || 0, subjects: r.subjects || [] });
+    var dn = GameData.dungeonOf(r.dungeon);
+    pushHistory(r.cleared ? dn.short + "の" + r.floor + "階をクリア" : dn.short + "の" + r.floor + "階から帰った");
+    // 冒険の記録（GAS）：ダンジョンの名前は、前からある「メモ」の列に入れる（GAS の形は変えない）
+    if (!r.test && window.Sync) Sync.log({ date: todayStr(), kind: r.kind, floor: r.floor, correct: r.correct || 0, subjects: r.subjects || [], note: dn.name });
     return report;
   }
 
@@ -310,7 +348,7 @@ var GameState = (function () {
 
   // お店：ふつうの装備（ノーマル。バフ・デバフなし）。ilv は今いちばん深く行った階層まで（draft 4）
   function shopEquipList() {
-    var ilv = Math.max(1, game.progress.deepest);
+    var ilv = Math.max(1, deepestPower(game));
     var list = [];
     Object.keys(GameData.WEAPONS).forEach(function (b) { list.push(shopItem("weapon", b, ilv)); });
     Object.keys(GameData.ARMORS).forEach(function (b) { list.push(shopItem("armor", b, ilv)); });
@@ -581,7 +619,7 @@ var GameState = (function () {
   function history() {
     return readHistory().map(function (h, i) {
       var g = null; try { g = JSON.parse(h.data); } catch (e) { /* こわれた控えは見せるだけ */ }
-      return { index: i, at: h.at, label: h.label, summary: g ? g.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + g.gold + "G　" + g.progress.deepest + "階まで" : "読めない控え" };
+      return { index: i, at: h.at, label: h.label, summary: g ? g.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + g.gold + "G　" + progressText(g) : "読めない控え" };
     });
   }
   function restore(index) {
@@ -618,7 +656,7 @@ var GameState = (function () {
   // セーブのまとめ（控えの一覧に出す）
   function summary() {
     if (!game) return "";
-    return game.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + game.gold + "G　" + game.progress.deepest + "階まで";
+    return game.party.map(function (p) { return p.name + " Lv" + p.level; }).join("・") + "　" + game.gold + "G　" + progressText(game);
   }
   function load() {
     // 全開放の試しのとちゅうで閉じたとき：試しのあいだは本当のセーブを書きかえていないので、しまった控えを捨てるだけでよい
@@ -637,7 +675,7 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
-    get: function () { return game; }, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, progressOf: progressOf, unlocked: unlocked, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,

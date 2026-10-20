@@ -423,8 +423,32 @@ var GameData = (function () {
   function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
   // 場所の名前（2026-10-18 保護者が決定）。ダンジョン2・3は、まだ行けない（地図では「？？？」）
   var PLACES = { region: "フォレストヴェール", base: "エルム村", dungeon1: "新緑の樹海", dungeon2: "瘴気の森", dungeon3: "原生の秘境" };
-  // 「新緑の樹海 3階」のような階の名前（今はダンジョン1だけ）
-  function floorLabel(floor) { return PLACES.dungeon1 + " " + floor + "階"; }
+  // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
+  //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
+  //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
+  //   depthBase：強さの深さ＝depthBase＋階。敵の強さ・ごほうび・拾う装備のレベルに使う（樹海は 0 で、今までと同じ）
+  // 瘴気の森の敵・部屋・ボスは、まだ樹海のものを仮に使う（段階2〜4で作る）。深さも仮（段階6で直す）。
+  var DUNGEONS = {
+    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0 },
+    shouki: {
+      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14,
+      bosses: {
+        5: { enemy: "wolf_boss", title: "沼をしずめし者",   // 仮：大ガマを作るまで大オオカミ（段階4）
+             before: ["（かり）沼の奥で、何かが動いた。"], after: ["（かり）沼が、少し静かになった。"] },
+        10: { enemy: "tree_boss", title: "瘴気をはらう者", // 仮：沼の魔女を作るまで大木の魔物（段階4）
+              before: ["（かり）瘴気のいちばんこいところに、だれかがいる。"], after: ["（かり）瘴気が晴れていく。"] }
+      }
+    }
+  };
+  var DUNGEON_ORDER = ["forest1", "shouki"];
+  function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
+  function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
+  function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
+  function depthOf(id, floor) { return dungeonOf(id).depthBase + floor; }
+  // 「新緑の樹海 3階」のような階の名前。dungeon を省くと新緑の樹海
+  function floorLabel(floor, dungeon) { return dungeonOf(dungeon).name + " " + floor + "階"; }
+  // 「3階」「7階（ボス）」
+  function floorName(floor, dungeon) { return floor + "階" + (isBossFloor(dungeon, floor) ? "（ボス）" : ""); }
   // ふつうの攻撃の待ち時間（杖で魔法弾をうつ職は、魔法弾の待ち時間）
   function weaponWait(weapon, job) {
     var w = WEAPONS[weapon];
@@ -451,6 +475,7 @@ var GameData = (function () {
   return {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
-    baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, canSet: canSet, condText: condText
+    baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
+    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
   };
 })();
