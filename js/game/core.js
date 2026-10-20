@@ -382,7 +382,7 @@
       if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
       return;
     }
-    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - (c.stats.cut || 0)), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0 });   // cut：パッシブ「守りの誓い」
+    var res = Battle.damage(e.patk * (opts.mult || 1) * (1 - (c.stats.cut || 0)), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // cut：パッシブ「守りの誓い」。minPct：最低でも攻撃力の30%
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
     Sound.play("hurt");
