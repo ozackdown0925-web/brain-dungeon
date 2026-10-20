@@ -2,7 +2,7 @@
 // 段階3：基本職5つ・武器・防具・スキル35・森の敵4種。
 var GameData = (function () {
   // 属性の名前（表示用）
-  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", dark: "闇", none: "なし" };   // 闇は 2026-10-19 に足した（黒魔道士）
+  var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", dark: "闇", light: "光", none: "なし" };   // 闇は 2026-10-19 に足した（黒魔道士）。光は 2026-10-20（聖騎士）。今は光が弱点の敵はいない
 
   // 武器（ノーマル・アイテムレベル1）。reach＝届く距離（ドット）、arc＝ふりの広さ（左右それぞれのラジアン）
   // shot：ふつうの攻撃が飛ぶもの（弓の矢、魔術師の系統の杖の魔法弾）
@@ -58,10 +58,21 @@ var GameData = (function () {
     monk:      { name: "修行僧",     weapons: ["fist"], armor: "light", color: "#d04648", tier: 2, from: "fighter",
                  growth: { str: 2.0, vit: 2.0, mag: 0.5, int: 1.5 } },
     whitemage: { name: "白魔道士",   weapons: ["staff"], armor: "magic", color: "#ffffff", tier: 2, from: "priest",
-                 growth: { str: 1.0, vit: 1.5, mag: 2.0, int: 1.5 } }
+                 growth: { str: 1.0, vit: 1.5, mag: 2.0, int: 1.5 } },
+    // 組み合わせの上級職（2026-10-20 保護者と決定）。from2：2つ目のもとの職
+    magicknight: { name: "魔法剣士", weapons: ["sword", "greatsword"], armor: "heavy", color: "#7a5ad0", tier: 2, from: "warrior", from2: "mage",
+                   growth: { str: 2.0, vit: 1.5, mag: 2.0, int: 1.0 } },
+    ninja:       { name: "忍者",     weapons: ["sword", "greatsword", "axe", "spear", "bow", "fist", "staff"], armor: "light", color: "#4a4a5a", tier: 2, from: "warrior", from2: "hunter",
+                   growth: { str: 2.0, vit: 1.5, mag: 1.0, int: 1.5 } },
+    gladiator:   { name: "剣闘士",   weapons: ["sword", "axe"], armor: "heavy", color: "#c8643a", tier: 2, from: "warrior", from2: "fighter",
+                   growth: { str: 2.5, vit: 2.0, mag: 0.5, int: 0.5 } },
+    paladin:     { name: "聖騎士",   weapons: ["spear"], armor: "heavy", color: "#e8e0b0", tier: 2, from: "warrior", from2: "priest",
+                   growth: { str: 1.5, vit: 2.5, mag: 1.5, int: 1.0 } },
+    sage:        { name: "賢者",     weapons: ["staff"], armor: "magic", color: "#4ec0a0", tier: 2, from: "mage", from2: "priest",
+                   growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 2.0 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
-  var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage"];   // 作った上級職
+  var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage", "magicknight", "ninja", "gladiator", "paladin", "sage"];   // 作った上級職
   function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
@@ -71,11 +82,11 @@ var GameData = (function () {
     { id: "sniper", name: "スナイパー", need: [["hunter", 7]],  arms: "弓／軽装備",                   note: "遠くから強い一発。会心が出やすい" },
     { id: "monk", name: "修行僧",     need: [["fighter", 7]], arms: "拳／軽装備",                   note: "拳で戦いながら、自分も回復できる" },
     { id: "whitemage", name: "白魔道士",   need: [["priest", 7]],  arms: "杖／魔法装備",                 note: "回復と、仲間を強くする魔法" },
-    { name: "魔法剣士",   need: [["warrior", 5], ["mage", 5]],    arms: "剣・杖／重装備・魔法装備", note: "剣に火や水の力をのせる" },
-    { name: "忍者",       need: [["warrior", 5], ["hunter", 5]],  arms: "剣・弓（2つ持てる）／軽装備", note: "近くは剣、遠くは弓で戦う" },
-    { name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・拳／重装備・軽装備", note: "剣と拳の連続わざ" },
-    { name: "聖騎士",     need: [["warrior", 5], ["priest", 5]],  arms: "剣・杖／重装備",           note: "守りと回復で仲間を支える" },
-    { name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",             note: "攻撃と回復の大きな魔法" }
+    { id: "magicknight", name: "魔法剣士", need: [["warrior", 5], ["mage", 5]],    arms: "剣・大剣／重装備", note: "剣に火・水・草の力をのせる。魔術師の魔法も使える" },
+    { id: "ninja", name: "忍者",       need: [["warrior", 5], ["hunter", 5]],  arms: "どの武器も／軽装備",   note: "どの武器でも戦える。忍術で身をかくす" },
+    { id: "gladiator", name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・斧／重装備",   note: "HPが少ないほど強くなる、連続の斬りわざ" },
+    { id: "paladin", name: "聖騎士",     need: [["warrior", 5], ["priest", 5]],  arms: "槍／重装備",       note: "光の槍と守り。僧侶の魔法も使える" },
+    { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" }
   ];
   var TOP_JOBS = [
     { name: "聖剣士",     from: "騎士",       note: "光の剣でたたかう" },
@@ -90,8 +101,10 @@ var GameData = (function () {
     { name: "召喚士",     from: "賢者",       note: "たおしたボスを呼んで大技を使わせる" }
   ];
   // 系統：その職と、その職からつながる上級職・最上級職
-  var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage"], hunter: ["hunter", "sniper"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage"],
-                knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"] };
+  // 組み合わせの上級職（2026-10-20）：魔法剣士は魔術師の系統、聖騎士は僧侶の系統、賢者は両方の系統にも入る
+  var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage"], hunter: ["hunter", "sniper"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
+                knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"],
+                magicknight: ["magicknight"], ninja: ["ninja"], gladiator: ["gladiator"], paladin: ["paladin"], sage: ["sage"] };
 
   // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
   // fx＝効果の並び。t の種類：
@@ -229,7 +242,76 @@ var GameData = (function () {
       fx: [{ t: "buff", stat: "wait", pct: -0.10, dur: 60, party: true }] },
     { id: "wm.holy",  job: "whitemage", star: 6, name: "聖なる守り", desc: "仲間みんなが、毒・しびれ・眠りにかかりにくくなる（これをつけた人が仲間にいれば効く）。", short: "聖なる", cond: null, passive: { aura: 0.5 } },
     { id: "wm.full",  job: "whitemage", star: 7, name: "フルケア", desc: "仲間みんなを全快にして、状態異常も治す。1回の冒険で1回だけ。", short: "フルケア", cond: { line: "whitemage" }, mp: 30, ct: 0, once: true,
-      fx: [{ t: "heal", pct: 1.0, party: true }, { t: "cure", party: true }] }
+      fx: [{ t: "heal", pct: 1.0, party: true }, { t: "cure", party: true }] },
+    // ---------- 組み合わせの上級職（2026-10-20 保護者と決定。docs/game-design.md） ----------
+    // 魔法剣士：剣に火・水・草の力をのせる（enchant：15秒のあいだ、ふつうの攻撃と「武器の属性」のスキルがその属性になる。新しくかけると前のものは消える）
+    { id: "mn.fire",  job: "magicknight", star: 1, name: "火炎剣", desc: "15秒のあいだ、剣の攻撃が火になる。", short: "火炎剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "fire", dur: 15 }] },
+    { id: "mn.mind",  job: "magicknight", star: 2, name: "魔剣の心得", desc: "物攻と魔攻が、いつも8%上がる。", short: "魔剣", cond: null, passive: { patk: 0.08, matk: 0.08 } },
+    { id: "mn.water", job: "magicknight", star: 3, name: "水流剣", desc: "15秒のあいだ、剣の攻撃が水になる。", short: "水流剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "water", dur: 15 }] },
+    { id: "mn.wind",  job: "magicknight", star: 4, name: "風塵剣", desc: "15秒のあいだ、剣の攻撃が草になる。", short: "風塵剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "grass", dur: 15 }] },
+    { id: "mn.absorb",job: "magicknight", star: 5, name: "魔力吸収", desc: "ふつうの攻撃が当たると、MPが少し回復する（最大MPの1%）。", short: "吸収", cond: null, passive: { mpOnHit: 0.01 } },
+    { id: "mn.dance", job: "magicknight", star: 6, name: "炎舞", desc: "まわりの敵を、炎の剣でまとめて斬る（火）。", short: "炎舞", cond: { weapons: ["sword", "greatsword"] }, mp: 10, ct: 7,
+      fx: [{ t: "around", vis: "spin", stat: "p", mult: 1.8, radius: 28, elem: "fire", color: "#ff8a3d" }] },
+    { id: "mn.break", job: "magicknight", star: 7, name: "エレメントブレイク", desc: "前を、火と水と草で3回斬る。", short: "エレメント", cond: { weapons: ["sword", "greatsword"] }, mp: 16, ct: 15,
+      fx: [{ t: "rapid", count: 3, interval: 0.16, hits: [
+        { t: "arc", stat: "p", mult: 1.2, elem: "fire", color: "#ff8a3d" },
+        { t: "arc", stat: "p", mult: 1.2, elem: "water", color: "#5aa9ff" },
+        { t: "arc", stat: "p", mult: 1.2, elem: "grass", color: "#9be36a" }] }] },
+    // 忍者：どの武器でも戦える。忍術
+    { id: "nj.star",  job: "ninja", star: 1, name: "手裏剣", desc: "手裏剣を3枚投げる。どの武器でも使える。", short: "手裏剣", cond: { line: "ninja" }, mp: 5, ct: 3,
+      fx: [{ t: "shot", stat: "p", mult: 0.7, elem: "pierce", count: 3, spread: 0.25, speed: 190, range: 140, size: 2, look: "shuriken", color: "#d8dce8" }] },
+    { id: "nj.shadow",job: "ninja", star: 2, name: "影分身", desc: "ふつうの攻撃が2回当たる（1回の強さは0.6倍）。弓と魔法の玉は2つ飛ぶ。スキルには効かない。", short: "影分身", cond: null, passive: { double: 0.6 } },
+    { id: "nj.bind",  job: "ninja", star: 3, name: "影ぬい", desc: "影をぬいとめる手裏剣を投げる。しびれさせることが多い。", short: "影ぬい", cond: { line: "ninja" }, mp: 6, ct: 8,
+      fx: [{ t: "shot", stat: "p", mult: 0.8, elem: "pierce", speed: 200, range: 150, size: 2, look: "shuriken", color: "#9a5ad0", status: { type: "para", chance: 0.8, dur: 3 } }] },
+    { id: "nj.hide",  job: "ninja", star: 4, name: "隠れみの術", desc: "5秒のあいだ、敵にねらわれない。こちらから攻撃すると終わる。ボスには効かない。", short: "隠れみの", cond: { line: "ninja" }, mp: 6, ct: 20,
+      fx: [{ t: "hide", dur: 5 }] },
+    { id: "nj.run",   job: "ninja", star: 5, name: "疾走", desc: "歩く速さが、いつも15%上がる。", short: "疾走", cond: null, passive: { speed: 0.15 } },
+    { id: "nj.dodge", job: "ninja", star: 6, name: "身躱しの術", desc: "10秒のあいだ、30%の確率で敵の攻撃をよける。", short: "身躱し", cond: { line: "ninja" }, mp: 8, ct: 25,
+      fx: [{ t: "buff", stat: "evade", pct: 0.30, dur: 10 }] },
+    { id: "nj.katon", job: "ninja", star: 7, name: "火遁の術", desc: "まわりを火で包む（火）。", short: "火遁", cond: { line: "ninja" }, mp: 14, ct: 14,
+      fx: [{ t: "around", vis: "flame", stat: "p", mult: 2.4, radius: 40, elem: "fire", color: "#ff8a3d" }] },
+    // 剣闘士：剣・斧。HPが少ないほど強い
+    { id: "gl.rush",  job: "gladiator", star: 1, name: "乱撃", desc: "その場で、すばやく4回斬る。", short: "乱撃", cond: { weapons: ["sword", "axe"] }, mp: 6, ct: 4,
+      fx: [{ t: "rapid", count: 4, interval: 0.1, hit: { t: "arc", stat: "p", mult: 0.6, elem: "weapon" } }] },
+    { id: "gl.back",  job: "gladiator", star: 2, name: "背水", desc: "HPが半分より少ないと物攻が上がる。HPが少ないほど上がり、最大で30%。", short: "背水", cond: null, passive: { backwater: 0.30 } },
+    { id: "gl.risk",  job: "gladiator", star: 3, name: "捨て身", desc: "15秒のあいだ、物攻が30%上がり、物防が30%下がる。", short: "捨て身", cond: { line: "gladiator" }, mp: 6, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.30, dur: 15 }, { t: "buff", stat: "pdef", pct: -0.30, dur: 15 }] },
+    { id: "gl.whirl", job: "gladiator", star: 4, name: "旋風撃", desc: "まわりを回転して斬ってから、正面を強く斬る。", short: "旋風撃", cond: { weapons: ["sword", "axe"] }, mp: 9, ct: 7,
+      fx: [{ t: "around", vis: "spin", stat: "p", mult: 1.0, radius: 26, elem: "weapon" }, { t: "pause", time: 0.2 }, { t: "arc", vis: "smash", stat: "p", mult: 1.6, elem: "weapon" }] },
+    { id: "gl.spirit",job: "gladiator", star: 5, name: "闘志", desc: "敵をたおすと、5秒のあいだ物攻が10%上がる。", short: "闘志", cond: null, passive: { fervor: 0.10 } },
+    { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe"] }, mp: 12, ct: 12,
+      fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.2, elem: "weapon", speed: 200, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }] },
+    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "前へ進みながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe"] }, mp: 15, ct: 15,
+      fx: [{ t: "rapid", count: 6, interval: 0.09, step: 6, hit: { t: "arc", stat: "p", mult: 0.7, elem: "weapon", color: "#fff3a0" } }] },
+    // 聖騎士：光の槍と守り
+    { id: "pl.spear", job: "paladin", star: 1, name: "ホーリースピア", desc: "光の槍で、前へ一直線に突く（光）。", short: "ホーリー", cond: { weapons: ["spear"] }, mp: 7, ct: 4,
+      fx: [{ t: "arc", stat: "p", mult: 1.8, elem: "light", reach: 36, arc: 0.22, vis: "lance", color: "#fff2a0" }] },
+    { id: "pl.heal",  job: "paladin", star: 2, name: "オートヒール", desc: "5秒ごとに、HPが最大HPの1%回復する。", short: "オートヒール", cond: null, passive: { autoHeal: 0.01 } },
+    { id: "pl.guts",  job: "paladin", star: 3, name: "不屈の光", desc: "10秒のあいだ、HPが0になるダメージを受けても、HP1で持ちこたえる。", short: "不屈", cond: { line: "paladin" }, mp: 12, ct: 45,
+      fx: [{ t: "guts", dur: 10 }] },
+    { id: "pl.prayer",job: "paladin", star: 4, name: "守りの祈り", desc: "仲間みんなの物防と魔防が、60秒のあいだ10%上がる。交代しても続く。", short: "祈り", cond: { line: "paladin" }, mp: 10, ct: 30,
+      fx: [{ t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "mdef", pct: 0.10, dur: 60, party: true }] },
+    { id: "pl.shield",job: "paladin", star: 5, name: "聖なる盾", desc: "受けるダメージが、いつも8%へる。HPが半分より少ないと15%へる。", short: "聖なる盾", cond: null, passive: { cut: 0.08, cutLow: 0.07 } },
+    { id: "pl.guard", job: "paladin", star: 6, name: "守護の光", desc: "仲間みんなのHPを15%回復して、60秒のあいだ物防が10%上がる。", short: "守護", cond: { line: "paladin" }, mp: 14, ct: 30,
+      fx: [{ t: "heal", pct: 0.15, party: true }, { t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }] },
+    { id: "pl.cross", job: "paladin", star: 7, name: "グランドクロス", desc: "前へ、大きな光の十字を飛ばす。何体でもつらぬく（光）。", short: "クロス", cond: { weapons: ["spear"] }, mp: 16, ct: 15,
+      fx: [{ t: "shot", stat: "p", mult: 2.5, elem: "light", speed: 220, range: 190, size: 6, pierce: true, look: "cross", color: "#fff2a0" }] },
+    // 賢者：大きな攻撃魔法と回復
+    { id: "sg.leaf",  job: "sage", star: 1, name: "リーフストーム", desc: "まわりに、大きな葉の刃のうずを起こす（草）。", short: "リーフ", cond: { line: "sage" }, mp: 12, ct: 6,
+      fx: [{ t: "around", vis: "leaf", stat: "m", mult: 2.0, radius: 46, elem: "grass", color: "#9be36a" }] },
+    { id: "sg.charge",job: "sage", star: 2, name: "オートチャージ", desc: "10秒ごとに、MPが最大MPの1%回復する。", short: "チャージ", cond: null, passive: { autoMp: 0.01 } },
+    { id: "sg.charm", job: "sage", star: 3, name: "チャーム", desc: "近くの敵1体を、15秒のあいだ味方にする。部屋のほかの敵がいなくなると元にもどる。ボスには効かない。", short: "チャーム", cond: { line: "sage" }, mp: 10, ct: 25,
+      fx: [{ t: "charm", dur: 15, range: 80 }] },
+    { id: "sg.recover",job: "sage", star: 4, name: "リカバー", desc: "仲間みんなのHPを30%回復して、状態異常も治す。", short: "リカバー", cond: { line: "sage" }, mp: 16, ct: 15,
+      fx: [{ t: "heal", pct: 0.3, party: true }, { t: "cure", party: true }] },
+    { id: "sg.wisdom",job: "sage", star: 5, name: "賢者の知恵", desc: "スキルの待ち時間が、いつも15%短い。", short: "知恵", cond: null, passive: { ctcut: 0.15 } },
+    { id: "sg.fire",  job: "sage", star: 6, name: "ファイアストーム", desc: "まわりに、炎のうずを起こす（火）。", short: "ストーム", cond: { line: "sage" }, mp: 16, ct: 10,
+      fx: [{ t: "around", vis: "firestorm", stat: "m", mult: 2.2, radius: 50, elem: "fire", color: "#ff8a3d" }] },
+    { id: "sg.meteor",job: "sage", star: 7, name: "メテオ", desc: "前の広いところに、隕石を3つ降らせる。", short: "メテオ", cond: { line: "sage" }, mp: 24, ct: 25,
+      fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });
