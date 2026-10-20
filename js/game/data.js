@@ -15,7 +15,8 @@ var GameData = (function () {
     axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
     bow:        { name: "弓",   item: "木の弓",   starter: "古い弓", element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
     // 槍（2026-10-19。騎士の武器）：細く長く届く突き。刺
-    spear:      { name: "槍",   item: "銅の槍",   starter: "古い槍", element: "pierce", patk: 10, matk: 0, wait: 0.75, power: 1.25, reach: 28, arc: 0.45 },
+    // thrust：斬らずに突く。いちばん近い敵の方を向いてから、まっすぐ突く（2026-10-21 保護者の希望）
+    spear:      { name: "槍",   item: "銅の槍",   starter: "古い槍", element: "pierce", patk: 10, matk: 0, wait: 0.75, power: 1.25, reach: 28, arc: 0.45, thrust: true },
     fist:       { name: "拳",   item: "革のこて", starter: "古いこて", element: "strike", patk: 6,  matk: 0, wait: 0.4, power: 0.7,  reach: 14, arc: 0.9 },
     // 杖：魔術師の系統の職なら魔法弾（魔攻・属性なし・中距離・倍率0.9・待ち1.0秒）、それ以外の職は近くをたたく（物攻・打・倍率1.15・待ち0.7秒）
     // 弓と魔法弾の待ち時間は 2026-10-18 保護者と決定（弓 0.8→1.1秒、魔法弾 0.7→1.0秒）
@@ -284,8 +285,8 @@ var GameData = (function () {
     { id: "gl.spirit",job: "gladiator", star: 5, name: "闘志", desc: "敵をたおすと、5秒のあいだ物攻が10%上がる。", short: "闘志", cond: null, passive: { fervor: 0.10 } },
     { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe"] }, mp: 12, ct: 12,
       fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.2, elem: "weapon", speed: 200, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }] },
-    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "前へ進みながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe"] }, mp: 15, ct: 15,
-      fx: [{ t: "rapid", count: 6, interval: 0.09, step: 6, hit: { t: "arc", stat: "p", mult: 0.7, elem: "weapon", color: "#fff3a0" } }] },
+    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "一歩ずつふみこみながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe"] }, mp: 15, ct: 15,
+      fx: [{ t: "rapid", count: 6, interval: 0.24, step: 10, hit: { t: "arc", stat: "p", mult: 0.7, elem: "weapon", color: "#fff3a0" } }] },   // 2026-10-21：一歩ふみこんでは斬る、をゆっくり6回
     // 聖騎士：光の槍と守り
     { id: "pl.spear", job: "paladin", star: 1, name: "ホーリースピア", desc: "光の槍で、前へ一直線に突く（光）。", short: "ホーリー", cond: { weapons: ["spear"] }, mp: 7, ct: 4,
       fx: [{ t: "arc", stat: "p", mult: 1.8, elem: "light", reach: 36, arc: 0.22, vis: "lance", color: "#fff2a0" }] },
@@ -297,8 +298,8 @@ var GameData = (function () {
     { id: "pl.shield",job: "paladin", star: 5, name: "聖なる盾", desc: "受けるダメージが、いつも8%へる。HPが半分より少ないと15%へる。", short: "聖なる盾", cond: null, passive: { cut: 0.08, cutLow: 0.07 } },
     { id: "pl.guard", job: "paladin", star: 6, name: "守護の光", desc: "仲間みんなのHPを15%回復して、60秒のあいだ物防が10%上がる。", short: "守護", cond: { line: "paladin" }, mp: 14, ct: 30,
       fx: [{ t: "heal", pct: 0.15, party: true }, { t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }] },
-    { id: "pl.cross", job: "paladin", star: 7, name: "グランドクロス", desc: "前へ、大きな光の十字を飛ばす。何体でもつらぬく（光）。", short: "クロス", cond: { weapons: ["spear"] }, mp: 16, ct: 15,
-      fx: [{ t: "shot", stat: "p", mult: 2.5, elem: "light", speed: 220, range: 190, size: 6, pierce: true, look: "cross", color: "#fff2a0" }] },
+    { id: "pl.cross", job: "paladin", star: 7, name: "グランドクロス", desc: "十字の光から、前へ太い光のビームを放つ。とどくところの敵みんなに当たる（光）。", short: "クロス", cond: { weapons: ["spear"] }, mp: 16, ct: 15,
+      fx: [{ t: "beam", stat: "p", mult: 2.5, elem: "light", length: 190, width: 16, color: "#fff2a0" }] },   // 2026-10-21：飛ぶ十字から、前へのびる光のビームに
     // 賢者：大きな攻撃魔法と回復
     { id: "sg.leaf",  job: "sage", star: 1, name: "リーフストーム", desc: "まわりに、大きな葉の刃のうずを起こす（草）。", short: "リーフ", cond: { line: "sage" }, mp: 12, ct: 6,
       fx: [{ t: "around", vis: "leaf", stat: "m", mult: 2.0, radius: 46, elem: "grass", color: "#9be36a" }] },

@@ -793,15 +793,17 @@
     var mode = A.swing > 0 ? "attack" : A.running ? "back" : "hold";
     var behind = mode === "back" ? d.dir !== "up" : mode === "hold" ? d.dir !== "down" : d.dir === "up";   // 横で持つときも体の後ろ
     if (A.hidden > 0) ctx.globalAlpha = 0.45;   // 隠れみの術：半分すける
-    if (behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
+    // 槍の突き（2026-10-21）：振らずに、向いているほうへ槍をつき出してもどす
+    var ext = A.swing > 0 && A.swingKind === "thrust" ? Math.sin((1 - A.swing / (A.swingMax || 0.15)) * Math.PI) * 7 : 0;
+    if (behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode, ext);
     Sprites.drawHero(ctx, c.job, hair, A.face, frame, px, py + 6);
-    if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode);
+    if (!behind) Sprites.drawWeapon(ctx, c.weapon, A.face, px, py + 6, mode, ext);
     ctx.globalAlpha = 1;
     // 剣に属性がのっているとき（魔法剣士）：武器のまわりがその色に光る
     if (c.enchant) Combat.glowDot(ctx, px + A.face.x * 6, py - 2 + A.face.y * 4, 8, "#ffffff", ({ fire: "#ff8a3d", water: "#5aa9ff", grass: "#9be36a" })[c.enchant.elem] || "#ffffff", 0.35 + 0.1 * Math.sin(Date.now() / 90));
     if (c.guts > 0) Combat.glowDot(ctx, px, py - 6, 14, "#ffffff", "#fff2a0", 0.25);   // 不屈の光
     if (c.status.sleep) Render.text("Zz", px + 7, py - 20, { size: 7, color: "#b48cf0" });
-    if (A.swing > 0) {   // 振った方向へ流れる三日月の光（skills.js の drawSlash。2026-10-19）
+    if (A.swing > 0 && A.swingKind !== "thrust") {   // 振った方向へ流れる三日月の光（skills.js の drawSlash。2026-10-19）。突きは出さない
       var sm = A.swingMax || 0.15;
       Combat.drawSlash(ctx, px, py - 3, A.face, A.swingArc, A.swingReach, A.swingColor, 1 - A.swing / sm, A.swingFlip);
     }

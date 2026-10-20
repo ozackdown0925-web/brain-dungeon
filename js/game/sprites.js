@@ -622,7 +622,7 @@ var Sprites = (function () {
   // weapon：sword・greatsword・axe・bow・fist・staff。face：向き。mode：hold（持つ）・attack（ふる）・back（背中にしまう）
   // 手の場所：前は絵の右手（足もとから右へ5・上へ7）、後ろは絵の左手、横は体のうしろよりの手（足もとから後ろへ2・上へ7）。
   // 横で持つときは、刃や杖が顔にかぶらないように、体の後ろで少し後ろへたおして立てる
-  function drawWeapon(ctx, weapon, face, x, y, mode) {
+  function drawWeapon(ctx, weapon, face, x, y, mode, ext) {
     if (weapon === "fist") return;   // 拳は手そのもの
     var d = dirOf(face), sx = d.flip ? -1 : 1;
     var hx, hy, dx, dy;
@@ -630,7 +630,7 @@ var Sprites = (function () {
       hx = x - 4 * sx; hy = y - 18; dx = 0.45 * sx; dy = 0.9;
       if (d.dir === "down") { hx = x + 4; hy = y - 19; dx = -0.45; dy = 0.9; }
     } else if (mode === "attack") {  // 向いているほうへつき出す
-      hx = x + face.x * 7; hy = y - 9 + face.y * 5; dx = face.x; dy = face.y;
+      hx = x + face.x * (7 + (ext || 0)); hy = y - 9 + face.y * (5 + (ext || 0) * 0.7); dx = face.x; dy = face.y;   // ext：槍の突きで前へ出す長さ
     } else {                          // 手に持って、少し上に向ける
       if (d.dir === "side") { hx = x - 2 * sx; hy = y - 7; dx = -0.35 * sx; dy = -0.94; }   // 横：体の後ろで立てて持つ（core.js で体より先に描く）
       else if (d.dir === "down") { hx = x + 5; hy = y - 7; dx = 0.2; dy = -0.98; }
