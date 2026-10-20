@@ -372,6 +372,8 @@
     run.gold += drop.gold;
     if (drop.gold) Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
     if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
+    // 瘴気の森：敵がときどき（3%）毒消しを落とす（2026-10-21 保護者の案）
+    if (!drop.tool && GameData.dungeonOf(dg.dungeon).theme === "swamp" && Math.random() < 0.03) drop.tool = "antidote";
     if (drop.tool && GameState.gainTool(drop.tool)) Battle.pop(e.x, e.y - 50, GameState.TOOLS[drop.tool].name + " +1", "#9fe0a8", 7);
   };
 
@@ -525,18 +527,20 @@
       }
     }
     // 薬草・魔力のキノコ（2026-10-20）：上を歩くと、全員が少し回復する。みんな満タンなら拾わずに残る
+    // 毒消し草（瘴気の森。2026-10-21）：みんなの毒が治る。だれも毒でなければ拾わずに残る
     (c.pickups || []).forEach(function (u) {
       if (u.taken || !near(u.x, u.y, 11)) return;
-      var herb = u.kind === "herb", alive = Party.members().filter(function (m) { return !m.down; });
-      var need = alive.some(function (m) { return herb ? m.hp < m.stats.hp : m.mp < m.stats.mp; });
+      var herb = u.kind === "herb", cure = u.kind === "cure", alive = Party.members().filter(function (m) { return !m.down; });
+      var need = alive.some(function (m) { return cure ? !!m.status.poison : herb ? m.hp < m.stats.hp : m.mp < m.stats.mp; });
       if (!need) return;
       u.taken = true;
       alive.forEach(function (m) {
-        if (herb) m.hp = Math.min(m.stats.hp, m.hp + Math.max(1, Math.round(m.stats.hp * 0.10)));
+        if (cure) delete m.status.poison;
+        else if (herb) m.hp = Math.min(m.stats.hp, m.hp + Math.max(1, Math.round(m.stats.hp * 0.10)));
         else m.mp = Math.min(m.stats.mp, m.mp + Math.max(1, Math.round(m.stats.mp * 0.08)));
       });
-      say(herb ? "薬草を見つけた！ みんなのHPが少し回復した" : "魔力のキノコを見つけた！ みんなのMPが少し回復した");
-      Battle.pop(A.x, A.y - 30, herb ? "HP回復" : "MP回復", herb ? "#6fd08c" : "#a3c8ff", 9);
+      say(cure ? "毒消し草を見つけた！ みんなの毒が治った" : herb ? "薬草を見つけた！ みんなのHPが少し回復した" : "魔力のキノコを見つけた！ みんなのMPが少し回復した");
+      Battle.pop(A.x, A.y - 30, cure ? "毒が治った" : herb ? "HP回復" : "MP回復", cure ? "#9fe8d8" : herb ? "#6fd08c" : "#a3c8ff", 9);
       Sound.play("heal"); snapshot();
     });
     c.chests.forEach(function (b) {
@@ -603,6 +607,15 @@
       }
     }
     run.inPit = onPit;
+    // 部屋の型の毒の沼（P。瘴気の森）：罠の毒の沼と同じ（毒になっていなければ、毒になる）
+    if (room.tile(tx, ty) === "P") {
+      var pc = Party.current();
+      if (!pc.status.poison && run.swampCd <= 0) {
+        Party.addStatus(pc, "poison", 8);
+        run.swampCd = 1.5;
+        say("毒の沼だ！"); Sound.play("trap");
+      }
+    }
     return false;
   }
 
@@ -636,6 +649,17 @@
   // 罠・宝箱・鍵（宝箱・鍵・落とし穴のドット絵は props.js。2026-10-18 に仮の絵から差しかえ）
   function drawThings() {
     var c = dg.cells[curKey], T = World.TILE, ctx = Render.ctx;
+    // 部屋の型の毒の沼（P）：ところどころで泡がうかんで、はじける（絵は tiles.js。泡だけここで動かす）
+    if (!room._pTiles) {
+      room._pTiles = [];
+      for (var py = 0; py < room.h; py++) for (var px = 0; px < room.w; px++) if (room.tile(px, py) === "P" && ((px * 7 + py * 13) % 5) === 0) room._pTiles.push([px, py]);
+    }
+    room._pTiles.forEach(function (pt, i) {
+      var ph = (glow * 0.7 + i * 0.37) % 1;
+      if (ph > 0.6) return;
+      var bx = Math.round(pt[0] * T + 4 + (i * 5) % 8 - cam.x), by = Math.round(pt[1] * T + 11 - ph * 6 - cam.y), bs = ph < 0.5 ? 2 : 3;
+      Render.rect(bx, by, bs, bs, ph < 0.5 ? "#c89ae0" : "rgba(200,154,224,0.5)");
+    });
     c.traps.forEach(function (t, i) {
       if (t.hidden && !t.found) return;
       var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
@@ -670,13 +694,13 @@
       ctx.fillStyle = "#7fd8ff"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx - 2, sy - 1, 7, 3, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
       for (var sp = 0; sp < 5; sp++) { var ph = (glow * 0.6 + sp / 5) % 1; Combat.glowDot(ctx, sx + Math.sin(sp * 7) * 8, sy - ph * 18, 2.5, "#ffffff", "#bfe8ff", 1 - ph); }
     }
-    (c.pickups || []).forEach(function (u) {   // 薬草・魔力のキノコ（少しゆれる）
+    (c.pickups || []).forEach(function (u) {   // 薬草・魔力のキノコ・毒消し草（少しゆれる）
       if (u.taken) return;
       var ux = Math.round(u.x - cam.x), uy = Math.round(u.y - cam.y);
-      // 草の地面にまぎれないように、足もとにうすい光（薬草は緑、キノコは青）
-      Combat.glowDot(ctx, ux, uy - 1, 12, "#ffffff", u.kind === "herb" ? "#d8ffa0" : "#bfe4ff", 0.7 + 0.2 * Math.sin(glow * 3 + u.x));
+      // 草の地面にまぎれないように、足もとにうすい光（薬草は緑、キノコは青、毒消し草は白っぽい水色）
+      Combat.glowDot(ctx, ux, uy - 1, 12, "#ffffff", u.kind === "herb" ? "#d8ffa0" : u.kind === "cure" ? "#d0fff0" : "#bfe4ff", 0.7 + 0.2 * Math.sin(glow * 3 + u.x));
       Render.rect(ux - 4, uy + 4, 8, 2, "rgba(20,12,28,0.3)");
-      ctx.drawImage(Props.get(u.kind === "herb" ? "herb" : "mush"), ux - 4, uy - 5 + Math.round(Math.sin(glow * 2 + u.x) * 0.6));
+      ctx.drawImage(Props.get(u.kind === "herb" ? "herb" : u.kind === "cure" ? "cure" : "mush"), ux - 4, uy - 5 + Math.round(Math.sin(glow * 2 + u.x) * 0.6));
     });
     if (c.ckey && !c.ckey.taken) {   // 宝箱の鍵（銀）
       var cx2 = Math.round(c.ckey.x - cam.x), cy2 = Math.round(c.ckey.y - cam.y - 2 - Math.sin(glow * 3 + 1) * 2);

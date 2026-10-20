@@ -62,6 +62,10 @@ var Dungeon = (function () {
 
   // ---------- 部屋の型に道をあける ----------
   function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~"; }
+  // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
+  function standable(ch) { return passable(ch) && ch !== "P"; }
+  // ダンジョンの部屋の型（瘴気の森は沼の型）
+  function roomsFor(dungeon) { return GameData.dungeonOf(dungeon).theme === "swamp" ? SwampRooms : ForestRooms; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -94,7 +98,7 @@ var Dungeon = (function () {
     // まんなかに近い陸地（2×2 マス空いているところ）を、部屋の中心にする。池の部屋なら、池のほとり。
     var hub = null, best = 1e9;
     for (var y0 = 1; y0 < h - 2; y0++) for (var x0 = 1; x0 < w - 2; x0++) {
-      if (!passable(g[y0][x0]) || !passable(g[y0][x0 + 1]) || !passable(g[y0 + 1][x0]) || !passable(g[y0 + 1][x0 + 1])) continue;
+      if (!standable(g[y0][x0]) || !standable(g[y0][x0 + 1]) || !standable(g[y0 + 1][x0]) || !standable(g[y0 + 1][x0 + 1])) continue;
       var dd = (x0 - cx) * (x0 - cx) + (y0 - cy) * (y0 - cy);
       if (dd < best) { best = dd; hub = { x: x0, y: y0 }; }
     }
@@ -117,7 +121,7 @@ var Dungeon = (function () {
   function centerSpot(room) {
     var cx = Math.floor(room.w / 2), cy = Math.floor(room.h / 2), best = null, bd = 1e9;
     for (var y = 1; y < room.h - 1; y++) for (var x = 1; x < room.w - 1; x++) {
-      if (!passable(room.tile(x, y)) || !passable(room.tile(x + 1, y)) || !passable(room.tile(x, y + 1))) continue;
+      if (!standable(room.tile(x, y)) || !standable(room.tile(x + 1, y)) || !standable(room.tile(x, y + 1))) continue;
       var dd = (x - cx) * (x - cx) + (y - cy) * (y - cy);
       if (dd < bd) { bd = dd; best = { x: x, y: y }; }
     }
@@ -137,14 +141,23 @@ var Dungeon = (function () {
     return before / ENEMIES_PER_FLOOR;
   }
   var SQUAD = ["goblin_sword", "goblin_spear", "goblin_archer"];
+  // 瘴気の森（段階2、2026-10-21）：骸骨の部隊（剣士2・弓兵1のくり返し）に、毒ガエルとキノコの魔物がまざる
+  var SKULL_SQUAD = ["skeleton_sword", "skeleton_archer", "skeleton_sword"];
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
-  function placeEnemies(rnd, room, doors, floor, avoid) {
+  function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [];
-    for (var i = 0; i < n; i++) types.push(SQUAD[i % 3]);
-    if (rnd() < 0.35) types[types.length - 1] = "vine";
-    // キノコの魔物（どの階でも）と、大きな蜂（8階から）がまざる（2026-10-18 保護者と決定）
-    if (rnd() < 0.4) types[0] = "mushroom";
-    if (floor >= 8 && rnd() < 0.55) { types[1] = "bee"; if (n >= 5 && rnd() < 0.5) types[2] = "bee"; }
+    if (GameData.dungeonOf(dungeon).theme === "swamp") {
+      for (var si = 0; si < n; si++) types.push(SKULL_SQUAD[si % 3]);
+      if (rnd() < 0.6) types[types.length - 1] = "frog";
+      if (n >= 5 && rnd() < 0.35) types[types.length - 2] = "frog";
+      if (rnd() < 0.3) types[0] = "mushroom";
+    } else {
+      for (var i = 0; i < n; i++) types.push(SQUAD[i % 3]);
+      if (rnd() < 0.35) types[types.length - 1] = "vine";
+      // キノコの魔物（どの階でも）と、大きな蜂（8階から）がまざる（2026-10-18 保護者と決定）
+      if (rnd() < 0.4) types[0] = "mushroom";
+      if (floor >= 8 && rnd() < 0.55) { types[1] = "bee"; if (n >= 5 && rnd() < 0.5) types[2] = "bee"; }
+    }
     // 道（入り口）から離れた、立てる場所
     var doorPts = [];
     doors.forEach(function (d) { doorPts.push(doorTiles(room.w, room.h, d)[1]); });
@@ -180,7 +193,8 @@ var Dungeon = (function () {
     var rnd = rng(seed);
     var lay = layout(rnd);
     var cells = {};
-    var order = ForestRooms.map(function (r, i) { return i; });
+    var ROOMS = roomsFor(dungeon), theme = GameData.dungeonOf(dungeon).theme;
+    var order = ROOMS.map(function (r, i) { return i; });
     for (var i = order.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)); var t = order[i]; order[i] = order[j]; order[j] = t; }
     var all = lay.path.concat(lay.branches);
     all.forEach(function (p, idx) { cells[key(p.x, p.y)] = { x: p.x, y: p.y, tpl: order[idx % order.length], doors: [], kind: "room" }; });
@@ -198,17 +212,18 @@ var Dungeon = (function () {
     cells[key(exit.x, exit.y)].kind = "exit";
     Object.keys(cells).forEach(function (kk) {
       var c = cells[kk];
-      c.room = buildRoom(ForestRooms[c.tpl], c.doors);
-      c.name = ForestRooms[c.tpl].name;
+      c.room = buildRoom(ROOMS[c.tpl], c.doors);
+      c.room.theme = theme;
+      c.name = ROOMS[c.tpl].name;
       c.center = centerSpot(c.room);
-      c.enemies = placeEnemies(rnd, c.room, c.doors, floor, c.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null);
+      c.enemies = placeEnemies(rnd, c.room, c.doors, floor, c.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
       c.visited = false;
     });
     var dg = {
       floor: floor, seed: seed, cells: cells, start: key(start.x, start.y), exit: key(exit.x, exit.y),
       boss: false, lock: null, hasKey: false, hasCKey: false
     };
-    placeThings(dg, floor, seed);
+    placeThings(dg, floor, seed, dungeon);
     return tagDungeon(dg, dungeon);
   }
   // どのダンジョンの階か（dungeon）と、強さの深さ（power：敵の強さ・ごほうび・拾う装備のレベルに使う）
@@ -220,18 +235,20 @@ var Dungeon = (function () {
     var rnd = rng(seed);
     var info = GameData.bossInfo(dungeon, floor);
     var cells = {};
-    var mid = Math.floor(rnd() * ForestRooms.length);
+    var ROOMS = roomsFor(dungeon), theme = GameData.dungeonOf(dungeon).theme;
+    var mid = Math.floor(rnd() * ROOMS.length);
     if (mid === 0) mid = 1; // 入口の部屋（ひろば）とちがう型にする
     var plan = [
-      { x: 1, y: 1, kind: "start", tpl: ForestRooms[0], doors: ["e"] },
-      { x: 2, y: 1, kind: "room", tpl: ForestRooms[mid], doors: ["w", "e"] },
+      { x: 1, y: 1, kind: "start", tpl: ROOMS[0], doors: ["e"] },
+      { x: 2, y: 1, kind: "room", tpl: ROOMS[mid], doors: ["w", "e"] },
       { x: 3, y: 1, kind: "exit", tpl: BossRoom, doors: ["w"] }
     ];
     plan.forEach(function (p) {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
       c.room = buildRoom(p.tpl, p.doors);
+      c.room.theme = theme;
       c.center = centerSpot(c.room);
-      c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null);
+      c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
       cells[key(p.x, p.y)] = c;
     });
     var bc = cells[key(3, 1)];
@@ -249,7 +266,8 @@ var Dungeon = (function () {
 
   // ---------- 鍵と扉・宝箱・罠（段階4-2） ----------
   // 部屋のつなぎ方と別の順の数を使う（4-1 と同じ seed なら、部屋のつなぎ方と敵は同じまま）
-  function placeThings(dg, floor, seed) {
+  function placeThings(dg, floor, seed, dungeon) {
+    var swamp = GameData.dungeonOf(dungeon).theme === "swamp";
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -346,13 +364,14 @@ var Dungeon = (function () {
     }
 
     // 罠：毒の沼（2×2）と落とし穴（1マス）。深い階層ほど少し多い。一部は踏むまで見えない
-    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0);
+    // 瘴気の森：部屋の型にも毒の沼があるうえに、罠も樹海より多い（毒の沼が多め。落とし穴は少なめ）
+    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp ? 2 : 0);
     var trapRooms = keys.filter(function (k) { return k !== dg.start; });
     var perRoom = {};
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
       var tk = pick(rnd, trapRooms);
       if ((perRoom[tk] || 0) >= 2) continue;
-      var pit = rnd() < 0.45;
+      var pit = rnd() < (swamp ? 0.25 : 0.45);
       // 落とし穴はまわり1マスも通れるところだけ（せまい道をふさがないように）
       var ts = pit ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
@@ -371,6 +390,8 @@ var Dungeon = (function () {
     var want = [];
     for (var hn = 0; hn < herbN; hn++) want.push("herb");
     for (var mn = 0; mn < mushN; mn++) want.push("mush");
+    // 毒消し草（瘴気の森だけ。2026-10-21 保護者の案）：1階に1つ、ときどき2つ。拾うと、みんなの毒が治る
+    if (swamp) { want.push("cure"); if (rnd() < 0.4) want.push("cure"); }
     for (var wi = 0, ri = 0; wi < want.length && ri < pickRooms.length * 2; ri++) {
       var pr = pickRooms[ri % pickRooms.length];
       var ps = spots(pr, 1, 1, 4, false);

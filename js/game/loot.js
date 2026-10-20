@@ -159,7 +159,7 @@ var Loot = (function () {
     var k = Dungeon.rewardScale(floor);
     var g = (3 + floor) * k;
     var drop = { gold: Math.floor(g) + (Math.random() < g - Math.floor(g) ? 1 : 0), mat: null }; // 小数は確率で切り上げ（合計がずれないように）
-    if (Math.random() < 0.3 * k * matScale(floor, correct)) drop.mat = type === "vine" || type === "mushroom" ? "stone" : "iron";
+    if (Math.random() < 0.3 * k * matScale(floor, correct)) drop.mat = type === "vine" || type === "mushroom" || type === "frog" ? "stone" : "iron";
     drop.tool = Math.random() < 0.03 ? (Math.random() < 0.5 ? "potion" : "ether") : null;
     return drop;
   }

@@ -165,6 +165,20 @@ var Enemies = (function () {
         var sw = Math.sin(e.zig) * 0.9;
         if (gap > d.reach - 2) { mx = ux - uy * sw; my = uy + ux * sw; var ml = Math.sqrt(mx * mx + my * my) || 1; mx /= ml; my /= ml; }
         else if (e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "frog") {
+        // 毒ガエル（2026-10-21）：はねて動く。はねているあいだだけ進み、とどくところでは毒のつばを吐く
+        e.face = { x: ux, y: uy };
+        e.hopCd = (e.hopCd === undefined ? Math.random() * d.hopEvery : e.hopCd) - dt;
+        if (e.hop > 0) {
+          e.hop -= dt;
+          if (!e.status.para) room.move(e, e.hopDir.x * d.hopSpeed * dt, e.hopDir.y * d.hopSpeed * dt);
+        } else if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
+        else if (e.hopCd <= 0) {
+          // 遠ければ近づき、近すぎれば少し下がる。あいだなら横へ
+          var hx2 = gap > d.keep + 10 ? ux : gap < d.keep - 10 ? -ux : -uy * e.strafe;
+          var hy2 = gap > d.keep + 10 ? uy : gap < d.keep - 10 ? -uy : ux * e.strafe;
+          e.hopDir = { x: hx2, y: hy2 }; e.hop = d.hopTime; e.hopCd = d.hopEvery; e.strafe = -e.strafe;
+        }
       } else if (d.kind === "archer") {
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
         else if (gap > d.keepMax) { mx = ux; my = uy; }
@@ -234,6 +248,10 @@ var Enemies = (function () {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
       return;
     }
+    if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: { spit: true } });
+      return;
+    }
     // 近い攻撃：構えたときの向きのまま。届けば当たる。剣士・槍兵は一歩ふみこんで振る（2026-10-18）
     if (d.lunge && hooksRoom) {
       var bx = e.x, by = e.y;
@@ -296,7 +314,7 @@ var Enemies = (function () {
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" ? 8 : e.type === "mushroom" ? 10 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
       var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
@@ -308,7 +326,9 @@ var Enemies = (function () {
         ctx.beginPath(); ctx.moveTo(hx - e.face.x * 4, hy - e.face.y * 4); ctx.lineTo(ex, ey); ctx.stroke();
         Render.rect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2, "#c8ccd4");
       }
-      Monsters.drawSmall(ctx, e, x, y + 6);
+      var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
+      if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
+      Monsters.drawSmall(ctx, e, x, y + 6 - lift);
       if (d.kind === "spore" && !e.dead) {
         // 胞子：構えのあいだは、とどく範囲がだんだん濃くなる。まいたあとは、点の雲
         var rr2 = d.reach + e.r;
@@ -372,6 +392,11 @@ var Enemies = (function () {
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
+      if (a.opts && a.opts.spit) {   // 毒のつば：紫と緑のしずく
+        Render.rect(Math.round(x - a.vx * 0.03) - 1, Math.round(y - a.vy * 0.03) - 1, 2, 2, "rgba(160,110,200,0.5)");
+        Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#9a5ad0"); Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#b8e870");
+        return;
+      }
       var len = Math.sqrt(a.vx * a.vx + a.vy * a.vy);
       ctx.strokeStyle = "#e8d8b0"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();

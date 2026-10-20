@@ -1,7 +1,8 @@
 // 地面と部屋のドット絵（段階7-2a）。すべてプログラムで1点ずつ描く（素材は使っていない）。
 // 部屋に入ったときに、部屋全体を1枚の絵（canvas）に描いて覚えておき、毎フレームはその絵を写すだけにする。
 // 木の葉は別の絵（行ごとの帯）にして、キャラより奥の行の葉はキャラの前に描く（木の後ろを歩けるように）。
-// タイル（16×16点）の文字：. 地面　: となりの部屋への道　* 草むら　~ 水　= 橋　T 木　# 壁　L 鍵のかかった扉　V つる
+// タイル（16×16点）の文字：. 地面　: となりの部屋への道　* 草むら　~ 水　= 橋　T 木　# 壁　L 鍵のかかった扉　V つる　P 毒の沼（通れる。瘴気の森）
+// 部屋の色合い（room.theme）：forest（新緑の樹海）・swamp（瘴気の森。2026-10-21 保護者の案：同じ絵を青・紫の色にして、枯れた木をまぜる）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -11,16 +12,61 @@ var Tiles = (function () {
   function hex(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
   function pal(list) { return list.map(hex); }
   var OUT = hex("#140c1c");
-  var GRASS = pal(["#2b4424", "#3a5c2e", "#4a7036", "#5e8a3e", "#82aa4a"]);     // 地面の草（暗い→明るい）
-  var DIRT = pal(["#4a3420", "#6a4c2e", "#8a6840", "#a88452"]);                 // 土の道
-  var TALL = pal(["#1e3a1e", "#2e5428", "#467634", "#6a9a40", "#9cc458"]);      // 草むら
-  var WATER = pal(["#16304e", "#1f4a72", "#2a6090", "#4a88b8", "#a8d8ec"]);     // 水
-  var LEAF = pal(["#0e2416", "#183a20", "#24522a", "#3a7034", "#5c9440"]);      // 木の葉
-  var BARK = pal(["#2a1a12", "#4a3020", "#6e4a2c", "#94683c"]);                 // 木のみき・橋の板
-  var ROCK = pal(["#2c2834", "#4a4452", "#6a6474", "#8e8a96", "#b4b0b8"]);      // 岩
-  var FLOWER = pal(["#e8e0c8", "#f0d860", "#d86a8a"]);
+  var THEMES = {
+    forest: {
+      GRASS: pal(["#2b4424", "#3a5c2e", "#4a7036", "#5e8a3e", "#82aa4a"]),     // 地面の草（暗い→明るい）
+      DIRT: pal(["#4a3420", "#6a4c2e", "#8a6840", "#a88452"]),                 // 土の道
+      TALL: pal(["#1e3a1e", "#2e5428", "#467634", "#6a9a40", "#9cc458"]),      // 草むら
+      WATER: pal(["#16304e", "#1f4a72", "#2a6090", "#4a88b8", "#a8d8ec"]),     // 水
+      LEAF: pal(["#0e2416", "#183a20", "#24522a", "#3a7034", "#5c9440"]),      // 木の葉
+      BARK: pal(["#2a1a12", "#4a3020", "#6e4a2c", "#94683c"]),                 // 木のみき・橋の板
+      ROCK: pal(["#2c2834", "#4a4452", "#6a6474", "#8e8a96", "#b4b0b8"]),      // 岩
+      FLOWER: pal(["#e8e0c8", "#f0d860", "#d86a8a"]),
+      VINE: pal(["#0e1e10", "#1f3a1c", "#2f6a2a", "#4d8a3c"]),
+      WITHER: null
+    },
+    // 瘴気の森：青・紫の色合い。枯れた木（WITHER＝枯れかけの葉）をまぜる
+    swamp: {
+      GRASS: pal(["#1c1f30", "#262c42", "#313a54", "#3e4a66", "#56658a"]),
+      DIRT: pal(["#2a2232", "#3a3046", "#4c405a", "#62546e"]),
+      TALL: pal(["#151a2c", "#20283e", "#2c3856", "#3c4c70", "#56688e"]),
+      WATER: pal(["#10162a", "#1a2440", "#243256", "#3a4c74", "#8a9cc4"]),
+      LEAF: pal(["#100c20", "#1a1532", "#272048", "#382e60", "#4e4280"]),
+      BARK: pal(["#1a161e", "#2e2832", "#463e4a", "#605866"]),
+      ROCK: pal(["#221f2e", "#363248", "#4c4862", "#68647e", "#8c88a2"]),
+      FLOWER: pal(["#c8c0e0", "#a890d8", "#b85a9a"]),
+      VINE: pal(["#120c1c", "#22183a", "#382a5a", "#544278"]),
+      WITHER: pal(["#16121a", "#241e28", "#36303a", "#4a424c", "#605862"])
+    }
+  };
+  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, THEME = "forest";
+  function useTheme(name) {
+    var th = THEMES[name] || THEMES.forest;
+    THEME = THEMES[name] ? name : "forest";
+    GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER;
+  }
+  useTheme("forest");
   var GOLD = pal(["#7a5a18", "#c8a040", "#f0d070"]);
-  var VINE = pal(["#0e1e10", "#1f3a1c", "#2f6a2a", "#4d8a3c"]);
+  var POISON = [120, 60, 140];   // 毒の沼（罠の毒の沼と同じ色。床の上に 75% 重ねる）
+  // 枯れた木の枝（16×16。みきの上に、キャラより前の帯で描く）。数字は BARK の明るさ、A はふち
+  var DEAD_TREE = [
+    ".....A..A.......",
+    "A...A3AA2A..A...",
+    "A2A.A3A.A2AA2A..",
+    ".A2AA32A2A.A2A..",
+    "..A2A32A2AA2A...",
+    ".A.A2332A2A2A...",
+    "A3AA.A321A2A....",
+    ".A33AA321AA.A...",
+    "..AA3A3221AA2A..",
+    ".....A3221A2A...",
+    ".....A3221AA....",
+    ".....A3221A.....",
+    ".....A3221A.....",
+    ".....A3221A.....",
+    ".....A3221A.....",
+    ".....A3221A....."
+  ];
 
   // ---------- 乱数とノイズ（場所で決まる。同じ部屋はいつも同じ絵） ----------
   function hash(x, y, s) {
@@ -41,6 +87,7 @@ var Tiles = (function () {
 
   // ---------- 部屋1つを絵にする ----------
   function render(room) {
+    useTheme(room.theme);
     var W = room.pxW, H = room.pxH, w = room.w, h = room.h;
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     var ctx = cv.getContext("2d");
@@ -82,6 +129,7 @@ var Tiles = (function () {
       if (t === ":") return "path";
       if (t === "L") return "lock";
       if (t === "V") return "vine";
+      if (t === "P") return "poison";
       return "ground";
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
@@ -242,6 +290,17 @@ var Tiles = (function () {
         if (railA) put(vert ? tx * T + 1 : tx * T + k8, vert ? ty * T + k8 : ty * T + 1, BARK[0]);
         if (railB) put(vert ? tx * T + 14 : tx * T + k8, vert ? ty * T + k8 : ty * T + 14, BARK[0]);
       }
+    }
+
+    // ---------- 2b. 毒の沼（P。瘴気の森）：地面の上に、罠の毒の沼と同じ紫を重ねる。ふちは少し丸く、暗いふちどり ----------
+    var isPoison = isK("poison");
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (!isPoison(Math.floor(x / T), Math.floor(y / T)) && field(isPoison, x, y) < 0.3) continue;
+      if (!inside(x, y, isPoison, 0.35, 51)) continue;
+      var pg = get(x, y), pc = [Math.round(pg[0] * 0.25 + POISON[0] * 0.75), Math.round(pg[1] * 0.25 + POISON[1] * 0.75), Math.round(pg[2] * 0.25 + POISON[2] * 0.75)];
+      if (edgeOf(x, y, isPoison, 0.35, 51)) pc = dark(pc, 0.55);
+      else if (hash(x, y, 52) < 0.01) pc = [200, 154, 224];        // 小さな泡
+      put(x, y, pc);
     }
 
     // ---------- 3. 影（木・しげみ・がけの南と東の地面を暗く） ----------
@@ -483,7 +542,15 @@ var Tiles = (function () {
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
       if (!isTree(tx, ty)) continue;
       var jx2 = (hash(tx, ty, 28) - 0.5) * 3, jy2 = (hash(tx, ty, 29) - 0.5) * 2;
-      treeCrowns.push([tx * T + 8 + jx2, ty * T + 2 + jy2, 9, ty]);
+      // 瘴気の森：木の4割くらいは枯れた木（葉がなく、枝だけ）。まわりも木の、かたまりの中の木は葉のまま
+      var dead = WITHER && hash(tx, ty, 77) < 0.42 && !(isTree(tx, ty - 1) && isTree(tx, ty + 1)) && !isTree(tx, ty + 1);
+      if (dead) {
+        for (y = 0; y < DEAD_TREE.length; y++) for (x = 0; x < 16; x++) {
+          var dch = DEAD_TREE[y].charAt(x);
+          if (dch === ".") continue;
+          putOver(tx * T + x, ty * T - 8 + y, dch === "A" ? OUT : BARK[+dch], ty);
+        }
+      } else treeCrowns.push([tx * T + 8 + jx2, ty * T + 2 + jy2, 9, ty]);
       if (isTree(tx, ty + 1)) continue;
       if (isTree(tx - 1, ty) && !isTree(tx - 1, ty + 1) && (tx % 2 === 1) && isTree(tx + 1, ty)) continue;
       // 木の影：根もとに丸く
@@ -509,7 +576,7 @@ var Tiles = (function () {
     }
     // 森のしげみ（部屋のまわり）：部屋に面した南のはしには、みきが並んで見える
     var isForest = function (tx5, ty5) { var k5 = kind(tx5, ty5); return k5 === "forest" || k5 === "lock" || k5 === "vine"; };
-    var forestCrowns = [];
+    var forestCrowns = [], witherCrowns = [];
     for (ty = -1; ty <= h; ty++) for (tx = -1; tx <= w; tx++) {
       if (kind(tx, ty) !== "forest") continue;
       var southOpen = ty + 1 < h && ty >= 0 && !isForest(tx, ty + 1);
@@ -530,9 +597,10 @@ var Tiles = (function () {
       }
       for (var q = 0; q < 2; q++) {
         var fx2 = tx * T + 4 + q * 8 + (hash(tx, ty, 30 + q) - 0.5) * 3, fy2 = ty * T + (southOpen ? 2 : 6) + (hash(tx, ty, 32 + q) - 0.5) * 4;
-        forestCrowns.push([fx2, fy2, 7.5 + hash(tx, ty, 34 + q) * 2, ty]);
+        (WITHER && hash(tx, ty, 78 + q) < 0.3 ? witherCrowns : forestCrowns).push([fx2, fy2, 7.5 + hash(tx, ty, 34 + q) * 2, ty]);
       }
     }
+    if (witherCrowns.length) crowns(witherCrowns, WITHER, -0.25);   // 瘴気の森：しげみに、枯れかけの葉をまぜる
     crowns(forestCrowns, LEAF, -0.25);
     crowns(treeCrowns, LEAF, 0.05);
 
