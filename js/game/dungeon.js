@@ -4,7 +4,7 @@
 var Dungeon = (function () {
   var GRID_W = 5, GRID_H = 4;   // 部屋をならべるマス目（地図の大きさ）
   var MAIN_ROOMS = 5;           // 入口から出口までの部屋の数
-  var BOSS_FLOORS = [7, 14];    // ボスの階層：決まった形（入口 → 敵の部屋 → ボスの部屋）
+  // ボスの階層は、ダンジョンごとに GameData.DUNGEONS の bosses で決まる（決まった形：入口 → 敵の部屋 → ボスの部屋）
   var DIRS = {
     n: { dx: 0, dy: -1, back: "s" }, s: { dx: 0, dy: 1, back: "n" },
     w: { dx: -1, dy: 0, back: "e" }, e: { dx: 1, dy: 0, back: "w" }
@@ -173,8 +173,10 @@ var Dungeon = (function () {
   }
 
   // ---------- 階層を作る ----------
-  function generate(floor, seed) {
-    if (BOSS_FLOORS.indexOf(floor) >= 0) return generateBoss(floor, seed);
+  // dungeon：ダンジョンの id（省くと新緑の樹海）
+  function generate(floor, seed, dungeon) {
+    dungeon = GameData.dungeonOf(dungeon).id;
+    if (GameData.isBossFloor(dungeon, floor)) return tagDungeon(generateBoss(floor, seed, dungeon), dungeon);
     var rnd = rng(seed);
     var lay = layout(rnd);
     var cells = {};
@@ -204,17 +206,19 @@ var Dungeon = (function () {
     });
     var dg = {
       floor: floor, seed: seed, cells: cells, start: key(start.x, start.y), exit: key(exit.x, exit.y),
-      boss: BOSS_FLOORS.indexOf(floor) >= 0, lock: null, hasKey: false, hasCKey: false
+      boss: false, lock: null, hasKey: false, hasCKey: false
     };
     placeThings(dg, floor, seed);
-    return dg;
+    return tagDungeon(dg, dungeon);
   }
+  // どのダンジョンの階か（dungeon）と、強さの深さ（power：敵の強さ・ごほうび・拾う装備のレベルに使う）
+  function tagDungeon(dg, dungeon) { dg.dungeon = dungeon; dg.power = GameData.depthOf(dungeon, dg.floor); return dg; }
 
   // ---------- ボスの階層（段階4-3） ----------
   // 決まった形：入口の部屋 → 敵のいる部屋 → ボスの部屋（地図のまんなかの段に横ならび）。鍵・罠・ふつうの宝箱はない。
-  function generateBoss(floor, seed) {
+  function generateBoss(floor, seed, dungeon) {
     var rnd = rng(seed);
-    var info = GameData.BOSSES[floor];
+    var info = GameData.bossInfo(dungeon, floor);
     var cells = {};
     var mid = Math.floor(rnd() * ForestRooms.length);
     if (mid === 0) mid = 1; // 入口の部屋（ひろば）とちがう型にする
@@ -447,6 +451,6 @@ var Dungeon = (function () {
 
   return {
     generate: generate, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
-    enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS, BOSS_FLOORS: BOSS_FLOORS
+    enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS
   };
 })();

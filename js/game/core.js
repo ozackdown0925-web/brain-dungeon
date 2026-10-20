@@ -18,7 +18,7 @@
   A.x = 6 * World.TILE; A.y = 11 * World.TILE;
 
   // テスト用の設定（拠点の画面で変える）。correct は知恵の試練の正解数の仮の値（段階6で本物の結果に置きかえる）
-  var settings = { floor: 1, correct: 2, minutes: 5, seed: "" };
+  var settings = { dungeon: "forest1", floor: 1, correct: 2, minutes: 5, seed: "" };
   var run = newRun();
   function newRun() {
     return { timeLeft: settings.minutes * 60, kills: 0, over: false, fade: 0, entry: null,
@@ -44,7 +44,7 @@
   var trial = { correct: 0, subjects: [], test: true };
   function startFloor(floor, seed, resume) {
     settings.floor = floor;
-    dg = Dungeon.generate(floor, seed || Dungeon.newSeed());
+    dg = Dungeon.generate(floor, seed || Dungeon.newSeed(), settings.dungeon);
     Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
     Party.resetAll();
     applyBlessings(trial.subjects);
@@ -55,8 +55,8 @@
     if (resume) applyResume(resume);
     enterRoom(dg.start, null);
     prerender(dg);
-    if (resume) say(GameData.floorLabel(floor) + "　続きから（入口にもどった）");
-    else say(GameData.floorLabel(floor) + (dg.boss ? "　この先に、ボスがいる…！" : "　出口をめざそう！"));
+    if (resume) say(GameData.floorLabel(floor, dg.dungeon) + "　続きから（入口にもどった）");
+    else say(GameData.floorLabel(floor, dg.dungeon) + (dg.boss ? "　この先に、ボスがいる…！" : "　出口をめざそう！"));
     saveTimer = 0;
     snapshot();
     if (!resume && !trial.tryMode && window.Sync) Sync.save("", ""); // 階に入るとき（区切り）に GAS へ
@@ -86,7 +86,7 @@
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
     var ckeyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].ckey && dg.cells[k].ckey.taken; });
     GameState.setAdventure({
-      state: "playing", dungeon: "forest1", floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
+      state: "playing", dungeon: dg.dungeon, floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
       timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown, bossRetried: !!run.bossRetried, bossSave: run.bossSave || null, bossBest: Math.max(run.bossBest || 0, curKey === dg.exit && !dg.bossDown ? bossDamaged() : 0),
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
@@ -132,7 +132,7 @@
   // 控えから、拠点で受け取る結果を作る（日付が変わっていたとき・やめたとき）
   function resultFromSnapshot(a, kind) {
     return { exp: a.run.exp, mastery: a.run.mastery, gold: a.run.gold, mat: a.run.mat, items: a.run.got, title: a.run.title,
-             floor: a.floor, cleared: false, boss: a.floor === 7 || a.floor === 14, kills: a.run.byType, kind: kind, test: !!a.test, tryMode: !!a.tryMode,
+             dungeon: a.dungeon || "forest1", floor: a.floor, cleared: false, boss: GameData.isBossFloor(a.dungeon, a.floor), kills: a.run.byType, kind: kind, test: !!a.test, tryMode: !!a.tryMode,
              correct: a.correct || 0, subjects: a.subjects || [] };
   }
 
@@ -165,9 +165,9 @@
     var lv = 0;
     Party.members().forEach(function (m) { lv += m.level; });
     var avg = lv / Party.members().length;
-    var depth = Dungeon.enemyDepth(dg.floor, avg);
+    var depth = Dungeon.enemyDepth(dg.power, avg);
     // ボスの強さは決まった数字。レベルが高すぎるときだけ、ふつうの敵と同じく少し強くする
-    var bossDepth = 1 + Math.max(0, avg - (1 + 0.7 * (dg.floor - 1))) / 2;
+    var bossDepth = 1 + Math.max(0, avg - (1 + 0.7 * (dg.power - 1))) / 2;
     c.enemies.forEach(function (slot) {
       if (slot.dead) return;
       var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
@@ -233,7 +233,7 @@
     c.chests.push({ x: c.center.x - 60, y: c.center.y + 22, opened: false, rare: true });
     // ボスのごほうび：素材5つ・ゴールド（たたき台にない数なので仮：100＋10×階層）・称号
     for (var i = 0; i < 5; i++) run.mat[Math.random() < 0.6 ? "iron" : "stone"]++;
-    var g = 100 + 10 * dg.floor;
+    var g = 100 + 10 * dg.power;
     run.gold += g;
     run.title = dg.bossInfo.title;
     if (Math.random() < Loot.GEM_CHANCE.boss) {   // 宝玉（2026-10-20）：ボスは50%
@@ -358,17 +358,17 @@
     // 経験値と熟練度：倒れていない3人に同じだけ（docs/draft.md 1.1：1体 2＋0.6×深さ、熟練度 1。ボスは10体分）
     if (!e.summoned) {
       // ボスは10体分。ふつうの敵は、敵を増やしたぶん Dungeon.rewardScale 倍（1階層の合計は前と同じ）
-      var k = e.def.boss ? 10 : Dungeon.rewardScale(dg.floor);
+      var k = e.def.boss ? 10 : Dungeon.rewardScale(dg.power);
       Party.members().forEach(function (m, i) {
         if (m.down) return;
-        run.exp[i] += (2 + 0.6 * dg.floor) * k;
+        run.exp[i] += (2 + 0.6 * dg.power) * k;
         run.mastery[i] += k;
       });
     }
     if (e.def.boss) { startBossCine(e); return; }
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
-    var drop = Loot.enemyDrop(e.type, dg.floor, settings.correct);
+    var drop = Loot.enemyDrop(e.type, dg.power, settings.correct);
     run.gold += drop.gold;
     if (drop.gold) Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
     if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
@@ -547,7 +547,7 @@
       }
       if (b.gold) dg.hasCKey = false;
       b.opened = true;
-      var got = Loot.chest(dg.floor, settings.correct, b.rare);
+      var got = Loot.chest(dg.power, settings.correct, b.rare);
       run.got.push(got.equip);
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
@@ -749,7 +749,7 @@
     var low = run.timeLeft <= 60;
     var tcol = low ? (Math.floor(run.timeLeft * 2) % 2 === 0 ? "#ef5b5b" : "#ffb0a8") : "#ece7da";
     Render.rect(view.w / 2 - 44, 3, 88, 24, "rgba(10,12,18,0.72)");
-    Render.text(GameData.floorLabel(dg.floor), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
+    Render.text(GameData.floorLabel(dg.floor, dg.dungeon), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
     Render.text("のこり " + mm + ":" + (ss < 10 ? "0" : "") + ss, view.w / 2, 13, { size: 11, align: "center", bold: true, color: tcol });
 
     // 右上（メニューのボタンの下）：小さな地図
@@ -919,13 +919,13 @@
   function finish(kind) {
     if (run.over) return;
     run.over = true; choosing = true; A.down = true; Input.releaseAll();
-    var titles = { clear: GameData.floorLabel(dg.floor) + "をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
+    var titles = { clear: GameData.floorLabel(dg.floor, dg.dungeon) + "をクリア！", timeout: "時間切れ…", wipe: "3人ともたおれた…", quit: "冒険をやめた" };
     document.getElementById("chooseTitle").textContent = titles[kind];
     Sound.bgm(""); Sound.play(kind === "clear" ? "clear" : "fail");
     if (kind === "clear") {
-      run.clearGold = Loot.clearGold(dg.floor, settings.correct); run.gold += run.clearGold;
+      run.clearGold = Loot.clearGold(dg.power, settings.correct); run.gold += run.clearGold;
       // クリア報酬：経験値 (20＋5×深さ)×(1＋0.25×正解数)、熟練度 10（倒れていない仲間に）
-      var ce = (20 + 5 * dg.floor) * (1 + 0.25 * settings.correct);
+      var ce = (20 + 5 * dg.power) * (1 + 0.25 * settings.correct);
       Party.members().forEach(function (m, i) { if (!m.down) { run.exp[i] += ce; run.mastery[i] += 10; } });
     }
     // チャレンジボーナス（2026-10-21 保護者と決定）：ボスに挑んで負けた（たおれた・時間切れ）とき。けずった割合で変わる。クリアよりはっきり少ない
@@ -933,8 +933,8 @@
     if ((kind === "wipe" || kind === "timeout") && dg.boss && run.bossSave && !dg.bossDown && !trial.tryMode) {
       if (curKey === dg.exit) noteBossBest();
       var best = run.bossBest || 0, rate = 0.2 + 0.4 * best;
-      var ce2 = (20 + 5 * dg.floor) * (1 + 0.25 * settings.correct) * rate;
-      var cg = Math.round(Loot.clearGold(dg.floor, settings.correct) * rate), nm = 2 + Math.round(3 * best);
+      var ce2 = (20 + 5 * dg.power) * (1 + 0.25 * settings.correct) * rate;
+      var cg = Math.round(Loot.clearGold(dg.power, settings.correct) * rate), nm = 2 + Math.round(3 * best);
       run.gold += cg;
       for (var mi = 0; mi < nm; mi++) run.mat[Math.random() < 0.6 ? "iron" : "stone"]++;
       Party.members().forEach(function (m, i) { run.exp[i] += ce2; run.mastery[i] += 5; });
@@ -971,7 +971,7 @@
     }
     var result = {
       exp: run.exp.slice(), mastery: run.mastery.slice(), gold: run.gold, mat: run.mat, items: run.got.slice(),
-      title: run.title || null, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind, test: !!trial.test, tryMode: !!trial.tryMode,
+      title: run.title || null, dungeon: dg.dungeon, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind, test: !!trial.test, tryMode: !!trial.tryMode,
       correct: settings.correct, subjects: trial.subjects
     };
     GameState.setAdventure({ state: "finished", result: result }); // 「拠点にもどる」を押す前に閉じても、次に開いたとき受け取れる
@@ -982,15 +982,16 @@
   // 拠点から呼ぶ：出発する
   window.Adventure = {
     settings: settings,
+    // t.dungeon：どのダンジョンか（省くと新緑の樹海）
     start: function (floor, seed, t) {
       trial = t || { correct: settings.correct, subjects: [], test: true };
-      settings.correct = trial.correct;
+      settings.correct = trial.correct; settings.dungeon = trial.dungeon || "forest1";
       startFloor(floor, seed); updateButtons(true); Sound.bgm("dungeon");
     },
     // 途中で閉じた冒険の続き（その階層の入口から）
     resume: function (a) {
       trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode };
-      settings.correct = a.correct; startFloor(a.floor, a.seed, a); updateButtons(true); Sound.bgm("dungeon");
+      settings.correct = a.correct; settings.dungeon = a.dungeon || "forest1"; startFloor(a.floor, a.seed, a); updateButtons(true); Sound.bgm("dungeon");
     },
     resultFromSnapshot: resultFromSnapshot
   };
@@ -1066,8 +1067,8 @@
     ctx.clearRect(0, 0, ms.w, ms.h);
     Dungeon.drawMap(ctx, dg, 0, 0, cw, ch, gap, curKey);
     document.getElementById("floorInfo").textContent =
-      GameData.floorLabel(dg.floor) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
-    var w = Loot.rarityWeights(dg.floor, settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
+      GameData.floorLabel(dg.floor, dg.dungeon) + "　（テスト用：この階層の seed は " + dg.seed + "。気になる階層があったら、この数字を教えてください）";
+    var w = Loot.rarityWeights(dg.power, settings.correct, false), sum = w[0] + w[1] + w[2] + w[3];
     document.getElementById("chestInfo").textContent = "正解 " + settings.correct + "問のときの宝箱：" +
       Loot.RARITY.map(function (R, i) { return R.name + " " + Math.round(w[i] / sum * 100) + "%"; }).join("・") + "（金の宝箱とボスの宝箱は、R以上だけ）";
   }

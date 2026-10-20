@@ -6,7 +6,6 @@
 var Base = (function () {
   var baseEl = document.getElementById("base");
   var createEl = document.getElementById("create");
-  var FLOORS = 14;
 
   // 職業の説明（キャラクリで出す）
   var JOB_NOTES = {
@@ -65,7 +64,7 @@ var Base = (function () {
     var el2 = document.getElementById("resumeScreen");
     var t = Math.ceil(a.timeLeft);
     document.getElementById("resumeText").textContent =
-      GameData.floorLabel(a.floor) + "を冒険している途中です（のこり " + Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60) + "）。" +
+      GameData.floorLabel(a.floor, a.dungeon) + "を冒険している途中です（のこり " + Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60) + "）。" +
       "その階の入口から続けます。拾った物と経験値はそのまま。開けた宝箱は開いたまま、たおした敵はもどっています。";
     document.getElementById("resumeGo").onclick = function () { el2.hidden = true; Adventure.resume(a); };
     document.getElementById("resumeQuit").onclick = function () {
@@ -186,7 +185,7 @@ var Base = (function () {
     fillSelect("testMinutes", [1, 3, 5, 10], st2.minutes, function (n) { return n + "分"; });
     document.getElementById("testSeed").value = st2.seed;
     fillSelect("testLevel", [1, 5, 10, 20, 50, 100], g.party[0].level, function (n) { return "Lv" + n; });
-    fillSelect("testFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
+    fillFloorSelect("testFloor");
 
     document.getElementById("testUnlimited").checked = GameState.unlimited();
     if (report) { showReport(report); baseEl.scrollTop = 0; } // もどったときの知らせが見えるように、いちばん上から
@@ -261,6 +260,24 @@ var Base = (function () {
   window.addEventListener("resize", function () { if (!baseEl.hidden) drawTown(); });
 
   function range(a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; }
+  // 保護者のテスト用：全部のダンジョンの全部の階を1つの選びわくに（値は「ダンジョン:階」。まだ開いていないダンジョンも選べる）
+  // 選んでおくのは、新緑の樹海のまだ行っていない階
+  function fillFloorSelect(id) {
+    var s = document.getElementById(id); s.textContent = "";
+    var cur = "forest1:" + Math.min(14, GameState.get().progress.deepest + 1);
+    GameData.DUNGEON_ORDER.forEach(function (d) {
+      var dd = GameData.dungeonOf(d);
+      for (var f = 1; f <= dd.floors; f++) {
+        var o = el("option", "", dd.name + " " + GameData.floorName(f, d)); o.value = d + ":" + f;
+        if (o.value === cur) o.selected = true;
+        s.appendChild(o);
+      }
+    });
+  }
+  function readFloorSelect(id) {
+    var p = String(document.getElementById(id).value || "forest1:1").split(":");
+    return { dungeon: GameData.dungeonOf(p[0]).id, floor: Number(p[1]) || 1 };
+  }
   function fillSelect(id, values, cur, label) {
     var s = document.getElementById(id); s.textContent = "";
     values.forEach(function (v) { var o = el("option", "", label(v)); o.value = v; if (v === cur) o.selected = true; s.appendChild(o); });
@@ -275,16 +292,18 @@ var Base = (function () {
   // trial：知恵の試練の結果 { correct, subjects }。テスト用の出発（trial なし）は、テスト用の正解数を使い、加護はなし
   // 冒険の時間：ふだんは保護者画面で決めた時間、テスト用の出発はテスト用の設定の時間
   // try：試しモード（保護者画面）{ minutes, correct, subjects }。記録にもセーブにも残らない
-  function depart(floor, trial, tryOpt) {
+  // dungeon：どのダンジョンか（省くと新緑の樹海）
+  function depart(floor, trial, tryOpt, dungeon) {
     readTestSettings();
     if (trial) Adventure.settings.minutes = GameState.parent().minutes;
     if (tryOpt) { Adventure.settings.minutes = tryOpt.minutes; GameState.beginTry(); }
     baseEl.hidden = true;
     // ダンジョンに入る前にロード画面（Tips）を2秒出す。冒険の時間は、ダンジョンに入ってから数える
-    Loading.show(GameData.floorLabel(floor) + "へ", function () {
+    dungeon = dungeon || "forest1";
+    Loading.show(GameData.floorLabel(floor, dungeon) + "へ", function () {
       Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
-        tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true } :
-        trial ? { correct: trial.correct, subjects: trial.subjects } : { correct: Adventure.settings.correct, subjects: [], test: true });
+        tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true, dungeon: dungeon } :
+        trial ? { correct: trial.correct, subjects: trial.subjects, dungeon: dungeon } : { correct: Adventure.settings.correct, subjects: [], test: true, dungeon: dungeon });
     });
   }
 
@@ -314,7 +333,7 @@ var Base = (function () {
   function showReport(rep) {
     var box = document.getElementById("baseReport"); box.textContent = "";
     var r = rep.result;
-    box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
+    box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor, r.dungeon) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
     if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉱石 " + r.mat.iron + "　魔石 " + r.mat.stone + (r.mat.gem ? "　宝玉 " + r.mat.gem : "") + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     if (rep.people.some(function (p) { return p.lines.some(function (t) { return t.indexOf("レベルが") === 0; }); })) Sound.play("levelup");
@@ -339,7 +358,8 @@ var Base = (function () {
   // テスト用の設定は保護者画面の中にある（2026-10-18 に拠点の下から移した）
   document.getElementById("testGo").addEventListener("click", function () {
     document.getElementById("parentScreen").hidden = true;
-    depart(Number(document.getElementById("testFloor").value) || 1);
+    var tf = readFloorSelect("testFloor");
+    depart(tf.floor, null, null, tf.dungeon);
   });
   document.getElementById("testWipe").addEventListener("click", function () {
     Dialog.confirm("3人のデータを消して、キャラクリからやり直します。よいですか？", function () {
@@ -349,5 +369,5 @@ var Base = (function () {
     }, null, { yes: "消してやり直す", danger: true });
   });
 
-  return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart, el: el };
+  return { boot: boot, returnFrom: returnFrom, showBase: showBase, depart: depart, el: el, fillFloorSelect: fillFloorSelect, readFloorSelect: readFloorSelect };
 })();

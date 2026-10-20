@@ -52,7 +52,7 @@ var Trial = (function () {
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
     $("trialSub").textContent = rest ? "今日はお休みの日。ダンジョンは閉じているけれど、知恵の試練は解ける。" :
-      (round > 1 ? "今日の " + round + " 回目の試練。" : "") + GameData.floorLabel(floor) + "へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
+      (round > 1 ? "今日の " + round + " 回目の試練。" : "") + GameData.floorLabel(floor, opts && opts.dungeon) + "へ向かう前に、4つの問いに答えよう。解き終えると、扉が開く。";
     document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;

@@ -13,7 +13,6 @@ var Parent = (function () {
     { id: "math", name: "算数" }, { id: "japanese", name: "国語" }, { id: "science", name: "理科" }, { id: "social", name: "社会" }
   ];
   var KIND = { clear: "クリア", timeout: "時間切れ", wipe: "3人ともたおれた", quit: "やめた" };
-  var FLOORS = 14;
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -132,7 +131,7 @@ var Parent = (function () {
     renderConnect();
 
     // 試しモード
-    fillSelect("tryFloor", range(1, FLOORS), Math.min(FLOORS, g.progress.deepest + 1), function (n) { return n + "階" + (n === 7 || n === 14 ? "（ボス）" : ""); });
+    Base.fillFloorSelect("tryFloor");
     fillSelect("tryCorrect", [0, 1, 2, 3, 4], 4, function (n) { return n + "問"; });
     fillSelect("tryMinutes", [5, 10, 30, 60], 10, function (n) { return n + "分"; });
   }
@@ -179,7 +178,7 @@ var Parent = (function () {
         var hm = at.getHours() + ":" + ("0" + at.getMinutes()).slice(-2);
         var line = el("div", "log-line");
         if (r.kind === "rest") line.appendChild(document.createTextNode("休みの日（知恵の試練だけ）　" + hm + "　"));
-        else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　" + GameData.floorLabel(r.floor) + "　" + (KIND[r.kind] || r.kind) + "　")); }
+        else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　" + GameData.floorLabel(r.floor, r.dungeon) + "　" + (KIND[r.kind] || r.kind) + "　")); }
         line.appendChild(document.createTextNode("試練 " + r.correct + " / 4　"));
         SUBJECTS.forEach(function (s) {
           var ok = (r.subjects || []).indexOf(s.id) >= 0;
@@ -252,14 +251,14 @@ var Parent = (function () {
 
   // 試しモードで出発
   document.getElementById("tryGo").addEventListener("click", function () {
-    var floor = Number(document.getElementById("tryFloor").value) || 1;
+    var tf = Base.readFloorSelect("tryFloor");
     var correct = Number(document.getElementById("tryCorrect").value) || 0;
     var minutes = Number(document.getElementById("tryMinutes").value) || 10;
     screen.hidden = true;
-    Base.depart(floor, null, {
+    Base.depart(tf.floor, null, {
       minutes: minutes, correct: correct,
       subjects: SUBJECTS.slice(0, correct).map(function (s) { return s.id; })
-    });
+    }, tf.dungeon);
   });
 
   return { open: open, close: close, askPin: askPin };
