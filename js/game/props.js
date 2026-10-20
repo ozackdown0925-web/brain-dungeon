@@ -10,7 +10,9 @@ var Props = (function () {
     S: "#8e8a96", s: "#4a4452", U: "#e4e8f0",            // 鉄の帯・銀
     g: "#7a5a18", G: "#c8a040", y: "#f0d070",            // 金
     k: "#0b0906", K: "#1c140c",                          // 穴・箱の中
-    e: "#4a3420", f: "#6a4c2e", F: "#8a6840"             // 土
+    e: "#4a3420", f: "#6a4c2e", F: "#8a6840",            // 土
+    q: "#2a5a2e", Q: "#4e8a40", r: "#7aaa4a", R: "#b0dc70", // 葉（薬草。2026-10-20）
+    b: "#30346d", B: "#597dce", c: "#a8d8ff", m: "#deeed6"  // 青いかさ・白いじく（魔力のキノコ）
   };
 
   // 宝箱（閉じた）16×13。鉄の帯（S）は、R以上が出る宝箱では金（G）になる
@@ -75,6 +77,31 @@ var Props = (function () {
     ".....FFFFFF....."
   ];
 
+  // 薬草 9×9：3まいの葉（2026-10-20）
+  var HERB = [
+    "..AA.AA..",
+    ".ARRARRA.",
+    ".ARQAQRA.",
+    "..AQRQA..",
+    "...AQA...",
+    "..AAQAA..",
+    ".AQRQRQA.",
+    "..AAqAA..",
+    "...AqA..."
+  ];
+  // 魔力のキノコ 9×9：青いかさに白い点、白いじく
+  var MUSH = [
+    "..AAAAA..",
+    ".ABBcBBA.",
+    "ABcBBBcBA",
+    "ABBBBBBBA",
+    "AbbbbbbbA",
+    ".AAmmmAA.",
+    "...AmmA..",
+    "...AmmA..",
+    "....AA..."
+  ];
+
   var cache = {};
   function fromMap(map, swap) {
     var h = map.length, w = map[0].length;
@@ -101,6 +128,8 @@ var Props = (function () {
     else if (name === "chestGold") img = fromMap(CHEST, { h: "y", W: "G", w: "g", d: "w", S: "W", s: "w" });
     else if (name === "chestOpenGold") img = fromMap(CHEST_OPEN, { h: "y", W: "G", w: "g", d: "w", S: "W", s: "w" });
     else if (name === "pit") img = fromMap(PIT);
+    else if (name === "herb") img = fromMap(HERB);
+    else if (name === "mush") img = fromMap(MUSH);
     cache[name] = img;
     return img;
   }

@@ -48,7 +48,7 @@ var Town = (function () {
 
   function render() {
     var g = GameState.get();
-    moneyEl.textContent = g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　倉庫 " + g.storage.length + "/" + GameState.STORAGE_MAX;
+    moneyEl.textContent = g.gold + "G　鉱石 " + g.mat.iron + "　魔石 " + g.mat.stone + "　宝玉 " + (g.mat.gem || 0) + "　倉庫 " + g.storage.length + "/" + GameState.STORAGE_MAX;
     bodyEl.textContent = "";
     if (current === "equip") renderEquip(g);
     if (current === "party") renderParty(g);
@@ -151,7 +151,8 @@ var Town = (function () {
     bodyEl.appendChild(box);
     var mbox = el("div", "slot");
     mbox.appendChild(el("h3", "", "素材（鍛冶屋で装備を強くする）"));
-    [["iron", "剣・大剣・斧・弓・こて・よろい・服の強化に使う"], ["stone", "杖・ローブの強化と、バフ・デバフの引き直しに使う"]].forEach(function (m) {
+    [["iron", "剣・大剣・斧・弓・こて・よろい・服の強化に使う"], ["stone", "杖・ローブの強化と、バフ・デバフの引き直しに使う"],
+     ["gem", "鍛冶屋で装備のレア度を上げる。知恵の試練（3問以上の正解）・金の宝箱・ボスから、ときどき手に入る"]].forEach(function (m) {
       var row = el("div", "item-line");
       row.appendChild(el("span", "item-name", Loot.MATERIALS[m[0]] + "　×" + (g.mat[m[0]] || 0)));
       row.appendChild(el("span", "item-extra", m[1]));
@@ -218,7 +219,7 @@ var Town = (function () {
   var smithTab = "up", moveFrom = null;
   function renderSmith(g) {
     var tabs = el("div", "tabs");
-    [["up", "装備強化"], ["move", "強化を移す"]].forEach(function (t) {
+    [["up", "装備強化"], ["move", "強化を移す"], ["rare", "レア度を上げる"]].forEach(function (t) {
       tabs.appendChild(button(t[1], function () { smithTab = t[0]; moveFrom = null; say(""); render(); }, "chip" + (smithTab === t[0] ? " sel" : "")));
     });
     bodyEl.appendChild(tabs);
@@ -226,6 +227,7 @@ var Town = (function () {
     if (!all.length) { bodyEl.appendChild(el("p", "", "強くできる装備がない。宝箱やお店で装備を手に入れよう。")); return; }
     all.sort(function (a, b) { return (b.who ? 1 : 0) - (a.who ? 1 : 0) || b.item.r - a.item.r || (b.item.plus || 0) - (a.item.plus || 0); });
     if (smithTab === "move") { renderMove(all); return; }
+    if (smithTab === "rare") { renderRarityUp(all, g); return; }
     bodyEl.appendChild(el("p", "sub", "強化は必ず成功する（＋1ごとにもとの強さ＋" + Math.round(Loot.PLUS_STEP * 100) + "%、＋" + Loot.PLUS_MAX + "まで）。" +
       "引き直しは、バフ・デバフを全部作りなおす（魔石" + GameState.REROLL.stone + "＋" + GameState.REROLL.gold + "G）。"));
     all.forEach(function (x) {
@@ -243,6 +245,25 @@ var Town = (function () {
       }));
       bodyEl.appendChild(row);
     });
+  }
+  // レア度を上げる（2026-10-20）：宝玉とゴールドで1段ずつ（ノーマル→R→SR→UR）。強化の＋はそのまま
+  function renderRarityUp(all, g) {
+    bodyEl.appendChild(el("p", "sub", "宝玉とゴールドで、装備のレア度を1段上げる（ノーマル→R→SR→UR）。強化の＋はそのまま。" +
+      "もとの強さとバフ（＋のおまけ）が、上がったレア度に合わせてふえる。UR になると、デバフ（−のおまけ）は消える。いま宝玉 " + (g.mat.gem || 0) + "こ。"));
+    var any = false;
+    all.forEach(function (x) {
+      var it = x.item, c = GameState.rarityUpCost(it);
+      if (!c) return;
+      any = true;
+      var row = itemLine(it, whereText(x));
+      var next = Loot.RARITY[it.r + 1].tag;
+      row.appendChild(button(next + " にする（宝玉" + c.gem + "＋" + c.gold + "G）", function () {
+        if (!GameState.rarityUp(it)) { say("宝玉かゴールドが足りない"); return; }
+        say(Loot.label(it) + "にした！"); render();
+      }));
+      bodyEl.appendChild(row);
+    });
+    if (!any) bodyEl.appendChild(el("p", "", "レア度を上げられる装備がない（UR はいちばん上）。"));
   }
   function whereText(x) { return x.who ? x.who.name + "が装備中" : "倉庫"; }
   // 強化を移す：① 移すもと（強化してある装備）を選ぶ → ② 移す先（同じ種類で、＋が小さい装備）を選ぶ
@@ -619,7 +640,7 @@ var Town = (function () {
       "弱点をつくと「弱点！」と出て、大きなダメージになる。", "ボスの大技は、地面が光って知らせてくれる。光ったら逃げよう。",
       "MPは自然には回復しない。MP回復薬を持っていこう。", "仲間を切りかえると、少しのあいだ切りかえられない。",
       "たおれた仲間は、その冒険のあいだ使えない（復活薬で元気になる）。"]],
-    ["ダンジョン", ["地図はいつも右上に出ている。メニューでは大きく見られる。", "出口の部屋の扉には鍵がかかっている。出口までの道のどこかにある出口の鍵（金）を拾うと開く（ボスの階は、ボスをたおすと出口が出る）。", "1つの階に1つ、金の宝箱がある。宝箱の鍵（銀）で開けられ、中身はかならずR以上。",
+    ["ダンジョン", ["地図はいつも右上に出ている。メニューでは大きく見られる。", "出口の部屋の扉には鍵がかかっている。出口までの道のどこかにある出口の鍵（金）を拾うと開く（ボスの階は、ボスをたおすと出口が出る）。", "1つの階に1つ、金の宝箱がある。宝箱の鍵（銀）で開けられ、中身はかならずR以上。", "部屋に生えている薬草をとると、みんなのHPが少し回復する。青い魔力のキノコはMP（みんな満タンのときは、とらずに残る）。", "宝玉は、知恵の試練（4問正解だと出やすい）・金の宝箱・ボスから、ときどき手に入る。鍛冶屋の「レア度を上げる」で使う。",
       "毒の沼や落とし穴に気をつけよう。見えない罠もある。", "部屋の敵を全部たおすと、武器をしまって速く走れる。", "7階と14階には、ボスがいる。"]],
     ["装備と鍛冶屋", ["装備には、ふつう・R・SR・URがある。Rより上が出たらラッキー！",
       "鍛冶屋で鉱石・魔石を使うと、装備を強くできる（＋10まで、必ず成功）。", "鍛冶屋の「強化を移す」で、強化を同じ装備のレア度ちがい（銅の剣 → 銅の剣〈SR〉など）に引きつげる。",

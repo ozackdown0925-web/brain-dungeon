@@ -253,7 +253,7 @@ var Dungeon = (function () {
       // 部屋の中心（入口でキャラが立つ場所・出口）のまわりは空けておく
       var cx = c.center.x / T - 1, cy = c.center.y / T - 1;
       for (var y = cy - 2; y <= cy + 3; y++) for (var x = cx - 2; x <= cx + 3; x++) used[k][key(x, y)] = true;
-      c.chests = []; c.key = null; c.ckey = null; c.traps = [];
+      c.chests = []; c.key = null; c.ckey = null; c.traps = []; c.pickups = [];
     });
     function mark(k, x, y, w, h, pad) {
       for (var yy = y - pad; yy < y + h + pad; yy++) for (var xx = x - pad; xx < x + w + pad; xx++) used[k][key(xx, yy)] = true;
@@ -354,6 +354,24 @@ var Dungeon = (function () {
       mark(tk, tp.x, tp.y, pit ? 1 : 2, pit ? 1 : 2, 1);
       perRoom[tk] = (perRoom[tk] || 0) + 1;
       t++;
+    }
+
+    // 拾うと回復するもの（2026-10-20 保護者と決定）：薬草（全員のHP10%）を1階に1〜2つ、魔力のキノコ（全員のMP8%）を0〜1つ。
+    // 部屋に置くだけ（敵は落とさない）。寄り道の部屋を先に。入口の部屋には置かない
+    var herbN = 1 + (rnd() < 0.5 ? 1 : 0), mushN = rnd() < 0.6 ? 1 : 0;
+    var pickRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side"; }))
+      .concat(shuffle(keys.filter(function (k) { return k !== dg.start && dg.cells[k].kind !== "side"; })));
+    var want = [];
+    for (var hn = 0; hn < herbN; hn++) want.push("herb");
+    for (var mn = 0; mn < mushN; mn++) want.push("mush");
+    for (var wi = 0, ri = 0; wi < want.length && ri < pickRooms.length * 2; ri++) {
+      var pr = pickRooms[ri % pickRooms.length];
+      var ps = spots(pr, 1, 1, 4, false);
+      if (!ps.length) continue;
+      var pp = pick(rnd, ps);
+      dg.cells[pr].pickups.push({ kind: want[wi], x: pp.x * T + 8, y: pp.y * T + 8, taken: false });
+      mark(pr, pp.x, pp.y, 1, 1, 1);
+      wi++;
     }
   }
 
