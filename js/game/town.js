@@ -557,7 +557,7 @@ var Town = (function () {
     bodyEl.appendChild(tabs);
     var lead = { base: "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。",
                  upper: "上級職は、もとの職の★で開く。一本道はもとの職を★7、組み合わせは2つの職を★5。もとの職のスキルもセットできる。パッシブは3つまで。",
-                 top: "最上級職は、上級職から一段上がる（これから作る）。" }[jobTab];
+                 top: "最上級職は、上級職から一段上がる（これから作る）。なるための条件は、まだひみつ。" }[jobTab];
     bodyEl.appendChild(el("p", "sub", lead));
     var wrap = el("div", "sk-wrap"), list = el("div", "sk-list"), det = el("div", "sk-detail");
     if (jobTab === "base") jobBase(h, list, det);
@@ -685,7 +685,8 @@ var Town = (function () {
     det.appendChild(el("div", "sk-name", t.name));
     det.appendChild(el("div", "sk-kind", "最上級職　★1つに熟練度 " + GameState.STAR_NEED_TOP));
     det.appendChild(el("p", "sk-desc", t.note));
-    detLine(det, "条件", t.from + "を★5");
+    // 条件は、上級職を極めるだけでなく、物語の進み方や道具なども考える（2026-10-22 保護者）。決まるまで「？？？？」
+    detLine(det, "条件", "？？？？");
     det.appendChild(el("p", "sk-why", "まだなれない（最上級職は、これから作る）"));
   }
   function growthText(g) {
