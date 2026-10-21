@@ -549,9 +549,9 @@ var Bosses = (function () {
       var cast = e.state === "cast" || e.state === "pillar" || e.state === "summon";
       Monsters.drawBoss(ctx, e, x, y + 14 - 4 + bob, cast ? "cast" : "stand");
       ctx.restore();
-      if (cast) {   // 杖の先の光
-        var sx = x - 13 + (cast ? 0 : 1), sy = y + 14 - 4 + bob - 46 + 2;
-        Combat.glowDot(ctx, sx, sy, 8 + Math.sin(glow * 10) * 2, "#ffffff", e.state === "pillar" ? "#c890f0" : "#b8f070", 0.8);
+      if (cast) {   // 杖の先（頭がい骨）の紫の光
+        var sx = x - 11, sy = y + 14 - 4 + bob - 46 + 3;   // 杖の先の頭がい骨
+        Combat.glowDot(ctx, sx, sy, 9 + Math.sin(glow * 10) * 2, "#ffe0ff", e.state === "pillar" ? "#e070ff" : "#9a5ad0", 0.85);
       }
       if (e.state === "vanish" || e.state === "appear") {   // 紫のけむり
         for (var sm = 0; sm < 8; sm++) { var sa = sm * 0.785 + glow; Render.rect(Math.round(x + Math.cos(sa) * 14), Math.round(y - 10 + Math.sin(sa) * 10), 3, 3, "rgba(150,90,200,0.6)"); }
