@@ -206,7 +206,6 @@ var Combat = (function () {
     c.ct[id] = s.ct * (1 - (c.stats.ctcut || 0));   // パッシブ「賢者の知恵」
     if (s.fx[0].t !== "hide") unhide();
     if (s.once) c.used[id] = true;
-    Battle.pop(A().x, A().y - 30, s.name, "#ffe7a0", 8);
     Sound.play("skill");
     // スキルの演出（2026-10-21 保護者の案）：構え（黄色い輪）→ 画面が少し暗くなり、使った仲間のまわりが光る → 技が出る。
     // どのスキルも 0.25 秒は構える。もともと構えやためが長いスキル（弓・魔法・ためる技）は、そのままの長さ。時間は止めない
@@ -214,7 +213,7 @@ var Combat = (function () {
     if (own > 0) {
       curSkill = id;
       run(c, s.fx, 0);
-      later(own, function () { if (Party.current() === c && !c.down) castFlash(col); });
+      later(own, function () { if (Party.current() === c && !c.down) castFlash(col, s.name); });
       return "";
     }
     var a = A();
@@ -225,7 +224,7 @@ var Combat = (function () {
         c.mp = Math.min(c.stats.mp, c.mp + cost); c.ct[id] = 0; if (s.once) c.used[id] = false;
         return;
       }
-      castFlash(col);
+      castFlash(col, s.name);
       curSkill = id;
       run(c, s.fx, 0);
     });
@@ -250,20 +249,23 @@ var Combat = (function () {
     for (var j = 0; j < s.fx.length; j++) if (s.fx[j].stat === "m") return "#b48cff";
     return "#ffe7a0";
   }
-  // 画面が少し暗くなり、使った仲間のまわりが光る（0.4秒）
+  // 画面が少し暗くなり、使った仲間のまわりが光る（0.4秒）。技の名前も、構えが終わって技が出るときに出す（2026-10-21 保護者の希望）
   var cast = null;
-  function castFlash(color) {
+  function castFlash(color, name) {
     cast = { t: 0.4, max: 0.4, color: color, seed: Math.random() * 6 };
+    if (name) Battle.pop(A().x, A().y - 30, name, "#ffe7a0", 8);
   }
   // 敵のあとで、キャラより先に描く（使った仲間は暗くならない）
   function drawCastBack(cam, view) {
     if (!cast) return;
     var ctx = Render.ctx, a = A(), q = 1 - cast.t / cast.max;
     var env = q < 0.15 ? q / 0.15 : q > 0.6 ? (1 - q) / 0.4 : 1;
-    Render.rect(0, 0, view.w, view.h, "rgba(8,6,20," + (0.32 * env).toFixed(3) + ")");
+    // 2026-10-21 保護者の感想で、暗さ 0.32 → 0.45、まわりの光を明るく大きく
+    Render.rect(0, 0, view.w, view.h, "rgba(8,6,20," + (0.45 * env).toFixed(3) + ")");
     var x = a.x - cam.x, y = a.y - cam.y - 6;
-    glowDot(ctx, x, y, 22 + 10 * q, "#ffffff", cast.color, 0.55 * env);
-    ctx.strokeStyle = rgba(cast.color, 0.8 * env); ctx.lineWidth = 1.5;
+    glowDot(ctx, x, y, 28 + 12 * q, "#ffffff", cast.color, 0.85 * env);
+    glowDot(ctx, x, y, 12, "#ffffff", "#ffffff", 0.35 * env);
+    ctx.strokeStyle = rgba(cast.color, Math.min(1, env)); ctx.lineWidth = 2;
     ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 11, 10 + 10 * q, (10 + 10 * q) * 0.4, 0, 0, Math.PI * 2); else ctx.arc(x, y + 11, 10 + 10 * q, 0, Math.PI * 2); ctx.stroke();
   }
   // キャラの前：のぼる光の粒
@@ -273,7 +275,7 @@ var Combat = (function () {
     for (var n = 0; n < 8; n++) {
       var ph = (q * 1.6 + n / 8) % 1, ang = cast.seed + n * 0.785;
       var px = a.x - cam.x + Math.cos(ang) * (8 + 6 * ph), py = a.y - cam.y + 4 - ph * 26;
-      glowDot(ctx, px, py, 2.5, "#ffffff", cast.color, (1 - ph) * env);
+      glowDot(ctx, px, py, 3.5, "#ffffff", cast.color, Math.min(1, (1 - ph) * 1.3) * env);
     }
   }
 
