@@ -128,6 +128,27 @@ var Dungeon = (function () {
     return { x: (best.x + 1) * World.TILE, y: (best.y + 1) * World.TILE };
   }
 
+  // 入口の部屋でキャラが立つ場所：部屋のまんなかの少し下。そこが水・壁・毒の沼にかかるときは、近くの動ける場所
+  // （2026-10-22：瘴気の森で、水と橋のさかい目に出て動けなくなったため）
+  function startPoint(room, center) {
+    var R = 6, T = World.TILE;
+    function ok(x, y) {
+      if (room.hitsWall(x - R, y - R, R * 2, R * 2)) return false;
+      if (room.tile(Math.floor(x / T), Math.floor(y / T)) === "P") return false;
+      // まわりへ少し動けること
+      return !room.hitsWall(x + 3 - R, y - R, R * 2, R * 2) || !room.hitsWall(x - 3 - R, y - R, R * 2, R * 2) ||
+             !room.hitsWall(x - R, y + 3 - R, R * 2, R * 2) || !room.hitsWall(x - R, y - 3 - R, R * 2, R * 2);
+    }
+    var x0 = center.x, y0 = center.y + 20;
+    if (ok(x0, y0)) return { x: x0, y: y0 };
+    if (ok(center.x, center.y)) return { x: center.x, y: center.y };
+    for (var rad = 4; rad <= 160; rad += 4) for (var a = 0; a < 24; a++) {
+      var x = Math.round(x0 + Math.cos(a / 24 * Math.PI * 2) * rad), y = Math.round(y0 + Math.sin(a / 24 * Math.PI * 2) * rad);
+      if (x > R && y > R && x < room.pxW - R && y < room.pxH - R && ok(x, y)) return { x: x, y: y };
+    }
+    return { x: x0, y: y0 };
+  }
+
   // ---------- 敵の置き方 ----------
   // 1部屋に4〜6体（平均5体）。入口の部屋にもいる（2026-10-17 保護者の感想で、2〜4体から増やした）。
   // ゴブリンの部隊が多く、ときどきつる草の魔物・キノコの魔物（8階からは大きな蜂も）がまざる。
@@ -488,7 +509,7 @@ var Dungeon = (function () {
   function mapSize(cw, ch, gap) { return { w: GRID_W * cw + (GRID_W - 1) * gap, h: GRID_H * ch + (GRID_H - 1) * gap }; }
 
   return {
-    generate: generate, trainingFloor: trainingFloor, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
+    generate: generate, trainingFloor: trainingFloor, startPoint: startPoint, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
     enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS
   };
 })();
