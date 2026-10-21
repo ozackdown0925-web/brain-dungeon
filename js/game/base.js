@@ -170,6 +170,7 @@ var Base = (function () {
       info.appendChild(el("div", "hero-stats", "武器：" + (h.equip.weapon ? Loot.describe(h.equip.weapon) : GameData.WEAPONS[GameState.starterWeapon(h.job)].starter) +
         "　防具：" + (h.equip.armor ? Loot.describe(h.equip.armor) : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name)));
       info.appendChild(el("div", "hero-skills", "スキル：" + h.set.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") +
+        (h.setsOpen ? "　セットB：" + h.setB.map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・") : "") +
         "　パッシブ：" + (h.pset || []).map(function (id) { return id ? GameData.SKILL[id].name : "なし"; }).join("・")));
       card.appendChild(info);
       pbox.appendChild(card);
@@ -316,7 +317,8 @@ var Base = (function () {
     (report || []).forEach(function (p) {
       p.lines.forEach(function (t) {
         var lv = /^レベルが (\d+) → (\d+)/.exec(t), sk = /^スキル「(.+)」を覚えた/.exec(t);
-        var text = p.raw ? t : lv ? p.name + " は Lv" + lv[2] + " になった！" : sk ? p.name + " は「" + sk[1] + "」を覚えた！" : p.name + " の" + t;
+        var text = p.raw ? t : lv ? p.name + " は Lv" + lv[2] + " になった！" : sk ? p.name + " は「" + sk[1] + "」を覚えた！" :
+          t.charAt(0) === "＠" ? p.name + " は" + t.slice(1) : p.name + " の" + t;
         list.push({ text: text, sound: lv && !lvSound ? "levelup" : "" });
         if (lv) lvSound = true;
       });
@@ -340,7 +342,7 @@ var Base = (function () {
     rep.people.forEach(function (p) {
       var d = el("div", "rep-person");
       d.appendChild(el("b", "", p.name + "（経験値 +" + p.exp + "）"));
-      p.lines.forEach(function (t) { d.appendChild(el("div", "rep-line", t)); });
+      p.lines.forEach(function (t) { d.appendChild(el("div", "rep-line", t.charAt(0) === "＠" ? t.slice(1) : t)); });
       box.appendChild(d);
     });
     var ok = el("button", "btn", "OK"); ok.type = "button";

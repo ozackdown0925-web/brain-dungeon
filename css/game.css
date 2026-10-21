@@ -112,6 +112,10 @@ html, body {
 #buttons [data-act="skill2"] { right: 100px; bottom: 72px; }
 #buttons [data-act="skill3"] { right: 30px; bottom: 112px; }
 #buttons [data-act="switch"] { right: 172px; bottom: 136px; width: 56px; height: 56px; font-size: 13px; }
+/* スキルセットの切りかえ（2026-10-22）：スキル1・2の左。セットB を使っているときは金色 */
+#buttons [data-act="setswap"] { right: 178px; bottom: 70px; width: 52px; height: 52px; font-size: 12px; line-height: 1.1; border-color: var(--mana); }
+#buttons [data-act="setswap"].b { border-color: var(--gold); color: var(--gold); }
+#buttons [data-act="setswap"][hidden] { display: none; }
 #buttons .skill { border-color: var(--mana); }
 #menuBtn {
   position: absolute;
@@ -442,7 +446,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-slots { background: rgba(36, 42, 61, 0.95); border: 1px solid #343b55; border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
 .sk-slots-head { font-size: 13px; color: var(--gold); font-weight: 700; }
 .sk-slots .btn.sk-slot { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; padding: 7px 10px; border-color: #4a5170; }
-.sk-slot-no { font-size: 12px; color: var(--muted); flex: 0 0 4.5em; }
+.sk-slot-no { font-size: 12px; color: var(--muted); flex: 0 0 5.5em; }
 .sk-slot-name { font-size: 15px; font-weight: 700; }
 .sk-slots .btn.sk-slot.empty .sk-slot-name { color: var(--muted); font-weight: normal; }
 .sk-filter { display: block; font-size: 13px; color: var(--muted); margin: 2px 0 4px; }
@@ -453,3 +457,5 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .train-head { margin: 12px 0 4px; color: var(--gold); font-size: 14px; font-weight: bold; }
 .chips.train-res { align-items: center; margin: 4px 0; }
 .train-elem { display: inline-block; width: 2em; font-weight: bold; text-align: center; }
+/* スキルのセットA・B（2026-10-22）：A と B のあいだを少しあける */
+.sk-slots-gap { flex-basis: 100%; height: 4px; }
