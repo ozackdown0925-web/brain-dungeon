@@ -34,7 +34,7 @@ var Combat = (function () {
     }
     if (spec.status && Math.random() < spec.status.chance) Enemies.addStatus(e, spec.status.type, spec.status.dur);
     var push = spec.push === undefined ? 3 : spec.push;
-    if (push && hooks.room && !(e.def && e.def.boss)) { // ボスは押し返されない
+    if (push && hooks.room && !(e.def && (e.def.boss || e.def.fixed))) { // ボスとモンスターの巣は押し返されない
       var dx = e.x - ox, dy = e.y - oy, d = Math.sqrt(dx * dx + dy * dy) || 1;
       hooks.room.move(e, dx / d * push, dy / d * push);
     }
@@ -457,7 +457,7 @@ var Combat = (function () {
       case "charm":     // チャーム：近くの敵1体を味方にする（ボスには効かない）
         var ce = null, cd = 0;
         Enemies.hostile().forEach(function (e) {
-          if (e.def.boss) return;
+          if (e.def.boss || e.def.fixed) return;
           var dx = e.x - a.x, dy = e.y - a.y, d = Math.sqrt(dx * dx + dy * dy);
           if (d <= f.range + e.r && (!ce || d < cd)) { ce = e; cd = d; }
         });
@@ -581,7 +581,7 @@ var Combat = (function () {
       if (zn.tick <= 0) { zn.tick = zn.f.tick; hitAround(zn.c, { stat: zn.f.stat, mult: zn.f.mult, elem: zn.f.elem, push: 0, status: zn.f.status }, zn.x, zn.y, zn.f.radius); }
       if (zn.f.pull && hooks.room) {   // ダークホール：まわりの敵を、まんなかへ吸いよせる
         Enemies.hostile().forEach(function (e) {
-          if (e.def && e.def.boss) return;
+          if (e.def && (e.def.boss || e.def.fixed)) return;
           var dx = zn.x - e.x, dy = zn.y - e.y, d = Math.sqrt(dx * dx + dy * dy);
           if (d < 3 || d > zn.f.radius * 1.7) return;
           var mv = Math.min(d - 2, zn.f.pull * dt);

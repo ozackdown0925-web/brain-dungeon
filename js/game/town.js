@@ -702,7 +702,7 @@ var Town = (function () {
     mbox.appendChild(el("h3", "", "モンスター図鑑"));
     Object.keys(GameData.ENEMIES).forEach(function (t) {
       var b = g.book.monsters[t], d = GameData.ENEMIES[t];
-      if (d.training) return;   // 訓練場の像は図鑑に出さない
+      if (d.training || d.notInBook) return;   // 訓練場の像・モンスターの巣は図鑑に出さない
       var row = el("div", "item-line");
       if (!b || (!b.seen && !b.kills)) { row.appendChild(el("span", "item-name", "？？？")); row.appendChild(el("span", "item-extra", "まだ会っていない")); mbox.appendChild(row); return; }
       row.appendChild(el("span", "item-name", d.name + (d.boss ? "（ボス）" : "")));

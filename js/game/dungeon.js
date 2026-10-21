@@ -346,8 +346,19 @@ var Dungeon = (function () {
       }
       return null;
     }
+    // モンスターの巣（段階5、2026-10-22 保護者と決定）：瘴気の森のふつうの階で、3階に1回くらい。寄り道の部屋の1つが巣の部屋になる。
+    // 地図にも入口にも印は出さない。巣の部屋には、鍵・宝箱（ふつう・金）・罠は置かない（巣をこわすと宝箱が出るため）。
+    // 巣を置くかどうかは、ほかの物とは別の順の数で決める
+    var nestKey = null;
+    if (swamp) {
+      var nr = rng((seed ^ 0x2c1b3c6d) >>> 0);
+      var sideKeys = keys.filter(function (k) { return dg.cells[k].kind === "side"; });
+      if (sideKeys.length && nr() < 1 / 3) nestKey = sideKeys[Math.floor(nr() * sideKeys.length)];
+    }
+    if (nestKey) makeNest(dg.cells[nestKey]);
+    function notNest(k) { return k !== nestKey; }
     var pathRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "room"; }));
-    var sides = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side"; }));
+    var sides = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side" && notNest(k); }));
     // 出口の鍵と、鍵のかかった扉
     var ex = dg.cells[dg.exit], ed = ex.doors[0];
     var ekey = putItem(pathRooms.length ? pathRooms : sides);
@@ -376,7 +387,7 @@ var Dungeon = (function () {
 
     // ふつうの宝箱：金の宝箱とあわせて1階層に2〜3個。寄り道の部屋を先に
     var total = 2 + (rnd() < 0.5 ? 1 : 0), have = dg.goldChest ? 1 : 0;
-    var chestRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side"; }))
+    var chestRooms = shuffle(keys.filter(function (k) { return dg.cells[k].kind === "side" && notNest(k); }))
       .concat(shuffle(keys.filter(function (k) { return dg.cells[k].kind === "room" || dg.cells[k].kind === "exit"; })));
     for (var ci = 0; ci < chestRooms.length && have < total; ci++) {
       var cs = spots(chestRooms[ci], 1, 1, 5, true);
@@ -390,7 +401,7 @@ var Dungeon = (function () {
     // 罠：毒の沼（2×2）と落とし穴（1マス）。深い階層ほど少し多い。一部は踏むまで見えない
     // 瘴気の森：部屋の型にも毒の沼があるうえに、罠も樹海より多い（毒の沼が多め。落とし穴は少なめ）
     var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp ? 2 : 0);
-    var trapRooms = keys.filter(function (k) { return k !== dg.start; });
+    var trapRooms = keys.filter(function (k) { return k !== dg.start && notNest(k); });
     var perRoom = {};
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
       var tk = pick(rnd, trapRooms);
@@ -425,6 +436,18 @@ var Dungeon = (function () {
       mark(pr, pp.x, pp.y, 1, 1, 1);
       wi++;
     }
+  }
+
+  // 巣の部屋にする：部屋のまんなかに巣（敵の1つとして、いちばん先に置く。絵がほかの敵の下になるように）。
+  // もとからいる敵は3体までにへらす（巣から出てくるぶん）。巣の HP・出した数は c.nest に残る（部屋を出てもどっても、そのまま）
+  function makeNest(c) {
+    c.enemies = c.enemies.slice(0, 3);
+    var T = World.TILE, nx = c.center.x, ny = c.center.y;
+    // 巣と重なる場所にいる敵は置かない
+    c.enemies = c.enemies.filter(function (e) { var dx = e.x - nx, dy = e.y - ny; return dx * dx + dy * dy >= 30 * 30; });
+    var slot = { type: "nest", tx: Math.floor(nx / T), ty: Math.floor(ny / T), x: nx, y: ny, dead: false, nest: true };
+    c.enemies.unshift(slot);
+    c.nest = { slot: slot, x: nx, y: ny, hp: null, made: 0, t: 0, met: false, broken: false, done: false };
   }
 
   // ---------- 訓練場（2026-10-21 保護者の案） ----------

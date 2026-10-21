@@ -67,7 +67,7 @@ var Enemies = (function () {
   function hostile() { return list.filter(function (e) { return !e.dead && !e.charm && !e.untouchable; }); }
   // チャーム：敵1体を、決まった時間だけ味方にする（ほかの敵を攻撃し、ほかの敵にもねらわれる）
   function charm(e, dur) {
-    if (e.dead || e.def.boss) return;
+    if (e.dead || e.def.boss || e.def.fixed) return;
     e.charm = { t: dur };
     e.state = "chase"; e.t = 0; e.cd = 0.3;
     Battle.pop(e.x, e.y - 30, "仲間になった！", "#ff8ac8", 8);
@@ -122,6 +122,7 @@ var Enemies = (function () {
       e.puff = Math.max(0, (e.puff || 0) - dt);
       e.thrust = Math.max(0, (e.thrust || 0) - dt);
       e.burst = Math.max(0, (e.burst || 0) - dt);
+      e.birth = Math.max(0, (e.birth || 0) - dt);   // モンスターの巣が敵を出したときの輪
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
@@ -228,7 +229,7 @@ var Enemies = (function () {
     for (var i = 0; i < live.length; i++) {
       var a = live[i];
       for (var j = i + 1; j < live.length; j++) push(a, live[j], room);
-      if (Bosses.isBoss(a)) continue;
+      if (Bosses.isBoss(a) || a.def.fixed) continue;
       var dx = a.x - p.x, dy = a.y - p.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + p.r;
       if (dist < min) room.move(a, dx / dist * (min - dist), dy / dist * (min - dist));
     }
@@ -326,7 +327,7 @@ var Enemies = (function () {
     var dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + b.r;
     if (dist >= min) return;
     var s = (min - dist) / 2;
-    var ab = Bosses.isBoss(a), bb = Bosses.isBoss(b);
+    var ab = Bosses.isBoss(a) || !!a.def.fixed, bb = Bosses.isBoss(b) || !!b.def.fixed;   // ボスとモンスターの巣は押されない
     if (ab) { room.move(b, dx / dist * s * 2, dy / dist * s * 2); return; }
     if (bb) { room.move(a, -dx / dist * s * 2, -dy / dist * s * 2); return; }
     room.move(a, -dx / dist * s, -dy / dist * s);
@@ -344,6 +345,7 @@ var Enemies = (function () {
       var d = e.def;
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
+      if (d.kind === "nest") { drawNest(ctx, e, x, y); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
       var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
@@ -461,6 +463,54 @@ var Enemies = (function () {
       ctx.strokeStyle = "#e8d8b0"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();
     });
+  }
+
+  // モンスターの巣（段階5）：泡立つ毒の沼。まんなかに黒い穴のあいた泥の山があり、泡がうかんではじける。
+  // 敵を出すとき（e.birth）は、紫の輪が広がる。こわれるときは、うすくなって消える
+  function ell(ctx, x, y, rx, ry, color) {
+    ctx.fillStyle = color; ctx.beginPath();
+    if (ctx.ellipse) ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); else ctx.arc(x, y, rx, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function drawNest(ctx, e, x, y) {
+    var t = clock + e.x * 0.01, hurt = e.flash > 0;
+    Combat.glowDot(ctx, x, y, 26, "#c890f0", "#6a3a98", 0.35 + 0.1 * Math.sin(t * 2));
+    ell(ctx, x, y + 2, 19, 10, "#1a0e24");                       // 沼のふち（暗い泥）
+    ell(ctx, x, y + 2, 17, 8.5, hurt ? "#e0c0ff" : "#4a2a62");     // 毒の水
+    ell(ctx, x - 3, y + 1, 12, 5.5, hurt ? "#ffffff" : "#6e3e8e");
+    ell(ctx, x + 4, y + 4, 7, 3, "#5a8a3a");                      // 緑のにごり
+    // まんなかの泥の山と、敵が出てくる黒い穴
+    ell(ctx, x, y - 2, 9, 6, hurt ? "#ffffff" : "#2e1a3a");
+    ell(ctx, x - 1, y - 4, 6, 3.5, "#4a2e5a");
+    Render.rect(x - 4, y - 4, 3, 2, "#0a0410"); Render.rect(x + 2, y - 3, 2, 2, "#0a0410"); Render.rect(x - 1, y - 7, 2, 2, "#0a0410");
+    // 泡：うかんで大きくなり、はじける
+    for (var i = 0; i < 6; i++) {
+      var ph = (t * 0.9 + i * 0.37) % 1, bx = x + Math.cos(i * 2.3) * (8 + (i % 3) * 4), by = y + 2 + Math.sin(i * 2.3) * 4;
+      if (ph < 0.75) {
+        var bs = 1 + Math.round(ph * 3);
+        Render.rect(Math.round(bx - bs / 2), Math.round(by - bs / 2 - ph * 3), bs, bs, i % 2 ? "#c89ae0" : "#b8e870");
+      } else {
+        Render.rect(Math.round(bx) - 2, Math.round(by) - 3, 1, 1, "#e8d8f0"); Render.rect(Math.round(bx) + 1, Math.round(by) - 3, 1, 1, "#e8d8f0");
+      }
+    }
+    // ゆらゆらのぼる瘴気
+    for (var j = 0; j < 3; j++) {
+      var q = (t * 0.5 + j / 3) % 1;
+      ctx.globalAlpha = (e.dead ? Math.max(0, e.fade / 0.4) : 1) * (1 - q) * 0.6;
+      ell(ctx, x - 6 + j * 6 + Math.sin(t * 2 + j) * 2, y - 6 - q * 16, 3 + q * 3, 2 + q * 2, "#9a6ac0");
+    }
+    ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+    if (e.birth > 0) {   // 敵を出したところ
+      var kb = 1 - e.birth / 0.5;
+      ctx.strokeStyle = "rgba(200,154,224," + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 10 + kb * 18, 0, Math.PI * 2); ctx.stroke();
+    }
+    var marks = Object.keys(e.status).filter(function (k) { return k !== "break" && k !== "sleep" && k !== "para"; });
+    if (marks.length && !e.dead) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 14, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
+    if (!e.dead && e.hp < e.maxHp) {
+      Render.rect(x - 14, y - 16, 28, 3, "#2a2f42");
+      Render.rect(x - 14, y - 16, Math.round(28 * e.hp / e.maxHp), 3, "#c86ae0");
+    }
   }
 
   // 敵の攻撃の見た目

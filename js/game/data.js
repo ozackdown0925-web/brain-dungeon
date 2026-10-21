@@ -391,6 +391,14 @@ var GameData = (function () {
       reach: 18, windup: 0.6, cooldown: 2.0, color: "#b49ad8",
       onHit: { type: "poison", chance: 0.3, dur: 6 }
     },
+    // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
+    // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
+    // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
+    nest: {
+      name: "モンスターの巣", kind: "nest", fixed: true, notInBook: true, hp: 120, patk: 0, pdef: 4, mdef: 4,
+      res: {}, speed: 0, r: 13, color: "#6a3a98",
+      every: 4.5, first: 1.5, roomMax: 5, total: 10
+    },
     // ---- 訓練場の像（2026-10-21 保護者の案）。ゴブリンの剣士の形と強さで、深さ trainDepth のときと同じ。
     // 弱点・攻撃してくるかは、宿屋の訓練場で選ぶ。training：図鑑には出さない ----
     statue_wood:   { name: "木像", training: true, trainDepth: 1,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a87a4a" },
