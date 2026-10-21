@@ -418,6 +418,25 @@ var GameData = (function () {
     }
   };
 
+  // ---- 瘴気の森のボス（段階4、2026-10-21）。数字は仮（遊んでみてから直す） ----
+  // 大ガマ（5階）：はねて近づき、舌でたたく。沼にもぐって、予告の輪のところから飛び出す（大技）。毒の雨。HP が半分になると毒ガエルを呼ぶ
+  ENEMIES.frog_boss = {
+    name: "大ガマ", kind: "frog_boss", boss: true, hp: 1400, patk: 26, matk: 0, pdef: 8, mdef: 6,
+    res: { water: 0.5, strike: 0.75, slash: 1.25 }, speed: 0, r: 16,
+    reach: 30, windup: 0.5, cooldown: 1.3, hopSpeed: 120, hopTime: 0.4, hopEvery: 1.1, color: "#4e7a3a",
+    diveEvery: 7, diveEveryHalf: 5, diveWarn: 1.1, diveRadius: 30, diveMult: 3.0,
+    rainEvery: 9, rainWarn: 0.9, rainRadius: 16, rainMult: 0.8
+  };
+  // 沼の魔女（10階・主）：魔法が中心。離れたところから闇の玉を3つ。近づくと消えて、べつの場所に現れる。
+  // 瘴気の柱（大技。地面の紫の輪で予告）、瘴気の霊を呼ぶ。光が弱点、闇は効かない
+  ENEMIES.witch_boss = {
+    name: "沼の魔女", kind: "witch_boss", boss: true, hp: 2600, patk: 18, matk: 32, pdef: 7, mdef: 12,
+    res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 30, r: 10,
+    keepMin: 90, keepMax: 150, windup: 0.6, cooldown: 2.2, orbSpeed: 95, color: "#4a2e72",
+    pillarEvery: 9, pillarEveryHalf: 6, pillarWarn: 1.2, pillarRadius: 22, pillarMult: 2.6,
+    blinkEvery: 9, summonEvery: 16
+  };
+
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
   var BOSSES = {
     7: {
@@ -469,16 +488,19 @@ var GameData = (function () {
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
   //   depthBase：強さの深さ＝depthBase＋階。敵の強さ・ごほうび・拾う装備のレベルに使う（樹海は 0 で、今までと同じ）
   //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫。tiles.js・rooms.js）
-  // 瘴気の森のボスは、まだ樹海のものを仮に使う（段階4で作る）。深さも仮（段階6で直す）。
+  // 瘴気の森のボスは大ガマ（5階）と沼の魔女（10階）（段階4）。深さは仮（段階6で直す）。
   var DUNGEONS = {
     forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest" },
     shouki: {
       id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp",
       bosses: {
-        5: { enemy: "wolf_boss", title: "沼をしずめし者",   // 仮：大ガマを作るまで大オオカミ（段階4）
-             before: ["（かり）沼の奥で、何かが動いた。"], after: ["（かり）沼が、少し静かになった。"] },
-        10: { enemy: "tree_boss", title: "瘴気をはらう者", // 仮：沼の魔女を作るまで大木の魔物（段階4）
-              before: ["（かり）瘴気のいちばんこいところに、だれかがいる。"], after: ["（かり）瘴気が晴れていく。"] }
+        // 前後の文は Claude が書いた仮の文（保護者があとで直す）
+        5: { enemy: "frog_boss", title: "沼をしずめし者",
+             before: ["毒の沼が、ぶくぶくと泡を立てている。", "沼の底から、大きなカエルが顔を出した。", "「ゲロロ……この沼は、わしのものじゃ！」"],
+             after: ["大ガマは、沼の底へもぐっていった。", "泡立っていた沼が、少し静かになった。", "森の奥へ、道が続いている。"] },
+        10: { enemy: "witch_boss", title: "瘴気をはらう者",
+              before: ["森のいちばん奥に、紫の霧がうずまいている。", "霧の中から、杖を持った魔女が現れた。", "「瘴気は、わたしの力。この森は、だれにもわたさないよ！」"],
+              after: ["魔女は、霧といっしょに消えていった。", "森をおおっていた瘴気が晴れ、月の光がさしこむ。", "瘴気の森に、静けさがもどった。"] }
       }
     }
   };

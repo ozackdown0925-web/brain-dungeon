@@ -1339,6 +1339,199 @@ var Monsters = (function () {
     ],
   };
 
+  // 瘴気の森のボス（段階4、2026-10-21）：大ガマ（56×40）と沼の魔女（34×46）。図形をならべて明るさをつけてから1点ずつの地図にした。
+  // 2026-10-21 保護者の感想（可愛らしいので、もうちょっとダークに）で描き直した：
+  //   大ガマ＝にごった黒緑の肌といぼ、赤く光る細い目、ぎざぎざの歯とよだれ、紫の毒袋
+  //   沼の魔女＝やせた灰色の顔、くぼんで赤く光る目、長い白髪、ぼろぼろの黒い服、頭がい骨の杖
+  // 色はボスごとの一覧（BOSS_PAL）を使う（ほかの敵と同じ文字でも、ちがう色）
+  var BOSS_PAL = {
+    frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
+    witch_boss: { A: "#0c0810", K: "#ff3030", M: "#120a1c", E: "#9aa49a", D: "#5e665e", H: "#4e4c48", Q: "#3a2a4a", R: "#28203a", S: "#1a1426", T: "#d8d0c0", U: "#8a8478", V: "#3a2a1a" }
+  };
+  var FROGB = {
+    stand: [
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "..............AAAAAA................AAAAAA..............",
+      "............AAFFFFFGAA............AAFFFFFGAA............",
+      "...........AFIIIIIIIIIA..........AFIIIIIIIIIA...........",
+      "...........AFFFFFGGGHHAAAAAAAAAAAAFFFFFGGGHHA...........",
+      "...........AFFAAAAAAAHFFFFFFFFFFFFFFAAAAAAAHA...........",
+      "...........AGGAKKBKKAIFFFFIFFFFFIFGGAKKBKKAIIA..........",
+      "...........AGGAAAAAAAIFFFFIFFFFFIGGGAAAAAAAIIA..........",
+      "..........AFHHHHHHIIIIFFFFHFFFFFHGHHHHHHIIIIHA..........",
+      ".........AFFFFHHIIIIHFFFFFHFFGGGHGGGHHIIIIHHHHA.........",
+      "........AFFFFFFFFFFGFFFFFFFGGGGGGGGGGGGHHHHHHHHA........",
+      ".......AFFFFFFFFFFFFIFFFGGGGGGGGGGGGIGHHHHHHHHIIA.......",
+      ".......AFFFFFFFFFFFFGGGGGGGGGGGGGGGHHHHHHHHHHIIIA.......",
+      "......AFGFFFFFFGGGGGGGGGGGGGGGGGGHHHHHHHHHHIIIIIHA......",
+      ".....AFFLLLLGGGGGGGGGGGGGGGGGGHHHHHHHHHHHIIILLLLHHA.....",
+      "....AFFLLLLAAAGGGGGGGGGGGGHHHHHHHHHHHHHIIIIAAALLMHHA....",
+      "...AFFFLLNLLMGAAAAGGGGHIHHHHHHHHGHHHIIIAAAALLNLLMHHIA...",
+      "...AFFFLLLMMMHHTAAAAAAAAAAAAAAAAAAAAAAATAATLLLMMMHHIA...",
+      "..AFFFFLMMMMMHHHHHTAATAATAATAATAATAATAAIIIILMMMMMHIIIA..",
+      "..AFFFFFMMMMFFFHHHHHWHHHIIIIIIIIIIIWIIIIIHHHMMMMHIIIIA..",
+      "..AGFFFFFFFFFGGGGGGIWIIIIIIIIIIIIIIWIHGHHHHHHHHIIIIIIA..",
+      ".AFGGGGGGGGGGGGGGIGGWJJJJJJJJJJJJJJHHHHIHHHHHHIIIIIIIGA.",
+      "AFFFGGGGGGGGGGGGGJJJJJJJJJJJJJJJJJJJJJcHHHHHIIIIIIIIGGHA",
+      "FFFFGGGGGGGGGGGJJJJJJJJJJJJJJJJJJJJJJJcccHIIIIIGIIIIGGHH",
+      "FFFFFGGGIGGGGGJJJJJJJJJJJJJJJJJJJJJJJcccccIIIIIIIIIGGHHH",
+      "FFFFFGGGGGGGGJJJJJJJJJJJJJJJJJJJJJcccccccccIIIIIIIGGHHHH",
+      "FGGGGGGHHHHHHJJJJJJJJJJJJJJJJJJccccccccccccIIIIIIGHHHHHI",
+      "GGGGGGGGHHHFFFGJJJJJJJJJJJcccccccccccccccFFFGIIIHHHHHIII",
+      "GGGGGHHHHFFFFFGGHJJJcccccccccccccccccccFFFFFGGHHHHHHIIII",
+      "AHHHHHHHHFFFGGGHHccccccccccccccccccccccFFFGGGHHHHHIIIIIA",
+      ".AHHHHHIIGGGGHHHIIIIIccccccccccccccIIIIGGGGHHHIIIIIIIIA.",
+      "..AAIIIIIGHHHHIIIAAAAIIIIIIIIIIIIIIAAAAGHHHHIIIIIIIIAA..",
+      "....AAAAAATIITIATA...AAAAAAAAAAAAAA....ATIITIATAAAAA....",
+      "..........AAAAA.A.......................AAAAA.A........."
+    ],
+    crouch: [
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "........................................................",
+      "..............AAAAAA................AAAAAA..............",
+      "............AAFFFFFGAA............AAFFFFFGAA............",
+      "...........AFIIIIIIIIIA..........AFIIIIIIIIIA...........",
+      "...........AFFFFFGGGHHAAAAAAAAAAAAFFFFFGGGHHA...........",
+      "...........AFFAAAAAAAHFFFFFFFFFFFFFFAAAAAAAHA...........",
+      "...........AGGAKKBKKAIFFFFFFFFFFFFGGAKKBKKAIA...........",
+      "...........AGGAAAAAAAIFFFFFFFFFFFGGGAAAAAAAIA...........",
+      "..........AFHHHHHHIIIIFFFFIFFFFFIGHHHHHHIIIIIA..........",
+      ".........AFFFFHHIIIIIFFFFFIFFGGGIGGGHHIIIIHHIHA.........",
+      "........AFFFFFHFFFFGHFFFFFHGGGGGHGGGGGHHHHHHHHHA........",
+      ".......AFFFFFFHFFFFFIFFFGGHGGGGGHGGGIGHHHHHHHHIIA.......",
+      ".......AFFFFFFFFFFFFGGGGGGGGGGGGGGGHHHHHHHHHHIIIA.......",
+      ".....AAFGFFFFFFGGGGGGGGGGGGGGGGGGHHHHHHHHHHIIIIIHAA.....",
+      "....AFFFLLLLGGGGGGGGGGGGGGGGGGHHHHHHHHHHHIIILLLLHHHA....",
+      "...AFFFLLLLAAAGGGGGGGGGGGGHHHHHHHHHHHHHIIIIAAALLMHHHA...",
+      "..AFFFFLLNLLMGAAAAGGGGHIHHHHHHHHGHHHIIIAAAALLNLLMHHHHA..",
+      ".AFFFFFLLLMMMHHTAAAAAAAAAAAAAAAAAAAAAAATAATLLLMMMHHHHIA.",
+      "AFFFFFFLMMMMMHHHHHTAATAATAATAATAATAATAAIIIILMMMMMHHHIIIA",
+      "AFFFFFFFMMMMFFFHHHHHWHHHIIIIIIIIIIIWIIIIIHHHMMMMHHHIIIIA",
+      "AGFFFFFFFFFGGGGGGGGIWIIIIIIIIIIIIIIWIHGHHHHHHHHHHIIIIIIA",
+      "AGGGGGGGGGGGGGGGGIGGWJJJJJJJJJJJJJJHHHHIHHHHHHHIIIIIIIIA",
+      "AFGGGGGGGGGGGGGGGJJJJJJJJJJJJJJJJJJJJJcHHHHHIIIIIIIIIIHA",
+      "FFFGGGGGGGGGGGGJJJJJJJJJJJJJJJJJJJJJJJcccIIIIIIGIIIIIGHH",
+      "FFFFGGGGIGGGGGJJJJJJJJJJJJJJJJJJJJJJJcccccIIIIIIIIIIGHHH",
+      "FFFFFHHHHHHHHJJJJJJJJJJJJJJJJJJJJJcccccccccIIIIIIIIGHHHH",
+      "FGGGGGGHHHHHHJJJJJJJJJJJJJJJJJJccccccccccccIIIIIIGHHHHHI",
+      "GGGGGGGGHHHFFFGJJJJJJJJJJJcccccccccccccccFFFGIGGHHHHHIII",
+      "GGGGGHHHHFFFFFGGHJJJcccccccccccccccccccFFFFFGGHHHHHHIIII",
+      "AHHHHHHHHFFFGGGHHAAAccccccccccccccccAAAFFFGGGHHHHHIIIIIA",
+      ".AHHHHHIIGGGGHHHIA..AAAAAAAAAAAAAAAA..AGGGGHHHIIIIIIIIA.",
+      "..AAIIIIIGHHHHIIIA....................AGHHHHIIIIIIIIAA.."
+    ]
+  };
+  var WITCH = {
+    stand: [
+      ".....................ASMA.........",
+      ".....................ASA..........",
+      ".................AAAASMMA.........",
+      "................ASSMMAAA..........",
+      "...............ASSSMMMA...........",
+      "..............ASSSMMMMA...........",
+      "...........AAASSSSMMMMMA..........",
+      ".....AAAAAARTRRRRRRRRRRRAAAAAA....",
+      "...AASSSSSSSSSSSSSMMMMMMSSSSSSA...",
+      "..AMAMMMMAMMMMMMMMMMMMMMMMMAMMMA..",
+      "..ATTTTTA.AUUUUEEEEUUUHAAAA.AAA...",
+      "..ATTTTUA.AUUUEEEEEEUHHA..........",
+      ".ATTATUAUAAUUEEEEEEEDHHA..........",
+      "..ATTUUUAAUUUEEEEEEDDHHHA.........",
+      "..AUUAUUAAUUUEAKEEEKAHHHA.........",
+      "...AAUVA.AUUUEAAEEDAAHHHA.........",
+      "....AVA..AHUUEEEEDDDDHHHHA........",
+      "....AUA..AUUUEEDDDDDDHHAHA........",
+      "....AUA..AHHUUDDDDDDHHHHUA........",
+      "....AUA..AHUHHHATATAHHHUHA........",
+      "....AVVA.AUHHHHHHHHHHHAHHA........",
+      "....AUA..AHHQHHHHHHHHMAHUA........",
+      "....AUAAAAHUQQRHHHHSSMMUHA........",
+      "....AUARRAUHQQRRRSSSSMMHHA........",
+      "....AVARRAHHQRRRRSSSSSMHUA........",
+      "....AUVRRSHUMMMMMMMMMMMUHA........",
+      "....AURRRSUHQTRRTSSTSSTHHA........",
+      "....AURRRSHQRRRRRSSSSSMMUA........",
+      "....AVRRSMHQRRRRRSSSSSMMHMA.......",
+      "....AURRSMQRRRRRRSSSSSSMMMA.......",
+      "....AUVSSMQRRRRRSSSSSSSMMMMA......",
+      "....AUASMQQRRRRRSSSSSSSMMMMA......",
+      "....AVAMMQRRRRRRSSSSSSSMMMMA......",
+      "....AUQQQQRRRRRRSSSSSSSMMMMMA.....",
+      "....AUQQQRRRRRRRSSSSSSSMMMMMA.....",
+      "....AUVQQRRRRRRRSSSSSSSMMMMMMA....",
+      "....AVMQRRMRRRMSSSMSSSMMMMMMMA....",
+      "...AQUMQRRMRRRMSSSMSSSMSMMMMMMA...",
+      "...AQUMRRRMRRRMSSSMSSSMSMMMMMMA...",
+      "..AQQUMRRRMRRRMSSSMSSSMSMMMMMMMA..",
+      "..AQQVVRRRMRRRMSSSMSSSMSMMMMMMMA..",
+      "..AQQUMRRAMRRAMSSAMSSAMSMAMMMAMA..",
+      "..AQQUARRAARRAASSAASSAASMAAMMAAMA.",
+      "...ARUAARA.ARA.ASA.ASA.AMA.AMA.A..",
+      "....AA..A...A...A...A...A...A.....",
+      ".................................."
+    ],
+    cast: [
+      "..ATTTTTA............ASMA.........",
+      "..ATTTTUA............ASA..........",
+      ".ATTATUAUA.......AAAASMMA.........",
+      "..ATTUUUA.......ASSMMAAA..........",
+      "..AUUAUUA......ASSSMMMA...........",
+      "...AAUVA......ASSSMMMMA...........",
+      "....AUA....AAASSSSMMMMMA..........",
+      "....AUAAAAARTRRRRRRRRRRRAAAAAA....",
+      "...AAVSSSSSSSSSSSSMMMMMMSSSSSSA...",
+      "..AMAUMMMAMMMMMMMMMMMMMMMMMAMMMA..",
+      "...AAUVAA.AUUUUEEEEUUUHAAAA.AAA...",
+      "....AUA...AUUUEEEEEEUHHA..........",
+      "....AVA...AUUEEEEEEEDHHA..........",
+      "....AUAA.AUUUEEEEEEDDHHHA.AA......",
+      "....AURRAAUUUEAKEEEKAHHHAARRA.....",
+      "....AUVRAAUUUEAAEEDAAHHHAARRA.....",
+      "....AVRRSAHUUEEEEDDDDHHHHRRRSA....",
+      "....AURRSAUUUEEDDDDDDHHAHRRRSA....",
+      "....AURRSAHHUUDDDDDDHHHHURRRSA....",
+      "....AURRSAHUHHHATATAHHHUHRRRSA....",
+      "....AVVSMAUHHHHHHHHHHHAHHRRSMA....",
+      "....AURSMAHHQHHHHHHHHMAHURRSMA....",
+      "....AUSSMAHUQQRHHHHSSMMUHRSSMA....",
+      "....AUSMMAUHQQRRRSSSSMMHHSSMMA....",
+      "....AVSMAAHHQRRRRSSSSSMHUASMA.....",
+      "....AUVMAAHUMMMMMMMMMMMUHAMMA.....",
+      "....AUAAAQUHQTRRTSSTSSTHHAAA......",
+      "....AUA.AQHQRRRRRSSSSSMMUA........",
+      "....AVAAQQHQRRRRRSSSSSMMHMA.......",
+      "....AUAAQQQRRRRRRSSSSSSMMMA.......",
+      "....AUVQQQQRRRRRSSSSSSSMMMMA......",
+      "....AUAQQQQRRRRRSSSSSSSMMMMA......",
+      "....AVAQQQRRRRRRSSSSSSSMMMMA......",
+      "....AUQQQQRRRRRRSSSSSSSMMMMMA.....",
+      "....AUQQQRRRRRRRSSSSSSSMMMMMA.....",
+      "....AUVQQRRRRRRRSSSSSSSMMMMMMA....",
+      "....AVMQRRMRRRMSSSMSSSMMMMMMMA....",
+      "...AQUMQRRMRRRMSSSMSSSMSMMMMMMA...",
+      "...AQUMRRRMRRRMSSSMSSSMSMMMMMMA...",
+      "..AQQUMRRRMRRRMSSSMSSSMSMMMMMMMA..",
+      "..AQQVVRRRMRRRMSSSMSSSMSMMMMMMMA..",
+      "..AQQUMRRAMRRAMSSAMSSAMSMAMMMAMA..",
+      "..AQQUARRAARRAASSAASSAASMAAMMAAMA.",
+      "...ARUAARA.ARA.ASA.ASA.AMA.AMA.A..",
+      "....AA..A...A...A...A...A...A.....",
+      ".................................."
+    ]
+  };
   // 訓練場の像（2026-10-21）：ゴブリンの剣士の形のまま、色を木・石・銅に入れかえる
   var STATUE = {
     statue_wood:   { C: "u", V: "t", D: "v", Y: "w", R: "t", F: "t", Q: "u", O: "v", B: "w", K: "w", H: "t", U: "t", T: "u" },
@@ -1354,12 +1547,13 @@ var Monsters = (function () {
     for (x = x0; x <= x1; x++) g[h - 1][x] = ".";
   }
   // 地図を絵にする。flip：左右反転。white：当たったときの白い絵（ふちどりはそのまま）
-  function toCanvas(g, flip, white) {
+  function toCanvas(g, flip, white, pal) {
     var h = g.length, w = g[0].length;
+    pal = pal || PAL;
     var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
     var ctx = cv.getContext("2d");
     for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
-      var ch = g[y][x], col = PAL[ch];
+      var ch = g[y][x], col = pal[ch];
       if (!col) continue;
       ctx.fillStyle = white && ch !== "A" ? WHITE : col;
       ctx.fillRect(flip ? w - 1 - x : x, y, 1, 1);
@@ -1403,8 +1597,8 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" ? WOLF : TREE;
-    cache[k] = toCanvas(grid(set[frame] || set.stand), false, white);
+    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : TREE;
+    cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
   // 足もと（x, y）を基準に描く。face.x が正なら右向き（大オオカミの地図は左向き）
@@ -1417,5 +1611,7 @@ var Monsters = (function () {
     ctx.restore();
   }
 
-  return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss };
+  // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : 18; }
+  return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();

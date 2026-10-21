@@ -227,7 +227,7 @@
   function bossDefeated(e) {
     dg.bossDown = true; boss = null;
     Bosses.bossDown();
-    Enemies.alive().forEach(function (o) { if (o.type === "wolf_pup") { o.dead = true; o.fade = 0.4; } });
+    Enemies.alive().forEach(function (o) { if (o.type === "wolf_pup" || o.summoned) { o.dead = true; o.fade = 0.4; } });   // 呼ばれた敵（子オオカミ・毒ガエル・瘴気の霊）も消える
     var c = dg.cells[curKey];
     setDoor(c, "w", ":");
     c.chests.push({ x: c.center.x - 60, y: c.center.y - 22, opened: false, rare: true });
@@ -276,8 +276,7 @@
     var off = document.createElement("canvas"); off.width = W; off.height = H;
     var octx = off.getContext("2d"); octx.imageSmoothingEnabled = false;
     e.flash = 0;
-    var wolf = e.def.kind === "wolf_boss";
-    Monsters.drawBoss(octx, e, fx, fy + (wolf ? 11 : 18), "stand");
+    Monsters.drawBoss(octx, e, fx, fy + Monsters.bossFoot(e.def.kind), "stand");
     // 3×3点ずつのかけらに分ける。上のほうから先に崩れる
     var data = octx.getImageData(0, 0, W, H).data, chunks = [], top = H, bottom = 0;
     for (var cy = 0; cy < H; cy += 3) for (var cx = 0; cx < W; cx += 3) {

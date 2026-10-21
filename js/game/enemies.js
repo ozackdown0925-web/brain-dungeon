@@ -63,7 +63,8 @@ var Enemies = (function () {
   }
   function alive() { return list.filter(function (e) { return !e.dead; }); }
   // 味方にした敵（チャーム）をのぞいた、たたかう相手（2026-10-20）
-  function hostile() { return list.filter(function (e) { return !e.dead && !e.charm; }); }
+  // untouchable：沼にもぐった大ガマ・消えている沼の魔女（こちらの攻撃が当たらない）
+  function hostile() { return list.filter(function (e) { return !e.dead && !e.charm && !e.untouchable; }); }
   // チャーム：敵1体を、決まった時間だけ味方にする（ほかの敵を攻撃し、ほかの敵にもねらわれる）
   function charm(e, dur) {
     if (e.dead || e.def.boss) return;
@@ -222,8 +223,8 @@ var Enemies = (function () {
 
     Bosses.updateHazards(dt, p, hurt);
 
-    // 敵どうし・プレイヤーと重ならないように押し合う（ボスは押されない）
-    var live = alive();
+    // 敵どうし・プレイヤーと重ならないように押し合う（ボスは押されない。沼にもぐった・消えたボスは押さない）
+    var live = alive().filter(function (o) { return !o.untouchable; });
     for (var i = 0; i < live.length; i++) {
       var a = live[i];
       for (var j = i + 1; j < live.length; j++) push(a, live[j], room);
@@ -304,7 +305,7 @@ var Enemies = (function () {
   // キャラを動かす。生きている敵にめりこむ方向には進めない（すり抜けない）。
   // 横と縦を別々に動かすので、敵のわきはすべるように回りこめる。離れる方向にはいつでも動ける。
   function moveBlocked(room, p, dx, dy) {
-    var live = alive();
+    var live = alive().filter(function (o) { return !o.untouchable; });
     function stepAxis(ax, d) {
       if (d === 0) return;
       var ox = p.x, oy = p.y;
