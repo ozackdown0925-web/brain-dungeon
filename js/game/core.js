@@ -156,7 +156,8 @@
     Combat.hooks.room = room;
     Enemies.clear(); Combat.clear(); Battle.clear();
     boss = null;
-    var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: c.center.x, y: c.center.y + 20, face: { x: 0, y: 1 } };
+    var sp = fromDir ? null : Dungeon.startPoint(room, c.center);
+    var p = fromDir ? Dungeon.entryPoint(room, fromDir) : { x: sp.x, y: sp.y, face: { x: 0, y: 1 } };
     A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0; A.running = false;
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
     run.inPit = false;
