@@ -83,11 +83,12 @@
       c.traps.forEach(function (t, i) { if (t.found) found.push(k + "#" + i); });
       (c.pickups || []).forEach(function (u, i) { if (u.taken) picked.push(k + "#" + i); });
     });
+    var nests = Object.keys(dg.cells).filter(function (k) { return dg.cells[k].nest && dg.cells[k].nest.done; });   // こわして宝箱が出た巣
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
     var ckeyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].ckey && dg.cells[k].ckey.taken; });
     GameState.setAdventure({
       state: "playing", dungeon: dg.dungeon, floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode, skipped: !!trial.skipped,
-      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
+      timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, nests: nests, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown, bossRetried: !!run.bossRetried, bossSave: run.bossSave || null, bossBest: Math.max(run.bossBest || 0, curKey === dg.exit && !dg.bossDown ? bossDamaged() : 0),
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
       party: Party.members().map(function (m) { return { hp: m.hp, mp: m.mp, down: m.down }; })
@@ -109,6 +110,12 @@
     } else if (dg.boss) {
       dg.bossMet = false; // ボスの前の文章を、もう一度出す
     }
+    // こわした巣：巣はもうなく、宝箱がある（開けたかどうかは、すぐ下で opened からもどす）
+    (a.nests || []).forEach(function (k) {
+      var c = dg.cells[k]; if (!c || !c.nest) return;
+      c.nest.slot.dead = true; c.nest.met = true; c.nest.broken = true; c.nest.done = true;
+      c.chests.push({ x: c.nest.x, y: c.nest.y + 4, opened: false, rare: true, nest: true });
+    });
     a.opened.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.chests[+p[1]]) c.chests[+p[1]].opened = true; });
     a.found.forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.traps[+p[1]]) c.traps[+p[1]].found = true; });
     (a.picked || []).forEach(function (id) { var p = id.split("#"), c = dg.cells[p[0]]; if (c && c.pickups && c.pickups[+p[1]]) c.pickups[+p[1]].taken = true; });
@@ -175,11 +182,22 @@
       var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
       GameState.noteSeen(slot.type); // 図鑑：たたかった敵
       e.slot = slot;
+      if (slot.nest && c.nest.hp !== null) e.hp = Math.min(e.maxHp, c.nest.hp);   // 巣は、けずった HP のまま
       if (slot.boss) { e.face = { x: -1, y: 0 }; boss = e; }
     });
     run.roomAlive = Enemies.alive().length; // 部屋の敵を全部たおしたか見るため（パッシブ「めいそう」）
+    run.depth = depth;                      // モンスターの巣から出る敵の強さ
     run.fade = 0.3;
     snapshot();
+    // モンスターの巣（段階5）：はじめて入ったときに知らせる。入るたびに、少ししてから敵を出しはじめる
+    if (c.nest && !c.nest.broken) {
+      c.nest.t = GameData.ENEMIES.nest.first;
+      if (!c.nest.met) {
+        c.nest.met = true;
+        say("モンスターの巣だ！ 巣をこわせば、敵は出てこなくなる");
+        Sound.play("boss");
+      }
+    }
     // ボスの部屋：入るとつるが道をふさぎ、短い文章が出る
     if (c.bossCell && !dg.bossDown) {
       setDoor(c, "w", "V");
@@ -351,11 +369,78 @@
 
   function say(text) { message = { text: text, t: 2.2 }; }
 
+  // ---------- モンスターの巣（段階5、2026-10-22） ----------
+  // 巣は数秒ごとに、その階の敵を1体出す（部屋にいる敵は roomMax まで、出すのは全部で total まで）。
+  // 出た敵は部屋の敵として残る（部屋を出てもどっても、たおすまでいる）。
+  // 巣をこわして部屋の敵を全部たおすと、金の宝箱と同じ中身の宝箱が、巣のあったところに出る
+  function nestPick() {
+    var pool = ["skeleton_sword", "skeleton_sword", "skeleton_archer", "frog", "shadow_mage"];
+    if (dg.floor >= 6) pool.push("wisp", "wisp");
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function updateNest(dt) {
+    var c = dg.cells[curKey], n = c.nest;
+    if (!n || n.done || run.over || choosing) return;
+    var ne = null;
+    Enemies.list.forEach(function (e) { if (!e.dead && e.def.kind === "nest") ne = e; });
+    if (ne) n.hp = ne.hp;
+    if (n.broken) {
+      // 巣をこわしたあと、部屋の敵を全部たおしたら宝箱
+      if (Enemies.hostile().length === 0) {
+        n.done = true;
+        c.chests.push({ x: n.x, y: n.y + 4, opened: false, rare: true, nest: true });
+        say("巣のあとに、宝箱が現れた！");
+        Sound.play("chest");
+        snapshot();
+      }
+      return;
+    }
+    if (!ne || n.made >= GameData.ENEMIES.nest.total) return;
+    n.t -= dt;
+    if (n.t > 0) return;
+    var D = GameData.ENEMIES.nest;
+    n.t = D.every;
+    var others = Enemies.alive().filter(function (e) { return e.def.kind !== "nest" && !e.charm; }).length;
+    if (others >= D.roomMax) return;
+    // 巣のふちの、立てる場所から出る
+    var T = World.TILE, spot = null;
+    for (var tries = 0; tries < 12 && !spot; tries++) {
+      var a = Math.random() * Math.PI * 2, x = ne.x + Math.cos(a) * 22, y = ne.y + Math.sin(a) * 18;
+      var ch = room.tile(Math.floor(x / T), Math.floor(y / T));
+      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
+    }
+    if (!spot) return;
+    var type = nestPick();
+    var slot = { type: type, tx: Math.floor(spot.x / T), ty: Math.floor(spot.y / T), x: spot.x, y: spot.y, dead: false, fromNest: true };
+    c.enemies.push(slot);
+    var e = Enemies.spawn(type, spot.x, spot.y, run.depth || dg.power);
+    e.slot = slot; e.cd = 0.8;
+    GameState.noteSeen(type);
+    ne.birth = 0.5;
+    n.made++;
+    run.roomAlive = Enemies.alive().length;
+  }
+  // 巣をこわした：経験値は敵3体分。ゴールドや素材は落とさない（宝箱があるので）
+  function nestBroken(e) {
+    var c = dg.cells[curKey];
+    if (!c.nest) return;
+    c.nest.broken = true; c.nest.hp = 0;
+    var k = Dungeon.rewardScale(dg.power) * 3;
+    Party.members().forEach(function (m, i) {
+      if (m.down) return;
+      run.exp[i] += (2 + 0.6 * dg.power) * k;
+      run.mastery[i] += k;
+    });
+    Battle.pop(e.x, e.y - 30, "巣をこわした！", "#c86ae0", 10);
+    say(Enemies.hostile().length ? "巣をこわした！ のこりの敵をたおそう" : "巣をこわした！");
+  }
+
   Combat.hooks.onKill = function (e) {
     if (dg && dg.training) { trainKill(e); return; }   // 訓練場：ごほうびはなし。像はすぐ元にもどる
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
     if (e.slot) e.slot.dead = true;
+    if (e.def.kind === "nest") { nestBroken(e); return; }
     run.byType[e.type] = (run.byType[e.type] || 0) + 1;
     // 経験値と熟練度：倒れていない3人に同じだけ（docs/draft.md 1.1：1体 2＋0.6×深さ、熟練度 1。ボスは10体分）
     if (!e.summoned) {
@@ -482,6 +567,7 @@
     Combat.update(dt);
     Enemies.update(dt, room, A, hurtActive, Combat.hooks.onKill);
     Enemies.list.forEach(function (e) { room.keepInside(e); });
+    if (!dg.training) updateNest(dt);
     Battle.update(dt);
     if (run.over) return; // 倒れて冒険が終わったとき
     if (dg.training) {   // 訓練場：時間・出口・控えはない。回復の泉と、数字を数えるだけ
@@ -574,7 +660,7 @@
       if (got.equip) run.got.push(got.equip);
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] = (run.mat[m] || 0) + got.mat[m]; });
-      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; got.bonusGem = true; }   // 金の宝箱は25%で宝玉（2026-10-22 に10%から）
+      if ((b.gold || b.nest) && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; got.bonusGem = true; }   // 金の宝箱は25%で宝玉（2026-10-22 に10%から）
       if (got.equip) {
         var R = Loot.RARITY[got.equip.r];
         // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
@@ -717,13 +803,15 @@
       Render.rect(kx - 5, Math.round(c.key.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");   // かげ
       ctx.drawImage(Props.get("key"), kx - 6, ky - 3);
     }
-    if (c.spring) {   // 回復の泉：光る水たまりと、のぼる光の粒
+    if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      Combat.glowDot(ctx, sx, sy, 22, "#ffffff", "#7fd8ff", 0.45 + 0.1 * Math.sin(glow * 2));
-      ctx.fillStyle = "rgba(20,12,28,0.9)"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx, sy, 13, 7, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#3a8ad0"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx, sy, 12, 6, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#7fd8ff"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx - 2, sy - 1, 7, 3, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
-      for (var sp = 0; sp < 5; sp++) { var ph = (glow * 0.6 + sp / 5) % 1; Combat.glowDot(ctx, sx + Math.sin(sp * 7) * 8, sy - ph * 18, 2.5, "#ffffff", "#bfe8ff", 1 - ph); }
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" ? "swamp" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      for (var sp = 0; sp < 5; sp++) {
+        var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
+        if (ph > 0.85) continue;
+        Render.rect(px2, py2, 1, 1, ph < 0.5 ? "#ffffff" : "#7fc8ec");
+        if (ph < 0.3) { Render.rect(px2 - 1, py2, 1, 1, "#7fc8ec"); Render.rect(px2 + 1, py2, 1, 1, "#7fc8ec"); }
+      }
     }
     (c.pickups || []).forEach(function (u) {   // 薬草・魔力のキノコ・毒消し草（少しゆれる）
       if (u.taken) return;

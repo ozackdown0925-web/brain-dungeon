@@ -611,7 +611,7 @@ var GameState = (function () {
     return b;
   }
   // 訓練場の像（training）は図鑑に入れない
-  function training(type) { var d = GameData.ENEMIES[type]; return !!(d && d.training); }
+  function training(type) { var d = GameData.ENEMIES[type]; return !!(d && (d.training || d.notInBook)); }   // 訓練場の像・モンスターの巣は図鑑に入れない
   function noteSeen(type) { if (game && !training(type)) { monster(type).seen = true; } }
   // 攻撃した属性の効き方を覚える：weak（弱点）・normal・half（いまひとつ）・none（無効）
   function noteHit(type, elem, mult) {

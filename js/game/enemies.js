@@ -67,7 +67,7 @@ var Enemies = (function () {
   function hostile() { return list.filter(function (e) { return !e.dead && !e.charm && !e.untouchable; }); }
   // チャーム：敵1体を、決まった時間だけ味方にする（ほかの敵を攻撃し、ほかの敵にもねらわれる）
   function charm(e, dur) {
-    if (e.dead || e.def.boss) return;
+    if (e.dead || e.def.boss || e.def.fixed) return;
     e.charm = { t: dur };
     e.state = "chase"; e.t = 0; e.cd = 0.3;
     Battle.pop(e.x, e.y - 30, "仲間になった！", "#ff8ac8", 8);
@@ -122,6 +122,7 @@ var Enemies = (function () {
       e.puff = Math.max(0, (e.puff || 0) - dt);
       e.thrust = Math.max(0, (e.thrust || 0) - dt);
       e.burst = Math.max(0, (e.burst || 0) - dt);
+      e.birth = Math.max(0, (e.birth || 0) - dt);   // モンスターの巣が敵を出したときの輪
       if (e.dead) { e.fade -= dt; return; }
       tickStatus(e, dt, onKill);
       if (e.dead) return;
@@ -228,7 +229,7 @@ var Enemies = (function () {
     for (var i = 0; i < live.length; i++) {
       var a = live[i];
       for (var j = i + 1; j < live.length; j++) push(a, live[j], room);
-      if (Bosses.isBoss(a)) continue;
+      if (Bosses.isBoss(a) || a.def.fixed) continue;
       var dx = a.x - p.x, dy = a.y - p.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + p.r;
       if (dist < min) room.move(a, dx / dist * (min - dist), dy / dist * (min - dist));
     }
@@ -326,7 +327,7 @@ var Enemies = (function () {
     var dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.001, min = a.r + b.r;
     if (dist >= min) return;
     var s = (min - dist) / 2;
-    var ab = Bosses.isBoss(a), bb = Bosses.isBoss(b);
+    var ab = Bosses.isBoss(a) || !!a.def.fixed, bb = Bosses.isBoss(b) || !!b.def.fixed;   // ボスとモンスターの巣は押されない
     if (ab) { room.move(b, dx / dist * s * 2, dy / dist * s * 2); return; }
     if (bb) { room.move(a, -dx / dist * s * 2, -dy / dist * s * 2); return; }
     room.move(a, -dx / dist * s, -dy / dist * s);
@@ -344,6 +345,7 @@ var Enemies = (function () {
       var d = e.def;
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
+      if (d.kind === "nest") { drawNest(ctx, e, x, y); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
       var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
@@ -461,6 +463,34 @@ var Enemies = (function () {
       ctx.strokeStyle = "#e8d8b0"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();
     });
+  }
+
+  // モンスターの巣（段階5）：泡立つ毒の沼。まんなかに黒い穴のあいた泥の山（ドット絵は props.js。泡は4コマ）。
+  // 敵を出すとき（e.birth）は、紫の点の輪が広がる。のぼる瘴気も1点ずつ
+  function drawNest(ctx, e, x, y) {
+    var frame = Math.floor((clock + e.x * 0.01) * 4) % 4;
+    ctx.drawImage(Props.get("nest_" + frame + (e.flash > 0 ? "_hit" : "")), x - 20, y - 12);
+    var a0 = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+    for (var j = 0; j < 4; j++) {   // のぼる瘴気：2点の小さなかたまりが、ゆれながら上へ。上ほど暗い色
+      var q = (clock * 0.45 + j / 4) % 1, sx = Math.round(x - 6 + j * 4 + Math.sin(clock * 2 + j) * 2), sy = Math.round(y - 4 - q * 18);
+      if (q > 0.8) continue;
+      var col = q < 0.3 ? "#c89ae0" : q < 0.55 ? "#8e52a8" : "#6a3684";
+      Render.rect(sx, sy, 2, 1, col); if (q < 0.5) Render.rect(sx, sy - 1, 1, 1, col);
+    }
+    ctx.globalAlpha = a0;
+    if (e.birth > 0) {   // 敵を出したところ：点の輪
+      var rad = 10 + (1 - e.birth / 0.5) * 16;
+      for (var k = 0; k < 16; k++) {
+        var an = k / 16 * Math.PI * 2;
+        Render.rect(Math.round(x + Math.cos(an) * rad), Math.round(y + Math.sin(an) * rad * 0.6), 1, 1, k % 2 ? "#c89ae0" : "#e8d8f0");
+      }
+    }
+    var marks = Object.keys(e.status).filter(function (k2) { return k2 !== "break" && k2 !== "sleep" && k2 !== "para"; });
+    if (marks.length && !e.dead) Render.text(marks.map(function (k2) { return GameData.STATUS[k2].name; }).join(" "), x, y + 16, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
+    if (!e.dead && e.hp < e.maxHp) {
+      Render.rect(x - 14, y - 16, 28, 3, "#2a2f42");
+      Render.rect(x - 14, y - 16, Math.round(28 * e.hp / e.maxHp), 3, "#ef5b5b");
+    }
   }
 
   // 敵の攻撃の見た目
