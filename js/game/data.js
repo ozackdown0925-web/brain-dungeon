@@ -424,7 +424,8 @@ var GameData = (function () {
     name: "大ガマ", kind: "frog_boss", boss: true, hp: 1400, patk: 26, matk: 0, pdef: 8, mdef: 6,
     res: { water: 0.5, strike: 0.75, slash: 1.25 }, speed: 0, r: 16,
     reach: 30, windup: 0.5, cooldown: 1.3, hopSpeed: 120, hopTime: 0.4, hopEvery: 1.1, color: "#4e7a3a",
-    diveEvery: 7, diveEveryHalf: 5, diveWarn: 1.1, diveRadius: 30, diveMult: 3.0,
+    // 2026-10-22：かわせなかったので、予告 1.1→1.4秒、輪 30→26、輪がとまるのは出る 0.9 秒前（前は0.35秒前）
+    diveEvery: 7, diveEveryHalf: 5, diveWarn: 1.4, diveLock: 0.9, diveRadius: 26, diveMult: 3.0,
     rainEvery: 9, rainWarn: 0.9, rainRadius: 16, rainMult: 0.8
   };
   // 沼の魔女（10階・主）：魔法が中心。離れたところから闇の玉を3つ。近づくと消えて、べつの場所に現れる。
@@ -453,7 +454,7 @@ var GameData = (function () {
 
   // 状態異常（docs/draft.md 1.7）
   var STATUS = {
-    poison: { name: "毒", color: "#9be36a" },
+    poison: { name: "毒", color: "#e070ff" },   // 2026-10-22：黄緑だと地面にまぎれるので、明るい紫に
     para:   { name: "しびれ", color: "#ffe066" },
     sleep:  { name: "眠り", color: "#b48cf0" },
     "break": { name: "防御ダウン", color: "#ff9a4d" }
