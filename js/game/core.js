@@ -75,7 +75,7 @@
   // 再開は「その階層の入口から」：部屋のつなぎ方は同じ（seed）。拾った物・経験値はそのまま。開けた宝箱は開いたまま、たおした敵は元にもどる。
   var saveTimer = 0;
   function snapshot() {
-    if (!dg || !active || run.over) return;
+    if (!dg || !active || run.over || dg.training) return;   // 訓練場は控えない
     var opened = [], found = [], picked = [];
     Object.keys(dg.cells).forEach(function (k) {
       var c = dg.cells[k];
@@ -170,6 +170,7 @@
     var bossDepth = 1 + Math.max(0, avg - (1 + 0.7 * (dg.power - 1))) / 2;
     c.enemies.forEach(function (slot) {
       if (slot.dead) return;
+      if (dg.training) { spawnStatue(slot); return; }   // 訓練場の像
       var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
       GameState.noteSeen(slot.type); // 図鑑：たたかった敵
       e.slot = slot;
@@ -351,6 +352,7 @@
   function say(text) { message = { text: text, t: 2.2 }; }
 
   Combat.hooks.onKill = function (e) {
+    if (dg && dg.training) { trainKill(e); return; }   // 訓練場：ごほうびはなし。像はすぐ元にもどる
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
     if (e.slot) e.slot.dead = true;
@@ -408,7 +410,8 @@
     if (fell) {
       Sound.play("down");
       tally.downs++;
-      if (Party.allDown()) { if (canBossRetry()) showBossRetry(); else finish("wipe"); } else showChoose(c);
+      if (Party.allDown() && dg.training) trainRevive();
+      else if (Party.allDown()) { if (canBossRetry()) showBossRetry(); else finish("wipe"); } else showChoose(c);
     }
   }
 
@@ -475,6 +478,13 @@
     Enemies.list.forEach(function (e) { room.keepInside(e); });
     Battle.update(dt);
     if (run.over) return; // 倒れて冒険が終わったとき
+    if (dg.training) {   // 訓練場：時間・出口・控えはない。回復の泉と、数字を数えるだけ
+      trainUpdate(dt);
+      checkThings(dt);
+      updateCamera();
+      updateButtons(false);
+      return;
+    }
 
     // となりの部屋へ
     var out = Dungeon.leftRoom(room, A);
@@ -763,8 +773,8 @@
     });
     var sc = Party.switchCd();
     Render.text(sc > 0 ? "切りかえ あと" + sc.toFixed(1) + "秒" : "切りかえ OK", 7, y + 1, { size: 6, color: sc > 0 ? "#a3a8bd" : "#6fd08c" });
-    // 手に入れたもの
-    Render.text(run.gold + "G　鉱石" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
+    // 手に入れたもの（訓練場では出さない）
+    if (!dg.training) Render.text(run.gold + "G　鉱石" + run.mat.iron + "　魔石" + run.mat.stone + "　装備" + run.got.length, 7, y + 10, { size: 6, color: "#f2c14e" });
     var yy = y + 19;
     if (dg.hasKey) { Render.text("出口の鍵を持っている", 7, yy, { size: 6, color: "#ffe066" }); yy += 9; }
     if (dg.hasCKey) { Render.text("宝箱の鍵を持っている", 7, yy, { size: 6, color: "#dfe6ee" }); yy += 9; }
@@ -772,25 +782,28 @@
     if (trial.tryMode) Render.text("試しモード（記録に残らない）", 7, yy, { size: 6, color: "#ffb36b" });
 
     // 上のまんなか：階層と残り時間（残り1分で赤くなり、点滅する）
-    var tl = Math.ceil(run.timeLeft), mm = Math.floor(tl / 60), ss = tl % 60;
-    var low = run.timeLeft <= 60;
-    var tcol = low ? (Math.floor(run.timeLeft * 2) % 2 === 0 ? "#ef5b5b" : "#ffb0a8") : "#ece7da";
-    Render.rect(view.w / 2 - 44, 3, 88, 24, "rgba(10,12,18,0.72)");
-    Render.text(GameData.floorLabel(dg.floor, dg.dungeon), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
-    Render.text("のこり " + mm + ":" + (ss < 10 ? "0" : "") + ss, view.w / 2, 13, { size: 11, align: "center", bold: true, color: tcol });
+    if (dg.training) drawTrainHud();   // 訓練場：時間と地図のかわりに、たしかめるための数字
+    else {
+      var tl = Math.ceil(run.timeLeft), mm = Math.floor(tl / 60), ss = tl % 60;
+      var low = run.timeLeft <= 60;
+      var tcol = low ? (Math.floor(run.timeLeft * 2) % 2 === 0 ? "#ef5b5b" : "#ffb0a8") : "#ece7da";
+      Render.rect(view.w / 2 - 44, 3, 88, 24, "rgba(10,12,18,0.72)");
+      Render.text(GameData.floorLabel(dg.floor, dg.dungeon), view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
+      Render.text("のこり " + mm + ":" + (ss < 10 ? "0" : "") + ss, view.w / 2, 13, { size: 11, align: "center", bold: true, color: tcol });
 
-    // 右上（メニューのボタンの下）：小さな地図
-    var mc = 9, mh = 6, mg = 3, ms = Dungeon.mapSize(mc, mh, mg);
-    var mx = view.w - 6 - ms.w, my = 24;
-    Render.rect(mx - 3, my - 3, ms.w + 6, ms.h + 6, "rgba(10,12,18,0.72)");
-    Dungeon.drawMap(Render.ctx, dg, mx, my, mc, mh, mg, curKey);
+      // 右上（メニューのボタンの下）：小さな地図
+      var mc = 9, mh = 6, mg = 3, ms = Dungeon.mapSize(mc, mh, mg);
+      var mx = view.w - 6 - ms.w, my = 24;
+      Render.rect(mx - 3, my - 3, ms.w + 6, ms.h + 6, "rgba(10,12,18,0.72)");
+      Dungeon.drawMap(Render.ctx, dg, mx, my, mc, mh, mg, curKey);
 
-    // ?debug=1 のときだけ：手ごたえの数
-    if (debug) {
-      var avg = tally.kills ? (tally.swingsToKill / tally.kills).toFixed(1) : "-";
-      var tx = view.w - 6, ty = my + ms.h + 6;
-      Render.text("1体に当てた回数（平均） " + avg, tx, ty, { size: 7, align: "right", color: "#a3a8bd" });
-      Render.text("受けた攻撃 " + tally.hitsTaken + "回　たおれた " + tally.downs + "回", tx, ty + 9, { size: 7, align: "right", color: "#a3a8bd" });
+      // ?debug=1 のときだけ：手ごたえの数
+      if (debug) {
+        var avg = tally.kills ? (tally.swingsToKill / tally.kills).toFixed(1) : "-";
+        var tx = view.w - 6, ty = my + ms.h + 6;
+        Render.text("1体に当てた回数（平均） " + avg, tx, ty, { size: 7, align: "right", color: "#a3a8bd" });
+        Render.text("受けた攻撃 " + tally.hitsTaken + "回　たおれた " + tally.downs + "回", tx, ty + 9, { size: 7, align: "right", color: "#a3a8bd" });
+      }
     }
 
     // ボスの HP（画面の上に大きく）
@@ -1020,8 +1033,117 @@
       trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode };
       settings.correct = a.correct; settings.dungeon = a.dungeon || "forest1"; startFloor(a.floor, a.seed, a); updateButtons(true); Sound.bgm("dungeon");
     },
-    resultFromSnapshot: resultFromSnapshot
+    resultFromSnapshot: resultFromSnapshot,
+    startTraining: startTraining
   };
+
+  // ---------- 訓練場（2026-10-21 保護者の案） ----------
+  // 宿屋の訓練場のタブから入る。まんなかの像（木・石・銅）を攻撃して、武器やスキルの強さをたしかめる。
+  // HP・MP は本当に減る（すみの回復の泉で全快）。像はこわれても0.6秒で元にもどる。経験値・お金・素材・図鑑・セーブには何も残らない。
+  // 画面の右に、1秒あたりのダメージ（最近10秒）・合計ダメージ・使った MP・こわした回数とかかった時間を出す。
+  var training = null;
+  function startTraining(cfg) {
+    training = { type: cfg.type, attack: !!cfg.attack, res: cfg.res || {}, statue: null, respawn: 0, clock: 0 };
+    resetTrainStats();
+    trial = { correct: 0, subjects: [], test: true, training: true };
+    settings.correct = 0; settings.dungeon = "forest1";
+    dg = Dungeon.trainingFloor(training.type);
+    Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
+    Party.resetAll();
+    active = true; paused = false; choosing = false; cine = null;
+    pauseEl.hidden = true; chooseEl.hidden = true;
+    A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
+    run = newRun();
+    enterRoom(dg.start, null);
+    prerender(dg);
+    training.prevMp = Party.members().map(function (m) { return m.mp; });
+    say("訓練場：像を攻撃して、武器やスキルの強さをたしかめよう");
+    updateButtons(true); Sound.bgm("dungeon");
+  }
+  function resetTrainStats() {
+    training.total = 0; training.mp = 0; training.kills = 0; training.lastKill = null; training.log = []; training.firstHit = null; training.spawnHit = null;
+  }
+  function spawnStatue(slot) {
+    var e = Enemies.spawn(slot.type, slot.x, slot.y, GameData.ENEMIES[slot.type].trainDepth);
+    var res = {}; Object.keys(training.res).forEach(function (k) { res[k] = training.res[k]; });
+    e.res = res;
+    e.face = { x: 0, y: 1 };
+    if (!training.attack) {   // 攻撃してこない像：その場から動かない
+      var d = {}; Object.keys(e.def).forEach(function (k) { d[k] = e.def[k]; });
+      d.kind = "dummy"; d.speed = 0; e.def = d;
+    }
+    e.slot = slot;
+    training.statue = e; training.lastHp = e.hp; training.spawnHit = null;
+  }
+  function trainKill(e) {
+    training.kills++;
+    if (training.spawnHit !== null) training.lastKill = training.clock - training.spawnHit;
+    training.respawn = 0.6;
+    Battle.pop(e.x, e.y - 34, "こわれた！", "#f2c14e", 8);
+  }
+  function trainUpdate(dt) {
+    training.clock += dt;
+    var st = training.statue;
+    // 像に入ったダメージ（毒などもふくむ）
+    if (st && st.hp < training.lastHp) {
+      var dmg = training.lastHp - st.hp;
+      training.total += dmg; training.log.push([training.clock, dmg]);
+      if (training.firstHit === null) training.firstHit = training.clock;
+      if (training.spawnHit === null) training.spawnHit = training.clock;
+      training.lastHp = st.hp;
+    }
+    // 使った MP（回復の泉などで増えたぶんは数えない）
+    Party.members().forEach(function (m, i) {
+      var pv = training.prevMp[i];
+      if (m.mp < pv) training.mp += pv - m.mp;
+      training.prevMp[i] = m.mp;
+    });
+    // こわれた像は、少しして元にもどる
+    if (training.respawn > 0) {
+      training.respawn -= dt;
+      if (training.respawn <= 0) { spawnStatue(dg.cells[curKey].enemies[0]); run.roomAlive = 1; }
+    }
+    while (training.log.length && training.clock - training.log[0][0] > 10) training.log.shift();
+  }
+  function trainRevive() {
+    Party.members().forEach(function (m) { m.down = false; m.hp = m.stats.hp; m.mp = m.stats.mp; m.status = {}; });
+    training.prevMp = Party.members().map(function (m) { return m.mp; });
+    A.down = false; A.inv = 1;
+    say("3人ともたおれた…（訓練なので、みんな元気にもどった）");
+  }
+  function drawTrainHud() {
+    var st = training.statue, nm = GameData.ENEMIES[training.type].name;
+    Render.rect(view.w / 2 - 60, 3, 120, 24, "rgba(10,12,18,0.72)");
+    Render.text("訓練場", view.w / 2, 5, { size: 7, align: "center", color: "#a3c88a" });
+    Render.text(nm + (training.attack ? "（攻撃あり）" : ""), view.w / 2, 13, { size: 10, align: "center", bold: true, color: "#ece7da" });
+    // 右上：数字
+    var x = view.w - 6, y = 26, span = training.firstHit === null ? 0 : Math.min(10, training.clock - training.firstHit);
+    var recent = 0; training.log.forEach(function (l) { recent += l[1]; });
+    var dps = span >= 0.5 ? recent / Math.max(1, span) : 0;
+    var lines = [
+      ["1秒あたりのダメージ " + Math.round(dps) + "（最近10秒）", "#ffd24a"],
+      ["合計ダメージ " + Math.round(training.total), "#ece7da"],
+      ["使った MP " + Math.round(training.mp), "#a3c8ff"],
+      ["こわした回数 " + training.kills + (training.lastKill !== null ? "　前回 " + training.lastKill.toFixed(1) + "秒" : ""), "#ece7da"],
+      ["像の HP " + Math.max(0, Math.ceil(st && !st.dead ? st.hp : 0)) + "/" + (st ? st.maxHp : 0), "#ef9a9a"]
+    ];
+    Render.rect(x - 150, y - 3, 153, lines.length * 10 + 5, "rgba(10,12,18,0.72)");
+    lines.forEach(function (l, i) { Render.text(l[0], x, y + i * 10, { size: 7, align: "right", color: l[1] }); });
+  }
+  function leaveTraining() {
+    setPaused(false);
+    active = false; dg = null; training = null;
+    Enemies.clear(); Combat.clear(); Battle.clear();
+    Sound.bgm("town");
+    Town.openTraining();
+  }
+  document.getElementById("trainReset").addEventListener("click", function () {
+    if (!training) return;
+    resetTrainStats();
+    training.prevMp = Party.members().map(function (m) { return m.mp; });
+    setPaused(false);
+    say("数字を0にもどした");
+  });
 
   // ---------- 一時停止とテスト用の設定 ----------
   var pauseEl = document.getElementById("pause");
@@ -1029,6 +1151,7 @@
   document.getElementById("resumeBtn").addEventListener("click", function () { setPaused(false); });
   // メニューから冒険をやめる：時間切れと同じ（拾った物と経験値は持ち帰り、階層は進まない）（2026-10-17 決定）
   document.getElementById("quitBtn").addEventListener("click", function () {
+    if (dg && dg.training) { leaveTraining(); return; }
     Dialog.confirm("冒険をやめて拠点にもどりますか？\n（拾った物と経験値は持ち帰れるけれど、階層は進みません）", function () {
       setPaused(false);
       finish("quit");
@@ -1040,7 +1163,12 @@
     paused = on;
     pauseEl.hidden = !on;
     Input.releaseAll();
-    if (on) { drawBigMap(); buildTools(); snapshot(); }
+    // 訓練場：道具と地図は出さず、「訓練場を出る」と「数字を0にもどす」
+    var tr = !!(dg && dg.training);
+    document.getElementById("quitBtn").textContent = tr ? "訓練場を出る（宿屋にもどる）" : "冒険をやめて拠点にもどる";
+    pauseEl.querySelector(".toolbox").hidden = tr; pauseEl.querySelector(".mapbox").hidden = tr;
+    document.getElementById("trainReset").hidden = !tr;
+    if (on && !tr) { drawBigMap(); buildTools(); snapshot(); }
   }
 
   // メニューの道具：お店で買った薬を使う（段階5-2①）
@@ -1138,7 +1266,8 @@
       step: function (dt) { if (!paused && !choosing) update(dt); draw(); Input.endFrame(); },
       start: startFloor, enter: enterRoom, boss: function () { return boss; },
       rebuild: function (lv) { GameState.setLevelForTest(lv || 1); startFloor(settings.floor); },
-      state: function () { return { paused: paused, choosing: choosing }; }
+      state: function () { return { paused: paused, choosing: choosing }; },
+      training: function () { return training; }
     };
   }
 
