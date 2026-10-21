@@ -128,6 +128,7 @@ var Parent = (function () {
 
     renderLog();
     renderHistory();
+    renderDiag();
     renderConnect();
 
     // 試しモード
@@ -179,6 +180,7 @@ var Parent = (function () {
         var line = el("div", "log-line");
         if (r.kind === "rest") line.appendChild(document.createTextNode("休みの日（知恵の試練だけ）　" + hm + "　"));
         else { n++; line.appendChild(document.createTextNode(n + "回目　" + hm + "　" + GameData.floorLabel(r.floor, r.dungeon) + "　" + (KIND[r.kind] || r.kind) + "　")); }
+        if (r.skipped) { line.appendChild(el("span", "ng", "試練なし（問題を読みこめず、とばした）")); div.appendChild(line); return; }
         line.appendChild(document.createTextNode("試練 " + r.correct + " / 4　"));
         SUBJECTS.forEach(function (s) {
           var ok = (r.subjects || []).indexOf(s.id) >= 0;
@@ -191,6 +193,23 @@ var Parent = (function () {
   }
 
   // セーブの復元：GAS の「セーブの控え」（最近の10回分）から
+  // 知恵の試練の問題の読みこみの記録（2026-10-22：読みこめない原因を調べるため。この端末の最近20回）
+  function renderDiag() {
+    var box = document.getElementById("parentDiag"); if (!box) return;
+    box.textContent = "";
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem("bd-trial-diag") || "[]"); } catch (e) { list = []; }
+    if (!Array.isArray(list) || !list.length) { box.appendChild(el("p", "note", "まだ記録がない")); return; }
+    function sec(ms) { return typeof ms === "number" ? (Math.round(ms / 100) / 10) + "秒" : "－"; }
+    list.forEach(function (d) {
+      var at = new Date(d.at), t = (at.getMonth() + 1) + "/" + at.getDate() + " " + at.getHours() + ":" + ("0" + at.getMinutes()).slice(-2);
+      var line = el("div", "log-line");
+      line.appendChild(el("span", d.ok ? "ok" : "ng", (d.ok ? "○ 読みこめた" : "× 読みこめない") + "　"));
+      line.appendChild(document.createTextNode(t + "　問題 " + sec(d.q) + "・記録 " + sec(d.r) +
+        (d.ok ? "　（問題 " + d.nq + "問・記録 " + d.nr + "件）" : "　" + (d.what || ""))));
+      box.appendChild(line);
+    });
+  }
   function renderHistory() {
     var box = document.getElementById("historyList"); box.textContent = "";
     box.appendChild(el("p", "note", "読みこんでいます…"));

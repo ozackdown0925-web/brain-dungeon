@@ -65,27 +65,53 @@ var Trial = (function () {
   function close() { screen.hidden = true; }
   $("trialBack").addEventListener("click", function () { close(); Base.showBase(null); });
 
-  // インターネットにつながらないときは遊べない（記録とセーブがいつもそろうように）
+  // 問題が読みこめないとき：「もう一度」と、問題をとばしてダンジョンに入るボタン（2026-10-22 保護者の希望。加護なし・正解0問あつかい）
+  // 休みの日は、とばしても入れるダンジョンがないので「もう一度」だけ
   function offline(msg) {
-    notice("インターネットにつながっていません。つないでから「もう一度」を押してください。" + (msg ? "（" + msg + "）" : ""));
+    notice("問題を読みこめませんでした。" + (msg ? "（" + msg + "）" : "") + "「もう一度」を押してください。");
     var b = el("button", "dq-btn small", "もう一度"); b.type = "button"; b.addEventListener("click", load);
     $("trialNotice").appendChild(document.createTextNode(" ")); $("trialNotice").appendChild(b);
+    if (!rest && onDone) {
+      var s = el("button", "dq-btn small", "問題をとばしてダンジョンへ（加護なし）"); s.type = "button";
+      s.addEventListener("click", function () {
+        Dialog.confirm("問題をとばしてダンジョンに入りますか？\n（知恵の試練は0問正解のあつかいで、加護はつきません。宝玉も出ません）", function () {
+          close();
+          onDone({ correct: 0, subjects: [], skipped: true });
+        }, null, { yes: "とばして入る", no: "もどる" });
+      });
+      $("trialNotice").appendChild(document.createTextNode(" ")); $("trialNotice").appendChild(s);
+    }
+  }
+
+  // 読みこみの記録（2026-10-22：失敗する原因を調べるため。保護者画面で見られる。最近の20回）
+  function diag(entry) {
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem("bd-trial-diag") || "[]"); } catch (e) { list = []; }
+    if (!Array.isArray(list)) list = [];
+    entry.at = new Date().toISOString();
+    list.unshift(entry); list.length = Math.min(list.length, 20);
+    try { localStorage.setItem("bd-trial-diag", JSON.stringify(list)); } catch (e) { /* そのまま */ }
   }
 
   function load() {
     notice("問題を読みこんでいます…");
-    if (navigator.onLine === false) { offline(""); return; }
-    var qs = BDApi.call("drillQuestions", {}, key);
-    var rs = BDApi.call("history", {}, key);
+    if (navigator.onLine === false) { diag({ ok: false, what: "端末がオフライン" }); offline("この iPad がインターネットにつながっていない"); return; }
+    // 問題と記録は、ふえるほど時間がかかるので、60秒まで待つ（ほかは30秒）。どちらが失敗したか・何秒かかったかを記録する
+    var t0 = Date.now(), took = {};
+    function timed(name, p) { return p.then(function (r) { took[name] = Date.now() - t0; return r; }, function (e) { took[name] = Date.now() - t0; e.which = name; throw e; }); }
+    var qs = timed("問題", BDApi.call("drillQuestions", {}, key, { timeout: 60000 }));
+    var rs = timed("記録", BDApi.call("history", {}, key, { timeout: 60000 }));
     qs.then(function (q) {
       return rs.then(function (r) { return { q: q.questions, r: r.records }; });
     }).then(function (got) {
+      diag({ ok: true, q: took["問題"], r: took["記録"], nq: (got.q || []).length, nr: (got.r || []).length });
       start(got.q, got.r.concat(readPending().filter(function (x) { return (x._k || key) === key; })));
       notice("");
       if (readPending().length) flushPending();
     }, function (err) {
       if (err.kind === "forbidden") { BDApi.clearKey("player"); key = ""; close(); Sync.reconnect("鍵が使えなくなりました。新しいプレイヤー用の鍵を入れてください。"); return; }
-      offline(err.message);
+      diag({ ok: false, what: (err.which || "") + "：" + err.message, q: took["問題"], r: took["記録"] });
+      offline((err.which ? err.which + "の読みこみで、" : "") + err.message);
     });
   }
 

@@ -304,7 +304,7 @@ var Base = (function () {
     Loading.show(GameData.floorLabel(floor, dungeon) + "へ", function () {
       Adventure.start(floor, Adventure.settings.seed ? Number(Adventure.settings.seed) : 0,
         tryOpt ? { correct: tryOpt.correct, subjects: tryOpt.subjects, tryMode: true, dungeon: dungeon } :
-        trial ? { correct: trial.correct, subjects: trial.subjects, dungeon: dungeon } : { correct: Adventure.settings.correct, subjects: [], test: true, dungeon: dungeon });
+        trial ? { correct: trial.correct, subjects: trial.subjects, skipped: !!trial.skipped, dungeon: dungeon } : { correct: Adventure.settings.correct, subjects: [], test: true, dungeon: dungeon });
     });
   }
 

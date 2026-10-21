@@ -229,14 +229,14 @@ var GameState = (function () {
       game.adventureCount = { date: todayStr(), n: adventuresToday() + 1 }; game.lastAdventure = todayStr();
       // 遊んだ記録（保護者画面で見る）。最近の100回分
       game.log.unshift({ date: todayStr(), at: new Date().toISOString(), dungeon: r.dungeon || "forest1", floor: r.floor, kind: r.kind, cleared: !!r.cleared,
-                         correct: r.correct || 0, subjects: r.subjects || [] });
+                         correct: r.correct || 0, subjects: r.subjects || [], skipped: !!r.skipped });
       if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
     }
     save();
     var dn = GameData.dungeonOf(r.dungeon);
     pushHistory(r.cleared ? dn.short + "の" + r.floor + "階をクリア" : dn.short + "の" + r.floor + "階から帰った");
     // 冒険の記録（GAS）：ダンジョンの名前は、前からある「メモ」の列に入れる（GAS の形は変えない）
-    if (!r.test && window.Sync) Sync.log({ date: todayStr(), kind: r.kind, floor: r.floor, correct: r.correct || 0, subjects: r.subjects || [], note: dn.name });
+    if (!r.test && window.Sync) Sync.log({ date: todayStr(), kind: r.kind, floor: r.floor, correct: r.correct || 0, subjects: r.subjects || [], note: dn.name + (r.skipped ? "（試練なし：問題を読みこめず）" : "") });
     return report;
   }
 

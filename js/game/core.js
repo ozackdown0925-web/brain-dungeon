@@ -86,7 +86,7 @@
     var keyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].key && dg.cells[k].key.taken; });
     var ckeyTaken = Object.keys(dg.cells).some(function (k) { return dg.cells[k].ckey && dg.cells[k].ckey.taken; });
     GameState.setAdventure({
-      state: "playing", dungeon: dg.dungeon, floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode,
+      state: "playing", dungeon: dg.dungeon, floor: dg.floor, seed: dg.seed, correct: settings.correct, subjects: trial.subjects, test: !!trial.test, tryMode: !!trial.tryMode, skipped: !!trial.skipped,
       timeLeft: Math.max(0, run.timeLeft), opened: opened, found: found, picked: picked, keyTaken: keyTaken, hasKey: !!dg.hasKey, ckeyTaken: ckeyTaken, hasCKey: !!dg.hasCKey,
       lockOpen: !!(dg.lock && dg.lock.open), bossDown: !!dg.bossDown, bossRetried: !!run.bossRetried, bossSave: run.bossSave || null, bossBest: Math.max(run.bossBest || 0, curKey === dg.exit && !dg.bossDown ? bossDamaged() : 0),
       run: { gold: run.gold, mat: run.mat, got: run.got, exp: run.exp, mastery: run.mastery, byType: run.byType, kills: run.kills, title: run.title || null },
@@ -133,7 +133,7 @@
   function resultFromSnapshot(a, kind) {
     return { exp: a.run.exp, mastery: a.run.mastery, gold: a.run.gold, mat: a.run.mat, items: a.run.got, title: a.run.title,
              dungeon: a.dungeon || "forest1", floor: a.floor, cleared: false, boss: GameData.isBossFloor(a.dungeon, a.floor), kills: a.run.byType, kind: kind, test: !!a.test, tryMode: !!a.tryMode,
-             correct: a.correct || 0, subjects: a.subjects || [] };
+             correct: a.correct || 0, subjects: a.subjects || [], skipped: !!a.skipped };
   }
 
   // 部屋に入る。fromDir は入ってきた道の向き（n/s/w/e）、null なら部屋のまんなか（入口の部屋）。
@@ -996,7 +996,7 @@
     var tl = Math.ceil(run.timeLeft);
     var lines = [
       "たおした敵 " + run.kills + "体　通った部屋 " + finishedCells() + "　のこり時間 " + Math.floor(tl / 60) + ":" + (tl % 60 < 10 ? "0" : "") + (tl % 60),
-      "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "") +
+      (trial.skipped ? "知恵の試練：なし（問題を読みこめず、とばした）" : "知恵の試練の正解 " + settings.correct + "問" + (trial.tryMode ? "（試しモード）" : trial.test ? "（テスト用の出発）" : "")) +
         (trial.subjects.length ? "　加護：" + trial.subjects.map(function (s) { return Trial.BLESS[s].name; }).join("・") : ""),
       run.title ? "称号「" + run.title + "」を手に入れた！（書庫の称号の棚に飾られる）" : "",
       run.challenge ? "チャレンジボーナス：ボスのHPを" + Math.round(run.challenge.best * 100) + "%けずった！（" + run.challenge.gold + "G・素材" + run.challenge.mat + "こ・経験値と熟練度も少し）" : "",
@@ -1025,7 +1025,7 @@
     var result = {
       exp: run.exp.slice(), mastery: run.mastery.slice(), gold: run.gold, mat: run.mat, items: run.got.slice(),
       title: run.title || null, dungeon: dg.dungeon, floor: dg.floor, cleared: kind === "clear", boss: dg.boss, kills: run.byType, kind: kind, test: !!trial.test, tryMode: !!trial.tryMode,
-      correct: settings.correct, subjects: trial.subjects
+      correct: settings.correct, subjects: trial.subjects, skipped: !!trial.skipped
     };
     GameState.setAdventure({ state: "finished", result: result }); // 「拠点にもどる」を押す前に閉じても、次に開いたとき受け取れる
     button("つづける", function () { active = false; dg = null; Enemies.clear(); Combat.clear(); Base.returnFrom(result); });
@@ -1043,7 +1043,7 @@
     },
     // 途中で閉じた冒険の続き（その階層の入口から）
     resume: function (a) {
-      trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode };
+      trial = { correct: a.correct, subjects: a.subjects || [], test: !!a.test, tryMode: !!a.tryMode, skipped: !!a.skipped };
       settings.correct = a.correct; settings.dungeon = a.dungeon || "forest1"; startFloor(a.floor, a.seed, a); updateButtons(true); Sound.bgm("dungeon");
     },
     resultFromSnapshot: resultFromSnapshot,
