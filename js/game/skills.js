@@ -208,9 +208,73 @@ var Combat = (function () {
     if (s.once) c.used[id] = true;
     Battle.pop(A().x, A().y - 30, s.name, "#ffe7a0", 8);
     Sound.play("skill");
-    curSkill = id;
-    run(c, s.fx, 0);
+    // スキルの演出（2026-10-21 保護者の案）：構え（黄色い輪）→ 画面が少し暗くなり、使った仲間のまわりが光る → 技が出る。
+    // どのスキルも 0.25 秒は構える。もともと構えやためが長いスキル（弓・魔法・ためる技）は、そのままの長さ。時間は止めない
+    var own = ownWindup(s.fx), col = castColor(s);
+    if (own > 0) {
+      curSkill = id;
+      run(c, s.fx, 0);
+      later(own, function () { if (Party.current() === c && !c.down) castFlash(col); });
+      return "";
+    }
+    var a = A();
+    a.busy = Math.max(a.busy, CAST_TIME);
+    effects.push({ kind: "charge", t: CAST_TIME, max: CAST_TIME });
+    later(CAST_TIME, function () {
+      if (Party.current() !== c || c.down || c.status.sleep) {   // 構えているあいだに入れかえた・たおれた・眠った：MP と待ち時間はもどす
+        c.mp = Math.min(c.stats.mp, c.mp + cost); c.ct[id] = 0; if (s.once) c.used[id] = false;
+        return;
+      }
+      castFlash(col);
+      curSkill = id;
+      run(c, s.fx, 0);
+    });
     return "";
+  }
+
+  var CAST_TIME = 0.25;
+  // もともとある構え・ための長さ（なければ 0）：ためる技（charge）、狙ってから撃つ技（shot・rain・zone）
+  function ownWindup(fx) {
+    var f = fx[0];
+    if (f.t === "charge") return f.time;
+    if (f.t === "shot") return f.stat === "m" ? AIM.bolt.before : AIM.bow.before;
+    if (f.t === "rain") return AIM.bow.before;
+    if (f.t === "zone") return AIM.bolt.before;
+    return 0;
+  }
+  // 光の色：スキルの色があればその色。なければ魔法は青紫、回復・強くする技は緑、ほかは金色
+  function castColor(s) {
+    for (var i = 0; i < s.fx.length; i++) if (s.fx[i].color) return s.fx[i].color;
+    var t = s.fx[0].t;
+    if (t === "heal" || t === "buff" || t === "cure" || t === "revive" || t === "regen") return "#9fe8a0";
+    for (var j = 0; j < s.fx.length; j++) if (s.fx[j].stat === "m") return "#b48cff";
+    return "#ffe7a0";
+  }
+  // 画面が少し暗くなり、使った仲間のまわりが光る（0.4秒）
+  var cast = null;
+  function castFlash(color) {
+    cast = { t: 0.4, max: 0.4, color: color, seed: Math.random() * 6 };
+  }
+  // 敵のあとで、キャラより先に描く（使った仲間は暗くならない）
+  function drawCastBack(cam, view) {
+    if (!cast) return;
+    var ctx = Render.ctx, a = A(), q = 1 - cast.t / cast.max;
+    var env = q < 0.15 ? q / 0.15 : q > 0.6 ? (1 - q) / 0.4 : 1;
+    Render.rect(0, 0, view.w, view.h, "rgba(8,6,20," + (0.32 * env).toFixed(3) + ")");
+    var x = a.x - cam.x, y = a.y - cam.y - 6;
+    glowDot(ctx, x, y, 22 + 10 * q, "#ffffff", cast.color, 0.55 * env);
+    ctx.strokeStyle = rgba(cast.color, 0.8 * env); ctx.lineWidth = 1.5;
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 11, 10 + 10 * q, (10 + 10 * q) * 0.4, 0, 0, Math.PI * 2); else ctx.arc(x, y + 11, 10 + 10 * q, 0, Math.PI * 2); ctx.stroke();
+  }
+  // キャラの前：のぼる光の粒
+  function drawCastFront(ctx, cam) {
+    if (!cast) return;
+    var a = A(), q = 1 - cast.t / cast.max, env = q > 0.6 ? (1 - q) / 0.4 : 1;
+    for (var n = 0; n < 8; n++) {
+      var ph = (q * 1.6 + n / 8) % 1, ang = cast.seed + n * 0.785;
+      var px = a.x - cam.x + Math.cos(ang) * (8 + 6 * ph), py = a.y - cam.y + 4 - ph * 26;
+      glowDot(ctx, px, py, 2.5, "#ffffff", cast.color, (1 - ph) * env);
+    }
   }
 
   // 効果を順に行う。charge があれば、その時間だけ待ってから続ける
@@ -456,6 +520,7 @@ var Combat = (function () {
   function update(dt) {
     var room = hooks.room;
     clock += dt;
+    if (cast) { cast.t -= dt; if (cast.t <= 0) cast = null; }
     for (var q = queue.length - 1; q >= 0; q--) {
       queue[q].t -= dt;
       if (queue[q].t <= 0) { var fn = queue[q].fn; queue.splice(q, 1); fn(); }
@@ -512,7 +577,7 @@ var Combat = (function () {
     for (var k = effects.length - 1; k >= 0; k--) { effects[k].t -= dt; if (effects[k].t <= 0) effects.splice(k, 1); }
   }
 
-  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; }
+  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; cast = null; }
 
   // ---------- 描画 ----------
   function draw(cam) {
@@ -542,6 +607,7 @@ var Combat = (function () {
       if (s.spec.elem === "fire") drawFireball(ctx, s, x, y, cam); else drawOrb(ctx, s, x, y, cam);
     });
     effects.forEach(function (ef) { drawEffect(ctx, ef, a, cam); });
+    drawCastFront(ctx, cam);
   }
 
   // ---------- 絵の部品（2026-10-19。ドット絵ではなく、光とすけ感で表す） ----------
@@ -926,5 +992,5 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot, mpCost: mpCost };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack };
 })();
