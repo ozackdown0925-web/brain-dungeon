@@ -406,6 +406,20 @@ var Dungeon = (function () {
     }
   }
 
+  // ---------- 訓練場（2026-10-21 保護者の案） ----------
+  // 道のない1部屋。まんなかに像（type）、左下のすみに回復の泉。出口・鍵・宝箱・罠はない
+  function trainingFloor(type) {
+    var c = { x: 2, y: 1, kind: "start", doors: [], name: "訓練場", visited: true, chests: [], traps: [], pickups: [], key: null, ckey: null };
+    c.room = buildRoom(TrainingRoom, []);
+    c.room.theme = "forest";
+    c.center = centerSpot(c.room);
+    c.enemies = [{ type: type, tx: 0, ty: 0, x: c.center.x, y: c.center.y - 28, dead: false }];
+    c.spring = { x: 5 * World.TILE, y: 12 * World.TILE };   // 左下のすみ（左上は画面の表示と重なるため）
+    var cells = {}; cells[key(2, 1)] = c;
+    return { floor: 1, seed: 0, cells: cells, start: key(2, 1), exit: null, boss: false, lock: null, hasKey: false, hasCKey: false,
+             training: true, dungeon: "forest1", power: 1 };
+  }
+
   // 部屋の外へ出た向き（出ていなければ null）
   function leftRoom(room, a) {
     if (a.x < 0) return "w";
@@ -474,7 +488,7 @@ var Dungeon = (function () {
   function mapSize(cw, ch, gap) { return { w: GRID_W * cw + (GRID_W - 1) * gap, h: GRID_H * ch + (GRID_H - 1) * gap }; }
 
   return {
-    generate: generate, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
+    generate: generate, trainingFloor: trainingFloor, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
     enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, DIRS: DIRS
   };
 })();

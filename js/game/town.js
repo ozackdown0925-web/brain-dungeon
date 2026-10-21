@@ -322,13 +322,74 @@ var Town = (function () {
 
     // 宿屋の中のタブ：「装備」「アクティブ」「パッシブ」（2026-10-19 保護者の案。横長の画面で、左に名前・右にくわしく）
     var tabs = el("div", "tabs");
-    [["equip", "装備"], ["active", "アクティブスキル"], ["passive", "パッシブスキル"]].forEach(function (t) {
+    [["equip", "装備"], ["active", "アクティブスキル"], ["passive", "パッシブスキル"], ["training", "訓練場"]].forEach(function (t) {
       tabs.appendChild(button(t[1], function () { innTab = t[0]; say(""); render(); }, "chip" + (innTab === t[0] ? " sel" : "")));
     });
     bodyEl.appendChild(tabs);
     if (innTab === "equip") { renderEquip(g, true); return; }
+    if (innTab === "training") { renderTraining(); return; }
     renderSkillTab(h, innTab === "passive");
   }
+
+  // ---------- 宿屋：訓練場（2026-10-21 保護者の案） ----------
+  // 武器の強さやスキルをためす部屋。まんなかにゴブリンの形の像（木・石・銅）、すみに回復の泉。
+  // 像は攻撃してくるかを選べる。属性ごとの効き方（弱点・ふつう・半減・無効）も選べる。経験値やお金はもらえない。
+  var STATUES = [["statue_wood", "木像", "ゴブリンの剣士の 1階くらい"], ["statue_stone", "石像", "8階くらい"], ["statue_bronze", "銅像", "15階くらい（瘴気の森 1階）"]];
+  var RES_STEPS = [[1.5, "弱点"], [1, "ふつう"], [0.5, "半減"], [0, "無効"]];
+  function trainCfg() {
+    var c = null;
+    try { c = JSON.parse(localStorage.getItem("bd-training") || "null"); } catch (e) { c = null; }
+    if (!c || typeof c !== "object") c = {};
+    if (!GameData.ENEMIES[c.type] || !GameData.ENEMIES[c.type].training) c.type = "statue_wood";
+    c.attack = !!c.attack;
+    if (!c.res || typeof c.res !== "object") c.res = {};
+    return c;
+  }
+  function saveTrainCfg(c) { try { localStorage.setItem("bd-training", JSON.stringify(c)); } catch (e) { /* そのまま */ } }
+  function renderTraining() {
+    var cfg = trainCfg();
+    function set(fn) { fn(cfg); saveTrainCfg(cfg); render(); }
+    var box = el("div", "slot");
+    box.appendChild(el("h3", "", "訓練場"));
+    box.appendChild(el("p", "note", "今の3人の装備とスキルで入る。まんなかの像を攻撃して、武器やスキルの強さをたしかめる部屋。HP と MP は本当に減り、部屋のすみの回復の泉にふれると全快する。像はこわれても、すぐに元にもどる。経験値・お金・素材はもらえず、道具は使えない。メニューの「訓練場を出る」で宿屋にもどる。"));
+
+    box.appendChild(el("div", "train-head", "像"));
+    var r1 = el("div", "chips");
+    STATUES.forEach(function (s) {
+      r1.appendChild(button(s[1] + "（" + s[2] + "）", function () { set(function (c) { c.type = s[0]; }); }, "chip" + (cfg.type === s[0] ? " sel" : "")));
+    });
+    box.appendChild(r1);
+
+    box.appendChild(el("div", "train-head", "像の攻撃"));
+    var r2 = el("div", "chips");
+    [[false, "攻撃してこない（動かない）"], [true, "攻撃してくる（ゴブリンの剣士と同じ）"]].forEach(function (a) {
+      r2.appendChild(button(a[1], function () { set(function (c) { c.attack = a[0]; }); }, "chip" + (cfg.attack === a[0] ? " sel" : "")));
+    });
+    box.appendChild(r2);
+
+    box.appendChild(el("div", "train-head", "属性の効き方"));
+    Object.keys(GameData.ELEMENTS).forEach(function (k) {
+      if (k === "none") return;
+      var row = el("div", "chips train-res");
+      row.appendChild(el("span", "train-elem", GameData.ELEMENTS[k]));
+      var cur = cfg.res[k] === undefined ? 1 : cfg.res[k];
+      RES_STEPS.forEach(function (r) {
+        row.appendChild(button(r[1], function () { set(function (c) { if (r[0] === 1) delete c.res[k]; else c.res[k] = r[0]; }); }, "chip" + (cur === r[0] ? " sel" : "")));
+      });
+      box.appendChild(row);
+    });
+    box.appendChild(button("ぜんぶ「ふつう」にもどす", function () { set(function (c) { c.res = {}; }); }));
+
+    var go = button("訓練場に入る", function () {
+      townEl.hidden = true;
+      Adventure.startTraining(trainCfg());
+    }, "big");
+    go.style.marginTop = "12px";
+    box.appendChild(el("div", "", "")).appendChild(go);
+    bodyEl.appendChild(box);
+  }
+  // 訓練場から出たとき：宿屋の訓練場のタブを開く
+  function openTraining() { innTab = "training"; open("party"); }
 
   var innTab = "equip", selSkill = { active: null, passive: null }, selSlot = { active: 0, passive: 0 }, onlyUsable = true;
   function slotsOf(h, passive) { return passive ? h.pset : h.set; }
@@ -591,6 +652,7 @@ var Town = (function () {
     mbox.appendChild(el("h3", "", "モンスター図鑑"));
     Object.keys(GameData.ENEMIES).forEach(function (t) {
       var b = g.book.monsters[t], d = GameData.ENEMIES[t];
+      if (d.training) return;   // 訓練場の像は図鑑に出さない
       var row = el("div", "item-line");
       if (!b || (!b.seen && !b.kills)) { row.appendChild(el("span", "item-name", "？？？")); row.appendChild(el("span", "item-extra", "まだ会っていない")); mbox.appendChild(row); return; }
       row.appendChild(el("span", "item-name", d.name + (d.boss ? "（ボス）" : "")));
@@ -650,7 +712,7 @@ var Town = (function () {
     ["装備と鍛冶屋", ["装備には、ふつう・R・SR・URがある。Rより上が出たらラッキー！",
       "鍛冶屋で鉱石・魔石を使うと、装備を強くできる（＋10まで、必ず成功）。", "鍛冶屋の「強化を移す」で、強化を同じ装備のレア度ちがい（銅の剣 → 銅の剣〈SR〉など）に引きつげる。",
       "いらない装備は倉庫で売却すると、ゴールドと素材になる。"]],
-    ["拠点", ["宿屋：仲間のようす・装備・スキルのセット", "お店：薬とふつうの装備を買う", "鍛冶屋：装備を強くする", "転職の神殿：職業を変える",
+    ["拠点", ["宿屋：仲間のようす・装備・スキルのセット。訓練場で、武器やスキルの強さをためせる", "お店：薬とふつうの装備を買う", "鍛冶屋：装備を強くする", "転職の神殿：職業を変える",
       "倉庫：装備・道具・素材を見る", "書庫：モンスター図鑑・装備図鑑・称号の棚"]],
     ["そだてる", ["敵をたおすと経験値がたまり、レベルが上がる。", "その職業で戦うと熟練度（★）がふえ、新しいスキルを覚える。", "スキルは2種類：アクティブ（ボタンで使う。3つまで）と、パッシブ（セットしておくと、いつも効く。2つまで）。パッシブは、ほかの職で覚えたものもつけられる。",
       "★7 で職業を極めると、上級職（騎士・黒魔道士・スナイパー・修行僧・白魔道士）になれる。転職の神殿の「上級職」から。",
@@ -668,5 +730,5 @@ var Town = (function () {
     });
   }
 
-  return { open: open, close: close };
+  return { open: open, close: close, openTraining: openTraining };
 })();

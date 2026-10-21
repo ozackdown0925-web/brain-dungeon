@@ -448,3 +448,8 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .sk-filter { display: block; font-size: 13px; color: var(--muted); margin: 2px 0 4px; }
 .btn.sk-setbtn { background: var(--pick-bg); border-color: var(--pick); font-size: 15px; padding: 8px 14px; }
 .job-portrait.locked { background: radial-gradient(circle at 50% 70%, rgba(160, 170, 200, 0.22), rgba(0, 0, 0, 0) 70%); }
+
+/* 宿屋の訓練場（2026-10-21） */
+.train-head { margin: 12px 0 4px; color: var(--gold); font-size: 14px; font-weight: bold; }
+.chips.train-res { align-items: center; margin: 4px 0; }
+.train-elem { display: inline-block; width: 2em; font-weight: bold; text-align: center; }

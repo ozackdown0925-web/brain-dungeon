@@ -391,6 +391,11 @@ var GameData = (function () {
       reach: 18, windup: 0.6, cooldown: 2.0, color: "#b49ad8",
       onHit: { type: "poison", chance: 0.3, dur: 6 }
     },
+    // ---- 訓練場の像（2026-10-21 保護者の案）。ゴブリンの剣士の形と強さで、深さ trainDepth のときと同じ。
+    // 弱点・攻撃してくるかは、宿屋の訓練場で選ぶ。training：図鑑には出さない ----
+    statue_wood:   { name: "木像", training: true, trainDepth: 1,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a87a4a" },
+    statue_stone:  { name: "石像", training: true, trainDepth: 8,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#8595a1" },
+    statue_bronze: { name: "銅像", training: true, trainDepth: 15, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#c08440" },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,

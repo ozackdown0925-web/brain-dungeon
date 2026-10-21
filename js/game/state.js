@@ -501,10 +501,12 @@ var GameState = (function () {
     if (!b.tried) b.tried = {};
     return b;
   }
-  function noteSeen(type) { if (game) { monster(type).seen = true; } }
+  // 訓練場の像（training）は図鑑に入れない
+  function training(type) { var d = GameData.ENEMIES[type]; return !!(d && d.training); }
+  function noteSeen(type) { if (game && !training(type)) { monster(type).seen = true; } }
   // 攻撃した属性の効き方を覚える：weak（弱点）・normal・half（いまひとつ）・none（無効）
   function noteHit(type, elem, mult) {
-    if (!game || !elem) return;
+    if (!game || !elem || training(type)) return;
     monster(type).tried[elem] = mult === 0 ? "none" : mult < 1 ? "half" : mult > 1 ? "weak" : "normal";
   }
 

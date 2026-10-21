@@ -8,7 +8,9 @@ var Monsters = (function () {
     A: "#140c1c", B: "#dad45e", C: "#854c30", D: "#442434", E: "#d2aa99", F: "#d27d2c",
     H: "#deeed6", I: "#597dce", J: "#30346d", K: "#d04648", L: "#6a3a98", M: "#3a1a5a", N: "#9a5ad0",
     O: "#2a5a2e", Q: "#4e8a40", R: "#7aaa4a", T: "#8595a1", U: "#c8ccd4", V: "#a04a14", W: "#f8a040",
-    X: "#757161", Y: "#4e4a4e", P: "#b49ad8",   // P：瘴気の霊のうす紫の霧
+    X: "#757161", Y: "#4e4a4e", P: "#b49ad8",
+    // 銅像（訓練場）：銅の明るさと、青さび
+    "5": "#4a2a14", "6": "#8a5428", "7": "#c08440", "8": "#ecc078", "9": "#4f8a74",   // P：瘴気の霊のうす紫の霧
     // 大オオカミの毛（明るい→暗い）
     a: "#dfe6ee", b: "#a9b4c4", c: "#6f7a90", d: "#464c62", e: "#2a2c3c",
     // 大木の葉（明るい→暗い）と幹
@@ -1337,6 +1339,12 @@ var Monsters = (function () {
     ],
   };
 
+  // 訓練場の像（2026-10-21）：ゴブリンの剣士の形のまま、色を木・石・銅に入れかえる
+  var STATUE = {
+    statue_wood:   { C: "u", V: "t", D: "v", Y: "w", R: "t", F: "t", Q: "u", O: "v", B: "w", K: "w", H: "t", U: "t", T: "u" },
+    statue_stone:  { C: "X", V: "T", D: "Y", Y: "Y", R: "U", F: "T", Q: "T", O: "X", B: "Y", K: "Y", H: "U", U: "U", T: "T" },
+    statue_bronze: { C: "6", V: "7", D: "5", Y: "5", R: "8", F: "7", Q: "7", O: "6", B: "9", K: "9", H: "8", U: "8", T: "7" }
+  };
   var cache = {};
   function grid(r) { return r.map(function (s) { return s.split(""); }); }
   // x0〜x1 の列の足（下から5行）を1点上げる（歩く）
@@ -1369,6 +1377,8 @@ var Monsters = (function () {
     var m = SMALL[type] || SMALL.goblin_sword;
     if (frame === "flap") { cache[k] = toCanvas(grid(m[dir + "B"] || m[dir] || m.down), false, white); return cache[k]; }
     var g = grid(m[dir] || m.down);
+    var sw = STATUE[type];
+    if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     if (frame !== "stand" && type !== "vine" && type !== "bee" && type !== "frog" && type !== "wisp" && type !== "shadow_mage") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
