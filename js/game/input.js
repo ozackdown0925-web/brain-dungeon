@@ -1,8 +1,8 @@
 // 入力：PC のキーボードと、iPad の画面のボタン（十字キー＋攻撃・スキル1〜3・切替・メニュー）。
 // ゲームからは Input.axis()（移動の向き）と Input.held(名前)・Input.pressed(名前) で読む。
-// 名前：attack, skill1, skill2, skill3, switch, menu
+// 名前：attack, skill1, skill2, skill3, switch, setswap（スキルセットの切りかえ。2026-10-22）, menu
 var Input = (function () {
-  var ACTIONS = ["attack", "skill1", "skill2", "skill3", "switch", "menu"];
+  var ACTIONS = ["attack", "skill1", "skill2", "skill3", "switch", "setswap", "menu"];
 
   // PC のキー
   var KEYS = {
@@ -13,6 +13,7 @@ var Input = (function () {
     KeyJ: "attack", Space: "attack",
     KeyU: "skill1", KeyI: "skill2", KeyO: "skill3",
     KeyK: "switch", KeyQ: "switch",
+    KeyL: "setswap", KeyP: "setswap",
     Escape: "menu", KeyM: "menu"
   };
 

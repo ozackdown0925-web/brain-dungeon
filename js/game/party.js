@@ -25,6 +25,8 @@ var Party = (function () {
   // 拠点の仲間（GameState の hero）から、冒険に出るキャラを作る。武器は、装備のしくみ（段階5-2）ができるまでは、職業のはじめの武器
   function fromHero(h) {
     var c = makeChar(h.name, h.job, GameState.heroWeaponType(h), h.level, h.set.slice(), h);
+    // スキルセットの切りかえ（2026-10-22）：セットB と、いまどちらを使っているか（0＝A・1＝B）
+    c.setsOn = !!h.setsOpen; c.skillsB = (h.setB || [null, null, null]).slice(); c.page = 0;
     return c;
   }
 
@@ -48,6 +50,11 @@ var Party = (function () {
     if (stat === "patk" && c.stats.backwater && c.hp < c.stats.hp * 0.5) add += c.stats.backwater * (1 - c.hp / (c.stats.hp * 0.5));
     return c.stats[stat] * (1 + add);
   }
+
+  // いま使っているスキルのセット（ボタン3つぶん）
+  function skillsOf(c) { return c.page === 1 && c.setsOn ? c.skillsB : c.skills; }
+  // セットA ⇔ B を入れかえる。できなければ false
+  function flipSet(c) { if (!c.setsOn) return false; c.page = c.page === 1 ? 0 : 1; return true; }
 
   function setup(list) {
     members = list;
@@ -141,7 +148,7 @@ var Party = (function () {
   }
 
   return {
-    actor: actor, makeChar: makeChar, fromHero: fromHero, recalc: recalc, eff: eff, setup: setup, current: current,
+    actor: actor, skillsOf: skillsOf, flipSet: flipSet, makeChar: makeChar, fromHero: fromHero, recalc: recalc, eff: eff, setup: setup, current: current,
     members: function () { return members; }, activeIndex: function () { return active; },
     canSwitch: canSwitch, switchNext: switchNext, switchTo: switchTo, switchCd: function () { return switchCd; },
     tick: tick, addStatus: addStatus, cure: cure, hurtActive: hurtActive, allDown: allDown, resetAll: resetAll

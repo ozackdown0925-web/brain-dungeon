@@ -16,7 +16,9 @@ var GameState = (function () {
     return {
       name: name, face: face, job: job, level: 1, exp: 0,
       base: { str: 10, vit: 10, mag: 10, int: 10 },
-      mastery: {}, learned: [], set: [null, null, null], pset: [null, null],
+      mastery: {}, learned: [], set: [null, null, null], setB: [null, null, null], pset: [null, null],
+      weaponSets: {},   // 武器の種類ごとに覚えておくスキルのセット（2026-10-22）
+      setsOpen: false,  // スキルセットの切りかえ（セットB）が使えるか（上級職になれるようになったら。2026-10-22）
       equip: { weapon: null, armor: null } // null は、はじめから持っている武器・防具
     };
   }
@@ -25,6 +27,9 @@ var GameState = (function () {
   function upgrade(g) {
     g.party.forEach(function (h) {
       if (!h.equip) h.equip = { weapon: null, armor: null };
+      if (!h.setB) h.setB = [null, null, null];
+      if (!h.weaponSets) h.weaponSets = {};
+      if (!h.setsOpen && upperOpen(h)) h.setsOpen = true;   // もう上級職になれる仲間は、はじめから使える
       // パッシブの枠（2026-10-19）：前はアクティブだったスキルがパッシブに変わったので、スキル1〜3から外してパッシブの枠へ
       fitPassiveSlots(h);
       h.learned = h.learned.filter(function (id) { return !!GameData.SKILL[id]; });
@@ -125,6 +130,12 @@ var GameState = (function () {
     return u.need.every(function (n) { return stars(h, n[0]) >= n[1]; });
   }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
+  // なれる上級職の一覧（今の職はのぞく）
+  function upperList(h) { return GameData.UPPER_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
+  // スキルセットの切りかえ（セットB）が使えるか：上級職になれるようになったら（2026-10-22 保護者の案）
+  function upperOpen(h) { return GameData.tierOf(h.job) >= 2 || upperList(h).length > 0; }
+  // アクティブの枠（セットA の3つと、使えるならセットB の3つ）
+  function activeSlots(h) { return h.setsOpen ? h.set.concat(h.setB) : h.set.slice(); }
 
   // 今の職業のスキルを、★の数に合わせて上から順に覚える。覚えたスキルは、空いているスキル1〜3に自動でセットする。
   // ★k のスキルは ★(k−1) で覚える：★1 のスキルは、その職業になったときから使える（2026-10-17。Lv1 でも職業の差が出るように）。★7 は「極めた」印。
@@ -133,10 +144,12 @@ var GameState = (function () {
     GameData.SKILLS.forEach(function (sk) {
       if (sk.job !== h.job || sk.star > st + 1 || h.learned.indexOf(sk.id) >= 0) return;
       h.learned.push(sk.id); got.push(sk.name);
-      // 覚えたスキルは、空いている枠に自動でセットする（アクティブはスキル1〜3、パッシブはパッシブの枠）
-      var slots = sk.passive ? h.pset : h.set;
-      var free = slots ? slots.indexOf(null) : -1;
-      if (free >= 0 && GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) slots[free] = sk.id;
+      // 覚えたスキルは、空いている枠に自動でセットする（アクティブはセットA、空きがなければセットB。パッシブはパッシブの枠）
+      if (!GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) return;
+      if (sk.passive) { var pf = h.pset ? h.pset.indexOf(null) : -1; if (pf >= 0) h.pset[pf] = sk.id; return; }
+      var free = h.set.indexOf(null);
+      if (free >= 0) h.set[free] = sk.id;
+      else if (h.setsOpen && h.setB) { var fb = h.setB.indexOf(null); if (fb >= 0) h.setB[fb] = sk.id; }
     });
     return got;
   }
@@ -168,11 +181,21 @@ var GameState = (function () {
       }
       if (h.level >= MAX_LEVEL) h.exp = 0;
       if (h.level > lv0) lines.push("レベルが " + lv0 + " → " + h.level + " に上がった！");
-      var st0 = stars(h);
+      var st0 = stars(h), up0 = upperList(h);
       h.mastery[h.job] = (h.mastery[h.job] || 0) + Math.round(r.mastery[i] || 0);
       var st1 = stars(h);
       if (st1 > st0) lines.push(GameData.JOBS[h.job].name + "の熟練度が ★" + st1 + " になった！");
       learnSkills(h).forEach(function (n) { lines.push("スキル「" + n + "」を覚えた！"); });
+      // 新しく上級職になれるようになった・スキルセットの切りかえが使えるようになった（2026-10-22 保護者の希望：その場で知らせる）
+      // 「＠」で始まる行は、レベルアップの画面で「（名前）は……」と出す
+      upperList(h).forEach(function (j) {
+        if (up0.indexOf(j) >= 0) return;
+        lines.push("＠上級職「" + GameData.JOBS[j].name + "」に転職できるようになった！（転職の神殿で。上級職はパッシブの枠が3つになる）");
+      });
+      if (!h.setsOpen && upperOpen(h)) {
+        h.setsOpen = true;
+        lines.push("＠スキルセットの切りかえが使えるようになった！（宿屋でセットBにもスキルを3つセットでき、たたかいの中で切りかえられる）");
+      }
       report.push({ name: h.name, lines: lines, exp: Math.round(r.exp[i] || 0) });
     });
     game.gold += r.gold || 0;
@@ -286,35 +309,84 @@ var GameState = (function () {
   }
   function heroWeaponType(h) { return h.equip.weapon ? h.equip.weapon.base : starterWeapon(h.job); }
 
-  // 倉庫の物を装備する（前の装備は倉庫へ）
+  // ---------- 装備や職業を変えたときのスキル（2026-10-22 保護者の希望） ----------
+  // 武器の種類が変わるときは、前の武器のスキルのセットを覚えておき、新しい武器で前にセットしていたものがあれば、それにもどす。
+  // そのあと、条件に合わないスキルを外し、空いた枠には、いまセットできるスキルを自動で入れる（スキルがないまま冒険に出ないように）。
+  // もどり値：{ removed：外れた名前, added：入った名前 }
+  function beforeGear(h) {
+    var wt = heroWeaponType(h);
+    h.weaponSets[wt] = { set: h.set.slice(), setB: h.setB.slice() };
+    return { wt: wt, before: activeSlots(h).concat(h.pset) };
+  }
+  function afterGear(h, b) {
+    var wt = heroWeaponType(h);
+    if (wt !== b.wt && h.weaponSets[wt]) {
+      var m = h.weaponSets[wt];
+      h.set = m.set.slice(); h.setB = (m.setB || [null, null, null]).slice();
+      // 覚えていないスキル（念のため）は入れない
+      h.set = h.set.map(function (id) { return id && h.learned.indexOf(id) >= 0 ? id : null; });
+      h.setB = h.setB.map(function (id) { return id && h.learned.indexOf(id) >= 0 ? id : null; });
+    }
+    fixSkills(h);
+    autoFill(h);
+    var after = activeSlots(h).concat(h.pset);
+    function names(list) { return list.filter(function (x) { return x; }).map(function (id) { return GameData.SKILL[id].name; }); }
+    return {
+      removed: names(b.before.filter(function (id) { return id && after.indexOf(id) < 0; })),
+      added: names(after.filter(function (id) { return id && b.before.indexOf(id) < 0; }))
+    };
+  }
+  // 空いている枠に、いまセットできるスキルを入れる。今の職のスキル → 上の段の職のスキル → ★の大きいスキルの順
+  function autoFill(h) {
+    var wt = heroWeaponType(h), used = activeSlots(h).concat(h.pset);
+    function rank(sk) { return (sk.job === h.job ? 1000 : 0) + GameData.tierOf(sk.job) * 100 + sk.star; }
+    var cand = h.learned.map(function (id) { return GameData.SKILL[id]; })
+      .filter(function (sk) { return sk && used.indexOf(sk.id) < 0 && GameData.canSet(sk, h.job, wt); })
+      .sort(function (a, b) { return rank(b) - rank(a); });
+    function fill(slots, passive) {
+      for (var i = 0; i < slots.length; i++) {
+        if (slots[i]) continue;
+        for (var k = 0; k < cand.length; k++) if (!!cand[k].passive === passive) { slots[i] = cand[k].id; cand.splice(k, 1); break; }
+      }
+    }
+    fill(h.set, false);
+    if (h.setsOpen) fill(h.setB, false);
+    fill(h.pset, true);
+  }
+
+  // 倉庫の物を装備する（前の装備は倉庫へ）。もどり値：{ removed, added }（スキルの変わり方）か false
   function equipItem(h, id) {
     var i = indexOf(id); if (i < 0) return false;
     var it = game.storage[i];
     if (!canEquip(h, it)) return false;
+    var b = beforeGear(h);
     game.storage.splice(i, 1);
     var old = h.equip[it.slot];
     h.equip[it.slot] = it;
     if (old) game.storage.push(old);
-    fixSkills(h);
+    var r = afterGear(h, b);
     save();
-    return true;
+    return r;
   }
-  // 外して倉庫へ（はじめの装備にもどる）
+  // 外して倉庫へ（はじめの装備にもどる）。もどり値：{ removed, added } か false
   function unequip(h, slot) {
     var it = h.equip[slot]; if (!it) return false;
     if (game.storage.length >= STORAGE_MAX) return false;
+    var b = beforeGear(h);
     h.equip[slot] = null; game.storage.push(it);
-    fixSkills(h);
+    var r = afterGear(h, b);
     save();
-    return true;
+    return r;
   }
   // 職業や武器を変えて、条件に合わなくなったスキルを外す。外した名前を返す
   function fixSkills(h) {
     var removed = [];
-    h.set = h.set.map(function (id) {
+    function act(id) {
       if (id && !GameData.canSet(GameData.SKILL[id], h.job, heroWeaponType(h))) { removed.push(GameData.SKILL[id].name); return null; }
       return id;
-    });
+    }
+    h.set = h.set.map(act);
+    h.setB = (h.setB || [null, null, null]).map(act);
     h.pset = (h.pset || []).map(function (id) {
       if (id && !GameData.canSet(GameData.SKILL[id], h.job, heroWeaponType(h))) { removed.push(GameData.SKILL[id].name); return null; }
       return id;
@@ -464,21 +536,27 @@ var GameState = (function () {
       if (it && !(slot === "weapon" ? J.weapons.indexOf(it.base) >= 0 : it.base === J.armor)) back.push(slot);
     });
     if (game.storage.length + back.length > STORAGE_MAX) return { ok: false, why: "倉庫がいっぱいで、装備をしまえない" };
+    var b = beforeGear(h);
     var moved = back.map(function (slot) { var it = h.equip[slot]; h.equip[slot] = null; game.storage.push(it); return Loot.label(it); });
     h.job = job;
-    var removed = fitPassiveSlots(h).concat(fixSkills(h));
+    var off = fitPassiveSlots(h);
     var learned = learnSkills(h);
+    if (!h.setsOpen && upperOpen(h)) h.setsOpen = true;
+    var r = afterGear(h, b);
     save();
-    return { ok: true, moved: moved, removed: removed, learned: learned };
+    return { ok: true, moved: moved, removed: off.concat(r.removed.filter(function (n) { return off.indexOf(n) < 0; })), added: r.added.filter(function (n) { return learned.indexOf(n) < 0; }), learned: learned };
   }
-  // スキル i 番目をセットする（id が null なら外す）。条件に合わない・同じスキルを2つは、できない
+  // スキル i 番目をセットする（id が null なら外す）。i は 0〜2 がセットA、3〜5 がセットB（使えるときだけ）。
+  // 条件に合わない・同じスキルを2つ（セットA と B をまたいでも）は、できない
   function setSkill(h, i, id) {
+    if (i >= 3 && !h.setsOpen) return false;
     if (id) {
       var sk = GameData.SKILL[id];
       if (!sk || sk.passive || h.learned.indexOf(id) < 0 || !GameData.canSet(sk, h.job, heroWeaponType(h))) return false;
       h.set = h.set.map(function (x, k) { return k !== i && x === id ? null : x; });
+      h.setB = h.setB.map(function (x, k) { return k + 3 !== i && x === id ? null : x; });
     }
-    h.set[i] = id || null;
+    if (i >= 3) h.setB[i - 3] = id || null; else h.set[i] = id || null;
     save();
     return true;
   }
@@ -677,7 +755,7 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
-    get: function () { return game; }, progressOf: progressOf, unlocked: unlocked, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,

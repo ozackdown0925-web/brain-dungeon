@@ -93,8 +93,9 @@ var Town = (function () {
       if (it) {
         box.appendChild(itemLine(it));
         box.appendChild(button("はずす（倉庫へ）", function () {
-          if (!GameState.unequip(h, slot)) { say("倉庫がいっぱいで、はずせない"); return; }
-          say("はずして倉庫に入れた"); render();
+          var r0 = GameState.unequip(h, slot);
+          if (!r0) { say("倉庫がいっぱいで、はずせない"); return; }
+          say("はずして倉庫に入れた" + skillNote(r0)); render();
         }));
       } else {
         var starter = slot === "weapon" ? GameData.WEAPONS[GameState.starterWeapon(h.job)].starter : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name;
@@ -110,9 +111,8 @@ var Town = (function () {
           var save = h.equip[slot]; h.equip[slot] = x; var after = GameState.heroStats(h); h.equip[slot] = save;
           row.appendChild(diffNode(now, after));
           row.appendChild(button("装備する", function () {
-            GameState.equipItem(h, x.id);
-            var removed = GameState.fixSkills(h);
-            say(Loot.label(x) + "を装備した" + (removed.length ? "（「" + removed.join("」「") + "」は条件に合わなくなったので外した）" : ""));
+            var r1 = GameState.equipItem(h, x.id);
+            say(Loot.label(x) + "を装備した" + (r1 ? skillNote(r1) : ""));
             render();
           }));
           box.appendChild(row);
@@ -392,8 +392,21 @@ var Town = (function () {
   function openTraining() { innTab = "training"; open("party"); }
 
   var innTab = "equip", selSkill = { active: null, passive: null }, selSlot = { active: 0, passive: 0 }, onlyUsable = true;
-  function slotsOf(h, passive) { return passive ? h.pset : h.set; }
-  function slotName(passive, i) { return (passive ? "パッシブ" : "スキル") + (i + 1); }
+  // 装備・転職でスキルが変わったときの知らせ（2026-10-22）
+  function skillNote(r) {
+    var t = "";
+    if (r.removed && r.removed.length) t += "　スキル「" + r.removed.join("」「") + "」は条件に合わないので外した。";
+    if (r.added && r.added.length) t += "　スキル「" + r.added.join("」「") + "」をセットした。";
+    return t;
+  }
+  // アクティブの枠：セットA（スキル1〜3）と、使えるならセットB（2026-10-22）
+  function slotsOf(h, passive) { return passive ? h.pset : GameState.activeSlots(h); }
+  function slotName(passive, i) {
+    if (passive) return "パッシブ" + (i + 1);
+    var h = GameState.get().party[heroIdx];
+    if (!h.setsOpen) return "スキル" + (i + 1);
+    return (i < 3 ? "A" : "B") + "-スキル" + (i % 3 + 1);
+  }
 
   // スキルのセット（2026-10-20 保護者の案）：右の上でセットする枠を選んでから、左でスキルを選ぶ。
   // 右（枠とくわしい説明）は、左の一覧をスクロールしても見えたまま
@@ -440,8 +453,11 @@ var Town = (function () {
     // 右：セットする枠と、選んだスキルのくわしい説明
     var side = el("div", "sk-side");
     var slotBox = el("div", "sk-slots");
-    slotBox.appendChild(el("div", "sk-slots-head", passive ? "① セットする枠を選ぶ（いつも効く）" : "① セットする枠を選ぶ（ボタンで使う）"));
+    slotBox.appendChild(el("div", "sk-slots-head", passive ? "① セットする枠を選ぶ（いつも効く）" :
+      h.setsOpen ? "① セットする枠を選ぶ（はじめはセットA。たたかいの中の「セット」ボタンでセットBと入れかわる）" : "① セットする枠を選ぶ（ボタンで使う）"));
+    if (!passive && !h.setsOpen) slotBox.appendChild(el("p", "sub", "上級職になれるようになると、セットB（もう3つ）が使えるようになる。"));
     slots.forEach(function (id, i) {
+      if (!passive && h.setsOpen && i === 3) slotBox.appendChild(el("div", "sk-slots-gap", ""));
       var b = el("button", "btn sk-slot" + (i === si ? " sel" : "") + (id ? "" : " empty")); b.type = "button";
       b.appendChild(el("span", "sk-slot-no", slotName(passive, i)));
       b.appendChild(el("span", "sk-slot-name", id ? GameData.SKILL[id].name : "空き"));
@@ -585,6 +601,7 @@ var Town = (function () {
       var t = h.name + "は" + J.name + "になった！";
       if (r.moved.length) t += "　装備できない「" + r.moved.join("」「") + "」は倉庫へ。";
       if (r.removed.length) t += "　スキル「" + r.removed.join("」「") + "」は外した。";
+      if (r.added && r.added.length) t += "　スキル「" + r.added.join("」「") + "」をセットした。";
       if (r.learned.length) t += "　スキル「" + r.learned.join("」「") + "」を覚えた！";
       say(t); render();
     }, "small-btn"));

@@ -458,11 +458,17 @@
       if (Input.held("attack") && A.wait <= 0) Combat.normalAttack(c);
       ["skill1", "skill2", "skill3"].forEach(function (n, i) {
         if (!Input.pressed(n)) return;
-        var id = c.skills[i];
+        var id = Party.skillsOf(c)[i];
         if (!id) { say("スキル" + (i + 1) + " にはなにもセットしていない"); return; }
         var why = Combat.useSkill(c, id);
         if (why) say(why);
       });
+    }
+    // スキルセットの切りかえ（2026-10-22）：セットA ⇔ B。上級職になれるようになった仲間だけ
+    if (Input.pressed("setswap")) {
+      if (Party.flipSet(c)) { say("スキルセット" + (c.page === 1 ? "B" : "A") + "に切りかえた"); Sound.play("click"); }
+      else say("スキルセットの切りかえは、上級職になれるようになると使える");
+      updateButtons(true);
     }
     if (Input.pressed("switch")) {
       if (Party.switchCd() > 0) say("切りかえは あと " + Party.switchCd().toFixed(1) + " 秒");
@@ -821,13 +827,13 @@
     // PC：スキルの名前と、使えるまでの時間
     if (!Input.isTouch) {
       var keys = ["U", "I", "O"], s = [];
-      c.skills.forEach(function (id, i) {
+      Party.skillsOf(c).forEach(function (id, i) {
         var sk = GameData.SKILL[id];
         if (!sk) { s.push(keys[i] + ":なし"); return; }
         var ct = c.ct[id] || 0;
         s.push(keys[i] + ":" + sk.name + (sk.once && c.used[id] ? "(使用済)" : ct > 0 ? "(" + ct.toFixed(0) + ")" : "") + " MP" + Combat.mpCost(c, sk));
       });
-      Render.text(s.join("　"), view.w / 2, view.h - 22, { size: 7, align: "center", color: "#ffe7a0" });
+      Render.text((c.setsOn ? "［セット" + (c.page === 1 ? "B" : "A") + "　L で切りかえ］　" : "") + s.join("　"), view.w / 2, view.h - 22, { size: 7, align: "center", color: "#ffe7a0" });
       Render.text("移動 WASD/矢印　攻撃 J（押しっぱなしでも）　切替 K　メニュー Esc", view.w / 2, view.h - 11, { size: 7, align: "center", color: "#a3a8bd" });
     }
     if (debug) Render.text(fps.value + " fps", view.w - 6, view.h - 34, { size: 7, align: "right", color: "#6fd08c" });
@@ -878,11 +884,12 @@
   // ---------- iPad のボタンの文字（スキルの名前と、使えるまでの時間） ----------
   var btnEls = ["skill1", "skill2", "skill3"].map(function (n) { return document.querySelector('[data-act="' + n + '"]'); });
   var switchEl = document.querySelector('[data-act="switch"]');
-  var lastLabels = ["", "", "", ""];
+  var setswapEl = document.querySelector('[data-act="setswap"]');
+  var lastLabels = ["", "", "", "", "-"];
   function updateButtons(force) {
     var c = Party.current();
     btnEls.forEach(function (b, i) {
-      var sk = GameData.SKILL[c.skills[i]];
+      var sk = GameData.SKILL[Party.skillsOf(c)[i]];
       var ct = sk ? (c.ct[sk.id] || 0) : 0;
       var label = !sk ? "なし" : (sk.once && c.used[sk.id]) ? sk.short + "\n済" : ct > 0 ? sk.short + "\n" + Math.ceil(ct) : sk.short;
       var dim = !sk || ct > 0 || c.mp < Combat.mpCost(c, sk) || (sk.once && c.used[sk.id]);
@@ -893,6 +900,11 @@
     var sc = Party.switchCd();
     var sl = sc > 0 ? "切替\n" + Math.ceil(sc) : "切替";
     if (force || sl !== lastLabels[3]) { switchEl.textContent = sl; switchEl.classList.toggle("dim", sc > 0); lastLabels[3] = sl; }
+    // スキルセットの切りかえのボタン：使える仲間のときだけ出す。A か B かを出す（2026-10-22）
+    var ss = c.setsOn ? "セット\n" + (c.page === 1 ? "B" : "A") : "";
+    if (force || ss !== lastLabels[4]) {
+      setswapEl.hidden = !c.setsOn; setswapEl.textContent = ss; setswapEl.classList.toggle("b", c.page === 1); lastLabels[4] = ss;
+    }
   }
 
   // ---------- 倒れたときの選択・全滅 ----------
