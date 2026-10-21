@@ -7,7 +7,25 @@ var Town = (function () {
   var moneyEl = document.getElementById("townMoney");
   var bodyEl = document.getElementById("townBody");
   var noteEl = document.getElementById("townNote");
-  var current = null, heroIdx = 0, storageTab = "equip";
+  var current = null, heroIdx = 0, storageTab = "equip", shopTab = "tools";
+  // 装備の種類でしぼりこむ（倉庫・鍛冶屋。2026-10-22 保護者の希望）："" はすべて。それ以外は剣・弓・よろいなどの種類
+  var equipFilter = "";
+  // 種類のボタン（いまの一覧にある種類だけ）。bases：一覧の装備の種類
+  function filterChips(bases) {
+    var seen = {}, order = Object.keys(GameData.WEAPONS).concat(Object.keys(GameData.ARMORS));
+    bases.forEach(function (b) { seen[b] = true; });
+    if (equipFilter && !seen[equipFilter]) equipFilter = "";
+    var row = el("div", "chips filter-chips");
+    row.appendChild(el("span", "filter-head", "しぼりこみ："));
+    row.appendChild(button("すべて", function () { equipFilter = ""; render(); }, "chip" + (equipFilter === "" ? " sel" : "")));
+    order.forEach(function (k) {
+      if (!seen[k]) return;
+      var n = bases.filter(function (b) { return b === k; }).length;
+      row.appendChild(button(Loot.typeName(k).replace(/^(銅の|鉄の|鋼の|木の|革の|布の|かしの)/, "") + "（" + n + "）", function () { equipFilter = k; render(); }, "chip" + (equipFilter === k ? " sel" : "")));
+    });
+    return row;
+  }
+  function passFilter(base) { return !equipFilter || base === equipFilter; }
 
   var NAMES = { party: "宿屋（仲間・装備・スキル）", equip: "装備", storage: "倉庫", shop: "お店", smith: "鍛冶屋", job: "転職の神殿", book: "書庫（図鑑）", help: "遊び方" };
 
@@ -32,7 +50,7 @@ var Town = (function () {
   function say(text) { noteEl.textContent = text; }
 
   function open(name) {
-    current = name;
+    current = name; equipFilter = "";
     titleEl.textContent = NAMES[name];
     say("");
     townEl.hidden = false;
@@ -152,7 +170,7 @@ var Town = (function () {
     var mbox = el("div", "slot");
     mbox.appendChild(el("h3", "", "素材（鍛冶屋で装備を強くする）"));
     [["iron", "剣・大剣・斧・弓・こて・よろい・服の強化に使う"], ["stone", "杖・ローブの強化と、バフ・デバフの引き直しに使う"],
-     ["gem", "鍛冶屋で装備のレア度を上げる。知恵の試練（3問以上の正解）・金の宝箱・ボスから、ときどき手に入る"]].forEach(function (m) {
+     ["gem", "鍛冶屋で装備のレア度を上げる。知恵の試練（3問以上の正解）・金の宝箱から、ときどき手に入る。ボスをたおすと必ず手に入る"]].forEach(function (m) {
       var row = el("div", "item-line");
       row.appendChild(el("span", "item-name", Loot.MATERIALS[m[0]] + "　×" + (g.mat[m[0]] || 0)));
       row.appendChild(el("span", "item-extra", m[1]));
@@ -163,7 +181,9 @@ var Town = (function () {
   function renderStorageEquip(g) {
     if (!g.storage.length) { bodyEl.appendChild(el("p", "", "倉庫は空っぽ。宝箱やお店で装備を手に入れよう。")); return; }
     bodyEl.appendChild(el("p", "sub", "いらない装備は売却すると、ゴールドと鍛冶の素材になる（強化してあれば、強化に使った分の8割ももどる）。"));
-    g.storage.slice().sort(function (a, b) { return a.slot.localeCompare(b.slot) || b.r - a.r || b.ilv - a.ilv; }).forEach(function (it) {
+    bodyEl.appendChild(filterChips(g.storage.map(function (it) { return it.base; })));
+    g.storage.slice().sort(function (a, b) { return a.slot.localeCompare(b.slot) || a.base.localeCompare(b.base) || b.r - a.r || (b.plus || 0) - (a.plus || 0) || b.ilv - a.ilv; }).forEach(function (it) {
+      if (!passFilter(it.base)) return;
       var row = itemLine(it);
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
@@ -185,7 +205,14 @@ var Town = (function () {
   }
 
   // ---------- お店 ----------
+  // お店は「道具」と「装備」のタブに分ける（2026-10-22 保護者の希望）
   function renderShop(g) {
+    var tabs = el("div", "tabs");
+    [["tools", "道具"], ["equip", "装備"]].forEach(function (t) {
+      tabs.appendChild(button(t[1], function () { shopTab = t[0]; say(""); render(); }, "chip" + (shopTab === t[0] ? " sel" : "")));
+    });
+    bodyEl.appendChild(tabs);
+    if (shopTab === "equip") { renderShopEquip(g); return; }
     bodyEl.appendChild(el("h3", "", "道具（ダンジョンのメニューから使える。種類ごとに " + GameState.TOOL_MAX + "個まで）"));
     GameState.TOOL_ORDER.forEach(function (k) {
       var t = GameState.TOOLS[k];
@@ -200,6 +227,8 @@ var Town = (function () {
       });
       bodyEl.appendChild(row);
     });
+  }
+  function renderShopEquip(g) {
     bodyEl.appendChild(el("h3", "", "ふつうの装備（いちばん深く行った階層の強さ）"));
     GameState.shopEquipList().forEach(function (it) {
       var price = GameState.itemValue(it);
@@ -226,6 +255,9 @@ var Town = (function () {
     var all = GameState.allItems();
     if (!all.length) { bodyEl.appendChild(el("p", "", "強くできる装備がない。宝箱やお店で装備を手に入れよう。")); return; }
     all.sort(function (a, b) { return (b.who ? 1 : 0) - (a.who ? 1 : 0) || b.item.r - a.item.r || (b.item.plus || 0) - (a.item.plus || 0); });
+    // 種類でしぼりこむ（強化を移すの「② 移す先」は、もとと同じ種類だけなので、しぼりこまない）
+    bodyEl.appendChild(filterChips(all.map(function (x) { return x.item.base; })));
+    all = all.filter(function (x) { return passFilter(x.item.base); });
     if (smithTab === "move") { renderMove(all); return; }
     if (smithTab === "rare") { renderRarityUp(all, g); return; }
     bodyEl.appendChild(el("p", "sub", "強化は必ず成功する（＋1ごとにもとの強さ＋" + Math.round(Loot.PLUS_STEP * 100) + "%、＋" + Loot.PLUS_MAX + "まで）。" +
