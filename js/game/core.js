@@ -649,6 +649,7 @@
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
     if (cine && cine.kind === "boss") drawBossCine();
+    Combat.drawCastBack(cam, view);   // スキルを使ったとき：画面が少し暗くなり、使った仲間のまわりが光る
     drawActor();
     room.drawCrowns(cam, view, A.y + 6, true);    // キャラより奥（北）の行の木の葉は、キャラの前
     Combat.draw(cam);
