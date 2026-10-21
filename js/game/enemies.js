@@ -465,51 +465,31 @@ var Enemies = (function () {
     });
   }
 
-  // モンスターの巣（段階5）：泡立つ毒の沼。まんなかに黒い穴のあいた泥の山があり、泡がうかんではじける。
-  // 敵を出すとき（e.birth）は、紫の輪が広がる。こわれるときは、うすくなって消える
-  function ell(ctx, x, y, rx, ry, color) {
-    ctx.fillStyle = color; ctx.beginPath();
-    if (ctx.ellipse) ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); else ctx.arc(x, y, rx, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // モンスターの巣（段階5）：泡立つ毒の沼。まんなかに黒い穴のあいた泥の山（ドット絵は props.js。泡は4コマ）。
+  // 敵を出すとき（e.birth）は、紫の点の輪が広がる。のぼる瘴気も1点ずつ
   function drawNest(ctx, e, x, y) {
-    var t = clock + e.x * 0.01, hurt = e.flash > 0;
-    Combat.glowDot(ctx, x, y, 26, "#c890f0", "#6a3a98", 0.35 + 0.1 * Math.sin(t * 2));
-    ell(ctx, x, y + 2, 19, 10, "#1a0e24");                       // 沼のふち（暗い泥）
-    ell(ctx, x, y + 2, 17, 8.5, hurt ? "#e0c0ff" : "#4a2a62");     // 毒の水
-    ell(ctx, x - 3, y + 1, 12, 5.5, hurt ? "#ffffff" : "#6e3e8e");
-    ell(ctx, x + 4, y + 4, 7, 3, "#5a8a3a");                      // 緑のにごり
-    // まんなかの泥の山と、敵が出てくる黒い穴
-    ell(ctx, x, y - 2, 9, 6, hurt ? "#ffffff" : "#2e1a3a");
-    ell(ctx, x - 1, y - 4, 6, 3.5, "#4a2e5a");
-    Render.rect(x - 4, y - 4, 3, 2, "#0a0410"); Render.rect(x + 2, y - 3, 2, 2, "#0a0410"); Render.rect(x - 1, y - 7, 2, 2, "#0a0410");
-    // 泡：うかんで大きくなり、はじける
-    for (var i = 0; i < 6; i++) {
-      var ph = (t * 0.9 + i * 0.37) % 1, bx = x + Math.cos(i * 2.3) * (8 + (i % 3) * 4), by = y + 2 + Math.sin(i * 2.3) * 4;
-      if (ph < 0.75) {
-        var bs = 1 + Math.round(ph * 3);
-        Render.rect(Math.round(bx - bs / 2), Math.round(by - bs / 2 - ph * 3), bs, bs, i % 2 ? "#c89ae0" : "#b8e870");
-      } else {
-        Render.rect(Math.round(bx) - 2, Math.round(by) - 3, 1, 1, "#e8d8f0"); Render.rect(Math.round(bx) + 1, Math.round(by) - 3, 1, 1, "#e8d8f0");
+    var frame = Math.floor((clock + e.x * 0.01) * 4) % 4;
+    ctx.drawImage(Props.get("nest_" + frame + (e.flash > 0 ? "_hit" : "")), x - 20, y - 12);
+    var a0 = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+    for (var j = 0; j < 4; j++) {   // のぼる瘴気：2点の小さなかたまりが、ゆれながら上へ。上ほど暗い色
+      var q = (clock * 0.45 + j / 4) % 1, sx = Math.round(x - 6 + j * 4 + Math.sin(clock * 2 + j) * 2), sy = Math.round(y - 4 - q * 18);
+      if (q > 0.8) continue;
+      var col = q < 0.3 ? "#c89ae0" : q < 0.55 ? "#8e52a8" : "#6a3684";
+      Render.rect(sx, sy, 2, 1, col); if (q < 0.5) Render.rect(sx, sy - 1, 1, 1, col);
+    }
+    ctx.globalAlpha = a0;
+    if (e.birth > 0) {   // 敵を出したところ：点の輪
+      var rad = 10 + (1 - e.birth / 0.5) * 16;
+      for (var k = 0; k < 16; k++) {
+        var an = k / 16 * Math.PI * 2;
+        Render.rect(Math.round(x + Math.cos(an) * rad), Math.round(y + Math.sin(an) * rad * 0.6), 1, 1, k % 2 ? "#c89ae0" : "#e8d8f0");
       }
     }
-    // ゆらゆらのぼる瘴気
-    for (var j = 0; j < 3; j++) {
-      var q = (t * 0.5 + j / 3) % 1;
-      ctx.globalAlpha = (e.dead ? Math.max(0, e.fade / 0.4) : 1) * (1 - q) * 0.6;
-      ell(ctx, x - 6 + j * 6 + Math.sin(t * 2 + j) * 2, y - 6 - q * 16, 3 + q * 3, 2 + q * 2, "#9a6ac0");
-    }
-    ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
-    if (e.birth > 0) {   // 敵を出したところ
-      var kb = 1 - e.birth / 0.5;
-      ctx.strokeStyle = "rgba(200,154,224," + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, 10 + kb * 18, 0, Math.PI * 2); ctx.stroke();
-    }
-    var marks = Object.keys(e.status).filter(function (k) { return k !== "break" && k !== "sleep" && k !== "para"; });
-    if (marks.length && !e.dead) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 14, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
+    var marks = Object.keys(e.status).filter(function (k2) { return k2 !== "break" && k2 !== "sleep" && k2 !== "para"; });
+    if (marks.length && !e.dead) Render.text(marks.map(function (k2) { return GameData.STATUS[k2].name; }).join(" "), x, y + 16, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
     if (!e.dead && e.hp < e.maxHp) {
       Render.rect(x - 14, y - 16, 28, 3, "#2a2f42");
-      Render.rect(x - 14, y - 16, Math.round(28 * e.hp / e.maxHp), 3, "#c86ae0");
+      Render.rect(x - 14, y - 16, Math.round(28 * e.hp / e.maxHp), 3, "#ef5b5b");
     }
   }
 

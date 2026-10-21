@@ -803,13 +803,15 @@
       Render.rect(kx - 5, Math.round(c.key.y - cam.y) + 4, 10, 2, "rgba(20,12,28,0.35)");   // かげ
       ctx.drawImage(Props.get("key"), kx - 6, ky - 3);
     }
-    if (c.spring) {   // 回復の泉：光る水たまりと、のぼる光の粒
+    if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      Combat.glowDot(ctx, sx, sy, 22, "#ffffff", "#7fd8ff", 0.45 + 0.1 * Math.sin(glow * 2));
-      ctx.fillStyle = "rgba(20,12,28,0.9)"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx, sy, 13, 7, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#3a8ad0"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx, sy, 12, 6, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#7fd8ff"; ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(sx - 2, sy - 1, 7, 3, 0, 0, Math.PI * 2); else ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
-      for (var sp = 0; sp < 5; sp++) { var ph = (glow * 0.6 + sp / 5) % 1; Combat.glowDot(ctx, sx + Math.sin(sp * 7) * 8, sy - ph * 18, 2.5, "#ffffff", "#bfe8ff", 1 - ph); }
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" ? "swamp" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      for (var sp = 0; sp < 5; sp++) {
+        var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
+        if (ph > 0.85) continue;
+        Render.rect(px2, py2, 1, 1, ph < 0.5 ? "#ffffff" : "#7fc8ec");
+        if (ph < 0.3) { Render.rect(px2 - 1, py2, 1, 1, "#7fc8ec"); Render.rect(px2 + 1, py2, 1, 1, "#7fc8ec"); }
+      }
     }
     (c.pickups || []).forEach(function (u) {   // 薬草・魔力のキノコ・毒消し草（少しゆれる）
       if (u.taken) return;
