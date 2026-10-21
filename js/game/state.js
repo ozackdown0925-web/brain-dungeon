@@ -464,7 +464,8 @@ var GameState = (function () {
   // 引き直し：魔石2＋100G で、バフ・デバフを全部引き直す（数はレア度の決まりのまま）
   var REROLL = { stone: 2, gold: 100 };
   // レア度を上げる（鍛冶屋。2026-10-20）：ノーマル→R 宝玉1＋200G、R→SR 宝玉2＋500G、SR→UR 宝玉4＋1000G
-  var RARITY_UP = [{ gem: 1, gold: 200 }, { gem: 2, gold: 500 }, { gem: 4, gold: 1000 }];
+  // 2026-10-22：宝玉の数を 1・2・4（合わせて7こ）から 1・1・2（合わせて4こ）に下げた（ゴールドはそのまま）
+  var RARITY_UP = [{ gem: 1, gold: 200 }, { gem: 1, gold: 500 }, { gem: 2, gold: 1000 }];
   function rarityUpCost(it) { return it.r >= 3 ? null : RARITY_UP[it.r]; }
   function rarityUp(it) {
     var c = rarityUpCost(it);

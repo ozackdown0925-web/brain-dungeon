@@ -238,7 +238,7 @@
     var g = 100 + 10 * dg.power;
     run.gold += g;
     run.title = dg.bossInfo.title;
-    if (Math.random() < Loot.GEM_CHANCE.boss) {   // 宝玉（2026-10-20）：ボスは50%
+    if (Math.random() < Loot.GEM_CHANCE.boss) {   // 宝玉（2026-10-20）：ボスは必ず（2026-10-22 に50%から）
       run.mat.gem = (run.mat.gem || 0) + 1;
       Battle.pop(e.x, e.y - 52, "宝玉 +1", "#ff9ad0", 9);
     }
@@ -577,7 +577,7 @@
       var R = Loot.RARITY[got.equip.r];
       // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
       var tool = got.tool && GameState.gainTool(got.tool) ? "（" + GameState.TOOLS[got.tool].name + "も）" : "";
-      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; tool += "（宝玉も！）"; }   // 金の宝箱は10%で宝玉
+      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; tool += "（宝玉も！）"; }   // 金の宝箱は25%で宝玉（2026-10-22 に10%から）
       say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！" + tool); snapshot();
       Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);

@@ -100,7 +100,9 @@ var Loot = (function () {
     return true;
   }
   // 宝玉が出る確率（2026-10-20 保護者と決定）
-  var GEM_CHANCE = { trial4: 0.15, trial3: 0.05, goldChest: 0.10, boss: 0.50 };
+  // 2026-10-22 保護者の感想（宝玉が出にくい。レア度より強化のほうが強いので、レア度を上げるハードルを下げたい）で上げた。
+  // 前は 4問正解15%・3問正解5%・金の宝箱10%・ボス50%
+  var GEM_CHANCE = { trial4: 0.30, trial3: 0.15, goldChest: 0.25, boss: 1.0 };
 
   // 装備の名前（例：「銅の剣」「銅の剣＋2〈SR〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
   function baseName(item) {
