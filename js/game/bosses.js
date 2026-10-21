@@ -1,7 +1,7 @@
 // ボスの動き（段階4-3）：大オオカミ（7階）と大木の魔物（14階）。数字は data.js の ENEMIES、たたき台は docs/draft.md 2。
 // ふつうの攻撃は「当たる前提」。かわすことを求めるのは、とても大きなダメージの大技だけで、地面で予告する（大突進0.9秒・根の大波1.2秒。2026-10-18）。
 //   大オオカミ：大突進（赤い線で0.9秒予告）／大木の魔物：根の大波（地面が光って1.2秒予告。HP が半分になると増える）
-//   大ガマ（瘴気の森5階）：沼にもぐる → 予告の輪（1.1秒）のところから飛び出す／毒の雨（小さな輪0.9秒）
+//   大ガマ（瘴気の森5階）：沼にもぐる → 予告の輪（1.4秒。出る0.9秒前に輪がとまって赤くなる）のところから飛び出す／毒の雨（小さな輪0.9秒）
 //   沼の魔女（瘴気の森10階）：瘴気の柱（紫の輪1.2秒）。大技はどちらも予告の輪の中にいなければ当たらない
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Bosses = (function () {
@@ -210,9 +210,9 @@ var Bosses = (function () {
       }
       return;
     }
-    if (e.state === "under") {   // 沼の中：予告の輪は、出る 0.35 秒前までプレイヤーについていく
+    if (e.state === "under") {   // 沼の中：予告の輪は、出る diveLock 秒前までプレイヤーについていく。とまったら輪が赤くこくなる（にげる合図）
       var m = e.mark;
-      if (m.follow && m.warn - m.t > 0.35 && !p.down) { m.x += (p.x - m.x) * Math.min(1, dt * 6); m.y += (p.y - m.y) * Math.min(1, dt * 6); }
+      if (m.follow && m.warn - m.t > e.def.diveLock && !p.down) { m.x += (p.x - m.x) * Math.min(1, dt * 6); m.y += (p.y - m.y) * Math.min(1, dt * 6); }
       if (m.t >= m.warn) {
         e.x = m.x; e.y = m.y; room.keepInside(e);
         // 壁や木にかかるときは、近くのあいている場所に出る（めりこんで動けなくならないように）
@@ -378,7 +378,8 @@ var Bosses = (function () {
   // 予告：地面の輪がだんだん濃くなり、まんなかへちぢむ光の輪。本番：それぞれの絵
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : [239, 80, 70];
+    var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
+    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.t < h.warn) {
       ctx.fillStyle = c(0.10 + 0.25 * k + 0.05 * Math.sin(glow * 16));
@@ -393,6 +394,7 @@ var Bosses = (function () {
         ctx.fillStyle = "#9a5ad0"; ctx.fillRect(Math.round(x) - 2, Math.round(y - hy) - 4, 4, 5);
         ctx.fillStyle = "#b8e870"; ctx.fillRect(Math.round(x) - 1, Math.round(y - hy) - 3, 2, 2);
       }
+      if (locked) Render.text("！", x, y - h.r * 0.7 - 12, { size: 11, align: "center", bold: true, color: "#ff5040" });
       if (h.look === "dive") {   // 沼の中を進んでくる泡
         for (var b = 0; b < 4; b++) { var ph = (glow * 2 + b / 4) % 1; ctx.fillStyle = "rgba(200,220,150," + (1 - ph).toFixed(2) + ")"; ctx.fillRect(Math.round(x + Math.sin(b * 2.1) * h.r * 0.5), Math.round(y - ph * 8), 2, 2); }
       }

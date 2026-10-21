@@ -100,7 +100,7 @@ var Party = (function () {
           s.poison.tick += 2;
           var dmg = Math.max(1, Math.round(c.stats.hp * 0.03));
           c.hp = Math.max(1, c.hp - dmg); // 毒では倒れない（HP1で止まる）
-          Battle.pop(actor.x, actor.y - 18, String(dmg), GameData.STATUS.poison.color, 9);
+          Battle.pop(actor.x, actor.y - 18, "毒 " + dmg, GameData.STATUS.poison.color, 10);
         }
         s.poison.t -= dt; if (s.poison.t <= 0) delete s.poison;
       }
