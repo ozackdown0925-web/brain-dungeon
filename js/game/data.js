@@ -491,9 +491,9 @@ var GameData = (function () {
   //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫。tiles.js・rooms.js）
   // 瘴気の森のボスは大ガマ（5階）と沼の魔女（10階）（段階4）。深さは仮（段階6で直す）。
   var DUNGEONS = {
-    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest" },
+    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
     shouki: {
-      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp",
+      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp", tier: 1,
       bosses: {
         // 前後の文は Claude が書いた仮の文（保護者があとで直す）
         5: { enemy: "frog_boss", title: "沼をしずめし者",
@@ -506,6 +506,13 @@ var GameData = (function () {
     }
   };
   var DUNGEON_ORDER = ["forest1", "shouki"];
+  // 装備の段（2026-10-22）：0＝銅（新緑の樹海）、1＝鉄（瘴気の森）。段ごとの名前（書いていない段は item の名前）
+  // 弓・杖・服・ローブは鉄ではないので、それらしい名前にした（保護者があとで直してよい）
+  var TIER_NAMES = {
+    1: { sword: "鉄の剣", greatsword: "鉄の大剣", axe: "鉄の斧", bow: "鉄の弓", spear: "鉄の槍", fist: "鉄のこて", staff: "銀の杖",
+         heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" }
+  };
+  var TIER_LABEL = ["銅", "鉄"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
@@ -541,6 +548,6 @@ var GameData = (function () {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
-    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
+    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
   };
 })();

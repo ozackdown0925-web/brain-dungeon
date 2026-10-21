@@ -217,12 +217,22 @@ var GameState = (function () {
       b.kills += r.kills[t];
     });
     if (r.title && game.titles.indexOf(r.title) < 0) game.titles.push(r.title);
+    var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier();
     if (r.cleared) {
       var pg = progressOf(r.dungeon);
       pg.deepest = Math.max(pg.deepest, r.floor);
       if (r.boss && pg.bosses.indexOf(r.floor) < 0) pg.bosses.push(r.floor);
     }
     if (lost) report.push({ name: "倉庫", lines: ["倉庫がいっぱいで、装備を " + lost + "個 持ち帰れなかった"], exp: 0 });
+    // 新しいダンジョンが開いた・お店に新しい段の装備がならんだ（2026-10-22 保護者の希望：主をたおした結果の画面で知らせる）
+    if (r.cleared && !r.tryMode) {
+      GameData.DUNGEON_ORDER.forEach(function (id) {
+        if (open0.indexOf(id) >= 0 || !unlocked(id)) return;
+        report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });
+      });
+      var st = shopTier();
+      if (st > shop0) report.push({ name: "", raw: true, lines: ["お店で" + GameData.TIER_LABEL[st] + "の装備が買えるようになった！"], exp: 0 });
+    }
     game.today = { date: todayStr(), adventure: null };
     // 出発できるのは1日2回（テスト用の出発は数えない）
     if (!r.test) {
@@ -396,7 +406,8 @@ var GameState = (function () {
   function indexOf(id) { for (var i = 0; i < game.storage.length; i++) if (game.storage[i].id === id) return i; return -1; }
 
   // 値段：ノーマルは 100＋20×ilv（draft 4）。レア度が高いほど高い（仮：×1・×2・×4・×8）。強化 ＋1 ごとに 10% 高い
-  function itemValue(it) { return Math.round((100 + 20 * it.ilv) * [1, 2, 4, 8][it.r] * (1 + 0.1 * (it.plus || 0))); }
+  // 鉄の段は、もとの強さと同じく1.6倍（2026-10-22）
+  function itemValue(it) { return Math.round((100 + 20 * it.ilv) * [1, 2, 4, 8][it.r] * (1 + 0.1 * (it.plus || 0)) * Loot.TIER_MULT[it.tier || 0]); }
   function sellPrice(it) { return Math.round(itemValue(it) * 0.25); } // 売る：値段の 25%
   // 素材：杖と魔法装備は魔石、それ以外は鉱石
   function matOf(it) { return it.base === "staff" || it.base === "magic" ? "stone" : "iron"; }
@@ -422,13 +433,21 @@ var GameState = (function () {
   function shopEquipList() {
     var ilv = Math.max(1, deepestPower(game));
     var list = [];
-    Object.keys(GameData.WEAPONS).forEach(function (b) { list.push(shopItem("weapon", b, ilv)); });
-    Object.keys(GameData.ARMORS).forEach(function (b) { list.push(shopItem("armor", b, ilv)); });
+    // 瘴気の森が開いたら、お店の装備は鉄になる（2026-10-22 保護者の希望）
+    var tier = shopTier();
+    Object.keys(GameData.WEAPONS).forEach(function (b) { list.push(shopItem("weapon", b, ilv, tier)); });
+    Object.keys(GameData.ARMORS).forEach(function (b) { list.push(shopItem("armor", b, ilv, tier)); });
     return list;
   }
-  function shopItem(slot, base, ilv) {
-    var def = slot === "weapon" ? GameData.WEAPONS[base] : GameData.ARMORS[base], k = 1 + Loot.ILV_STEP * (ilv - 1);
-    var it = { slot: slot, base: base, r: 0, ilv: ilv, tier: 0, plus: 0, buff: [], debuff: [], sp: null, name: def.item || def.name };
+  function shopTier() {
+    var t = 0;
+    GameData.DUNGEON_ORDER.forEach(function (id) { if (unlocked(id)) t = Math.max(t, GameData.dungeonOf(id).tier || 0); });
+    return t;
+  }
+  function shopItem(slot, base, ilv, tier) {
+    tier = tier || 0;
+    var def = slot === "weapon" ? GameData.WEAPONS[base] : GameData.ARMORS[base], k = (1 + Loot.ILV_STEP * (ilv - 1)) * Loot.TIER_MULT[tier];
+    var it = { slot: slot, base: base, r: 0, ilv: ilv, tier: tier, plus: 0, buff: [], debuff: [], sp: null, name: def.item || def.name };
     if (slot === "weapon") { it.patk = Math.round(def.patk * k); it.matk = Math.round(def.matk * k); }
     else { it.pdef = Math.round(def.pdef * k); it.mdef = Math.round(def.mdef * k); }
     return it;
