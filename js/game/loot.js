@@ -107,6 +107,8 @@ var Loot = (function () {
   // 装備の名前（例：「銅の剣」「銅の剣＋2〈SR〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
   function baseName(item) {
     var def = item.slot === "weapon" ? GameData.WEAPONS[item.base] : GameData.ARMORS[item.base];
+    var tn = GameData.TIER_NAMES[item.tier || 0];   // 鉄の段の名前（2026-10-22）
+    if (tn && tn[item.base]) return tn[item.base];
     return def ? (def.item || def.name) : item.name;
   }
   function label(item) {
@@ -146,12 +148,25 @@ var Loot = (function () {
     return pick(["antidote", "paraheal", "wake"]);
   }
 
-  // 宝箱の中身（いつも装備1つ＋素材＋ゴールド。ときどき道具）。ゴールド 20＋5×d（draft 4）
-  function chest(floor, correct, rareOrBetter) {
+  // 宝箱の中身（いつも装備1つ＋素材＋ゴールド。ときどき道具）。ゴールド 20＋5×d（draft 4）。tier：装備の段（0＝銅・1＝鉄）
+  // よい宝箱（金の宝箱・ボスの宝箱。rareOrBetter）は、装備のかわりに、宝玉・復活薬・素材の山が出ることもある
+  // （2026-10-22 保護者の案：宝玉でレア度を上げられるので、レア装備ばかり出ても仕方ない）
+  //   R以上の装備 40%・宝玉1こ 20%・復活薬1こ 15%・素材の山（鉱石と魔石あわせて6〜9こ）25%
+  var RARE_PRIZE = [["equip", 0.40], ["gem", 0.20], ["revive", 0.15], ["mats", 0.25]];
+  function chest(floor, correct, rareOrBetter, tier) {
     var mat = {};
     var n = Math.floor(1.5 * matScale(floor, correct) + (rareOrBetter ? 1 : 0) + Math.random());
     for (var i = 0; i < n; i++) { var m = Math.random() < 0.6 ? "iron" : "stone"; mat[m] = (mat[m] || 0) + 1; }
-    return { equip: makeEquip(floor, correct, rareOrBetter), gold: 20 + 5 * floor, mat: mat, tool: Math.random() < 1 / 3 ? rollTool() : null };
+    var out = { equip: null, gold: 20 + 5 * floor, mat: mat, tool: Math.random() < 1 / 3 ? rollTool() : null, prize: "equip" };
+    if (rareOrBetter) {
+      var r = Math.random(), acc = 0;
+      for (var k = 0; k < RARE_PRIZE.length; k++) { acc += RARE_PRIZE[k][1]; if (r < acc) { out.prize = RARE_PRIZE[k][0]; break; } }
+    }
+    if (out.prize === "equip") out.equip = makeEquip(floor, correct, rareOrBetter, tier || 0);
+    else if (out.prize === "gem") mat.gem = (mat.gem || 0) + 1;
+    else if (out.prize === "revive") out.tool = "revive";
+    else if (out.prize === "mats") { var big = 6 + Math.floor(Math.random() * 4); for (var j = 0; j < big; j++) { var m2 = j % 2 ? "stone" : "iron"; mat[m2] = (mat[m2] || 0) + 1; } }
+    return out;
   }
 
   // 敵が落とすもの：ゴールド 3＋d、素材は30%で1つ（ゴブリン・蜂 → 鉱石、つる草・キノコの魔物 → 魔石）（draft 2）

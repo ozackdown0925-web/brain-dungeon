@@ -570,16 +570,27 @@
       }
       if (b.gold) dg.hasCKey = false;
       b.opened = true;
-      var got = Loot.chest(dg.power, settings.correct, b.rare);
-      run.got.push(got.equip);
+      var got = Loot.chest(dg.power, settings.correct, b.rare, GameData.dungeonOf(dg.dungeon).tier || 0);
+      if (got.equip) run.got.push(got.equip);
       run.gold += got.gold;
-      Object.keys(got.mat).forEach(function (m) { run.mat[m] += got.mat[m]; });
-      var R = Loot.RARITY[got.equip.r];
-      // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
-      var tool = got.tool && GameState.gainTool(got.tool) ? "（" + GameState.TOOLS[got.tool].name + "も）" : "";
-      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; tool += "（宝玉も！）"; }   // 金の宝箱は25%で宝玉（2026-10-22 に10%から）
-      say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！" + tool); snapshot();
-      Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
+      Object.keys(got.mat).forEach(function (m) { run.mat[m] = (run.mat[m] || 0) + got.mat[m]; });
+      if (b.gold && Math.random() < Loot.GEM_CHANCE.goldChest) { run.mat.gem = (run.mat.gem || 0) + 1; got.bonusGem = true; }   // 金の宝箱は25%で宝玉（2026-10-22 に10%から）
+      if (got.equip) {
+        var R = Loot.RARITY[got.equip.r];
+        // レア以上は「スーパーレア装備！」のように知らせる（2026-10-18 決定）
+        var tool = got.tool && GameState.gainTool(got.tool) ? "（" + GameState.TOOLS[got.tool].name + "も）" : "";
+        if (got.bonusGem) tool += "（宝玉も！）";
+        say("宝箱：" + (R.long ? R.long + "！ " : "") + Loot.label(got.equip) + " を手に入れた！" + tool);
+        Battle.pop(b.x, b.y - 22, (R.long || "装備") + "！", R.color, 10);
+      } else {
+        // よい宝箱の、装備でない中身（2026-10-22）：宝玉・復活薬・素材の山
+        var gotTool = got.tool && GameState.gainTool(got.tool);
+        var what = got.prize === "gem" ? "宝玉" : got.prize === "revive" ? (gotTool ? "復活薬" : "復活薬（もう持てない）") :
+          "素材の山（鉱石" + (got.mat.iron || 0) + "・魔石" + (got.mat.stone || 0) + "）";
+        say("宝箱：" + what + " を手に入れた！" + (got.bonusGem ? "（宝玉も！）" : "") + (got.prize !== "revive" && gotTool ? "（" + GameState.TOOLS[got.tool].name + "も）" : ""));
+        Battle.pop(b.x, b.y - 22, (got.prize === "gem" ? "宝玉" : got.prize === "revive" ? "復活薬" : "素材の山") + "！", "#ff9ad0", 10);
+      }
+      snapshot();
       Battle.pop(b.x, b.y - 34, "+" + got.gold + "G", "#f2c14e", 7);
       Sound.play("chest");
     });
