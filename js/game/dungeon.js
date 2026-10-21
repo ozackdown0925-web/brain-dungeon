@@ -244,7 +244,7 @@ var Dungeon = (function () {
     var plan = [
       { x: 1, y: 1, kind: "start", tpl: ROOMS[0], doors: ["e"] },
       { x: 2, y: 1, kind: "room", tpl: ROOMS[mid], doors: ["w", "e"] },
-      { x: 3, y: 1, kind: "exit", tpl: BossRoom, doors: ["w"] }
+      { x: 3, y: 1, kind: "exit", tpl: theme === "swamp" ? SwampBossRoom : BossRoom, doors: ["w"] }
     ];
     plan.forEach(function (p) {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
