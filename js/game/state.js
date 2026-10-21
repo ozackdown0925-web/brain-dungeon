@@ -3,7 +3,9 @@
 // 数字は docs/draft.md 1.1（成長の速さ）。iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var GameState = (function () {
   var STAR_NEED = 40;  // 基本職：★1つに必要な熟練度
-  var STAR_NEED_UPPER = 60, STAR_NEED_TOP = 80; // 上級職・最上級職（2026-10-19 決定。上級職を作るときに使う）
+  // 上級職・最上級職（2026-10-19 決定）。2026-10-22 に 60・80 → 75・100（地方1のうちに職が育ちきってしまうため）
+  var STAR_NEED_UPPER = 75, STAR_NEED_TOP = 100;
+  var OLD_STAR_NEED_UPPER = 60;   // 前のセーブの上級職の熟練度を、★がへらないように直すため
   var MAX_STAR = 7;    // 基本職の★の数（スキルの数と同じ）
   var MAX_LEVEL = 100;
   var SAVE_KEY = "brain-dungeon-save-v1";       // iPad の中の控え（こまめに書きかえる）
@@ -48,6 +50,13 @@ var GameState = (function () {
     if (!g.parent) g.parent = defaultParent();
     if (!g.log) g.log = [];
     if (!g.progress.dungeons) g.progress.dungeons = {};   // ダンジョンごとの進み具合（瘴気の森の段階1、2026-10-21）
+    // 上級職の★1つに必要な熟練度を 60 → 75 にした（2026-10-22）。前のセーブは、★と次の★までの進み具合がそのままになるよう、上級職の熟練度を 75/60 倍にする（1回だけ）
+    if (!g.masteryV2) {
+      g.party.forEach(function (h) {
+        Object.keys(h.mastery || {}).forEach(function (j) { if (GameData.tierOf(j) === 2) h.mastery[j] = Math.round(h.mastery[j] * STAR_NEED_UPPER / OLD_STAR_NEED_UPPER); });
+      });
+      g.masteryV2 = true;
+    }
     return g;
   }
 
@@ -92,6 +101,7 @@ var GameState = (function () {
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
       items: { potion: 0, ether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [], dungeons: {} },
+      masteryV2: true,   // 上級職の熟練度は、はじめから新しい数（75）で数える
       titles: [],
       book: { monsters: {}, items: [] },
       today: { date: todayStr(), adventure: null },
@@ -105,7 +115,8 @@ var GameState = (function () {
   }
 
   // ---------- 成長 ----------
-  function expNeed(level) { return 100 + 48 * level; }
+  // 次のレベルまでの経験値。Lv25 までは前のまま（100＋48×Lv）。そこから先は少しずつふえ、半年（180日）ごろに Lv100 になる（2026-10-22。前は100日ごろに Lv100 で止まった）
+  function expNeed(level) { return 100 + 48 * level + (level > 25 ? 4 * (level - 25) * (level - 25) : 0); }
   // パッシブの枠の数：基本職は2つ（上級職3・最上級職4は、上級職を作るときに）
   function passiveSlots(h) { return GameData.tierOf(h.job) >= 2 ? 3 : 2; }
   // ★1つに必要な熟練度：基本職40・上級職60（2026-10-19 決定）
