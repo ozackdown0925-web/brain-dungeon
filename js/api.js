@@ -22,7 +22,8 @@
 
   // 戻り値：Promise。成功なら GAS の応答（{ ok: true, ... }）。
   // 失敗なら Error。err.kind は "forbidden"（鍵がちがう）・"network"（つながらない）・"server"（GAS 側のエラー）。
-  function call(action, params, key) {
+  // opts.timeout：待つ時間（ミリ秒。省くと30秒）
+  function call(action, params, key, opts) {
     var body = {};
     var src = params || {};
     Object.keys(src).forEach(function (k) { body[k] = src[k]; });
@@ -37,8 +38,8 @@
     }
     if (!gasUrl()) return Promise.reject(fail("GAS の URL が入っていません", "server"));
 
-    var ctrl = window.AbortController ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS) : 0;
+    var ctrl = window.AbortController ? new AbortController() : null, wait = (opts && opts.timeout) || TIMEOUT_MS, t0 = Date.now();
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, wait) : 0;
     return fetch(gasUrl(), {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -51,7 +52,9 @@
       return res.json().catch(function () { throw fail("サーバーの応答を読めませんでした", "network"); });
     }, function () {
       clearTimeout(timer);
-      throw fail("インターネットにつながりませんでした", "network");
+      // 時間切れか、つながらなかったかを分ける（2026-10-22：問題の読みこみが失敗する原因を調べるため）
+      if (ctrl && ctrl.signal.aborted) throw fail("時間がかかりすぎました（" + Math.round(wait / 1000) + "秒）", "network");
+      throw fail("インターネットにつながりませんでした（" + Math.round((Date.now() - t0) / 100) / 10 + "秒後）", "network");
     }).then(function (data) {
       if (!data || data.error) {
         var msg = data && data.error ? String(data.error) : "応答が空です";
