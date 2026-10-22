@@ -325,7 +325,7 @@ var Town = (function () {
     bodyEl.appendChild(tabs);
     if (shopTab === "equip") { renderShopEquip(g); return; }
     bodyEl.appendChild(el("h3", "", "道具（ダンジョンのメニューから使える。種類ごとに " + GameState.TOOL_MAX + "個まで）"));
-    GameState.TOOL_ORDER.forEach(function (k) {
+    GameState.shopTools().forEach(function (k) {
       var t = GameState.TOOLS[k];
       var row = el("div", "item-line");
       row.appendChild(el("span", "item-name", t.name + "　" + t.price + "G"));
