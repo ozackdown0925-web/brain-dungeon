@@ -1299,13 +1299,14 @@
     note.textContent = "いま戦っている " + c.name + " に使う（復活薬は、たおれた仲間に）";
     have.forEach(function (k) {
       var t = GameState.TOOLS[k], n = " ×" + g.items[k];
-      if (k === "ether") {
+      // 回復薬・MP回復薬（2026-10-22）：決まった数だけ回復する
+      if (t.mp) {
         add(t.name + n, c.mp < c.stats.mp, function () {
-          GameState.useTool(k); Sound.play("heal"); c.mp = Math.min(c.stats.mp, c.mp + Math.round(c.stats.mp * 0.4)); note.textContent = c.name + "の MP が回復した";
+          GameState.useTool(k); Sound.play("heal"); c.mp = Math.min(c.stats.mp, c.mp + t.mp); note.textContent = c.name + "の MP が回復した";
         });
-      } else if (k === "potion") {
+      } else if (t.hp) {
         add(t.name + n, c.hp < c.stats.hp, function () {
-          GameState.useTool(k); Sound.play("heal"); c.hp = Math.min(c.stats.hp, c.hp + Math.round(c.stats.hp * 0.4)); note.textContent = c.name + "の HP が回復した";
+          GameState.useTool(k); Sound.play("heal"); c.hp = Math.min(c.stats.hp, c.hp + t.hp); note.textContent = c.name + "の HP が回復した";
         });
       } else if (k === "revive") {
         var downs = Party.members().filter(function (m) { return m.down; });

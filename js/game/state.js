@@ -99,7 +99,7 @@ var GameState = (function () {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
-      items: { potion: 0, ether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
+      items: { potion: 0, hipotion: 0, xpotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [], dungeons: {} },
       masteryV2: true,   // 上級職の熟練度は、はじめから新しい数（75）で数える
       titles: [],
@@ -242,7 +242,10 @@ var GameState = (function () {
         report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });
       });
       var st = shopTier();
-      if (st > shop0) report.push({ name: "", raw: true, lines: ["お店で" + GameData.TIER_LABEL[st] + "の装備が買えるようになった！"], exp: 0 });
+      if (st > shop0) {
+        var newTools = TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) > shop0 && (TOOLS[k].tier || 0) <= st; }).map(function (k) { return TOOLS[k].name; });
+        report.push({ name: "", raw: true, lines: ["お店で" + GameData.TIER_LABEL[st] + "の装備" + (newTools.length ? "と" + newTools.join("・") : "") + "が買えるようになった！"], exp: 0 });
+      }
     }
     game.today = { date: todayStr(), adventure: null };
     // 出発できるのは1日2回（テスト用の出発は数えない）
@@ -264,14 +267,22 @@ var GameState = (function () {
   // ---------- 装備（段階5-2） ----------
   var STORAGE_MAX = 200;
   var TOOLS = {
-    potion:   { name: "回復薬", price: 30, note: "HP を 40% 回復" },
-    ether:    { name: "MP回復薬", price: 40, note: "MP を 40% 回復" },   // MP は自然に回復しない（2026-10-18 決定）
+    // 回復薬（2026-10-22 保護者と決定）：前は HP・MP の40%を回復して30G・40Gだったが、レベルが上がるほどお得になり、ゴールドがあまったので、
+    // 回復する量を数で決め、強い薬ほど高くした（強い薬ほど、1回復あたりの値段も上がる）。tier：お店に並ぶ段（装備と同じ。1＝瘴気の森が開いたら、2＝原生の秘境が開いたら）
+    potion:   { name: "回復薬", price: 60, hp: 60, tier: 0, note: "HP を 60 回復" },
+    hipotion: { name: "上回復薬", price: 300, hp: 150, tier: 1, note: "HP を 150 回復" },
+    xpotion:  { name: "特上回復薬", price: 1000, hp: 350, tier: 2, note: "HP を 350 回復" },
+    ether:    { name: "MP回復薬", price: 80, mp: 20, tier: 0, note: "MP を 20 回復" },   // MP は自然に回復しない（2026-10-18 決定）
+    hiether:  { name: "上MP回復薬", price: 400, mp: 50, tier: 1, note: "MP を 50 回復" },
+    xether:   { name: "特上MP回復薬", price: 1200, mp: 100, tier: 2, note: "MP を 100 回復" },
     revive:   { name: "復活薬", price: 1000, note: "たおれた仲間を HP30% で復活" },   // 2026-10-18 に 150G から変更
     antidote: { name: "毒消し", price: 20, note: "毒を治す", cures: "poison" },
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
-  var TOOL_ORDER = ["potion", "ether", "revive", "antidote", "paraheal", "wake"];
+  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
+  // お店に並ぶ道具：強い回復薬は、ダンジョンが開くと並ぶ
+  function shopTools() { var t = shopTier(); return TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) <= t; }); }
   var TOOL_MAX = 99;
 
   // 装備できるか：武器は職業の武器の種類、防具は職業の防具の種類
@@ -791,7 +802,7 @@ var GameState = (function () {
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
-    STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
+    STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
