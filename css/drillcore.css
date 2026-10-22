@@ -74,3 +74,16 @@ textarea.dq-in { width: 100%; font-size: 1.1rem; min-height: 5em; resize: vertic
 .dq-kp-gap { display: block; }
 .dq-kp-in { caret-color: transparent; cursor: pointer; }
 .dq-kp-in.kp-on { border-color: var(--c); box-shadow: 0 0 0 3px rgba(90,169,255,0.25); }
+/* 低い画面（スマホの横向きなど）では、数字のボタンを2段にする（2026-10-23 保護者の感想：答えの欄が1つのとき、ボタンが欄にかぶって入れられなかった）。
+   1 2 3 4 5 6 ⌫ ／ 7 8 9 0 . ぜんぶ消す。iPad（高さがある画面）は今までどおり */
+@media (max-height: 560px) {
+  .dq-keypad { grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 6px; padding: 6px 10px 8px; bottom: -14px; }
+  .dq-kp { min-height: 40px; font-size: 1.2rem; border-radius: 8px; }
+  .dq-kp.back { font-size: 1.1rem; }
+  .dq-kp.clear { grid-column: span 2; min-height: 40px; font-size: 0.85rem; padding: 0 2px; }
+  .dq-keypad [data-k="1"] { order: 1; } .dq-keypad [data-k="2"] { order: 2; } .dq-keypad [data-k="3"] { order: 3; }
+  .dq-keypad [data-k="4"] { order: 4; } .dq-keypad [data-k="5"] { order: 5; } .dq-keypad [data-k="6"] { order: 6; }
+  .dq-keypad [data-k="back"] { order: 7; }
+  .dq-keypad [data-k="7"] { order: 8; } .dq-keypad [data-k="8"] { order: 9; } .dq-keypad [data-k="9"] { order: 10; }
+  .dq-keypad [data-k="0"] { order: 11; } .dq-keypad [data-k="dot"] { order: 12; } .dq-keypad [data-k="clear"] { order: 13; }
+}

@@ -274,8 +274,9 @@
     var anyDot = kp.inputs.some(function (x) { return x._kpDot; });
     [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["0", anyDot ? "." : "", "back"]].forEach(function (row) {
       row.forEach(function (k) {
-        if (!k) { pad.append(el("span", "dq-kp-gap")); return; }
+        if (!k) { var gp = el("span", "dq-kp-gap"); gp.setAttribute("data-k", "dot"); pad.append(gp); return; }
         var b = btn("dq-kp" + (k === "back" ? " back" : ""), k === "back" ? "⌫" : k);
+        b.setAttribute("data-k", k === "." ? "dot" : k);   // 低い画面では2段にならべかえる（drillcore.css。2026-10-23）
         if (k === "back") b.setAttribute("aria-label", "1文字消す");
         // 押したときに欄の選び直しがおきないように、ボタンにはフォーカスを移さない
         b.addEventListener("mousedown", function (e) { e.preventDefault(); });
@@ -284,6 +285,7 @@
       });
     });
     var clr = btn("dq-kp clear", "ぜんぶ消す", function () { kpPress("clear"); });
+    clr.setAttribute("data-k", "clear");
     clr.addEventListener("mousedown", function (e) { e.preventDefault(); });
     pad.append(clr);
     kp.node = pad;
