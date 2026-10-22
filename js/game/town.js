@@ -142,6 +142,117 @@ var Town = (function () {
     });
   }
 
+  // ---------- 宿屋の装備（2026-10-22 保護者の希望：スキルと同じ形） ----------
+  // 右の上に「装備中」の武器と防具（押すと、その種類を選ぶ）。左に、選んだ種類の倉庫の装備（この職業が装備できる物）。
+  // 左の装備を押すと、右の下にくわしく出て「装備する」。何も選んでいないときは、装備中の物のくわしい説明と「はずす」
+  var equipSlot = "weapon", selEquip = null;
+  function equipMain(it) {
+    var k = 1 + Loot.PLUS_STEP * (it.plus || 0);
+    return it.slot === "weapon"
+      ? (it.patk ? "物攻 " + Math.round(it.patk * k) : "") + (it.matk ? (it.patk ? "　" : "") + "魔攻 " + Math.round(it.matk * k) : "")
+      : "物防 " + Math.round(it.pdef * k) + "　魔防 " + Math.round(it.mdef * k);
+  }
+  function equipMods(it) {
+    var mods = it.buff.map(function (b) { return Loot.STAT_NAMES[b[0]] + "+" + b[1]; })
+      .concat(it.debuff.map(function (d) { return Loot.STAT_NAMES[d[0]] + "−" + d[1]; }));
+    if (it.sp) mods.push(it.sp);
+    return mods.join("・");
+  }
+  function starterName(h, slot) {
+    return slot === "weapon" ? GameData.WEAPONS[GameState.starterWeapon(h.job)].starter : GameData.STARTER_ARMORS[GameData.JOBS[h.job].armor].name;
+  }
+  function renderInnEquip(g, h) {
+    var now = GameState.heroStats(h), slotWord = equipSlot === "weapon" ? "武器" : "防具";
+    var cand = g.storage.filter(function (x) { return x.slot === equipSlot && GameState.canEquip(h, x); })
+      .sort(function (a, b) { return b.r - a.r || b.ilv - a.ilv; });
+    var sel = null;
+    cand.forEach(function (x) { if (x.id === selEquip) sel = x; });
+    function afterOf(x) { var save = h.equip[x.slot]; h.equip[x.slot] = x; var a = GameState.heroStats(h); h.equip[x.slot] = save; return a; }
+
+    var wrap = el("div", "sk-wrap");
+    // 左：倉庫の装備（選んだ種類だけ）
+    var list = el("div", "sk-list");
+    list.appendChild(el("div", "sk-job", "倉庫の" + slotWord + "（" + GameData.JOBS[h.job].name + "が装備できる物）"));
+    if (!cand.length) list.appendChild(el("p", "sub", "倉庫に、" + GameData.JOBS[h.job].name + "が装備できる" + slotWord + "はない。"));
+    cand.forEach(function (x) {
+      var b = el("button", "btn eq-item" + (x === sel ? " sel" : "")); b.type = "button";
+      var nm = el("span", "eq-name", Loot.label(x)); nm.style.color = Loot.RARITY[x.r].color;
+      b.appendChild(nm);
+      b.appendChild(el("span", "eq-main", "Lv" + x.ilv + "　" + equipMain(x)));
+      b.appendChild(diffNode(now, afterOf(x)));
+      b.addEventListener("click", function () { selEquip = x.id; say(""); render(); });
+      list.appendChild(b);
+    });
+    wrap.appendChild(list);
+
+    // 右の上：装備中の武器と防具
+    var side = el("div", "sk-side");
+    var slotBox = el("div", "sk-slots");
+    slotBox.appendChild(el("div", "sk-slots-head", "装備中（押すと、左に倉庫のその種類が出る）"));
+    ["weapon", "armor"].forEach(function (slot) {
+      var it = h.equip[slot];
+      var b = el("button", "btn sk-slot" + (slot === equipSlot ? " sel" : "")); b.type = "button";
+      b.appendChild(el("span", "sk-slot-no", slot === "weapon" ? "武器" : "防具"));
+      var nm = el("span", "sk-slot-name", it ? Loot.label(it) : "はじめの" + (slot === "weapon" ? "武器" : "防具") + "（" + starterName(h, slot) + "）");
+      if (it) nm.style.color = Loot.RARITY[it.r].color;
+      b.appendChild(nm);
+      b.addEventListener("click", function () { if (equipSlot !== slot) { equipSlot = slot; selEquip = null; } else selEquip = null; say(""); render(); });
+      slotBox.appendChild(b);
+    });
+    side.appendChild(slotBox);
+
+    // 右の下：くわしい説明
+    var det = el("div", "sk-detail");
+    function lines(it) {
+      var info = el("div", "sk-info");
+      var line = function (k, v) { var d = el("div", "sk-line"); d.appendChild(el("span", "sk-k", k)); d.appendChild(el("span", "sk-v", v)); info.appendChild(d); };
+      line("強さ", equipMain(it));
+      line("Lv", String(it.ilv) + (it.plus ? "（強化 ＋" + it.plus + "）" : ""));
+      line("レア度", Loot.RARITY[it.r].long || Loot.RARITY[it.r].name);
+      var m = equipMods(it); if (m) line("おまけ", m);
+      return info;
+    }
+    if (sel) {
+      var nm1 = el("div", "sk-name", Loot.label(sel)); nm1.style.color = Loot.RARITY[sel.r].color;
+      det.appendChild(nm1);
+      det.appendChild(el("div", "sk-kind", "倉庫にある" + slotWord));
+      det.appendChild(lines(sel));
+      det.appendChild(el("div", "eq-head", "付けかえると"));
+      det.appendChild(diffNode(now, afterOf(sel)));
+      var row = el("div", "sk-btns");
+      row.appendChild(button("装備する", function () {
+        var r1 = GameState.equipItem(h, sel.id);
+        selEquip = null;
+        say(Loot.label(sel) + "を装備した" + (r1 ? skillNote(r1) : ""));
+        render();
+      }, "small-btn sk-setbtn"));
+      row.appendChild(button("やめる", function () { selEquip = null; say(""); render(); }, "small-btn"));
+      det.appendChild(row);
+    } else {
+      var cur = h.equip[equipSlot];
+      if (cur) {
+        var nm2 = el("div", "sk-name", Loot.label(cur)); nm2.style.color = Loot.RARITY[cur.r].color;
+        det.appendChild(nm2);
+        det.appendChild(el("div", "sk-kind", "装備中の" + slotWord));
+        det.appendChild(lines(cur));
+        var row2 = el("div", "sk-btns");
+        row2.appendChild(button("はずす（倉庫へ）", function () {
+          var r0 = GameState.unequip(h, equipSlot);
+          if (!r0) { say("倉庫がいっぱいで、はずせない"); return; }
+          say("はずして倉庫に入れた" + skillNote(r0)); render();
+        }, "small-btn"));
+        det.appendChild(row2);
+      } else {
+        det.appendChild(el("div", "sk-name", "はじめの" + slotWord));
+        det.appendChild(el("div", "sk-kind", starterName(h, equipSlot)));
+      }
+      if (cand.length) det.appendChild(el("p", "sub", "左の" + slotWord + "を押すと、ここでくらべて付けかえられる。"));
+    }
+    side.appendChild(det);
+    wrap.appendChild(side);
+    bodyEl.appendChild(wrap);
+  }
+
   // ---------- 倉庫（「装備」と「道具」のタブ。2026-10-18 保護者の案） ----------
   function renderStorage(g) {
     var tabs = el("div", "tabs");
@@ -358,7 +469,7 @@ var Town = (function () {
       tabs.appendChild(button(t[1], function () { innTab = t[0]; say(""); render(); }, "chip" + (innTab === t[0] ? " sel" : "")));
     });
     bodyEl.appendChild(tabs);
-    if (innTab === "equip") { renderEquip(g, true); return; }
+    if (innTab === "equip") { renderInnEquip(g, h); return; }
     if (innTab === "training") { renderTraining(); return; }
     renderSkillTab(h, innTab === "passive");
   }

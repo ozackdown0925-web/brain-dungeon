@@ -462,3 +462,9 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 /* 装備の種類でしぼりこむ（倉庫・鍛冶屋。2026-10-22） */
 .filter-chips { align-items: center; margin: 6px 0 8px; }
 .filter-head { font-size: 13px; color: var(--muted); }
+/* 宿屋の装備（2026-10-22）：左は倉庫の装備（名前・強さ・付けかえたときの変わり方）、右は装備中とくわしい説明 */
+.btn.eq-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; padding: 7px 10px; margin-top: 6px; border-radius: 8px; }
+.btn.eq-item.sel { background: var(--pick-bg); border-color: var(--pick); box-shadow: 0 0 0 2px var(--pick) inset; }
+.eq-name { font-size: 15px; font-weight: 700; }
+.eq-main { font-size: 13px; color: var(--muted); }
+.eq-head { font-size: 13px; color: var(--muted); margin: 8px 0 2px; }
