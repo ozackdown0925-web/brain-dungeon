@@ -64,3 +64,18 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
 @media (max-height: 500px) { .canvasbox { height: 260px; } }
 .tlogin { background: var(--sheet); color: var(--ink); border-radius: var(--radius); padding: 14px; display: grid; gap: 10px; max-width: 520px; margin: 10px auto; }
 .tlogin .err { color: var(--ng); font-weight: 700; margin: 0; }
+/* 低い画面（スマホの横向き）では、数字のボタンが2段で低いので、かくれないように空ける幅も小さく（2026-10-23） */
+@media (max-height: 560px) {
+  #trialAnswer { scroll-padding-bottom: 120px; }
+}
+/* 低い画面では、上の見出しと教科のタブも小さくして、答えの欄と数字のボタンが1画面に入るように（2026-10-23） */
+@media (max-height: 560px) {
+  .temple-head { padding: 2px 0; margin-bottom: 4px; }
+  .temple-head h2 { font-size: 18px; letter-spacing: 0.1em; }
+  .temple-head p { margin: 0; font-size: 12px; }
+  .temple-head #trialBack { top: 0; }
+  .ttab { padding: 2px 4px; gap: 0; border-radius: 8px; }
+  .ttab .tname { font-size: 0.95rem; }
+  .ttab .tstate { font-size: 0.7rem; }
+  .tprogress { margin: 2px 0; font-size: 12px; }
+}
