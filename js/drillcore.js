@@ -423,10 +423,14 @@
     var myKp = kp;
     ans.append(action);
 
-    var checkBtn = btn("dq-btn", "答え合わせ", check);
+    // 答え合わせのボタンは、答えを入れていなくても押せる（2026-10-23 保護者の希望：画面の不具合などで入れられないときに、先へ進めなくなるため）。
+    // 入れていない欄があるときは、1回目に押すと知らせだけ出し、もう一度押すと答え合わせする（まちがえて押したときのため）。入れていない欄は×
+    var checkBtn = btn("dq-btn", "答え合わせ", check), armed = false;
+    var emptyNote = el("p", "dq-note dq-empty-note");
+    function allFilled() { return parts.every(function (p, i) { return !isEmpty(p, ws[i].get()); }); }
     function update() {
-      var ready = parts.every(function (p, i) { return !isEmpty(p, ws[i].get()); });
-      checkBtn.disabled = !ready || !parts.length;
+      checkBtn.disabled = !parts.length;
+      if (armed && allFilled()) { armed = false; checkBtn.textContent = "答え合わせ"; emptyNote.remove(); }
     }
 
     function showPartResult(i, res, value) {
@@ -462,12 +466,21 @@
     action.append(checkBtn); update();
 
     function check() {
+      if (!allFilled() && !armed) {
+        armed = true;
+        checkBtn.textContent = "このまま答え合わせする";
+        emptyNote.textContent = "まだ答えを入れていない欄がある（入れていない欄は×になる）。このまま答え合わせするなら、もう一度押してね。";
+        action.parentNode.insertBefore(emptyNote, action);
+        return;
+      }
+      emptyNote.remove();
       ws.forEach(function (w) { w.lock(); });
       if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);   // 答え合わせのあとは数字のボタンをしまう
       checkBtn.remove();
       var results = parts.map(function (p, i) {
         var v = ws[i].get();
         if (SELF[p.type]) return { self: true, value: v };
+        if (isEmpty(p, v)) { var r0 = { correct: false, note: "答えが入っていなかった。", value: v }; showPartResult(i, r0, v); return r0; }
         var r = checkPart(p, v); r.value = v; showPartResult(i, r, v); return r;
       });
       var pending = results.filter(function (r) { return r.self; }).length;
