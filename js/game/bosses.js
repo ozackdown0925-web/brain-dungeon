@@ -261,6 +261,8 @@ var Bosses = (function () {
   // ---------- 沼の魔女（瘴気の森10階・主。2026-10-21） ----------
   // 離れたところに浮かび、闇の玉を3つ撃つ（魔法）。近づかれると消えて、はなれた場所に現れる。
   // 瘴気の柱（大技）：プレイヤーのまわりに紫の輪 → 柱が立つ（魔法の大ダメージ、毒になることがある）。瘴気の霊を呼ぶ
+  // 消えて現れたあとと、瘴気の柱のあと：少しのあいだ、ふらつく（すきあり）
+  function tire(e) { e.state = "tired"; e.t = e.def.tired; Battle.pop(e.x, e.y - 44, "すきあり！", "#ffe066", 8); }
   function witch(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
     var d = e.def, half = e.hp <= e.maxHp / 2;
     e.face = { x: ux, y: uy };
@@ -281,7 +283,7 @@ var Bosses = (function () {
           var x = 30 + Math.random() * (room.pxW - 60), y = 30 + Math.random() * (room.pxH - 60);
           if (room.hitsWall(x - e.r, y - e.r, e.r * 2, e.r * 2)) continue;
           var dd = (x - p.x) * (x - p.x) + (y - p.y) * (y - p.y);
-          if (dd > 110 * 110 && dd < 200 * 200) { best = { x: x, y: y }; break; }
+          if (dd > d.appearMin * d.appearMin && dd < d.appearMax * d.appearMax) { best = { x: x, y: y }; break; }
           if (dd > bd) { bd = dd; best = { x: x, y: y }; }
         }
         if (best) { e.x = best.x; e.y = best.y; }
@@ -289,7 +291,8 @@ var Bosses = (function () {
       }
       return;
     }
-    if (e.state === "appear") { e.t -= dt; if (e.t <= 0) { e.untouchable = false; e.state = "recover"; e.t = 0.3; } return; }
+    if (e.state === "appear") { e.t -= dt; if (e.t <= 0) { e.untouchable = false; tire(e); } return; }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }   // ふらついている（動かず、攻撃もしない）
     if (e.state === "pillar") {   // 杖を上げて、瘴気の柱
       e.t -= dt;
       if (e.t <= 0) {
@@ -299,7 +302,7 @@ var Bosses = (function () {
           hazards.push({ kind: "circle", look: "pillar", from: e, x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr, r: d.pillarRadius, t: 0, warn: d.pillarWarn, erupt: 0.5, hit: false,
                          opts: { magic: true, mult: d.pillarMult, big: true, status: { type: "poison", chance: 0.5, dur: 8 } } });
         }
-        e.state = "recover"; e.t = 0.6; e.ai.pillar = half ? d.pillarEveryHalf : d.pillarEvery;
+        tire(e); e.ai.pillar = half ? d.pillarEveryHalf : d.pillarEvery;
       }
       return;
     }
@@ -313,8 +316,10 @@ var Bosses = (function () {
     }
     if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
     if (p.down) return;
-    if (gap < 40 && e.ai.blink <= 0) {   // 近づかれたら、消える
-      e.state = "vanish"; e.t = 0.4; e.untouchable = true; e.ai.blink = half ? 4 : 6;
+    // 近くに nearTime 秒いられたら、消える（すぐには消えないので、近くで攻撃するすきがある）
+    if (gap < 40) e.ai.near = (e.ai.near || 0) + dt; else if (gap > 60) e.ai.near = 0;
+    if (e.ai.near >= d.nearTime && e.ai.blink <= 0) {
+      e.state = "vanish"; e.t = 0.4; e.untouchable = true; e.ai.blink = half ? d.blinkEveryHalf : d.blinkEvery; e.ai.near = 0;
       Battle.pop(e.x, e.y - 40, "消えた！", "#b48cff", 8);
       return;
     }
@@ -554,6 +559,12 @@ var Bosses = (function () {
       if (cast) {   // 杖の先（頭がい骨）の紫の光
         var sx = x - 11, sy = y + 14 - 4 + bob - 46 + 3;   // 杖の先の頭がい骨
         Combat.glowDot(ctx, sx, sy, 9 + Math.sin(glow * 10) * 2, "#ffe0ff", e.state === "pillar" ? "#e070ff" : "#9a5ad0", 0.85);
+      }
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる（1点ずつ）
+        for (var st = 0; st < 3; st++) {
+          var ta = glow * 4 + st * 2.1, tx = Math.round(x + Math.cos(ta) * 10), ty = Math.round(y + 14 - 4 + bob - 50 + Math.sin(ta) * 3);
+          Render.rect(tx, ty - 1, 1, 3, "#ffe066"); Render.rect(tx - 1, ty, 3, 1, "#ffe066");
+        }
       }
       if (e.state === "vanish" || e.state === "appear") {   // 紫のけむり
         for (var sm = 0; sm < 8; sm++) { var sa = sm * 0.785 + glow; Render.rect(Math.round(x + Math.cos(sa) * 14), Math.round(y - 10 + Math.sin(sa) * 10), 3, 3, "rgba(150,90,200,0.6)"); }

@@ -440,10 +440,13 @@ var GameData = (function () {
   // 瘴気の柱（大技。地面の紫の輪で予告）、瘴気の霊を呼ぶ。光が弱点、闇は効かない
   ENEMIES.witch_boss = {
     name: "沼の魔女", kind: "witch_boss", boss: true, hp: 2600, patk: 18, matk: 32, pdef: 7, mdef: 12,
-    res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 30, r: 10,
-    keepMin: 90, keepMax: 150, windup: 0.6, cooldown: 2.2, orbSpeed: 95, color: "#4a2e72",
+    res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 20, r: 10,
+    keepMin: 70, keepMax: 130, windup: 0.6, cooldown: 2.2, orbSpeed: 95, color: "#4a2e72",
     pillarEvery: 9, pillarEveryHalf: 6, pillarWarn: 1.2, pillarRadius: 22, pillarMult: 2.6,
-    blinkEvery: 9, summonEvery: 16
+    // 2026-10-22 保護者の感想（遠くから攻撃できないと当てられない）で、近くで戦えるようにした：
+    // 近くに nearTime 秒いられてから消える（すぐには消えない）・消えたあとは近め（appearMin〜appearMax）に現れて、tired 秒ふらつく（すきあり）・
+    // 瘴気の柱のあとも tired 秒ふらつく・はなれるのをゆっくりに（前は speed 30、keepMin 90、keepMax 150、消えるのは6秒ごと（HP半分から4秒）で近づくとすぐ）
+    blinkEvery: 10, blinkEveryHalf: 7, nearTime: 1.5, appearMin: 60, appearMax: 110, tired: 2.0, summonEvery: 16
   };
 
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
