@@ -185,19 +185,34 @@ var Trial = (function () {
     var r = rateOf(q);
     return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0) + (latest && testOf(q) === latest ? 200 : 0);
   }
+  // 前の日と前の前の日に、まちがえた問題（今日は、出した問題をもう出さないので入れない）
+  function missedRecently(subject) {
+    var out = {}, base = new Date(today.replace(/-/g, "/"));
+    for (var back = 1; back <= 2; back++) {
+      var dd = new Date(base.getTime()); dd.setDate(dd.getDate() - back);
+      var d = days[ymd(dd)];
+      ((d && d.lists[subject]) || []).forEach(function (it) { if (it && it.qid && !it.correct) out[it.qid] = true; });
+    }
+    return out;
+  }
   function choose(subject) {
     var t = itemOf(subject);
     if (t && byId[t.qid]) return { qid: t.qid, review: !!t.review };
     var pool = Q.filter(function (q) { return q.subject === subject; });
     if (!pool.length) return null;
     // 今日もう出した問題は、ほかに問題があれば出さない（2回目に同じ問題が続かないように）
+    // 土日は1日4回になるので、まちがえた問題も、その日のうちはもう出さない（次の日から、また先に出る。2026-10-25 保護者の希望）
     var shown = todayList(subject).slice(0, round - 1).map(function (r) { return r.qid; });
-    var fresh = pool.filter(function (q) { return shown.indexOf(q.id) < 0; });
+    // まちがえた問題は、次の2日間は出さない（2026-10-25 保護者の希望。月曜にまちがえたら、木曜からまた出る）
+    var rested = missedRecently(subject);
+    var fresh = pool.filter(function (q) { return shown.indexOf(q.id) < 0 && !rested[q.id]; });
+    if (!fresh.length) fresh = pool.filter(function (q) { return shown.indexOf(q.id) < 0; });   // 問題が足りないときは、2日間の決まりをはずす
     if (fresh.length) pool = fresh;
+    function timesToday(q) { return shown.filter(function (id) { return id === q.id; }).length; }   // 問題が足りないときは、今日出した回数が少ないもの
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
     var latest = latestTest(subject);
-    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
+    pool.sort(function (a, b) { return timesToday(a) - timesToday(b) || ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
     var top = pool[0], th = h[top.id];
     return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }
