@@ -524,10 +524,13 @@ var Sprites = (function () {
     priest:  [null, null, null, null, "..AJJA..AJJA...."]
   };
   // 基本職・一本道の上級職の新しい絵（2026-10-25 保護者が描いた絵。前・後ろ・横（左向き）の 16×24）。
-  // 色は職ごとの一覧（pal。小文字）。1〜4 は髪の色（顔の番号で変わる）：絵の髪の明るい茶→1、こげ茶→2、灰色の光→4。
+  // 色は職ごとの一覧（pal。小文字）。1〜4 は髪の色（顔の番号で変わる）：絵の髪の色を、明るい→1・ふつう→2・影→3・灰色の光→4 に分けた。
+  // 騎士・魔術師・黒魔道士は、かぶと・フードなので髪の色は変わらない（保護者）。
   // 絵は足が下から2行めだったので、1行下げて入れた（今の絵と足の高さをそろえる）。
-  // stride：横向きで歩く・攻撃するときの足（19〜23行め）。hand：横向きの攻撃でのばす手の色 [肌, 肌の影]、sleeve：そでの色 [そで, そでの影]
+  // stride：横向きで歩く・攻撃するときの足（19〜23行め。null の行はそのまま。ローブの職は、すその下から足を出すだけ）。
+  // hand：横向きの攻撃でのばす手の色 [肌, 肌の影]、sleeve：そでの色 [そで, そでの影]
   var ART = {
+    // 戦士
     warrior: {
       pal: { d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#a54848", h: "#63442c", i: "#2b2b85", j: "#5e40ff", k: "#a75400", l: "#f3b926", m: "#5e3838", n: "#b54545" },
       map: {
@@ -537,6 +540,105 @@ var Sprites = (function () {
       },
       stride: ["....AiAjiiA.....", "...AmmA.AmmA....", "...AmmA..AmmA...", "..AnnmA..AnmmA..", "..AAAAA..AAAAA.."],
       hand: ["e", "d"], sleeve: ["j", "i"]
+    },
+    // 魔術師（フードなので髪の色は変わらない）
+    mage: {
+      pal: { d: "#7a8eb3", e: "#444d84", f: "#1c236a", g: "#7d7b18", h: "#ff8c39", i: "#ffefde", j: "#ffc68c", k: "#783b22", l: "#f3d27f", m: "#c27126" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....AdeeeeeA....", "...AeeeeeeffA...", "...AfefeefffA...", "...AffffffffA...", "...AfgfggfgfA...", "...AfAAhAAAfA...", "...AfiAhhAifA...", "...AfjAjjAjfA...", "...AfAjjjjAfA...", "..AefAAhhAAeeA..", "..AefAgeegAefA..", "..AfffedeffffA..", ".AgfAkeeffkAfgA.", ".AhgAfklgkfAghA.", ".AhjAeffffeAjhA.", "..AAfeeeeeefAA..", "...AfefeefefA...", "...AfgffffgfA...", "....AkfggfkA....", ".....AmAAmA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....AdeeeeeA....", "...AeeeeeeefA...", "...AfeeeefefA...", "...AfefeefffA...", "...AfeeeffffA...", "...AfeffffffA...", "...AfeffffffA...", "...AfeeffeefA...", "...AfeeeeeffA...", "..AegffeeffgfA..", "..AeffgffgeefA..", "..AffffffffffA..", ".AAAAfffAAAAfAA.", ".AgAAkmmkkkAAgA.", ".AhAAefffffAAhA.", "..AAfeeeeeffAA..", "...AfffeefffA...", "...AffffffffA...", "...AfgfggfgfA...", "....AkkAAkkA...."],
+        side: ["................", "................", "................", "....eAAAAAA.....", "...AdeeffffA....", "..AeeefeffefA...", "..AefefefffeA...", "..AffffeefffA...", "..AgfgfeeeffA...", "..AAhAAefeffA...", "...AhAiefeefA...", "...AjAjefeffA...", "...AjjjffAAfA...", "....AhhAgeeA....", "....AAgeffef....", "....AddeAfefA...", "....AeeeAfefA...", "....AgkAhggA....", "....AefAhjhA....", "....fefeAAAA....", "....fefffffff...", "....ffgfgfffA...", "....AAmkkkAAA...", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AmkA.AmkA...."],
+      hand: ["j", "h"], sleeve: ["d", "e"]
+    },
+    // 狩人
+    hunter: {
+      pal: { d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#4e3212", h: "#1b531d", i: "#a55b15", j: "#279c4a", k: "#a75400", l: "#f3b926", m: "#5d0000", n: "#a51414" },
+      map: {
+        down: ["................", "................", ".....AA11AAA....", "....A4221221A...", "...A121441221A..", "..A41221441221..", "..A42222111221..", "..A12dd2221122..", "..A22eed22212A..", "..A22AAdAAA22A..", "...A2fAedAfAA...", "....AeAeeAeA....", "..AggAeeeeAhA...", "..AAgiAddAhAhA..", "..AjAAighhAAjA..", "..AjhhgigjhhjA..", ".AdkAkhhggkAkdA.", ".AdeAhkllkhAedA.", ".AdeAAjhhjAAedA.", "..AAAhjhhjhAAA..", "....AghhhhgA....", "....AgiAAigA....", "....AggAAggA....", ".....AiAAiA....."],
+        up: ["................", "................", ".....112AAAA....", "....24412211A...", "...A441112212A..", "...11111112212..", "..A21212212212A.", "..A21211221222A.", "..A21221222122A.", "..A222222222mmA.", "...A22222222nfm.", "....AA2A22Amfnm.", "...AAAAAAAgmmmA.", "..AhAAhhhgigmA..", "..AhAhjjgigAhA..", "..AhAhhgiggAhA..", ".AdkAAggggAAkdA.", ".AdeAhAgkkhAedA.", ".AdeAAjhhjAAedA.", "..AAAhjhhjhAAA..", "....AghhhhgA....", "....AgiAAigA....", "....AggAAggA....", ".....AiAAiA....."],
+        side: ["................", "................", "....11AAAAA.....", "..A44111111AA...", ".A44141211211A..", ".A24114221121A..", ".A22211122121A..", ".A2A221212112A..", ".A2Ad22221222A..", "..2AfAA222222A..", "...AeAf22d22Am..", "...AeAe2dd2Amm..", "...AeeedAAAnig..", "....AddAAhhAig..", "....AAhhAhjAig..", "....AjjhAhjAig..", "....AhhhAlkAg...", "....AlkAdedAg...", ".....AAAdedA....", ".....hAjAAA.....", ".....hAjhhA.....", "....AAAAggA.....", "....AAiiggA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AhAjhhA.....", "...AggA.AggA....", "...AggA..AggA...", "..AiigA..AiggA..", "..AAAAA..AAAAA.."],
+      hand: ["e", "d"], sleeve: ["j", "h"]
+    },
+    // 武術家
+    fighter: {
+      pal: { d: "#8e0000", e: "#f90000", f: "#ffefde", g: "#ffc68c", h: "#ff8c39", i: "#984d00", j: "#ff7304", k: "#5e3838", l: "#f3e8cb", m: "#979683" },
+      map: {
+        down: ["................", "........2.......", "....2.2212.2....", "....12211221....", "...2123212213...", "...3223213223...", "...332332323A...", "...AddeeedddA...", "...AdddeedddA...", "....3AAfAAA3....", "....AfAghAfA....", "....AgAggAgA....", "...AhAggggAhA...", "..AfhAAhhAAhfA..", "..AghAiiiiAhgA..", "..AddijjjjiddA..", ".AhdAdiiiidAdhA.", ".AhgAideediAghA.", ".AhgAAjiijAAghA.", "..AAAijiijiAAA..", "....AkiiiikA....", "....AllAAllA....", "....AhgAAghA....", ".....AgAAgA....."],
+        up: ["................", ".......2........", "....2.2122.2....", "....12211221....", "...3122123212...", "...3223223223...", "...A333333333...", "...AddededddA...", "...AdddeddddA...", "...A333ddd33A...", "....A33d33dA....", "....A33dd33d....", "...AhAAAAAAhA...", "..AgAiiiiiiAgA..", "..AhAijiijiAhA..", "..AdAijijjiAdA..", ".AhdAAiiiiAAdhA.", ".AhgAddeeddAghA.", ".AhgAAjiijAAghA.", "..AAAijiijiAAA..", "....AkiiiikA....", "....AllAAllA....", "....AhhAAhhA....", "....AghAAhgA...."],
+        side: ["................", ".....2..2.......", "....21.223..2...", "...21231233223..", "...22331233233..", "...23232332233..", "...23233332333..", "...AeeeddddddA..", "...AeedddddddA..", "...AgAAh3g333d..", "...AgAfhgh33Add.", "...AgAghhh3A..d.", "...AggghAAA.....", "....AhhAAhfA....", "....AAiiAhgA....", "....AjjiAhdA....", "....AiiiAdeA....", "....AlmAhghA....", ".....AAAhghA....", ".....iAjAAA.....", ".....iAfffA.....", "....AAAghhA.....", "....AAghhhA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AiAjiiA.....", "...AggA.AggA....", "...AggA..AggA...", "..AhhgA..AhggA..", "..AAAAA..AAAAA.."],
+      hand: ["g", "h"], sleeve: ["j", "i"]
+    },
+    // 僧侶
+    priest: {
+      pal: { d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#606089", h: "#cadbdf", i: "#acb7bd", j: "#7c9fac", k: "#b54545", l: "#5e3838" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....A321123A....", "...A32233223A...", "...A32333122A...", "...A22deed12A...", "...A2defee12A...", "...A2AAfAA12A...", "...32fAeeA123...", "....2eAeeA12....", "...AgAeeeeAgA...", "..AhiAAddAAihA..", "..AigjjijjjgiA..", "..AjgjihijjgjA..", ".AdkAgihijgAkdA.", ".AdeigjijjgAedA.", ".AdeigihijgjedA.", "..AAijihijjiAA..", "...gijihijjig...", "...gigjiijgAg...", "....AgjjjjgA....", ".....AkAAkA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....A211323A....", "...A22223223A...", "...A32222223A...", "...A32223223A...", "...A32223233A...", "...A33223233A...", "...A33223333A...", "...A33333333A...", "...AA33333AgA...", "..AjgAAAAAggjA..", "..AggggggggggA..", "..AggjijjggggA..", ".AdkgjjijjjgkdA.", ".AdeAgjjjjggedA.", ".AdeAggjjggAedA.", "..AAAjjjjjjAAA..", "...ggjijjjjgg...", "...ggjijgjggg...", "....AgijgjgA....", ".....AkAAkA....."],
+        side: ["................", "................", "................", "....333AAAA.....", "...222222333....", "..A3222222333...", ".A23312222333...", ".A2Add1222233...", ".A2Afed12223A...", "..2AeAA13233A...", "..3AeAf13233A...", "..3AeAd13233A...", "..3AeeddA233A...", "...33ddAgggAA...", "....AAjggjig....", "....Ahijgjig....", "....AijggjjA....", "....AhgAdekA....", "....jhjAdedA....", "....jijiAAAg....", "....gijijjgg....", "....gjgjjggg....", "....ggkklggg....", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AklA.AklA...."],
+      hand: ["e", "d"], sleeve: ["i", "j"]
+    },
+    // 騎士（かぶとなので髪の色は変わらない）
+    knight: {
+      pal: { d: "#bf2626", e: "#86231a", f: "#86889e", g: "#495350", h: "#c3deff", i: "#ff8c39", j: "#5e3434", k: "#ffefde", l: "#ffc68c", m: "#6a6b1b", n: "#f3e326", o: "#b57575" },
+      map: {
+        down: ["................", ".......dd.......", ".......dee......", "......edede.....", "....fffefggg....", "...gggggggggg...", "...fghghgfgfg...", "...ggfgfgfggg...", "...gggggggggg...", "...AgAAiAAAgA...", "...AjkAiiAkgA...", "...AAlAllAlAA...", ".AAddAllllAddeA.", "..AAdeAiiAfdAA..", "..AhAAfggfAAhA..", "..AhfgfhhfgfhA..", ".AfmAmfggfmAmfA.", ".AghAgmnnmgAhgA.", ".AiiAAffffAAiiA.", "..AAAfhffhfAAA..", "...eAgfggfgAe...", "...eAgoAAogAe...", "....AggAAggA....", ".....AoAAoA....."],
+        up: ["................", ".......dd.......", "......eede......", ".....edeeej.....", "....gfdedefg....", "...ghfdedefgg...", "...gfgeedeggg...", "...gfgeedeggg...", "...gggfeeeggg...", "...AgggegeggA...", "...AgggeggggA...", "...AAgAiiAgAA...", ".AdddAAAAAAdddA.", "..AeeeeeeeeeeA..", "..AedeeeeeeeeA..", "..AeedeeeedeeA..", ".AfeeedddeeeefA.", ".AfeeeeeeeeeefA.", ".AideeeeeeeeeiA.", "..AdedeeedeeeA..", "...dedeeedeee...", "...dAdeAAdeAe...", "....AggAAggA....", ".....AoAAoA....."],
+        side: ["................", ".....eedddee....", "....defeeeeee...", "....dfffgggede..", "...fgggffgggedd.", "..hfffggggggeed.", "..fghgfffgggged.", "..fgfgfgfgfgged.", "..ggggggggfggee.", "..jAiAAAAgfgge..", "...AiAkjfgfgA...", "...AlAljfAAA....", "...AllliAdddeA..", "....AiiAAeeeA...", "....AAfgAfhAe...", "....AhhfAghAe...", "....AffgAmgAed..", "....AnmAfhfAed..", ".....AAAilfAed..", ".....fAhAAAeed..", ".....fAhffAeed..", "....AAAAggAeee..", "....AAooggA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AfAhffA.....", "...AggA.AggA....", "...AggA..AggA...", "..AoogA..AoggA..", "..AAAAA..AAAAA.."],
+      hand: ["l", "i"], sleeve: ["h", "f"]
+    },
+    // 黒魔道士（フードなので髪の色は変わらない）
+    blackmage: {
+      pal: { d: "#9c7ab3", e: "#7d7b18", f: "#54347d", g: "#4f175e", h: "#f3d27f", i: "#ff8c39", j: "#ffc68c", k: "#783b22", l: "#c27126" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....AdeffefA....", "...AfeffffegA...", "...AghgffghgA...", "...AghgffghgA...", "...AgegeegegA...", "...AgeehheegA...", "...AegAiiAgeA...", "...AgiAiiAigA...", "...AgAijjiAgA...", "..AfgAAiiAAgfA..", "..AfgAeffeAgfA..", "..AfggfhegggfA..", ".AgfAeffggeAggA.", ".AegAgeheegAgeA.", ".AklAfggggfAlkA.", "..AAgfeffefgAA..", "...AgghffhggA...", "...AegeggegeA...", "....AeeheeeA....", ".....AlAAlA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....AeffffeA....", "...AffeffefgA...", "...AgffhegfgA...", "...AeeeffeeeA...", "...AgfffggggA...", "...AgfggggggA...", "...AgfggggggA...", "...AgffggffgA...", "...AgfffffggA...", "..AfeegffgeegA..", "..AfggeheeffgA..", "..AggggggggggA..", ".AAAAggggggAgAA.", ".AeAAeeheeeAAeA.", ".AlAAfgggggAAlA.", "..AAgfffffggAA..", "...AgggffgggA...", "...AggggggggA...", "...AeeeheeeeA...", "....AkkAAkkA...."],
+        side: ["................", "................", "................", "....fAAAAAA.....", "...AdfeggggA....", "..AffegfggfgA...", "..AfghgfgggfA...", "..AggegffggeA...", "..AggegffgegA...", "..AeeeefgeggA...", "..AAiAeeeefgA...", "...AiAiAgeggA...", "...AjjiAgAAgA...", "....AiiAeegA....", "....AAAeggfg....", "....hhefAgfgA...", "....gfffAgfgA...", "...AhheAkeeAA...", "...AgfgAklkA....", "...AgfgfAAAAA...", "...AgfggggggA...", "...AheeeeeeeA...", "...AAAlkkkAAA...", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AlkA.AlkA...."],
+      hand: ["j", "i"], sleeve: ["f", "g"]
+    },
+    // スナイパー
+    sniper: {
+      pal: { d: "#ff8c39", e: "#ffefde", f: "#ffc68c", g: "#5b5449", h: "#4e3212", i: "#a55b15", j: "#a27e2b", k: "#a75400", l: "#f3b926", m: "#5d0000", n: "#a51414" },
+      map: {
+        down: ["................", "................", ".....AA11AA.....", "....1221221A....", "...12214412A....", "..122144122A1...", "..12211122AA1...", "..2211222AA2A...", "..A21222AAd2A...", "..A22AA1AAA2A...", "...AAAAAdAeA....", "....AAAffAfA....", "...AgAffffAhhA..", "..AAhiAddAgAgA..", "..AjAAihggAAjA..", "..AjgghihjggjA..", ".AhhAhgghhhAhhA.", ".AhiAgkkklgAihA.", ".AhiAAjggjAAihA.", "..AAAgjggjgAAA..", "....AhgggghA....", "....AhiAAihA....", "....AhhAAhhA....", ".....AiAAiA....."],
+        up: ["................", "................", ".....22AA211....", "....214221112...", "...A2A2211111A..", "...212A1111111..", "...2122A221212..", "...22212A1121A..", "...A21222A221A..", "...A222222AAmmA.", "....A222222Anem.", ".....AAAAAAmenm.", "...AAAAAAAhmmmA.", "..AgAAggghihmA..", "..AgAgjjhihAgA..", "..AgAgghihhAgA..", ".AhhAAhhhhAAhhA.", ".AhiAgAhkkgAihA.", ".AhiAAjggjAAihA.", "..AAAgjggjgAAA..", "....AhgggghA....", "....AhiAAihA....", "....AhhAAhhA....", ".....AiAAiA....."],
+        side: ["................", "................", ".....2AAAAA.....", "...12111122A....", "..2114122AAAA...", "..24111AAA221A..", ".A1112AA22121A..", ".A1222A212122A..", ".A222Add2122A...", "..22AAAd2222A...", "...AdAed2d2Aem..", "...AfAfdddAemm..", "...AfffdAAAnih..", "....AddAAggAih..", "....AAggAgjAih..", "....AjjgAgjAih..", "....AgggAlkAh...", "....AklAhihAh...", ".....AAAhihA....", ".....gAjAAA.....", ".....gAjggA.....", "....AAAAhhA.....", "....AAiihhA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AgAjggA.....", "...AhhA.AhhA....", "...AhhA..AhhA...", "..AiihA..AihhA..", "..AAAAA..AAAAA.."],
+      hand: ["f", "d"], sleeve: ["j", "g"]
+    },
+    // 修行僧
+    monk: {
+      pal: { d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#5b0000", h: "#9a0000", i: "#df6b6b", j: "#dd0d00", k: "#175c77", l: "#46afc3", m: "#897626", n: "#c47327" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....A321223A....", "...A32212223A...", "...A32222223A...", "...A3deeeed3A...", "...AdeefeeedA...", "...AddeeedddA...", "....AAAdAAAA....", "....AeAeeAeA....", "...ghAeeeeAhA...", "..gijgAddAgjiA..", "..gjhgjjhighjA..", "..gjhjjhijjhjA..", ".AkhAkhijjkAhkA.", ".AdlAgkllkgAldA.", ".AdeAjhijhgAedA.", "..AAAjhijhgAAA..", "....AjhgijhA....", "....AhggghjA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....A321223A....", "...A32212223A...", "...A32222223A...", "...A32222223A...", "...A32222223A...", "...A33222233A...", "....A332233A....", ".....A3AA3A.....", "...AhhghhghhA...", "..AjhghgghghjA..", "..AhAhjhhjgAhA..", "..AhAhhjjhgAhA..", ".AkhAghhhggAhkA.", ".AdkAgkkkkgAkdA.", ".AdeAgghhggAedA.", "..AAAghhhhgAAA..", "....ghhhghgg....", "....ghhggggg....", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "................", "................", ".....AAAAAAA....", "....A2222233A...", "...A222222233A..", "...A222222233A..", "...Aeedd22233A..", "...Afeed33333A..", "...Aeddd3e333A..", "...AeAAded33A...", "...AeAeddd3A....", "...AeeedAAA.....", "....AddAAhjA....", "....AAjhAhhA....", "...AhiijgjhA....", "...AhjjhAjhA....", "....AlkAdkkA....", "...AghhAdedA....", "...AhjhhAAA.....", "...AhgjhggA.....", "...AhggjhhA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AnmA.AnmA...."],
+      hand: ["e", "d"], sleeve: ["j", "h"]
+    },
+    // 白魔道士
+    whitemage: {
+      pal: { d: "#cb2121", e: "#d8dadb", f: "#acacac", g: "#70707f", h: "#7a0b0b", i: "#ff8c39", j: "#ffc68c", k: "#ffefde", l: "#f0f0f0", m: "#b54545" },
+      map: {
+        down: ["................", "................", ".....deefd......", ".....deefdA.....", "....fdeefdgA....", "...Afdeefdf3A...", "...AgdfefdfgA...", "...AhdddddhgA...", "...h2iijii1hA...", "...A2AAkAA12A...", "...32kAjjA123...", "....2jAjjA12....", "...AgAjjjjAgA...", "..AleAAiiAAelA..", "..AegdfeffdgeA..", "..AfgheleffgfA..", ".AimAhelefdAmiA.", ".AijehfefghAjiA.", ".AijedelefdfjiA.", "..AAefeleffeAA..", "...gedelefdeg...", "...ghdfeefdhg...", "....AhddddhA....", ".....AmAAmA....."],
+        up: ["................", "................", ".....hffggh.....", ".....ggAAAA.....", "....AfeffggA....", "...AgfeeffggA...", "...AggfffgggA...", "...AggggggggA...", "...AhhgggghhA...", "...A33dddh33A...", "...A23333333A...", "...A23323333A...", "...AA33233AgA...", "..AfgAAAAAggfA..", "..AggggggggggA..", "..AggfeffggggA..", ".AimgffefffgmiA.", ".AijAhffffhgjiA.", ".AijAhhfdhhAjiA.", "..AAAffffffAAA..", "...ggfeffffgg...", "...hhfefgfghh...", "....AhddhdhA....", ".....AmAAmA....."],
+        side: ["................", "................", "..eefd..........", "..eefd3AAAA.....", "..fefdfffggA....", "..feghffffggA...", "..ggghffffggA...", "..hhhhgffgggA...", "..2AiihhggggA...", "..2AjAA2hhhhA...", "..3AjAk13233A...", "..3AjAi13233A...", "..3AjjiiA233A...", "...33iiAgggAA...", "....AAfggfeg....", "....Aldfgfeg....", "....AedggffA....", "....AlgAijmA....", "....flfAijiA....", "....fedeAAAg....", "....gedeffgg....", "....gfdffggg....", "....ddhdhhhh....", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AmhA.AmhA...."],
+      hand: ["j", "i"], sleeve: ["e", "f"]
     }
   };
   // 横向きの攻撃：前（左）へのばす腕の色 [そで, そでの影]
@@ -581,6 +683,7 @@ var Sprites = (function () {
       }
     } else {
       var st = art ? art.stride : STRIDE[job] || STRIDE.warrior;
+      if (art) sw = null;   // 新しい絵の足は、もうその職の色
       var stride = walk > 0 || frame === "attack";
       if (stride) for (y = 0; y < 5; y++) if (st[y]) g[19 + y] = swapStr(st[y], sw).split("");
       if (walk < 0) lift(g, 8, 11);
