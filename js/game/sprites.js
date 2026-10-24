@@ -523,6 +523,22 @@ var Sprites = (function () {
     mage:    [null, null, null, null, "..AJJA..AJJA...."],
     priest:  [null, null, null, null, "..AJJA..AJJA...."]
   };
+  // 基本職・一本道の上級職の新しい絵（2026-10-25 保護者が描いた絵。前・後ろ・横（左向き）の 16×24）。
+  // 色は職ごとの一覧（pal。小文字）。1〜4 は髪の色（顔の番号で変わる）：絵の髪の明るい茶→1、こげ茶→2、灰色の光→4。
+  // 絵は足が下から2行めだったので、1行下げて入れた（今の絵と足の高さをそろえる）。
+  // stride：横向きで歩く・攻撃するときの足（19〜23行め）。hand：横向きの攻撃でのばす手の色 [肌, 肌の影]、sleeve：そでの色 [そで, そでの影]
+  var ART = {
+    warrior: {
+      pal: { d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#a54848", h: "#63442c", i: "#2b2b85", j: "#5e40ff", k: "#a75400", l: "#f3b926", m: "#5e3838", n: "#b54545" },
+      map: {
+        down: ["................", "................", ".....AAAAAA.....", "....A411112A....", "...A11114112A...", "..A4112211112A..", "..A4212221212A..", "..A121dee2212A..", "..A122efee212A..", "..A22AAfAAA22A..", "...A2fAeeAfAA...", "....AeAeeAeA....", ".AAggAeeeeAgghA.", "..AAghAddAigAA..", "..AeAAiiiiAAeA..", "..AedijjjjideA..", ".AdkAkiiiikAkdA.", ".AdeAikllkiAedA.", ".AdeAAjiijAAedA.", "..AAAijiijiAAA..", "....AmiiiimA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", ".....AAAAAA.....", "....A412212A....", "...A11121112A...", "..A1111111112A..", "..A1121111112A..", "..A2121121122A..", "..A2122121122A..", "..A2222221222A..", "...A22222222A...", "....AA2A22AA....", ".AgghAAAAAAhggA.", "..AhhAiiiiAhhA..", "..AdAijjjjiAdA..", "..AdAiijjiiAdA..", ".AdkAAiiiiAAkdA.", ".AdeAikkkkiAedA.", ".AdeAAjiijAAedA.", "..AAAijiijiAAA..", "....AmiiiimA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "................", "....AAAAAAA.....", "...A4111122AA...", "..A1111211222A..", ".A12211221122A..", ".A12221122122A..", ".A2Ae22122222A..", ".A2Afe2122222A..", "..2AfAA22e222A..", "...AeAf2ed22A...", "...AeAe2dd2A....", "...AeeedAggghA..", "....AddAAhhhA...", "....AAiiAdeA....", "....AjjiAdeA....", "....AiiiAlkA....", "....AlkAdedA....", ".....AAAdedA....", ".....iAjAAA.....", ".....iAjiiA.....", "....AAAAmmA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AiAjiiA.....", "...AmmA.AmmA....", "...AmmA..AmmA...", "..AnnmA..AnmmA..", "..AAAAA..AAAAA.."],
+      hand: ["e", "d"], sleeve: ["j", "i"]
+    }
+  };
   // 横向きの攻撃：前（左）へのばす腕の色 [そで, そでの影]
   var SLEEVE = { warrior: ["I", "J"], mage: ["N", "L"], hunter: ["Q", "O"], fighter: ["E", "F"], priest: ["U", "T"] };
 
@@ -548,7 +564,8 @@ var Sprites = (function () {
   function swapStr(str, sw) { if (!str || !sw) return str; return str.split("").map(function (c) { return sw[c] || c; }).join(""); }
   function frameMap(job0, dir, frame) {
     var job = baseJob(job0), lk = LOOK[job0] || null, sw = lk ? lk.swap : null;
-    var base = lk && lk.map ? lk.map[dir] : (MAP[job] || MAP.warrior)[dir];
+    var art = ART[job0] || null;   // 保護者の新しい絵（2026-10-25）があれば、それを使う
+    var base = art ? art.map[dir] : lk && lk.map ? lk.map[dir] : (MAP[job] || MAP.warrior)[dir];
     var g = grid(base), y, x;
     // 上級職：頭の行をおきかえる（head）・点を打つ（put）。歩く・走るの形を作る前に行う（2026-10-19）
     if (lk && lk.head && lk.head[dir]) Object.keys(lk.head[dir]).forEach(function (r) { g[+r] = lk.head[dir][r].split(""); });
@@ -563,16 +580,18 @@ var Sprites = (function () {
         if (dir === "down") shiftUp(g, 11, 14, 13, 17, 2); else shiftUp(g, 1, 4, 13, 17, 2);
       }
     } else {
-      var st = STRIDE[job] || STRIDE.warrior;
+      var st = art ? art.stride : STRIDE[job] || STRIDE.warrior;
       var stride = walk > 0 || frame === "attack";
       if (stride) for (y = 0; y < 5; y++) if (st[y]) g[19 + y] = swapStr(st[y], sw).split("");
       if (walk < 0) lift(g, 8, 11);
       if (run) lean(g, 17);
       if (frame === "attack") {
         var s = SLEEVE[job] || SLEEVE.warrior;
-        if (lk && lk.sleeve) s = lk.sleeve;   // 職ごとの腕の色（2026-10-21）
+        if (art) s = art.sleeve;
+        else if (lk && lk.sleeve) s = lk.sleeve;   // 職ごとの腕の色（2026-10-21）
         else if (sw) s = [sw[s[0]] || s[0], sw[s[1]] || s[1]];
-        var arm = [["A", "A", "A", "A", "A"], ["A", "E", s[0], s[0], s[0]], ["A", "F", s[1], s[1], s[1]], ["A", "A", "A", "A", "A"]];
+        var hd = art && art.hand ? art.hand : ["E", "F"];
+        var arm = [["A", "A", "A", "A", "A"], ["A", hd[0], s[0], s[0], s[0]], ["A", hd[1], s[1], s[1], s[1]], ["A", "A", "A", "A", "A"]];
         for (y = 0; y < 4; y++) for (x = 0; x < 5; x++) g[13 + y][x] = arm[y][x];
       }
     }
@@ -582,6 +601,7 @@ var Sprites = (function () {
   function paint(job, hairId, dir, frame) {
     var g = frameMap(job, dir, frame);
     var lk = LOOK[job] || null, sw = lk ? lk.swap : null, bodySw = lk ? lk.body : null;
+    if (ART[job]) lk = ART[job];   // 新しい絵は、職ごとの色の一覧だけを使う
     if (lk && lk.map) { sw = null; bodySw = null; }   // 描いた地図は、もう上級職の色になっている
     if (lk && lk.add && lk.add[dir]) lk.add[dir].forEach(function (pt) { if (g[pt[1]][pt[0]] === ".") g[pt[1]][pt[0]] = pt[2]; });
     var hair = HAIR[(hairId | 0) % HAIR.length];
