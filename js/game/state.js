@@ -48,6 +48,7 @@ var GameState = (function () {
     if (typeof g.mat.gem !== "number") g.mat.gem = 0;   // 宝玉（2026-10-20）   // 新しい道具（MP回復薬など）
     if (!g.today) g.today = { date: todayStr(), adventure: null };
     if (!g.parent) g.parent = defaultParent();
+    if (!g.parent.perWeekend) g.parent.perWeekend = 4;   // 土日の回数（2026-10-25 に足した）
     if (!g.log) g.log = [];
     if (!g.progress.dungeons) g.progress.dungeons = {};   // ダンジョンごとの進み具合（瘴気の森の段階1、2026-10-21）
     // 上級職の★1つに必要な熟練度を 60 → 75 にした（2026-10-22）。前のセーブは、★と次の★までの進み具合がそのままになるよう、上級職の熟練度を 75/60 倍にする（1回だけ）
@@ -683,13 +684,15 @@ var GameState = (function () {
     save();
     return !!back;
   }
-  function defaultParent() { return { minutes: 5, perDay: 2, restWeek: [], restDates: [] }; }
+  // perWeekend：土日に出発できる回数（2026-10-25 保護者の希望。はじめは4回。知恵の試練も同じ回数まで）
+  function defaultParent() { return { minutes: 5, perDay: 2, perWeekend: 4, restWeek: [], restDates: [] }; }
   function parent() { return game ? game.parent : defaultParent(); }
   function setParent(p) {
     if (!game) return;
     var c = game.parent;
     if (p.minutes) c.minutes = p.minutes;
     if (p.perDay) c.perDay = p.perDay;
+    if (p.perWeekend) c.perWeekend = p.perWeekend;
     if (p.restWeek) c.restWeek = p.restWeek.slice().sort();
     if (p.restDates) c.restDates = p.restDates.slice().sort();
     save();
@@ -721,7 +724,10 @@ var GameState = (function () {
     if (c && c.date === todayStr()) return c.n || 0;
     return game.lastAdventure === todayStr() ? 1 : 0; // 1日1回だったころのセーブ
   }
-  function adventuredToday() { return adventuresToday() >= parent().perDay; }
+  // 今日出発できる回数：土日（土曜・日曜）は perWeekend、ほかの日は perDay（2026-10-25）
+  function isWeekend() { var d = new Date().getDay(); return d === 0 || d === 6; }
+  function perDayToday() { var p = parent(); return isWeekend() ? (p.perWeekend || 4) : p.perDay; }
+  function adventuredToday() { return adventuresToday() >= perDayToday(); }
   function unlimited() { try { return localStorage.getItem("bd-test-unlimited") === "1"; } catch (e) { return false; } }
   function setUnlimited(on) { try { if (on) localStorage.setItem("bd-test-unlimited", "1"); else localStorage.removeItem("bd-test-unlimited"); } catch (e) { /* そのまま */ } }
 
@@ -799,7 +805,7 @@ var GameState = (function () {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
-    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,

@@ -95,7 +95,9 @@ var Parent = (function () {
     // 冒険の決まり
     fillSelect("parentMinutes", [3, 5, 7, 10, 15], p.minutes, function (n) { return n + "分"; });
     fillSelect("parentPerDay", [1, 2, 3], p.perDay, function (n) { return n + "回"; });
-    document.getElementById("parentToday").textContent = "今日の出発：" + GameState.adventuresToday() + " / " + p.perDay + " 回" +
+    fillSelect("parentPerWeekend", [1, 2, 3, 4], p.perWeekend || 4, function (n) { return n + "回"; });
+    document.getElementById("parentToday").textContent = "今日の出発：" + GameState.adventuresToday() + " / " + GameState.perDayToday() + " 回" +
+      (GameState.isWeekend() ? "（土日）" : "") +
       (GameState.restToday() ? "　（今日は休みの日）" : "") +
       (GameState.unlimited() ? "　※この端末は、テスト用の設定で回数の制限をはずしている" : "");
 
@@ -148,6 +150,9 @@ var Parent = (function () {
   });
   document.getElementById("parentPerDay").addEventListener("change", function (e) {
     GameState.setParent({ perDay: Number(e.target.value) || 2 }); changed("1日に出発できる回数を変えました");
+  });
+  document.getElementById("parentPerWeekend").addEventListener("change", function (e) {
+    GameState.setParent({ perWeekend: Number(e.target.value) || 4 }); changed("土日に出発できる回数を変えました（知恵の試練も同じ回数まで）");
   });
   document.getElementById("parentDateAdd").addEventListener("click", function () {
     var v = document.getElementById("parentDate").value;

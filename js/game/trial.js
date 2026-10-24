@@ -191,13 +191,15 @@ var Trial = (function () {
     var pool = Q.filter(function (q) { return q.subject === subject; });
     if (!pool.length) return null;
     // 今日もう出した問題は、ほかに問題があれば出さない（2回目に同じ問題が続かないように）
+    // 土日は1日4回になるので、まちがえた問題も、その日のうちはもう出さない（次の日から、また先に出る。2026-10-25 保護者の希望）
     var shown = todayList(subject).slice(0, round - 1).map(function (r) { return r.qid; });
     var fresh = pool.filter(function (q) { return shown.indexOf(q.id) < 0; });
     if (fresh.length) pool = fresh;
+    function timesToday(q) { return shown.filter(function (id) { return id === q.id; }).length; }   // 問題が足りないときは、今日出した回数が少ないもの
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
     var latest = latestTest(subject);
-    pool.sort(function (a, b) { return ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
+    pool.sort(function (a, b) { return timesToday(a) - timesToday(b) || ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
     var top = pool[0], th = h[top.id];
     return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }
