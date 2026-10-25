@@ -1090,6 +1090,87 @@ var Monsters = (function () {
           "..AAAA...AAAA..."
         ]
     },
+    // ダークウィスプ（原生の秘境、段階3）：黒紫の炎のような霊。まんなかが明るく光り、白い目。すそが3つに分かれてゆれる
+    dark_wisp: {
+      down: [
+          "................",
+          "................",
+          "................",
+          "........A.......",
+          ".......ALA......",
+          "......ALMA......",
+          ".....ALMMMA.....",
+          "....AMMLLMMA....",
+          "...AMMLLLLMMA...",
+          "..AMMLLLLLLMMA..",
+          "..AMMHHLLHHMMA..",
+          ".AMMLHHLLHHLMMA.",
+          ".AMMLLNNNNLLMMA.",
+          ".AMMMLNNNNLMMMA.",
+          "..AMMMLLLLMMMA..",
+          "..AMMMMMMMMMMA..",
+          "...AMMMMMMMMA...",
+          "...AMAMMMMAMA...",
+          "..AMA.AMMA.AMA..",
+          "..AA..AMMA..AA..",
+          ".......AA.......",
+          "................",
+          "................",
+          "................"
+        ],
+      up: [
+          "................",
+          "................",
+          "................",
+          "........A.......",
+          ".......ALA......",
+          "......ALMA......",
+          ".....ALMMMA.....",
+          "....AMMLLMMA....",
+          "...AMMLLLLMMA...",
+          "..AMMLLLLLLMMA..",
+          "..AMMLLLLLLMMA..",
+          ".AMMLLLLLLLLMMA.",
+          ".AMMLLNNNNLLMMA.",
+          ".AMMMLNNNNLMMMA.",
+          "..AMMMLLLLMMMA..",
+          "..AMMMMMMMMMMA..",
+          "...AMMMMMMMMA...",
+          "...AMAMMMMAMA...",
+          "..AMA.AMMA.AMA..",
+          "..AA..AMMA..AA..",
+          ".......AA.......",
+          "................",
+          "................",
+          "................"
+        ],
+      side: [
+          "................",
+          "................",
+          "................",
+          "........A.......",
+          ".......ALA......",
+          "......ALMA......",
+          ".....ALMMMA.....",
+          "....AMMLLMMA....",
+          "...AMMLLLLMMA...",
+          "..AMMLLLLLLMMA..",
+          "..AMMHLLLLLMMA..",
+          ".AMMHHLLLLLLMMA.",
+          ".AMMLLNNNNLLMMA.",
+          ".AMMMLNNNNLMMMA.",
+          "..AMMMLLLLMMMA..",
+          "..AMMMMMMMMMMA..",
+          "...AMMMMMMMMA...",
+          "...AMAMMMMAMA...",
+          "..AMA.AMMA.AMA..",
+          "..AA..AMMA..AA..",
+          ".......AA.......",
+          "................",
+          "................",
+          "................"
+        ]
+    },
     // ワイルドボア：低くて横に広い。こげ茶の毛に、黒いたてがみ。白い牙と赤い目
     boar: {
       down: [
@@ -1736,7 +1817,7 @@ var Monsters = (function () {
     var g = grid(m[dir] || m.down);
     var sw = STATUE[type];
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
-    if (frame !== "stand" && type !== "vine" && type !== "bee" && type !== "frog" && type !== "wisp" && type !== "shadow_mage") {
+    if (frame !== "stand" && type !== "vine" && type !== "bee" && type !== "frog" && type !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }

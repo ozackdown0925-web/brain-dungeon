@@ -17,7 +17,7 @@ var Enemies = (function () {
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
       strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {},
-      fly: d.kind === "wisp"   // 瘴気の霊は浮いている（水の上も通る）
+      fly: d.kind === "wisp" || d.kind === "dwisp"   // 瘴気の霊・ダークウィスプは浮いている（水の上も通る）
     };
     list.push(e);
     return e;
@@ -69,12 +69,12 @@ var Enemies = (function () {
   function charm(e, dur) {
     if (e.dead || e.def.boss || e.def.fixed) return;
     e.charm = { t: dur };
-    e.state = "chase"; e.t = 0; e.cd = 0.3;
+    e.state = "chase"; e.t = 0; e.cd = 0.3; e.untouchable = false;
     Battle.pop(e.x, e.y - 30, "仲間になった！", "#ff8ac8", 8);
   }
   function uncharm(e) {
     delete e.charm;
-    e.state = "chase"; e.t = 0; e.cd = 0.8;
+    e.state = "chase"; e.t = 0; e.cd = 0.8; e.untouchable = false;   // ダークウィスプが消えかけのままにならないように
     Battle.pop(e.x, e.y - 30, "元にもどった", "#a3a8bd", 8);
   }
   // 敵が敵にダメージを与える（チャームした敵と、ほかの敵のあいだ）
@@ -142,6 +142,7 @@ var Enemies = (function () {
       e.cd = Math.max(0, e.cd - dt);
       var mx = 0, my = 0;
       if (d.kind === "boar" && boar(e, dt, room, P, hit, ux, uy, gap)) return;   // 突進の予告・突進・ふらつき
+      if (d.kind === "dwisp" && darkWisp(e, dt, room, P, gap)) return;           // 消える・現れる
 
       if (e.state === "windup") {
         e.t -= dt;
@@ -192,6 +193,15 @@ var Enemies = (function () {
         else if (gap > d.keepMax) { mx = ux; my = uy; }
         else { mx = -uy * e.strafe * 0.5; my = ux * e.strafe * 0.5; }
         if (gap <= d.keepMax + 20 && e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "dwisp") {
+        // ダークウィスプ（原生の秘境、段階3）：ゆらゆら漂いながら、はなれたところを回り、闇の玉を撃つ（消えるのは darkWisp()）
+        e.zig = (e.zig || Math.random() * 6) + dt * 2.5;
+        var sw4 = Math.sin(e.zig) * 0.5;
+        if (gap < d.keepMin) { mx = -ux; my = -uy; }
+        else if (gap > d.keepMax) { mx = ux; my = uy; }
+        else { mx = -uy * e.strafe * 0.5; my = ux * e.strafe * 0.5; }
+        mx += -uy * sw4; my += ux * sw4;
+        if (gap <= d.keepMax + 20 && e.cd <= 0) startWindup(e, ux, uy);
       } else if (d.kind === "wisp") {
         // 瘴気の霊（2026-10-21）：ゆらゆらしながら近づき、とどくところで瘴気をはじけさせる
         e.zig = (e.zig || Math.random() * 6) + dt * 3;
@@ -222,10 +232,10 @@ var Enemies = (function () {
       if (e.state === "chase" || mx || my) {
         if (mx || my) {
           e.face = { x: mx, y: my };
-          if (((d.kind !== "archer" && d.kind !== "caster") || gap >= d.keepMin) && d.kind !== "bee") e.face = { x: ux, y: uy };
+          if (((d.kind !== "archer" && d.kind !== "caster" && d.kind !== "dwisp") || gap >= d.keepMin) && d.kind !== "bee") e.face = { x: ux, y: uy };
           var before = { x: e.x, y: e.y };
           room.move(e, mx * d.speed * dt, my * d.speed * dt);
-          if ((d.kind === "archer" || d.kind === "caster") && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
+          if ((d.kind === "archer" || d.kind === "caster" || d.kind === "dwisp") && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
           if (d.kind === "wolf" && e.cd > 0 && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < d.speed * dt * 0.3) e.strafe = -e.strafe;   // 回っていて岩につかえたら、反対へ
           if (d.kind === "wisp" && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < d.speed * dt * 0.3) {
             if (e.detour > 0) e.strafe = -e.strafe;   // 回りこんでもつかえたら、反対へ
@@ -270,6 +280,54 @@ var Enemies = (function () {
 
     // 消えきった敵をのぞく
     for (var m = list.length - 1; m >= 0; m--) if (list[m].dead && list[m].fade <= 0) list.splice(m, 1);
+  }
+
+  // ダークウィスプ（原生の秘境、段階3、2026-10-25）。この関数が動きを受け持ったフレームは true を返す。
+  // ときどき（blinkEvery〜＋2秒ごと）消えて、べつの場所に現れ、すぐに闇の玉を構える。
+  // 近くにいられたら、前に消えてから fleeAfter 秒たっていれば早めに消える（すぐには消えないので、近くで攻撃するすきがある）。
+  // 消えかけ・現れかけのあいだ（blinkTime 秒ずつ）は、こちらの攻撃が当たらない（untouchable）
+  function darkWisp(e, dt, room, P, gap) {
+    var d = e.def;
+    if (e.nextBlink === undefined) { e.nextBlink = 2 + Math.random() * d.blinkEvery; e.sinceBlink = 0; }
+    e.sinceBlink += dt;
+    if (e.state === "vanish") {
+      e.t -= dt;
+      if (e.t <= 0) {
+        var spot = blinkSpot(e, room, P);
+        if (spot) { e.x = spot.x; e.y = spot.y; }
+        e.state = "appear"; e.t = d.blinkTime;
+      }
+      return true;
+    }
+    if (e.state === "appear") {
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.untouchable = false;
+        var dx = P.x - e.x, dy = P.y - e.y, dl = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (!P.down) { startWindup(e, dx / dl, dy / dl); e.cd = 0; }   // 現れたら、すぐに闇の玉を構える
+        else e.state = "chase";
+      }
+      return true;
+    }
+    if (e.state !== "chase" || P.down || e.status.para) return false;
+    if (e.sinceBlink >= e.nextBlink || (gap < d.fleeGap && e.sinceBlink >= d.fleeAfter)) {
+      e.state = "vanish"; e.t = d.blinkTime; e.untouchable = true;
+      e.sinceBlink = 0; e.nextBlink = d.blinkEvery + Math.random() * 2;
+      return true;
+    }
+    return false;
+  }
+  // 現れる場所：壁や水にかからず、ねらう相手から appearMin〜appearMax はなれたところ（なければ、いちばん遠いところ）
+  function blinkSpot(e, room, P) {
+    var d = e.def, best = null, bd = -1;
+    for (var tr = 0; tr < 24; tr++) {
+      var x = 30 + Math.random() * (room.pxW - 60), y = 30 + Math.random() * (room.pxH - 60);
+      if (room.hitsWall(x - e.r, y - e.r, e.r * 2, e.r * 2)) continue;
+      var dd = (x - P.x) * (x - P.x) + (y - P.y) * (y - P.y);
+      if (dd > d.appearMin * d.appearMin && dd < d.appearMax * d.appearMax) return { x: x, y: y };
+      if (dd > bd) { bd = dd; best = { x: x, y: y }; }
+    }
+    return best;
   }
 
   // ワイルドボアの突進（原生の秘境、2026-10-25）。この関数が動きを受け持ったフレームは true を返す。
@@ -335,7 +393,7 @@ var Enemies = (function () {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
       return;
     }
-    if (d.kind === "caster") {   // 闇の玉（魔法のダメージ）
+    if (d.kind === "caster" || d.kind === "dwisp") {   // 闇の玉（魔法のダメージ。ダークウィスプも）
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { orb: true, magic: true } });
       return;
     }
@@ -410,9 +468,18 @@ var Enemies = (function () {
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       if (d.kind === "nest") { drawNest(ctx, e, x, y); ctx.globalAlpha = 1; return; }
+      if (d.kind === "dwisp" && !e.dead && (e.state === "vanish" || e.state === "appear")) {
+        // ダークウィスプが消えかけ・現れかけ：すけていき（現れるときは濃くなり）、闇の粒が集まる（散る）
+        var kv = e.state === "vanish" ? e.t / d.blinkTime : 1 - e.t / d.blinkTime;
+        drawBlinkDots(ctx, x, y, e.state === "vanish" ? 1 - kv : kv, e.state === "appear");
+        ctx.globalAlpha = Math.max(0, kv) * 0.85;
+        Monsters.drawSmall(ctx, e, x, y + 6 - 3);
+        ctx.globalAlpha = 1;
+        return;
+      }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       if (d.kind === "boar" && !e.dead && (e.state === "warn" || e.state === "charge") && e.chargeLen) {
         // 突進の予告の線（大オオカミと同じ絵。走っているあいだは、うすく残る）
         Bosses.drawChargeLine(ctx, { from: e, x1: e.lineX, y1: e.lineY, x2: e.lineX + e.aim.x * e.chargeLen, y2: e.lineY + e.aim.y * e.chargeLen,
@@ -431,13 +498,13 @@ var Enemies = (function () {
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
-      if (d.kind === "wisp") {   // 瘴気の霊：ふわふわ上下にゆれて、少しすけている
+      if (d.kind === "wisp" || d.kind === "dwisp") {   // 瘴気の霊・ダークウィスプ：ふわふわ上下にゆれて、少しすけている
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
-      if (d.kind === "wisp") ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
-      if (d.kind === "caster" && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
+      if (d.kind === "wisp" || d.kind === "dwisp") ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if ((d.kind === "caster" || d.kind === "dwisp") && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
         var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
         Combat.glowDot(ctx, ox2, oy2, 4 + kc * 7, "#e0c0ff", "#c890f0", 0.6 + 0.4 * kc);
         Render.rect(Math.round(ox2) - 1 - Math.round(kc), Math.round(oy2) - 1 - Math.round(kc), 2 + Math.round(kc) * 2, 2 + Math.round(kc) * 2, "#2a1040");
@@ -539,6 +606,18 @@ var Enemies = (function () {
       ctx.strokeStyle = "#e8d8b0"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - a.vx / len * 6, y - a.vy / len * 6); ctx.stroke();
     });
+  }
+
+  // ダークウィスプが消える・現れるときの闇の粒（1点ずつ、まわりを回る）。k：0→1 で、gather なら外から集まり、ちがえば外へ散る
+  function drawBlinkDots(ctx, x, y, k, gather) {
+    var rad = gather ? 16 * (1 - k) + 2 : 4 + 14 * k, alpha = gather ? 0.4 + 0.6 * k : 1 - k;
+    if (alpha <= 0) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    for (var i = 0; i < 8; i++) {
+      var a = i * Math.PI / 4 + k * 2.5;
+      Render.rect(Math.round(x + Math.cos(a) * rad) - 1, Math.round(y - 6 + Math.sin(a) * rad * 0.8) - 1, 2, 2, i % 2 ? "#9a5ad0" : "#2a1040");
+    }
+    ctx.globalAlpha = 1;
   }
 
   // モンスターの巣（段階5）：泡立つ毒の沼。まんなかに黒い穴のあいた泥の山（ドット絵は props.js。泡は4コマ）。

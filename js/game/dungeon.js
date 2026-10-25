@@ -170,7 +170,6 @@ var Dungeon = (function () {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
     if (theme === "wild") {
       // 原生の秘境（段階1、2026-10-25）：新緑の樹海と瘴気の森の敵がまざる。部屋ごとにゴブリンか骸骨の部隊。
-      // ダークウィスプ（段階3）は、作ったらここに足す
       var sq = rnd() < 0.5 ? SQUAD : SKULL_SQUAD;
       for (var wi = 0; wi < n; wi++) types.push(sq[wi % 3]);
       if (rnd() < 0.4) types[types.length - 1] = rnd() < 0.5 ? "vine" : "frog";
@@ -180,6 +179,8 @@ var Dungeon = (function () {
       // 段階2（2026-10-25）：オオカミの群れ（1階から。45%で、うしろの2〜3体がオオカミ）と、ワイルドボア（5階から。35%で1頭）
       if (rnd() < 0.45) { var pack = n >= 5 && rnd() < 0.5 ? 3 : 2; for (var pk = 0; pk < pack; pk++) types[n - 1 - pk] = "wolf"; }
       if (floor >= 5 && rnd() < 0.35) types[0] = "boar";
+      // 段階3（2026-10-25）：ダークウィスプ（6階から。40%で1体）
+      if (floor >= 6 && rnd() < 0.4) types[1] = "dark_wisp";
     } else if (theme === "swamp") {
       for (var si = 0; si < n; si++) types.push(SKULL_SQUAD[si % 3]);
       if (rnd() < 0.6) types[types.length - 1] = "frog";
@@ -459,7 +460,7 @@ var Dungeon = (function () {
     if (th === "wild") {
       pool = ["goblin_sword", "goblin_spear", "skeleton_sword", "skeleton_archer", "vine", "frog", "bee", "shadow_mage", "wolf", "wolf"];
       if (floor >= 5) pool.push("boar");
-      if (floor >= 6) pool.push("wisp");
+      if (floor >= 6) pool.push("wisp", "dark_wisp");
       return pool;
     }
     pool = ["skeleton_sword", "skeleton_sword", "skeleton_archer", "frog", "shadow_mage"];

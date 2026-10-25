@@ -385,7 +385,8 @@
     if (ne) n.hp = ne.hp;
     if (n.broken) {
       // 巣をこわしたあと、部屋の敵を全部たおしたら宝箱
-      if (Enemies.hostile().length === 0) {
+      // 消えかけのダークウィスプ（こちらの攻撃が当たらないあいだ）も、のこりの敵に数える（2026-10-25）
+      if (Enemies.alive().filter(function (e) { return !e.charm; }).length === 0) {
         n.done = true;
         c.chests.push({ x: n.x, y: n.y + 4, opened: false, rare: true, nest: true });
         say("巣のあとに、宝箱が現れた！");
