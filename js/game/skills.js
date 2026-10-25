@@ -170,6 +170,20 @@ var Combat = (function () {
       shootAfterAim(c, AIM.bolt, { stat: "m", mult: (w.bolt.power || 1) * k, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff", onHit: mpOnHit }, dbl ? 2 : 1);
       return;
     }
+    // 大剣・斧（2026-10-26 保護者の希望）：振る前に少しためる（windup）。ためているあいだは動けない。
+    // ためた分だけ次の攻撃もおそくなるので、1秒あたりの強さが剣とほぼ同じになる
+    if (w.windup) {
+      a.wait += w.windup;
+      a.busy = Math.max(a.busy, w.windup);
+      effects.push({ kind: "charge", t: w.windup, max: w.windup });
+      later(w.windup, function () { if (Party.current() !== c || c.down) return; meleeSwing(c, w, k, dbl); });
+      return;
+    }
+    meleeSwing(c, w, k, dbl);
+  }
+  // 近くを斬る・たたく・突く（ふつうの攻撃）
+  function meleeSwing(c, w, k, dbl) {
+    var a = A();
     Sound.play("swing");
     if (w.thrust) faceNearest(w.reach + 12);   // 槍：いちばん近い敵の方を向いてから突く（2026-10-21）
     a.swing = 0.15; a.swingMax = 0.15; a.swingFlip = !a.swingFlip; a.swingArc = w.arc; a.swingReach = w.reach;
