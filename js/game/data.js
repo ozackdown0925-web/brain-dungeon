@@ -475,17 +475,20 @@ var GameData = (function () {
   };
 
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
+  // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
+  // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げ、ダークアローを daWays〜daWaysHalf 方向の
+  // 曲がるエネルギー弾（daCurve）にした。くわしくは docs/game-design.md の「ボスの見直し」
   // ゴーレム（8階・中ボス）：ゆっくり歩く。近くでは、うでを広げてから、ぶん回し（まわりの広い範囲・打）。
   // 少しはなれると、ふみこみながらの3回攻撃（1回ずつ前へ出て、こぶしでたたく）。
   // 大技の岩石投げ：岩を持ち上げてから、まっすぐ投げる（rockCount〜＋1回。飛んでくる岩をよける。打の大ダメージ）。
   // 近すぎるときは、投げる前にずしんと後ろへ下がる。HP が半分を切ると、岩が rockCountHalf 回で速くなり、間かくも短くなる。投げ終わると、ふらつく（すきあり）。打と火が弱点、斬と刺はいまひとつ
   ENEMIES.golem_boss = {
-    name: "ゴーレム", kind: "golem_boss", boss: true, hp: 2000, patk: 24, matk: 0, pdef: 12, mdef: 5,
+    name: "ゴーレム", kind: "golem_boss", boss: true, hp: 2600, patk: 28, matk: 0, pdef: 12, mdef: 5,
     res: { strike: 1.5, fire: 1.5, slash: 0.75, pierce: 0.75 }, speed: 16, r: 16, cooldown: 1.6, color: "#6c665a",
     spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.6,
-    comboEvery: 6, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
-    rockEvery: 11, rockEveryHalf: 7, rockCount: 3, rockCountHalf: 5, rockWindup: 0.6, rockWindupHalf: 0.45,
-    rockSpeed: 140, rockSpeedHalf: 175, rockMult: 1.8, rockR: 7, tired: 2.0,
+    comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
+    rockEvery: 11, rockEveryHalf: 7, rockCount: 4, rockCountHalf: 7, rockWindup: 0.6, rockWindupHalf: 0.45,
+    rockSpeed: 140, rockSpeedHalf: 175, rockMult: 1.8, rockR: 10, chipMult: 0.6, tired: 2.0,
     backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
   };
 
@@ -494,12 +497,12 @@ var GameData = (function () {
   // 大技のダークアロー：動きながら、大きめの貫通する闇の矢を8方向に撃つのを daVolleys 回（1回ごとに向きを半分ずらす）。終わるとふらつく（すきあり）。
   // HP が半分を切ると、ダークアローが daVolleysHalf 回で間かくも短く、弓が3本になる。光が弱点、闇は効かない
   ENEMIES.elf_boss = {
-    name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 2600, patk: 24, matk: 30, pdef: 8, mdef: 12,
+    name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 3200, patk: 24, matk: 30, pdef: 8, mdef: 12,
     res: { light: 1.5, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
-    keepMin: 80, keepMax: 140, aimTime: 0.55, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
-    orbEvery: 7, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
+    keepMin: 80, keepMax: 140, aimTime: 0.45, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
+    orbEvery: 7, orbCount: 3, orbCountHalf: 5, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
     spinRange: 22, spinWarn: 0.45, spinRadius: 34, spinMult: 1.4, spinEvery: 2.5, flipTime: 0.45, flipSpeed: 190,
-    daEvery: 13, daEveryHalf: 9, daVolleys: 3, daVolleysHalf: 4, daWindup: 0.75, daSpeed: 150, daMult: 1.3, daR: 4, tired: 1.8
+    daEvery: 13, daEveryHalf: 9, daVolleys: 4, daVolleysHalf: 5, daWays: 8, daWaysHalf: 12, daCurve: 0.5, daWindup: 0.75, daSpeed: 150, daMult: 1.3, daR: 9, tired: 1.8
   };
 
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。

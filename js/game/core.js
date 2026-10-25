@@ -741,6 +741,8 @@
     else cam.x = Math.round(clamp(A.x - view.w / 2, 0, room.pxW - view.w));
     if (room.pxH <= view.h) cam.y = -Math.round((view.h - room.pxH) / 2);
     else cam.y = Math.round(clamp(A.y - view.h / 2, 0, room.pxH - view.h));
+    var q = Bosses.shakeOffset();   // ゴーレムの大きな攻撃で、画面がゆれる
+    cam.x += q.x; cam.y += q.y;
   }
 
   // ---------- 描画 ----------
