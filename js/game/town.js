@@ -189,6 +189,7 @@ var Town = (function () {
     var side = el("div", "sk-side");
     var slotBox = el("div", "sk-slots");
     slotBox.appendChild(el("div", "sk-slots-head", "装備中（押すと、左に倉庫のその種類が出る）"));
+    slotBox.appendChild(button("おすすめ", function () { recommendEquip(h); }, "small-btn rec-btn"));
     ["weapon", "armor"].forEach(function (slot) {
       var it = h.equip[slot];
       var b = el("button", "btn sk-slot" + (slot === equipSlot ? " sel" : "")); b.type = "button";
@@ -251,6 +252,51 @@ var Town = (function () {
     side.appendChild(det);
     wrap.appendChild(side);
     bodyEl.appendChild(wrap);
+  }
+
+  // ---------- おすすめ（2026-10-26 保護者の案）：押すと、変わる中身を見せてから、セットする ----------
+  function itemName(h, slot, it) { return it ? Loot.label(it) : "はじめの" + (slot === "weapon" ? "武器" : "防具") + "（" + starterName(h, slot) + "）"; }
+  function diffText(a, b) {
+    var t = [];
+    [["hp", "HP"], ["mp", "MP"], ["patk", "物攻"], ["pdef", "物防"], ["matk", "魔攻"], ["mdef", "魔防"]].forEach(function (k) {
+      if (a[k[0]] !== b[k[0]]) t.push(k[1] + " " + a[k[0]] + "→" + b[k[0]]);
+    });
+    return t.join("　");
+  }
+  function recommendEquip(h) {
+    var rec = GameState.recommendEquip(h), pv = GameState.previewEquip(h, rec);
+    if (!pv.changed) { say("いまの装備が、おすすめと同じ"); return; }
+    var magic = ["mage", "priest", "blackmage", "whitemage", "sage"].indexOf(h.job) >= 0;
+    var lines = ["おすすめの装備（" + (magic ? "魔攻 → 魔防 → 物攻 → 物防" : "物攻 → 物防 → 魔攻 → 魔防") + " の順にくらべた）"];
+    ["weapon", "armor"].forEach(function (slot) {
+      var w = slot === "weapon" ? "武器：" : "防具：";
+      lines.push(rec[slot] === h.equip[slot] ? w + "そのまま（" + itemName(h, slot, rec[slot]) + "）" : w + itemName(h, slot, h.equip[slot]) + " → " + itemName(h, slot, rec[slot]));
+    });
+    lines.push("能力：" + (diffText(pv.before, pv.after) || "変わらない"));
+    var sn = skillNote(pv.skills);
+    if (sn) lines.push(sn.replace(/^　/, "").replace(/。　/g, "。\n"));
+    Dialog.confirm(lines.join("\n"), function () {
+      var r = GameState.applyEquip(h, rec);
+      selEquip = null;
+      say("おすすめの装備にした" + skillNote(r));
+      render();
+    }, null, { yes: "おすすめにする" });
+  }
+  function recommendSkills(h, passive) {
+    var cur = slotsOf(h, passive).slice(), rec = GameState.recommendSkills(h, passive);
+    var same = cur.every(function (id, i) { return id === rec[i]; });
+    if (same) { say("いまのスキルが、おすすめと同じ"); return; }
+    function nm(id) { return id ? GameData.SKILL[id].name : "空き"; }
+    var lines = [passive ? "おすすめのパッシブ（上の段の職 → ★の大きい順）" :
+      "おすすめのスキル（攻撃は威力の大きい順。回復と強化は1つずつ）"];
+    rec.forEach(function (id, i) {
+      lines.push(slotName(passive, i) + "：" + (cur[i] === id ? "そのまま（" + nm(id) + "）" : nm(cur[i]) + " → " + nm(id)));
+    });
+    Dialog.confirm(lines.join("\n"), function () {
+      GameState.applySkills(h, passive, rec);
+      say(passive ? "おすすめのパッシブにした" : "おすすめのスキルにした");
+      render();
+    }, null, { yes: "おすすめにする" });
   }
 
   // ---------- 倉庫（「装備」と「道具」のタブ。2026-10-18 保護者の案） ----------
@@ -599,6 +645,7 @@ var Town = (function () {
     slotBox.appendChild(el("div", "sk-slots-head", passive ? "① セットする枠を選ぶ（いつも効く）" :
       h.setsOpen ? "① セットする枠を選ぶ（はじめはセットA。たたかいの中の「セット」ボタンでセットBと入れかわる）" : "① セットする枠を選ぶ（ボタンで使う）"));
     if (!passive && !h.setsOpen) slotBox.appendChild(el("p", "sub", "上級職になれるようになると、セットB（もう3つ）が使えるようになる。"));
+    slotBox.appendChild(button("おすすめ", function () { recommendSkills(h, passive); }, "small-btn rec-btn"));
     slots.forEach(function (id, i) {
       if (!passive && h.setsOpen && i === 3) slotBox.appendChild(el("div", "sk-slots-gap", ""));
       var b = el("button", "btn sk-slot" + (i === si ? " sel" : "") + (id ? "" : " empty")); b.type = "button";

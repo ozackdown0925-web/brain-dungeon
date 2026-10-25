@@ -616,6 +616,149 @@ var GameState = (function () {
     return true;
   }
 
+  // ---------- おすすめ（2026-10-26 保護者の案） ----------
+  // 装備：倉庫と装備中の物から、選んでいる1人の武器と防具を選ぶ。装備したあとの数字（おまけの効果もふくむ）で、
+  //   物攻 → 物防 → 魔攻 → 魔防 の順にくらべる。魔法の職（魔術師・僧侶・黒魔道士・白魔道士・賢者）は 魔攻 → 魔防 → 物攻 → 物防。
+  //   武器の種類が変わったときのスキルは、いまのしくみ（前の武器のセットにもどす）のまま。
+  // アクティブ：攻撃スキルは威力（倍率×当たる回数）の大きい順。回復と強化は1枠ずつ、効き目の大きいものを入れる。
+  //   同じなら、上の段の職 → ★の大きいもの。セットBが使えるときは6枠ぜんぶ。
+  //   セットA：攻撃1・攻撃2・回復　セットB：攻撃3・攻撃4・強化（セットBがないとき：攻撃1・回復・強化）
+  // パッシブ：上の段の職 → ★の大きいものの順。
+  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage"];
+  function statOrder(h) { return MAGIC_JOBS.indexOf(h.job) >= 0 ? ["matk", "mdef", "patk", "pdef"] : ["patk", "pdef", "matk", "mdef"]; }
+  function better(a, b, order) { // a が b より上なら 正
+    for (var i = 0; i < order.length; i++) if (a[order[i]] !== b[order[i]]) return a[order[i]] - b[order[i]];
+    return 0;
+  }
+  function statsWith(h, weapon, armor) {
+    var sw = h.equip.weapon, sa = h.equip.armor;
+    h.equip.weapon = weapon; h.equip.armor = armor;
+    var s = heroStats(h);
+    h.equip.weapon = sw; h.equip.armor = sa;
+    return s;
+  }
+  // もどり値：{ weapon, armor }（おすすめの物。null ははじめの装備）
+  function recommendEquip(h) {
+    var order = statOrder(h);
+    function pick(slot, other) {
+      var cur = h.equip[slot];
+      var list = [cur].concat(game.storage.filter(function (x) { return x.slot === slot && canEquip(h, x); }));
+      var best = cur, bestS = null;
+      list.forEach(function (it) {
+        var s = slot === "weapon" ? statsWith(h, it, other) : statsWith(h, other, it);
+        if (!bestS || better(s, bestS, order) > 0) { best = it; bestS = s; }
+      });
+      return best;
+    }
+    var w = pick("weapon", h.equip.armor);
+    var a = pick("armor", w);
+    return { weapon: w, armor: a };
+  }
+  // おすすめの装備にしたときのようす（何も変えない）：{ changed, before, after（能力）, skills：{ removed, added } }
+  function previewEquip(h, rec) {
+    var snap = JSON.stringify({ set: h.set, setB: h.setB, pset: h.pset, ws: h.weaponSets });
+    var sw = h.equip.weapon, sa = h.equip.armor, before = heroStats(h);
+    var b = beforeGear(h);
+    h.equip.weapon = rec.weapon; h.equip.armor = rec.armor;
+    var r = afterGear(h, b), after = heroStats(h);
+    h.equip.weapon = sw; h.equip.armor = sa;
+    var o = JSON.parse(snap); h.set = o.set; h.setB = o.setB; h.pset = o.pset; h.weaponSets = o.ws;
+    return { changed: rec.weapon !== sw || rec.armor !== sa, before: before, after: after, skills: r };
+  }
+  // おすすめの装備にする（倉庫から付けかえる）。もどり値：{ removed, added }
+  function applyEquip(h, rec) {
+    var out = { removed: [], added: [] };
+    function add(r) {
+      if (!r) return;
+      r.removed.forEach(function (n) { var k = out.added.indexOf(n); if (k >= 0) out.added.splice(k, 1); else if (out.removed.indexOf(n) < 0) out.removed.push(n); });
+      r.added.forEach(function (n) { var k = out.removed.indexOf(n); if (k >= 0) out.removed.splice(k, 1); else if (out.added.indexOf(n) < 0) out.added.push(n); });
+    }
+    if (rec.weapon && rec.weapon !== h.equip.weapon) add(equipItem(h, rec.weapon.id));
+    if (rec.armor && rec.armor !== h.equip.armor) add(equipItem(h, rec.armor.id));
+    return out;
+  }
+
+  // スキルの中の効き目をぜんぶ集める（連続の攻撃の中の1つずつもふくむ）
+  function fxList(sk) {
+    var out = [];
+    function walk(list, times) {
+      list.forEach(function (f) {
+        var n = times * (f.t === "rapid" && !f.hits ? (f.count || 1) : 1);
+        out.push({ f: f, n: n });
+        if (f.hit) walk([f.hit], n);
+        if (f.hits) walk(f.hits, times);
+      });
+    }
+    walk(sk.fx || [], 1);
+    return out;
+  }
+  // 攻撃の威力：倍率 × 当たる回数（矢や玉の数、雨の数、ゾーンは続くあいだに当たる回数）
+  function skillPower(sk) {
+    var p = 0;
+    fxList(sk).forEach(function (x) {
+      var f = x.f; if (!f.mult) return;
+      var n = x.n;
+      if (f.t === "shot" || f.t === "rain") n *= f.count || 1;
+      if (f.t === "zone") n *= Math.max(1, Math.round((f.dur || 1) / (f.tick || 1)));
+      p += f.mult * n;
+    });
+    return p;
+  }
+  // 回復の効き目：HP・MP の回復の割合（仲間みんななら3倍）。治す・生き返らせるも少し足す
+  function healPower(sk) {
+    var p = 0;
+    fxList(sk).forEach(function (x) {
+      var f = x.f, k = f.party ? 3 : 1;
+      if (f.t === "heal" || f.t === "regen" || f.t === "mpheal") p += (f.pct || 0) * k;
+      else if (f.t === "revive") p += f.pct || 0;
+      else if (f.t === "cure") p += 0.05 * k;
+    });
+    return p;
+  }
+  // 強化の効き目：上がる割合（仲間みんななら3倍）。下がるほうは数えない。待ち時間は短くなるのが強化
+  function buffPower(sk) {
+    var p = 0;
+    fxList(sk).forEach(function (x) {
+      var f = x.f; if (f.t !== "buff") return;
+      var v = f.stat === "wait" ? -f.pct : f.pct;
+      if (v > 0) p += v * (f.party ? 3 : 1);
+    });
+    return p;
+  }
+  function skillRank(sk) { return GameData.tierOf(sk.job) * 100 + sk.star; }
+  // もどり値：おすすめの枠（アクティブは activeSlots と同じ並び、パッシブは pset と同じ長さ）
+  function recommendSkills(h, passive) {
+    var wt = heroWeaponType(h);
+    var cand = h.learned.map(function (id) { return GameData.SKILL[id]; })
+      .filter(function (sk) { return sk && !!sk.passive === passive && GameData.canSet(sk, h.job, wt); });
+    function byRank(a, b) { return skillRank(b) - skillRank(a); }
+    if (passive) {
+      cand.sort(byRank);
+      return h.pset.map(function (x, i) { return cand[i] ? cand[i].id : null; });
+    }
+    function sorted(fn) {
+      return cand.filter(function (sk) { return fn(sk) > 0; }).sort(function (a, b) { return fn(b) - fn(a) || byRank(a, b); });
+    }
+    var used = [];
+    function take(list) { for (var i = 0; i < list.length; i++) if (used.indexOf(list[i].id) < 0) { used.push(list[i].id); return list[i].id; } return null; }
+    var atk = sorted(skillPower);
+    // 回復・強化は、攻撃でないものから選ぶ（攻撃しながら少し回復するものは攻撃に入れる）
+    var heal = sorted(function (sk) { return skillPower(sk) > 0 ? 0 : healPower(sk); });
+    var buff = sorted(function (sk) { return skillPower(sk) > 0 ? 0 : buffPower(sk); });
+    var plan = h.setsOpen ? ["atk", "atk", "heal", "atk", "atk", "buff"] : ["atk", "heal", "buff"];
+    var slots = plan.map(function (kind) { return take(kind === "atk" ? atk : kind === "heal" ? heal : buff); });
+    // 空いた枠：残りの攻撃 → 回復 → 強化 → ほかのスキル（上の段の職・★の大きい順）
+    var rest = atk.concat(heal, buff, cand.slice().sort(byRank));
+    slots = slots.map(function (id) { return id || take(rest); });
+    return slots;
+  }
+  // おすすめのスキルにする
+  function applySkills(h, passive, slots) {
+    if (passive) h.pset = slots.slice();
+    else { h.set = slots.slice(0, 3); if (h.setsOpen) h.setB = slots.slice(3, 6); }
+    save();
+  }
+
   // ---------- 図鑑（段階5-2②） ----------
   function monster(type) {
     var b = game.book.monsters[type] || (game.book.monsters[type] = { kills: 0 });
@@ -810,6 +953,7 @@ var GameState = (function () {
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
+    recommendEquip: recommendEquip, previewEquip: previewEquip, applyEquip: applyEquip, recommendSkills: recommendSkills, applySkills: applySkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,
