@@ -11,8 +11,8 @@ var GameData = (function () {
   var WEAPONS = {
     // item＝拾う・買う装備の名前（最初の地方。R以上は名前のあとに〈R〉〈SR〉〈UR〉がつく）、starter＝はじめから持っている武器の名前（2026-10-18 決定）
     sword:      { name: "剣",   item: "銅の剣",   starter: "古い剣", element: "slash",  patk: 8,  matk: 0, wait: 0.6, power: 1.0,  reach: 18, arc: 1.05 },
-    greatsword: { name: "大剣", item: "銅の大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4 },
-    axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3 },
+    greatsword: { name: "大剣", item: "銅の大剣", element: "slash",  patk: 13, matk: 0, wait: 1.0, power: 1.65, reach: 22, arc: 1.4, windup: 0.45 },   // windup：振る前のため（2026-10-26 保護者の希望。強すぎたため）
+    axe:        { name: "斧",   item: "銅の斧",   element: "slash",  patk: 11, matk: 0, wait: 0.9, power: 1.5,  reach: 20, arc: 1.3, windup: 0.25 },
     bow:        { name: "弓",   item: "木の弓",   starter: "古い弓", element: "pierce", patk: 9,  matk: 0, wait: 1.1, power: 0.85, shot: { speed: 170, range: 150, stat: "p" } },
     // 槍（2026-10-19。騎士の武器）：細く長く届く突き。刺
     // thrust：斬らずに突く。いちばん近い敵の方を向いてから、まっすぐ突く（2026-10-21 保護者の希望）
