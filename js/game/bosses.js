@@ -16,13 +16,13 @@ var Bosses = (function () {
     var d = e.def;
     e.ai = { charge: d.chargeEvery ? 4 : 0, howl: d.howlEvery ? 8 : 0, roots: d.rootEvery ? 5 : 0, pollen: d.pollenEvery ? 9 : 0,
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
-             rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0 };
+             rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
-        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back") { e.state = "recover"; e.t = 0.4; }
+        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark") { e.state = "recover"; e.t = 0.4; }
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
 
@@ -34,11 +34,12 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -369,7 +370,7 @@ var Bosses = (function () {
         api.addArrow(e, ang, half ? d.rockSpeedHalf : d.rockSpeed, { rock: true, big: true, mult: d.rockMult, rad: d.rockR, dy: -20, life: 3 });
         e.thrown = 0.2; e.rocks--;
         if (e.rocks > 0) e.t = half ? d.rockWindupHalf : d.rockWindup;
-        else { tire(e); e.ai.rock = half ? d.rockEveryHalf : d.rockEvery; }
+        else tire(e);
       }
       return;
     }
@@ -396,9 +397,122 @@ var Bosses = (function () {
     if (e.ai.combo <= 0 && e.cd <= 0 && gap <= d.comboRange) { e.state = "combo"; e.hits = 3; e.t = d.comboWindup; e.aim = { x: ux, y: uy }; return; }
     if (gap > d.spinRange - 6 && !e.status.para) { room.move(e, ux * d.speed * dt, uy * d.speed * dt); e.walk = (e.walk || 0) + dt * 6; }
   }
+  // ---------- ダークエルフ（原生の秘境15階・主。段階5、2026-10-26） ----------
+  // 弓（半分で3本）、闇の玉を扇に3つ、回転斬り → 宙返り、大技のダークアロー（動きながら8方向の貫通する闇の矢）
+  function elf(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    if (half && !e.angry) { e.angry = true; Battle.pop(e.x, e.y - 50, "本気になった！", "#ef5b5b", 9); }
+    if (e.state === "aim") {   // 弓を引く。放つ少し前までは、ねらいを合わせ直す
+      e.t -= dt;
+      if (e.t > 0.12 && !p.down) e.aim = { x: ux, y: uy };
+      e.face = e.aim;
+      if (e.t <= 0) {
+        var a0 = Math.atan2(e.aim.y, e.aim.x), n = half ? d.fanHalf : 1;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * 0.22, d.arrowSpeed, { mult: d.arrowMult, elfArrow: true });
+        e.shot = 0.15; e.state = "recover"; e.t = 0.3; e.cd = d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "cast") {   // 手を上げて、闇の玉を扇に3つ
+      e.t -= dt;
+      if (!p.down) e.face = { x: ux, y: uy };
+      if (e.t <= 0) {
+        var a1 = Math.atan2(uy, ux);
+        for (var j = -1; j <= 1; j++) api.addArrow(e, a1 + j * 0.3, d.orbSpeed, { orb: true, magic: true, mult: d.orbMult });
+        e.state = "recover"; e.t = 0.4; e.ai.orb = d.orbEvery;
+      }
+      return;
+    }
+    if (e.state === "spin") {   // 回転斬り：構え（足もとに銀の輪）→ まわりを斬る → 宙返り
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.spinFx = 0.35;
+        if (!p.down && dist - p.r <= d.spinRadius) hurt(e, p.x, p.y - 8, { mult: d.spinMult });
+        e.state = "flip"; e.t = d.flipTime; e.flipDir = { x: -ux, y: -uy }; e.untouchable = true; e.ai.spin = d.spinEvery;
+      }
+      return;
+    }
+    if (e.state === "flip") {   // 後ろへ宙返り（このあいだは、こちらの攻撃が当たらない）
+      e.t -= dt;
+      var bx = e.x, by = e.y;
+      room.move(e, e.flipDir.x * d.flipSpeed * dt, e.flipDir.y * d.flipSpeed * dt);
+      if (Math.abs(e.x - bx) + Math.abs(e.y - by) < d.flipSpeed * dt * 0.3) {   // 壁にあたったら、横へそれる
+        var sx = -e.flipDir.y, sy = e.flipDir.x; room.move(e, sx * d.flipSpeed * dt, sy * d.flipSpeed * dt);
+      }
+      if (e.t <= 0) { e.untouchable = false; e.state = "recover"; e.t = 0.2; }
+      return;
+    }
+    if (e.state === "dark") {   // ダークアロー：まわりを回りながら、8方向に闇の矢（1回ごとに向きを半分ずらす）
+      e.t -= dt;
+      if (!e.status.para) {
+        var out = gap < d.keepMin ? -0.6 : gap > d.keepMax ? 0.6 : 0;
+        var mx = -uy * e.strafe + ux * out, my = ux * e.strafe + uy * out, ml = Math.sqrt(mx * mx + my * my) || 1;
+        var b2x = e.x, b2y = e.y;
+        room.move(e, mx / ml * d.speed * dt, my / ml * d.speed * dt);
+        if (Math.abs(e.x - b2x) + Math.abs(e.y - b2y) < d.speed * dt * 0.3) e.strafe = -e.strafe;
+        e.walk = (e.walk || 0) + dt * 8;
+      }
+      e.face = { x: ux, y: uy };
+      if (e.t <= 0) {
+        var off = (e.vol % 2) * Math.PI / 8;
+        for (var q = 0; q < 8; q++) api.addArrow(e, off + q * Math.PI / 4, d.daSpeed, { darkArrow: true, magic: true, pierce: true, big: true, mult: d.daMult, rad: d.daR, life: 3 });
+        e.vol--;
+        if (e.vol > 0) e.t = d.daWindup;
+        else tire(e);   // 次のダークアローまでの時間は、始めたときから数える（眠りやしびれで止まっても、すぐにはくり返さない）
+      }
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (gap <= d.spinRange && e.ai.spin <= 0) { e.state = "spin"; e.t = d.spinWarn; return; }
+    if (e.ai.da <= 0) { e.state = "dark"; e.ai.da = half ? d.daEveryHalf : d.daEvery; e.vol = half ? d.daVolleysHalf : d.daVolleys; e.t = d.daWindup + 0.4; Battle.pop(e.x, e.y - 50, "ダークアロー！", "#ef5b5b", 9); return; }
+    if (e.ai.orb <= 0 && gap <= d.keepMax + 40) { e.state = "cast"; e.t = d.orbWindup; return; }
+    if (e.cd <= 0 && gap <= d.keepMax + 60) { e.state = "aim"; e.t = d.aimTime; e.aim = { x: ux, y: uy }; return; }
+    // ふだんは、はなれたところを回る
+    var m2x = 0, m2y = 0;
+    if (gap < d.keepMin) { m2x = -ux; m2y = -uy; } else if (gap > d.keepMax) { m2x = ux; m2y = uy; } else { m2x = -uy * e.strafe * 0.6; m2y = ux * e.strafe * 0.6; }
+    if (!e.status.para && (m2x || m2y)) {
+      var b3x = e.x, b3y = e.y;
+      room.move(e, m2x * d.speed * dt, m2y * d.speed * dt);
+      if (Math.abs(e.x - b3x) + Math.abs(e.y - b3y) < 0.01) e.strafe = -e.strafe;
+      e.walk = (e.walk || 0) + dt * 8;
+    }
+  }
+  // ダークエルフの弓（向きに合わせて描く）。x, y は弓を持つ手、draw は弦を引く強さ（0〜1）
+  function drawBow(ctx, x, y, aim, draw) {
+    var ang = Math.atan2(aim.y, aim.x), r = 9, a1 = ang - 1.15, a2 = ang + 1.15;
+    var bx = x - Math.cos(ang) * 3, by = y - Math.sin(ang) * 3;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#120c18"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(bx, by, r, a1, a2); ctx.stroke();
+    ctx.strokeStyle = "#8a90a4"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(bx, by, r, a1, a2); ctx.stroke();
+    ctx.strokeStyle = "#d0d4e0"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx, by, r, a1 + 0.25, ang - 0.15); ctx.stroke();
+    var e1x = bx + Math.cos(a1) * r, e1y = by + Math.sin(a1) * r, e2x = bx + Math.cos(a2) * r, e2y = by + Math.sin(a2) * r;
+    var pull = 2 + draw * 7, nx = bx - Math.cos(ang) * pull + Math.cos(ang) * r * Math.cos(1.15), ny = by - Math.sin(ang) * pull + Math.sin(ang) * r * Math.cos(1.15);
+    ctx.strokeStyle = "rgba(230,220,255,0.9)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(e1x, e1y); ctx.lineTo(nx, ny); ctx.lineTo(e2x, e2y); ctx.stroke();
+    if (draw > 0.05) {   // つがえた矢（先が紫に光る）
+      ctx.strokeStyle = "#e8d8b0"; ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(bx + Math.cos(ang) * (r + 3), by + Math.sin(ang) * (r + 3)); ctx.stroke();
+      Render.rect(Math.round(bx + Math.cos(ang) * (r + 3)) - 1, Math.round(by + Math.sin(ang) * (r + 3)) - 1, 2, 2, "#b47aff");
+    }
+    ctx.lineCap = "butt";
+  }
+  // ダークアローの闇の矢：大きめで、紫の光の尾をひく
+  function drawDarkArrow(ctx, x, y, vx, vy) {
+    var l = Math.sqrt(vx * vx + vy * vy) || 1, ux = vx / l, uy = vy / l;
+    Combat.glowDot(ctx, x, y, 7, "#e0c0ff", "#7a3ab8", 0.55);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(122,58,184,0.6)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x - ux * 14, y - uy * 14); ctx.lineTo(x, y); ctx.stroke();
+    ctx.strokeStyle = "#1a0a2a"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - ux * 10, y - uy * 10); ctx.lineTo(x + ux * 3, y + uy * 3); ctx.stroke();
+    ctx.strokeStyle = "#d8b8ff"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - ux * 8, y - uy * 8); ctx.lineTo(x + ux * 4, y + uy * 4); ctx.stroke();
+    ctx.lineCap = "butt";
+  }
+
   function startLift(e, half) {
     var d = e.def;
     e.state = "lift"; e.rocks = half ? d.rockCountHalf : d.rockCount + (Math.random() < 0.5 ? 1 : 0);
+    e.ai.rock = half ? d.rockEveryHalf : d.rockEvery;   // 次の岩石投げまでの時間は、始めたときから数える（止められても、すぐにはくり返さない）
     e.t = (half ? d.rockWindupHalf : d.rockWindup) + 0.3;
     Battle.pop(e.x, e.y - 50, "岩石投げ！", "#ef5b5b", 9);
   }
@@ -684,6 +798,55 @@ var Bosses = (function () {
           Render.rect(gx, gy - 1, 1, 3, "#ffe066"); Render.rect(gx - 1, gy, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "elf_boss") {
+      // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
+      var hop = 0, rot = 0;
+      if (e.state === "flip") { var kf = 1 - e.t / d.flipTime; hop = Math.round(Math.sin(kf * Math.PI) * 14); rot = kf * Math.PI * 2 * (e.flipDir.x > 0 ? 1 : -1); }
+      Render.rect(x - 10, y + 10, 20, 4, "rgba(0,0,0," + (hop ? 0.2 : 0.35) + ")");
+      if (e.state === "spin") {   // 回転斬りの構え：足もとの銀の輪がだんだん濃くなる
+        var kk = 1 - e.t / d.spinWarn;
+        ctx.fillStyle = "rgba(208,212,224," + (0.08 + 0.2 * kk).toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(x, y + 4, d.spinRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * kk).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y + 4, d.spinRadius, 0, Math.PI * 2); ctx.stroke();
+      }
+      var ef = "stand", eph = Math.sin(e.walk || 0);
+      if ((e.state === "chase" || e.state === "dark") && Math.abs(eph) > 0.3) ef = eph > 0 ? "walkA" : "walkB";
+      if (e.state === "aim" || e.shot > 0) ef = "aim";
+      if (e.state === "cast" || e.state === "dark") ef = e.state === "dark" ? ef : "cast";
+      if (rot) {
+        ctx.save(); ctx.translate(x, y - 10 - hop); ctx.rotate(rot); ctx.translate(-x, -(y - 10 - hop));
+        Monsters.drawBoss(ctx, e, x, y + 14 - hop, "stand"); ctx.restore();
+      } else Monsters.drawBoss(ctx, e, x, y + 14, ef);
+      if (ef === "aim") {   // 弓：のばした手の先に、ねらう向きに合わせて
+        var aimV = e.aim || e.face, side = e.face.x > 0 ? 1 : -1;
+        var draw2 = e.state === "aim" ? Math.min(1, 1 - e.t / d.aimTime + 0.2) : 0;
+        drawBow(ctx, x + side * 15, y + 14 - 48 + 18, aimV, draw2);
+      }
+      if (e.state === "cast") {   // 上げた手の先に、闇の光
+        var hx = x + (e.face.x > 0 ? -6 : 6);
+        Combat.glowDot(ctx, hx, y + 14 - 48 + 3, 7 + Math.sin(glow * 10) * 2, "#e0c0ff", "#7a3ab8", 0.85);
+      }
+      if (e.state === "dark") {   // ダークアローをためる：まわりに8つの紫の光がだんだん強く
+        var kd = 1 - Math.max(0, e.t) / d.daWindup, offd = (e.vol % 2) * Math.PI / 8;
+        for (var dq = 0; dq < 8; dq++) {
+          var da = offd + dq * Math.PI / 4;
+          Combat.glowDot(ctx, x + Math.cos(da) * 20, y - 8 + Math.sin(da) * 20, 3 + kd * 3, "#e0c0ff", "#7a3ab8", Math.min(1, 0.3 + kd));
+        }
+      }
+      if (e.spinFx > 0) {   // 回転斬りの銀の弧
+        var ks2 = 1 - e.spinFx / 0.35;
+        ctx.strokeStyle = "rgba(230,232,245," + (1 - ks2).toFixed(2) + ")"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y - 4, d.spinRadius * (0.7 + 0.3 * ks2), ks2 * Math.PI * 4, ks2 * Math.PI * 4 + Math.PI * 1.6); ctx.stroke();
+      }
+      e.spinFx = Math.max(0, (e.spinFx || 0) - 1 / 60); e.shot = Math.max(0, (e.shot || 0) - 1 / 60);
+      if (e.state === "spin") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: "#ffd24a" });
+      if (e.state === "tired") {
+        for (var es = 0; es < 3; es++) {
+          var ea = glow * 4 + es * 2.1, ex2 = Math.round(x + Math.cos(ea) * 9), ey2 = Math.round(y - 38 + Math.sin(ea) * 3);
+          Render.rect(ex2, ey2 - 1, 1, 3, "#ffe066"); Render.rect(ex2 - 1, ey2, 3, 1, "#ffe066");
+        }
+      }
     } else {
       // 段階7-2c：ドット絵（monsters.js、64×64）。足もとは y＋18。構えのときはうでを上げ、ふだんは葉がゆれる
       Render.rect(x - 22, y + 13, 44, 7, "rgba(0,0,0,0.35)");
@@ -707,5 +870,5 @@ var Bosses = (function () {
   function addDust(x, y) { dust.push({ x: x, y: y, t: 0, max: 0.6, s: Math.random() }); }
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
-           rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock };
+           rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow };
 })();

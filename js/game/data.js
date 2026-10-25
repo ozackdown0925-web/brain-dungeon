@@ -489,6 +489,19 @@ var GameData = (function () {
     backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
   };
 
+  // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
+  // ときどき闇の玉を扇に3つ（ダーク・魔法）。近づかれると回転斬り（まわり）→ 後ろへ宙返りして距離をとる（宙返りのあいだは当たらない）。
+  // 大技のダークアロー：動きながら、大きめの貫通する闇の矢を8方向に撃つのを daVolleys 回（1回ごとに向きを半分ずらす）。終わるとふらつく（すきあり）。
+  // HP が半分を切ると、ダークアローが daVolleysHalf 回で間かくも短く、弓が3本になる。光が弱点、闇は効かない
+  ENEMIES.elf_boss = {
+    name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 2600, patk: 24, matk: 30, pdef: 8, mdef: 12,
+    res: { light: 1.5, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
+    keepMin: 80, keepMax: 140, aimTime: 0.55, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
+    orbEvery: 7, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
+    spinRange: 22, spinWarn: 0.45, spinRadius: 34, spinMult: 1.4, spinEvery: 2.5, flipTime: 0.45, flipSpeed: 190,
+    daEvery: 13, daEveryHalf: 9, daVolleys: 3, daVolleysHalf: 4, daWindup: 0.75, daSpeed: 150, daMult: 1.3, daR: 4, tired: 1.8
+  };
+
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
   var BOSSES = {
     7: {
@@ -563,8 +576,9 @@ var GameData = (function () {
         8: { enemy: "golem_boss", title: "岩をくだく者",         // ゴーレム（段階4、2026-10-25）。前後の文は Claude が書いた仮の文
              before: ["遺跡の広場に、苔むした大きな岩がころがっている。", "岩が音を立てて組み上がり、青い目が光った！"],
              after: ["ゴーレムは音を立ててくずれ、ただの岩にもどった。", "胸のしるしの光が、静かに消えていく。"] },
-        15: { enemy: "witch_boss", title: "秘境をきわめし者",   // 仮：ダークエルフを作るまで沼の魔女（段階5）
-              before: ["（かり）いちばん奥の遺跡に、黒い影が立っている。"], after: ["（かり）秘境に、静けさがもどった。"] }
+        15: { enemy: "elf_boss", title: "秘境をきわめし者",     // ダークエルフ（段階5、2026-10-26）。前後の文は Claude が書いた仮の文
+              before: ["いちばん奥の遺跡に、白い髪の弓使いが立っている。", "「ここまで来たか。だが、秘境の守りはわたしが最後だ」"],
+              after: ["ダークエルフはひざをつき、弓を下ろした。", "「……見事だ。秘境の道は、おまえたちに開こう」"] }
       }
     }
   };

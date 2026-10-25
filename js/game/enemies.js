@@ -270,12 +270,22 @@ var Enemies = (function () {
       var foe = null;
       list.forEach(function (o) {
         if (foe || o.dead || o === ar.from || !!o.charm === !!ar.ally) return;
+        if (ar.hits && ar.hits.indexOf(o) >= 0) return;   // 貫通する矢（ダークアロー）は、同じ相手に1回だけ
         var ox = ar.x - o.x, oy = ar.y - (o.y - 3);
         if (ox * ox + oy * oy < (o.r + 2) * (o.r + 2)) foe = o;
       });
-      if (foe) { hitFoe(ar.from, foe, ar.opts); arrows.splice(k, 1); continue; }
+      if (foe) {
+        hitFoe(ar.from, foe, ar.opts);
+        if (ar.opts && ar.opts.pierce) { (ar.hits = ar.hits || []).push(foe); continue; }   // 貫通する矢は、そのまま飛ぶ
+        arrows.splice(k, 1); continue;
+      }
       var ddx = ar.x - p.x, ddy = ar.y - p.y, hr = p.r + 2 + (ar.opts && ar.opts.rad || 0);   // rad：大きなもの（ゴーレムの岩）
-      if (!ar.ally && !p.down && ddx * ddx + ddy * ddy < hr * hr) { hurt(ar.from, ar.x, ar.y, ar.opts); if (ar.opts && ar.opts.rock) rockDust(ar); arrows.splice(k, 1); continue; }
+      if (!ar.ally && !p.down && !ar.hitP && ddx * ddx + ddy * ddy < hr * hr) {
+        hurt(ar.from, ar.x, ar.y, ar.opts);
+        if (ar.opts && ar.opts.pierce) { ar.hitP = true; continue; }   // 貫通する矢（ダークアロー）は、当たってもそのまま飛ぶ
+        if (ar.opts && ar.opts.rock) rockDust(ar);
+        arrows.splice(k, 1); continue;
+      }
       if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockDust(ar); arrows.splice(k, 1); }
     }
 
@@ -599,6 +609,14 @@ var Enemies = (function () {
       if (a.opts && a.opts.rock) {   // ゴーレムの岩：地面にかげ、少しずつ回る
         Render.rect(Math.round(x) - 5, Math.round(y) + 10, 10, 3, "rgba(0,0,0,0.3)");
         Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 6);
+        return;
+      }
+      if (a.opts && a.opts.darkArrow) { Bosses.drawDarkArrow(ctx, x, y, a.vx, a.vy); return; }   // ダークエルフのダークアロー
+      if (a.opts && a.opts.elfArrow) {   // ダークエルフのふつうの矢：銀の矢に、紫に光る矢じり
+        var el = Math.sqrt(a.vx * a.vx + a.vy * a.vy), eux = a.vx / el, euy = a.vy / el;
+        ctx.strokeStyle = "rgba(180,122,255,0.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - eux * 12, y - euy * 12); ctx.lineTo(x, y); ctx.stroke();
+        ctx.strokeStyle = "#d0d4e0"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - eux * 9, y - euy * 9); ctx.lineTo(x, y); ctx.stroke();
+        Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#b47aff");
         return;
       }
       if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光
