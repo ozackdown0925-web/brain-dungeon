@@ -15,13 +15,14 @@ var Bosses = (function () {
   function setup(e) {
     var d = e.def;
     e.ai = { charge: d.chargeEvery ? 4 : 0, howl: d.howlEvery ? 8 : 0, roots: d.rootEvery ? 5 : 0, pollen: d.pollenEvery ? 9 : 0,
-             dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6 };
+             dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
+             rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
-        e.state === "rain" || e.state === "cast" || e.state === "dive") { e.state = "recover"; e.t = 0.4; }
+        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back") { e.state = "recover"; e.t = 0.4; }
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
 
@@ -33,10 +34,11 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -333,6 +335,87 @@ var Bosses = (function () {
     if (!e.status.para) room.move(e, mx * d.speed * dt, my * d.speed * dt);
   }
 
+  // ---------- ゴーレム（原生の秘境8階・中ボス。段階4、2026-10-25） ----------
+  // ぶん回し（近く・まわりの広い範囲）、ふみこみながらの3回攻撃、大技の岩石投げ（飛んでくる岩。投げ終わるとふらつく）
+  function golem(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    if (e.state === "spin") {   // うでを広げて構える → ぶん回し（まわりにとどけば当たる）
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.sweep = 0.35;
+        if (!p.down && dist - p.r <= d.spinRadius) hurt(e, p.x, p.y - 8, { mult: d.spinMult });
+        e.state = "recover"; e.t = 0.6; e.cd = d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "combo") {   // こぶしを上げる → 前へふみこんでたたく（3回）。上げているあいだは向きを合わせ直す
+      e.t -= dt;
+      if (e.t > d.comboWindup * 0.35 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        if (!e.status.para) room.move(e, e.aim.x * d.comboStep, e.aim.y * d.comboStep);
+        var px = p.x - e.x, py = p.y - e.y, pd = Math.sqrt(px * px + py * py) || 1;
+        if (!p.down && pd - e.r - p.r <= d.comboReach && (px * e.aim.x + py * e.aim.y) / pd > 0.2) hurt(e, p.x, p.y - 8, { mult: d.comboMult });
+        e.punch = 0.22; e.hits--;
+        if (e.hits > 0) e.t = d.comboWindup;
+        else { e.state = "recover"; e.t = 0.9; e.cd = d.cooldown; e.ai.combo = d.comboEvery; }
+      }
+      return;
+    }
+    if (e.state === "lift") {   // 岩を持ち上げる → まっすぐ投げる（何回か続けて）。投げ終わるとふらつく
+      e.t -= dt;
+      if (!p.down) e.face = { x: ux, y: uy };
+      if (e.t <= 0) {
+        var sy = e.y - 20, ang = Math.atan2(p.y - sy, p.x - e.x);   // 頭の上から投げる
+        api.addArrow(e, ang, half ? d.rockSpeedHalf : d.rockSpeed, { rock: true, big: true, mult: d.rockMult, rad: d.rockR, dy: -20, life: 3 });
+        e.thrown = 0.2; e.rocks--;
+        if (e.rocks > 0) e.t = half ? d.rockWindupHalf : d.rockWindup;
+        else { tire(e); e.ai.rock = half ? d.rockEveryHalf : d.rockEvery; }
+      }
+      return;
+    }
+    if (e.state === "back") {   // 岩を投げる前に、近すぎたら後ろへ下がる（土けむり）
+      e.t -= dt;
+      if (!e.status.para) {
+        room.move(e, -e.aim.x * d.backSpeed * dt, -e.aim.y * d.backSpeed * dt);
+        e.dustAt = (e.dustAt || 0) + dt; if (e.dustAt > 0.08) { e.dustAt = 0; addDust(e.x + (Math.random() - 0.5) * 20, e.y + 14); }
+      }
+      if (e.t <= 0) startLift(e, half);
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (half && !e.angry) { e.angry = true; Battle.pop(e.x, e.y - 50, "目が赤く光った！", "#ef5b5b", 9); }
+    if (e.ai.rock <= 0) {
+      if (gap < d.backGap) { e.state = "back"; e.t = d.backTime; e.aim = { x: ux, y: uy }; return; }   // 近いときは、先に下がる
+      startLift(e, half);
+      return;
+    }
+    if (gap <= d.spinRange && e.cd <= 0) { e.state = "spin"; e.t = d.spinWarn; return; }
+    if (e.ai.combo <= 0 && e.cd <= 0 && gap <= d.comboRange) { e.state = "combo"; e.hits = 3; e.t = d.comboWindup; e.aim = { x: ux, y: uy }; return; }
+    if (gap > d.spinRange - 6 && !e.status.para) { room.move(e, ux * d.speed * dt, uy * d.speed * dt); e.walk = (e.walk || 0) + dt * 6; }
+  }
+  function startLift(e, half) {
+    var d = e.def;
+    e.state = "lift"; e.rocks = half ? d.rockCountHalf : d.rockCount + (Math.random() < 0.5 ? 1 : 0);
+    e.t = (half ? d.rockWindupHalf : d.rockWindup) + 0.3;
+    Battle.pop(e.x, e.y - 50, "岩石投げ！", "#ef5b5b", 9);
+  }
+  // 投げられた岩（ゴーレム）。x, y がまんなか、rad が半分の大きさ。rot で少しずつ回る
+  function drawRock(ctx, x, y, rad, rot) {
+    var pts = [], n = 9;
+    for (var i = 0; i < n; i++) { var a = rot + i / n * Math.PI * 2, rr = rad * (0.82 + 0.18 * rnd(i * 3.1 + 1)); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); }
+    function poly(col, sc, ox, oy) {
+      ctx.fillStyle = col; ctx.beginPath();
+      pts.forEach(function (q, i) { var px = x + (q[0] - x) * sc + ox, py = y + (q[1] - y) * sc + oy; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+      ctx.closePath(); ctx.fill();
+    }
+    poly("#141018", 1.15, 0, 0); poly("#4a463e", 1, 0, 0); poly("#6c665a", 0.75, -1, -1); poly("#968f7e", 0.35, -2, -2);
+    Render.rect(Math.round(x + rad * 0.2), Math.round(y + rad * 0.1), 2, 1, "#2a2724");   // ひび
+    Render.rect(Math.round(x - rad * 0.5), Math.round(y - rad * 0.6), 2, 1, "#6a8e42");   // 苔
+  }
+
   // ---------- 予告と大技（地面） ----------
   function updateHazards(dt, p, hurt) {
     for (var di = dust.length - 1; di >= 0; di--) { dust[di].t += dt; if (dust[di].t >= dust[di].max) dust.splice(di, 1); }
@@ -569,6 +652,38 @@ var Bosses = (function () {
       if (e.state === "vanish" || e.state === "appear") {   // 紫のけむり
         for (var sm = 0; sm < 8; sm++) { var sa = sm * 0.785 + glow; Render.rect(Math.round(x + Math.cos(sa) * 14), Math.round(y - 10 + Math.sin(sa) * 10), 3, 3, "rgba(150,90,200,0.6)"); }
       }
+    } else if (d.kind === "golem_boss") {
+      // ゴーレム（48×52）：足もとは y＋16
+      Render.rect(x - 20, y + 12, 40, 6, "rgba(0,0,0,0.35)");
+      if (e.state === "spin") {   // ぶん回しのとどく範囲：赤い輪が、だんだん濃くなる
+        var ks = 1 - e.t / d.spinWarn;
+        ctx.fillStyle = "rgba(239,91,91," + (0.08 + 0.22 * ks).toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(x, y + 4, d.spinRadius + e.r * 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * ks).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y + 4, d.spinRadius + e.r * 0.3, 0, Math.PI * 2); ctx.stroke();
+      }
+      var gph = Math.sin(e.walk || 0), gf = "stand";
+      if (e.state === "chase") gf = gph > 0.3 ? "walkA" : gph < -0.3 ? "walkB" : "stand";
+      if (e.state === "spin") gf = "swing";
+      if (e.state === "lift" && !(e.thrown > 0)) gf = "lift";
+      if (e.state === "combo" && !(e.punch > 0)) gf = e.hits % 2 ? "punchR" : "punchL";
+      var shake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
+      Monsters.drawBoss(ctx, e, x + shake, y + 16, gf);
+      if (e.state === "lift" && !(e.thrown > 0)) drawRock(ctx, x, y - 34, d.rockR, glow);   // 頭の上に持ち上げた岩
+      if (e.sweep > 0) {   // ぶん回しの風
+        var kw = 1 - e.sweep / 0.35;
+        ctx.strokeStyle = "rgba(216,208,184," + (1 - kw).toFixed(2) + ")"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x, y + 2, (d.spinRadius + e.r * 0.3) * (0.6 + 0.4 * kw), glow * 12, glow * 12 + Math.PI * 1.5); ctx.stroke();
+      }
+      if (e.punch > 0) Combat.drawSlash(ctx, x, y - 4, e.aim, 0.8, d.comboReach + e.r, "#d8d0b8", 1 - e.punch / 0.22, e.hits % 2 === 1);
+      e.punch = Math.max(0, (e.punch || 0) - 1 / 60); e.thrown = Math.max(0, (e.thrown || 0) - 1 / 60);
+      if (e.state === "spin" || e.state === "combo") Render.text("！", x, y - 46, { size: 11, align: "center", bold: true, color: "#ffd24a" });
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる（1点ずつ）
+        for (var gs = 0; gs < 3; gs++) {
+          var ga = glow * 4 + gs * 2.1, gx = Math.round(x + Math.cos(ga) * 12), gy = Math.round(y - 40 + Math.sin(ga) * 3);
+          Render.rect(gx, gy - 1, 1, 3, "#ffe066"); Render.rect(gx - 1, gy, 3, 1, "#ffe066");
+        }
+      }
     } else {
       // 段階7-2c：ドット絵（monsters.js、64×64）。足もとは y＋18。構えのときはうでを上げ、ふだんは葉がゆれる
       Render.rect(x - 22, y + 13, 44, 7, "rgba(0,0,0,0.35)");
@@ -592,5 +707,5 @@ var Bosses = (function () {
   function addDust(x, y) { dust.push({ x: x, y: y, t: 0, max: 0.6, s: Math.random() }); }
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
-           rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust };
+           rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock };
 })();
