@@ -263,6 +263,10 @@ var Enemies = (function () {
     for (var k = arrows.length - 1; k >= 0; k--) {
       var ar = arrows[k];
       ar.life -= dt;
+      if (ar.opts && ar.opts.curve) {   // 曲がる弾（ダークアロー）：少しずつ向きを回して、うずまきに広がる
+        var cr = ar.opts.curve * dt, cc = Math.cos(cr), cs = Math.sin(cr), nvx = ar.vx * cc - ar.vy * cs;
+        ar.vy = ar.vx * cs + ar.vy * cc; ar.vx = nvx;
+      }
       ar.x += ar.vx * dt; ar.y += ar.vy * dt;
       var tx = Math.floor(ar.x / World.TILE), ty = Math.floor(ar.y / World.TILE);
       var hitWall = room.blocksShot(tx, ty);
@@ -283,10 +287,10 @@ var Enemies = (function () {
       if (!ar.ally && !p.down && !ar.hitP && ddx * ddx + ddy * ddy < hr * hr) {
         hurt(ar.from, ar.x, ar.y, ar.opts);
         if (ar.opts && ar.opts.pierce) { ar.hitP = true; continue; }   // 貫通する矢（ダークアロー）は、当たってもそのまま飛ぶ
-        if (ar.opts && ar.opts.rock) rockDust(ar);
+        if (ar.opts && ar.opts.rock) rockBreak(ar, false);
         arrows.splice(k, 1); continue;
       }
-      if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockDust(ar); arrows.splice(k, 1); }
+      if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockBreak(ar, hitWall); arrows.splice(k, 1); }
     }
 
     // 消えきった敵をのぞく
@@ -391,7 +395,18 @@ var Enemies = (function () {
   }
 
   // ゴーレムの岩がくだけた：土けむり
-  function rockDust(ar) { for (var i = 0; i < 4; i++) Bosses.addDust(ar.x + (Math.random() - 0.5) * 12, ar.y + (Math.random() - 0.5) * 8); }
+  // ゴーレムの岩がくだける。HP が半分を切ってから投げた岩（split）は、壁などに当たると3つのかけらに割れて、はね返ってくる（かけらも当たる）
+  function rockBreak(ar, wall) {
+    var o = ar.opts, big = !o.chip;
+    Bosses.rockBreak(ar.x, ar.y + 10, big);
+    if (!big || !o.split || !wall) return;
+    var sp = Math.sqrt(ar.vx * ar.vx + ar.vy * ar.vy) || 1, base = Math.atan2(-ar.vy, -ar.vx), bx = ar.x - ar.vx / sp * 6, by = ar.y - ar.vy / sp * 6;
+    for (var i = -1; i <= 1; i++) {
+      var a = base + i * 0.55;
+      arrows.push({ x: bx, y: by, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.7, from: ar.from,
+                    opts: { rock: true, chip: true, mult: o.split, rad: 3, spin: o.spin } });
+    }
+  }
 
   function startWindup(e, ux, uy) {
     e.state = "windup";
@@ -607,11 +622,12 @@ var Enemies = (function () {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
       if (a.opts && a.opts.rock) {   // ゴーレムの岩：地面にかげ、少しずつ回る
-        Render.rect(Math.round(x) - 5, Math.round(y) + 10, 10, 3, "rgba(0,0,0,0.3)");
-        Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 6);
+        var big = !a.opts.chip, sw = big ? 18 : 5;
+        Render.rect(Math.round(x) - sw / 2, Math.round(y) + (big ? 20 : 8), sw, big ? 4 : 2, "rgba(0,0,0,0.35)");
+        Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 9 * (a.opts.spin || 1));
         return;
       }
-      if (a.opts && a.opts.darkArrow) { Bosses.drawDarkArrow(ctx, x, y, a.vx, a.vy); return; }   // ダークエルフのダークアロー
+      if (a.opts && a.opts.darkArrow) { Bosses.drawDarkArrow(ctx, x, y, a.vx, a.vy, a.life); return; }   // ダークエルフのダークアロー
       if (a.opts && a.opts.elfArrow) {   // ダークエルフのふつうの矢：銀の矢に、紫に光る矢じり
         var el = Math.sqrt(a.vx * a.vx + a.vy * a.vy), eux = a.vx / el, euy = a.vy / el;
         ctx.strokeStyle = "rgba(180,122,255,0.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - eux * 12, y - euy * 12); ctx.lineTo(x, y); ctx.stroke();
