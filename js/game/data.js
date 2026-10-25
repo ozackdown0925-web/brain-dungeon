@@ -569,9 +569,9 @@ var GameData = (function () {
       }
     },
     // 原生の秘境（段階1、2026-10-25）：15階（8階にゴーレム、15階にダークエルフ）。沼の魔女をたおすと開く。
-    // ゴーレムとダークエルフを作るまで（段階4・5）は、大ガマと沼の魔女を仮に使う。深さ・装備の段は仮（段階6で直す）
+    // 深さは瘴気の森の続き（24＋階）。装備の段は鋼（段階6、2026-10-26。宝箱は鋼、開くとお店も鋼と特上の薬になる）
     hikyo: {
-      id: "hikyo", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 1,
+      id: "hikyo", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
       bosses: {
         8: { enemy: "golem_boss", title: "岩をくだく者",         // ゴーレム（段階4、2026-10-25）。前後の文は Claude が書いた仮の文
              before: ["遺跡の広場に、苔むした大きな岩がころがっている。", "岩が音を立てて組み上がり、青い目が光った！"],
@@ -583,13 +583,16 @@ var GameData = (function () {
     }
   };
   var DUNGEON_ORDER = ["forest1", "shouki", "hikyo"];
-  // 装備の段（2026-10-22）：0＝銅（新緑の樹海）、1＝鉄（瘴気の森）。段ごとの名前（書いていない段は item の名前）
+  // 装備の段（2026-10-22）：0＝銅（新緑の樹海）、1＝鉄（瘴気の森）、2＝鋼（原生の秘境。2026-10-26）。段ごとの名前（書いていない段は item の名前）
   // 弓・杖・服・ローブは鉄ではないので、それらしい名前にした（保護者があとで直してよい）
   var TIER_NAMES = {
     1: { sword: "鉄の剣", greatsword: "鉄の大剣", axe: "鉄の斧", bow: "鉄の弓", spear: "鉄の槍", fist: "鉄のこて", staff: "銀の杖",
-         heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" }
+         heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" },
+    // 鋼の段（原生の秘境の段階6、2026-10-26）。弓・杖・服・ローブは、それらしい名前にした（保護者があとで直してよい）
+    2: { sword: "鋼の剣", greatsword: "鋼の大剣", axe: "鋼の斧", bow: "風の長弓", spear: "鋼の槍", fist: "鋼のこて", staff: "水晶の杖",
+         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄"];
+  var TIER_LABEL = ["銅", "鉄", "鋼"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
