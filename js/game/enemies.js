@@ -27,8 +27,9 @@ var Enemies = (function () {
 
   // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
   function addArrow(e, angle, speed, opts) {
-    arrows.push({ x: e.x + Math.cos(angle) * (e.r + 2), y: e.y + Math.sin(angle) * (e.r + 2), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                  life: 2.6, from: e, opts: opts || null });
+    // opts.dy：投げる高さ（ゴーレムは頭の上から）。opts.life：飛ぶ時間
+    arrows.push({ x: e.x + Math.cos(angle) * (e.r + 2), y: e.y + (opts && opts.dy || 0) + Math.sin(angle) * (e.r + 2), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                  life: opts && opts.life || 2.6, from: e, opts: opts || null });
   }
 
   // 状態異常をかける（docs/draft.md 1.7。ボスはあとで：成功率×0.3・長さ半分）
@@ -273,9 +274,9 @@ var Enemies = (function () {
         if (ox * ox + oy * oy < (o.r + 2) * (o.r + 2)) foe = o;
       });
       if (foe) { hitFoe(ar.from, foe, ar.opts); arrows.splice(k, 1); continue; }
-      var ddx = ar.x - p.x, ddy = ar.y - p.y;
-      if (!ar.ally && !p.down && ddx * ddx + ddy * ddy < (p.r + 2) * (p.r + 2)) { hurt(ar.from, ar.x, ar.y, ar.opts); arrows.splice(k, 1); continue; }
-      if (hitWall || ar.life <= 0) arrows.splice(k, 1);
+      var ddx = ar.x - p.x, ddy = ar.y - p.y, hr = p.r + 2 + (ar.opts && ar.opts.rad || 0);   // rad：大きなもの（ゴーレムの岩）
+      if (!ar.ally && !p.down && ddx * ddx + ddy * ddy < hr * hr) { hurt(ar.from, ar.x, ar.y, ar.opts); if (ar.opts && ar.opts.rock) rockDust(ar); arrows.splice(k, 1); continue; }
+      if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockDust(ar); arrows.splice(k, 1); }
     }
 
     // 消えきった敵をのぞく
@@ -378,6 +379,9 @@ var Enemies = (function () {
     }
     return false;
   }
+
+  // ゴーレムの岩がくだけた：土けむり
+  function rockDust(ar) { for (var i = 0; i < 4; i++) Bosses.addDust(ar.x + (Math.random() - 0.5) * 12, ar.y + (Math.random() - 0.5) * 8); }
 
   function startWindup(e, ux, uy) {
     e.state = "windup";
@@ -592,6 +596,11 @@ var Enemies = (function () {
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
+      if (a.opts && a.opts.rock) {   // ゴーレムの岩：地面にかげ、少しずつ回る
+        Render.rect(Math.round(x) - 5, Math.round(y) + 10, 10, 3, "rgba(0,0,0,0.3)");
+        Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 6);
+        return;
+      }
       if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光
         Combat.glowDot(ctx, x, y, 7, "#1a0a2a", "#9a5ad0", 0.85);
         Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#2a1040");

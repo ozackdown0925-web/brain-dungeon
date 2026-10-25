@@ -474,6 +474,21 @@ var GameData = (function () {
     blinkEvery: 10, blinkEveryHalf: 7, nearTime: 1.5, appearMin: 60, appearMax: 110, tired: 2.0, summonEvery: 16
   };
 
+  // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
+  // ゴーレム（8階・中ボス）：ゆっくり歩く。近くでは、うでを広げてから、ぶん回し（まわりの広い範囲・打）。
+  // 少しはなれると、ふみこみながらの3回攻撃（1回ずつ前へ出て、こぶしでたたく）。
+  // 大技の岩石投げ：岩を持ち上げてから、まっすぐ投げる（rockCount〜＋1回。飛んでくる岩をよける。打の大ダメージ）。
+  // 近すぎるときは、投げる前にずしんと後ろへ下がる。HP が半分を切ると、岩が rockCountHalf 回で速くなり、間かくも短くなる。投げ終わると、ふらつく（すきあり）。打と火が弱点、斬と刺はいまひとつ
+  ENEMIES.golem_boss = {
+    name: "ゴーレム", kind: "golem_boss", boss: true, hp: 2000, patk: 24, matk: 0, pdef: 12, mdef: 5,
+    res: { strike: 1.5, fire: 1.5, slash: 0.75, pierce: 0.75 }, speed: 16, r: 16, cooldown: 1.6, color: "#6c665a",
+    spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.6,
+    comboEvery: 6, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
+    rockEvery: 11, rockEveryHalf: 7, rockCount: 3, rockCountHalf: 5, rockWindup: 0.6, rockWindupHalf: 0.45,
+    rockSpeed: 140, rockSpeedHalf: 175, rockMult: 1.8, rockR: 7, tired: 2.0,
+    backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
+  };
+
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
   var BOSSES = {
     7: {
@@ -545,8 +560,9 @@ var GameData = (function () {
     hikyo: {
       id: "hikyo", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 1,
       bosses: {
-        8: { enemy: "frog_boss", title: "岩をくだく者",          // 仮：ゴーレムを作るまで大ガマ（段階4）
-             before: ["（かり）遺跡の奥で、大きな岩が動いた。"], after: ["（かり）岩の巨人は、くずれて動かなくなった。"] },
+        8: { enemy: "golem_boss", title: "岩をくだく者",         // ゴーレム（段階4、2026-10-25）。前後の文は Claude が書いた仮の文
+             before: ["遺跡の広場に、苔むした大きな岩がころがっている。", "岩が音を立てて組み上がり、青い目が光った！"],
+             after: ["ゴーレムは音を立ててくずれ、ただの岩にもどった。", "胸のしるしの光が、静かに消えていく。"] },
         15: { enemy: "witch_boss", title: "秘境をきわめし者",   // 仮：ダークエルフを作るまで沼の魔女（段階5）
               before: ["（かり）いちばん奥の遺跡に、黒い影が立っている。"], after: ["（かり）秘境に、静けさがもどった。"] }
       }
