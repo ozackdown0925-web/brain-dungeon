@@ -588,5 +588,9 @@ var Bosses = (function () {
     if (marks.length) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 16, { size: 7, align: "center", color: GameData.STATUS[marks[0]].color });
   }
 
-  return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown };
+  // ふつうの敵（ワイルドボア。原生の秘境の段階2）も使う：壁までの長さ・予告の線の絵・土けむり
+  function addDust(x, y) { dust.push({ x: x, y: y, t: 0, max: 0.6, s: Math.random() }); }
+
+  return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
+           rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust };
 })();

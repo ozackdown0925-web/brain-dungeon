@@ -43,7 +43,7 @@ var Enemies = (function () {
     if (type === "poison") e.status.poison = { t: dur, tick: 2 };
     else e.status[type] = { t: dur };
     Battle.pop(e.x, e.y - 30, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);
-    if (type === "sleep" || type === "para") { if (e.state === "windup") { e.state = "recover"; e.t = 0.2; } }
+    if (type === "sleep" || type === "para") { if (e.state === "windup" || e.state === "warn" || e.state === "charge") { e.state = "recover"; e.t = 0.2; } }   // ボアの突進の予告・突進も止まる
   }
 
   function tickStatus(e, dt, onKill) {
@@ -141,6 +141,7 @@ var Enemies = (function () {
       var d = e.def;
       e.cd = Math.max(0, e.cd - dt);
       var mx = 0, my = 0;
+      if (d.kind === "boar" && boar(e, dt, room, P, hit, ux, uy, gap)) return;   // 突進の予告・突進・ふらつき
 
       if (e.state === "windup") {
         e.t -= dt;
@@ -199,6 +200,18 @@ var Enemies = (function () {
         // 岩などにつかえたら、しばらく横へ回りこむ
         if (e.detour > 0) { e.detour -= dt; mx = -uy * e.strafe; my = ux * e.strafe; }
         if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
+      } else if (d.kind === "wolf") {
+        // オオカミ（原生の秘境、2026-10-25）：とどけばとびこんでかみつく。休みのあいだは、少しはなれてまわりを回る（群れでかこむ）
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
+        else if (e.cd > 0 && gap < d.circle + 20) {
+          var out = gap < d.circle - 6 ? -0.7 : gap > d.circle + 6 ? 0.5 : 0;
+          mx = -uy * e.strafe + ux * out; my = ux * e.strafe + uy * out;
+          var ml3 = Math.sqrt(mx * mx + my * my) || 1; mx /= ml3; my /= ml3;
+        } else if (gap > d.reach - 2) { mx = ux; my = uy; }
+      } else if (d.kind === "boar") {
+        // ワイルドボア：ゆっくり近づき、近くでは牙でつき上げる（突進は boar()）
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
+        else if (gap > d.reach - 2) { mx = ux; my = uy; }
       } else if (d.kind === "archer") {
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
         else if (gap > d.keepMax) { mx = ux; my = uy; }
@@ -213,6 +226,7 @@ var Enemies = (function () {
           var before = { x: e.x, y: e.y };
           room.move(e, mx * d.speed * dt, my * d.speed * dt);
           if ((d.kind === "archer" || d.kind === "caster") && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < 0.01) e.strafe = -e.strafe;
+          if (d.kind === "wolf" && e.cd > 0 && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < d.speed * dt * 0.3) e.strafe = -e.strafe;   // 回っていて岩につかえたら、反対へ
           if (d.kind === "wisp" && Math.abs(e.x - before.x) + Math.abs(e.y - before.y) < d.speed * dt * 0.3) {
             if (e.detour > 0) e.strafe = -e.strafe;   // 回りこんでもつかえたら、反対へ
             e.detour = 0.9;
@@ -258,6 +272,55 @@ var Enemies = (function () {
     for (var m = list.length - 1; m >= 0; m--) if (list[m].dead && list[m].fade <= 0) list.splice(m, 1);
   }
 
+  // ワイルドボアの突進（原生の秘境、2026-10-25）。この関数が動きを受け持ったフレームは true を返す。
+  // 赤い線で予告（chargeWarn 秒。走り出す0.3秒前までは向きを合わせ直す）→ 線の先（壁の手前、最長 chargeMax）まで走る。
+  // 当たると大きめのダメージ（よけられる技）。壁や岩にぶつかって止まると、tired 秒ふらつく（すきあり）
+  function boar(e, dt, room, P, hit, ux, uy, gap) {
+    var d = e.def;
+    e.chargeCd = (e.chargeCd === undefined ? 1.5 + Math.random() * 2 : e.chargeCd) - dt;
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return true; }
+    if (e.state === "warn") {
+      e.t -= dt;
+      if (e.t > 0.3 && !P.down) {
+        e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+        e.chargeLen = Math.min(d.chargeMax, Bosses.rayLength(room, e.x, e.y, ux, uy, e.r));
+      }
+      e.lineX = e.x; e.lineY = e.y;
+      if (e.t <= 0) { e.state = "charge"; e.travel = 0; e.hitDone = false; }
+      return true;
+    }
+    if (e.state === "charge") {
+      var step = d.chargeSpeed * dt, bx = e.x, by = e.y;
+      room.move(e, e.aim.x * step, e.aim.y * step);
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step; e.walk += dt * 20;
+      e.dustAt = (e.dustAt || 0) + moved;   // 走ったあとに土けむり
+      if (e.dustAt >= 14) { e.dustAt = 0; Bosses.addDust(e.x - e.aim.x * 6 + (Math.random() - 0.5) * 6, e.y + 5); }
+      if (!e.hitDone && !P.down) {
+        var px = P.x - e.x, py = P.y - e.y;
+        if (px * px + py * py < (e.r + P.r + 3) * (e.r + P.r + 3)) {
+          e.hitDone = true; hit(e, P.x, P.y - 8, { mult: d.chargeMult, big: true });
+          e.state = "recover"; e.t = 0.7; e.cd = d.cooldown;   // 当てたら止まる
+          return true;
+        }
+      }
+      if (moved < step * 0.4 || (e.travel >= e.chargeLen && e.chargeLen < d.chargeMax - 4)) {   // 壁・岩にぶつかった
+        e.state = "tired"; e.t = d.tired; e.cd = 0.4;
+        Battle.pop(e.x, e.y - 26, "すきあり！", "#ffe066", 8);
+      } else if (e.travel >= e.chargeLen) { e.state = "recover"; e.t = 0.6; }
+      return true;
+    }
+    if (e.state === "chase" && !P.down && !e.status.para && e.chargeCd <= 0 && gap >= d.chargeMin && gap <= d.chargeRange) {
+      var len = Math.min(d.chargeMax, Bosses.rayLength(room, e.x, e.y, ux, uy, e.r));
+      if (len < 40) { e.chargeCd = 0.8; return false; }   // 前がふさがっているときは、あとで
+      e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; e.chargeLen = len;
+      e.state = "warn"; e.t = d.chargeWarn; e.chargeCd = d.chargeEvery + Math.random() * 1.5;
+      Battle.pop(e.x, e.y - 26, "突進の構え！", "#ef5b5b", 8);
+      return true;
+    }
+    return false;
+  }
+
   function startWindup(e, ux, uy) {
     e.state = "windup";
     e.t = e.def.windup;
@@ -299,7 +362,8 @@ var Enemies = (function () {
     if (d.kind === "spore") e.puff = 0.45;   // 胞子の雲を少しのあいだ見せる
     // 攻撃の見た目（2026-10-19）：剣士は赤い斬り、子オオカミはかみつき、蜂は針、槍兵は槍をつき出す
     if (d.kind === "spear") e.thrust = 0.22;
-    else if (d.kind === "melee") fxs.push({ kind: e.type === "wolf_pup" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
+    else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
+    else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
     else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
 
@@ -348,7 +412,12 @@ var Enemies = (function () {
       if (d.kind === "nest") { drawNest(ctx, e, x, y); ctx.globalAlpha = 1; return; }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      if (d.kind === "boar" && !e.dead && (e.state === "warn" || e.state === "charge") && e.chargeLen) {
+        // 突進の予告の線（大オオカミと同じ絵。走っているあいだは、うすく残る）
+        Bosses.drawChargeLine(ctx, { from: e, x1: e.lineX, y1: e.lineY, x2: e.lineX + e.aim.x * e.chargeLen, y2: e.lineY + e.aim.y * e.chargeLen,
+                                     w: e.r * 2 + 4, t: d.chargeWarn - (e.state === "warn" ? e.t : 0), warn: d.chargeWarn }, cam, clock);
+      }
       var hx = x + (e.face.x < 0 ? -4 : 4), hy = y - 1;    // 手のあたり
       var ang = Math.atan2(e.face.y, e.face.x);
       if (d.kind === "spear") {
@@ -431,6 +500,13 @@ var Enemies = (function () {
         ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 3, e.r + 2, (e.r + 2) * 0.45, 0, 0, Math.PI * 2); else ctx.arc(x, y + 3, e.r + 2, 0, Math.PI * 2); ctx.stroke();
       }
       // 構え（予告）
+      if (e.state === "warn" && !e.dead) Render.text("！", x, y - top - 9, { size: 10, align: "center", bold: true, color: "#ff5040" });   // ボアの突進の予告は赤
+      if (e.state === "tired" && !e.dead) {   // ふらついている：頭の上で、黄色い星がまわる（1点ずつ）
+        for (var st = 0; st < 3; st++) {
+          var ta = clock * 4 + st * 2.1, tx = Math.round(x + Math.cos(ta) * 7), ty = Math.round(y - top - 5 + Math.sin(ta) * 2);
+          Render.rect(tx, ty - 1, 1, 3, "#ffe066"); Render.rect(tx - 1, ty, 3, 1, "#ffe066");
+        }
+      }
       if (e.state === "windup" && !e.dead) {
         Render.text("！", x, y - top - 9, { size: 9, align: "center", bold: true, color: "#ffd24a" });
         if (d.kind === "spear") {
@@ -497,7 +573,7 @@ var Enemies = (function () {
   function drawFx(ctx, f, cam) {
     var e = f.e, x = e.x - cam.x, y = e.y - cam.y - 3, k = 1 - f.t / f.max, p = f.t / f.max;
     if (f.kind === "slash") {
-      Combat.drawSlash(ctx, x, y, f.aim, 0.9, f.reach + e.r + 2, "#ff7a6a", k, f.flip);
+      Combat.drawSlash(ctx, x, y, f.aim, 0.9, f.reach + e.r + 2, f.col || "#ff7a6a", k, f.flip);
     } else if (f.kind === "bite") {   // かみつき：上と下のきばが、前で閉じる
       var bx = x + f.aim.x * (e.r + f.reach * 0.7), by = y + f.aim.y * (e.r + f.reach * 0.7), gap = 6 * (1 - Math.min(1, k * 1.6));
       ctx.strokeStyle = "rgba(255,255,255," + p.toFixed(2) + ")"; ctx.lineWidth = 2; ctx.lineCap = "round";
