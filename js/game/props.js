@@ -128,10 +128,11 @@ var Props = (function () {
   }
   function grid(w, h) { var g = []; for (var y = 0; y < h; y++) { g.push([]); for (var x = 0; x < w; x++) g[y].push(null); } return g; }
 
-  // 回復の泉 30×18：石をならべたふちと、明るい水。石の色は部屋の岩と同じ（樹海・瘴気の森）
+  // 回復の泉 30×18：石をならべたふちと、明るい水。石の色は部屋の岩と同じ（樹海・瘴気の森・原生の秘境）
   var SPRING_ROCK = {
     forest: ["#2c2834", "#4a4452", "#6a6474", "#8e8a96", "#b4b0b8"],
-    swamp: ["#221f2e", "#363248", "#4c4862", "#68647e", "#8c88a2"]
+    swamp: ["#221f2e", "#363248", "#4c4862", "#68647e", "#8c88a2"],
+    wild: ["#262a2a", "#3e4442", "#5a605a", "#7c8278", "#a2a89c"]     // 原生の秘境：苔むした石
   };
   var SPRING_WATER = ["#1f4a72", "#2a6090", "#4a88b8", "#7fc8ec", "#c8f0ff", "#ffffff"];
   function buildSpring(theme, frame) {
@@ -245,7 +246,7 @@ var Props = (function () {
     else if (name === "herb") img = fromMap(HERB);
     else if (name === "mush") img = fromMap(MUSH);
     else if (name === "cure") img = fromMap(HERB, { q: "n", Q: "N", r: "o", R: "O" });   // 毒消し草：薬草の形で、水色の葉
-    // 回復の泉：spring_<forest|swamp>_<コマ0〜2>。モンスターの巣：nest_<コマ0〜3>（_hit は当たったときの白）
+    // 回復の泉：spring_<forest|swamp|wild>_<コマ0〜2>。モンスターの巣：nest_<コマ0〜3>（_hit は当たったときの白）
     else if (name.indexOf("spring_") === 0) { var sp = name.split("_"); img = buildSpring(sp[1], +sp[2]); }
     else if (name.indexOf("nest_") === 0) { var ns = name.split("_"); img = buildNest(+ns[1], ns[2] === "hit"); }
     cache[name] = img;

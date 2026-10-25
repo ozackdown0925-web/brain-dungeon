@@ -2,7 +2,9 @@
 // 部屋に入ったときに、部屋全体を1枚の絵（canvas）に描いて覚えておき、毎フレームはその絵を写すだけにする。
 // 木の葉は別の絵（行ごとの帯）にして、キャラより奥の行の葉はキャラの前に描く（木の後ろを歩けるように）。
 // タイル（16×16点）の文字：. 地面　: となりの部屋への道　* 草むら　~ 水　= 橋　T 木　# 壁　L 鍵のかかった扉　V つる　P 毒の沼（通れる。瘴気の森）
+//   I 崩れた石柱（原生の秘境）：1つだけなら折れて立っている柱、横に2つ以上ならぶと、たおれた柱
 // 部屋の色合い（room.theme）：forest（新緑の樹海）・swamp（瘴気の森。2026-10-21 保護者の案：同じ絵を青・紫の色にして、枯れた木をまぜる）
+//   wild（原生の秘境。2026-10-25 保護者と決定：樹海の絵を、少し深く暗い緑にして「奥地」らしく。水は深い青緑、岩は苔むした灰色）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -37,6 +39,19 @@ var Tiles = (function () {
       FLOWER: pal(["#c8c0e0", "#a890d8", "#b85a9a"]),
       VINE: pal(["#120c1c", "#22183a", "#382a5a", "#544278"]),
       WITHER: pal(["#16121a", "#241e28", "#36303a", "#4a424c", "#605862"])
+    },
+    // 原生の秘境：深く暗い緑。水は深い青緑、岩（石柱も）は苔むした灰色
+    wild: {
+      GRASS: pal(["#1a2c1c", "#24402a", "#2f5434", "#3c683e", "#58864a"]),
+      DIRT: pal(["#382a1c", "#523e28", "#6c5638", "#866e48"]),
+      TALL: pal(["#122416", "#1b3820", "#28502c", "#3e6a38", "#5e8a46"]),
+      WATER: pal(["#0c2630", "#143c48", "#1e525e", "#367486", "#8cc4cc"]),
+      LEAF: pal(["#07170e", "#0e2716", "#183a20", "#24522a", "#3a6a34"]),
+      BARK: pal(["#20150e", "#3a2818", "#563c24", "#765632"]),
+      ROCK: pal(["#262a2a", "#3e4442", "#5a605a", "#7c8278", "#a2a89c"]),
+      FLOWER: pal(["#e0e8c8", "#c8d860", "#c86a6a"]),
+      VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
+      WITHER: null
     }
   };
   var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, THEME = "forest";
@@ -130,6 +145,7 @@ var Tiles = (function () {
       if (t === "L") return "lock";
       if (t === "V") return "vine";
       if (t === "P") return "poison";
+      if (t === "I") return "pillar";
       return "ground";
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
@@ -603,6 +619,86 @@ var Tiles = (function () {
     if (witherCrowns.length) crowns(witherCrowns, WITHER, -0.25);   // 瘴気の森：しげみに、枯れかけの葉をまぜる
     crowns(forestCrowns, LEAF, -0.25);
     crowns(treeCrowns, LEAF, 0.05);
+
+    // ---------- 6b. 崩れた石柱（I。原生の秘境、2026-10-25） ----------
+    // 1つだけの I：折れて立っている柱（台座の上に、みぞのある柱。上のはしはぎざぎざに折れている）。
+    //   柱は木の葉と同じ帯（その行）に描く。キャラが柱の後ろ（北）にいるときは、柱がキャラの前に見える。
+    // 横に2つ以上ならぶ I：たおれた柱（横に寝た円柱。輪切りの石のつなぎ目があり、左のはしは切り口、右のはしは折れ口）。
+    // どちらも苔（GRASS の色）が少しついていて、まわりに小石がちらばる。
+    var isPillar = function (tx6, ty6) { return kind(tx6, ty6) === "pillar"; };
+    function moss(x7, y7, s7) { return hash(x7, y7, s7) < 0.5 ? GRASS[3] : GRASS[2]; }
+    function pebbles(tx7, ty7, n7) {
+      for (var q7 = 0; q7 < n7; q7++) {
+        var px7 = tx7 * T + Math.floor(hash(tx7, ty7, 120 + q7) * 20) - 2, py7 = ty7 * T + 12 + Math.floor(hash(tx7, ty7, 124 + q7) * 6);
+        var k7 = kind(Math.floor(px7 / T), Math.floor(py7 / T));
+        if (k7 !== "ground" && k7 !== "path" && k7 !== "tall") continue;
+        put(px7, py7, ROCK[3]); put(px7 + 1, py7, ROCK[2]); put(px7, py7 + 1, ROCK[1]); put(px7 + 1, py7 + 1, OUT);
+      }
+    }
+    for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {
+      if (!isPillar(tx, ty)) continue;
+      var runL = isPillar(tx - 1, ty), runR = isPillar(tx + 1, ty);
+      if (runL || runR) {
+        if (runL) continue;   // たおれた柱は、左はしのタイルからまとめて描く
+        var tx8 = tx; while (isPillar(tx8 + 1, ty)) tx8++;
+        var x0p = tx * T + 1, x1p = tx8 * T + 14, top8 = ty * T + 3, bot8 = ty * T + 13;
+        // 影（下に1〜2点）
+        for (x = x0p + 1; x <= x1p + 1; x++) for (y = bot8 + 1; y <= bot8 + 2; y++) if (y < H) put(x, y, dark(get(x, y), 0.55));
+        for (x = x0p; x <= x1p; x++) {
+          // 右のはしは折れ口（列ごとに上と下が少し欠ける）
+          var brk = x1p - x < 3 ? Math.floor(hash(x, ty, 130) * 4) : 0;
+          for (y = top8 + brk; y <= bot8 - (x1p - x < 2 ? Math.floor(hash(x, ty, 131) * 3) : 0); y++) {
+            var ly8 = y - top8, c8;
+            if (y === top8 + brk || y === bot8 || x === x0p || x === x1p) c8 = OUT;
+            else c8 = ly8 <= 1 ? ROCK[4] : ly8 <= 3 ? ROCK[3] : ly8 <= 6 ? ROCK[2] : ly8 <= 8 ? ROCK[1] : ROCK[0];
+            // 輪切りの石のつなぎ目（14点ごと）
+            if ((x - x0p) % 14 === 13 && y > top8 + brk && y < bot8) c8 = ROCK[0];
+            // 左のはしは切り口（丸い面が見える）
+            if (x - x0p >= 1 && x - x0p <= 3 && y > top8 && y < bot8) c8 = x - x0p === 3 ? ROCK[1] : ROCK[3];
+            // 上の面に苔
+            if (ly8 >= 1 && ly8 <= 3 && x !== x0p && x !== x1p && noise(x / 3, ty, 132) > 0.62) c8 = moss(x, y, 133);
+            // ひび
+            if (hash(x, y, 134) < 0.025 && ly8 > 1 && ly8 < 9) c8 = ROCK[0];
+            put(x, y, c8);
+          }
+        }
+        pebbles(tx8, ty, 2);
+        continue;
+      }
+      // 立っている柱：台座（はば14）＋柱（はば10）。高さは柱ごとに 14〜26 点
+      var bx8 = tx * T + 1, base8 = ty * T + 15, shaftH = 14 + Math.floor(hash(tx, ty, 140) * 13);
+      var sx8 = bx8 + 2, top9 = base8 - 4 - shaftH;
+      // 影（右下へ、地面を暗く）
+      for (y = base8 - 2; y <= base8 + 2; y++) for (x = bx8 + 2; x <= bx8 + 17; x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        var ks8 = kind(Math.floor(x / T), Math.floor(y / T));
+        if (ks8 === "ground" || ks8 === "path" || ks8 === "tall" || ks8 === "pillar") put(x, y, dark(get(x, y), 0.6));
+      }
+      // 台座（下の4点）：上の面が明るい
+      for (y = base8 - 3; y <= base8; y++) for (x = bx8; x <= bx8 + 13; x++) {
+        var cb = y === base8 || x === bx8 || x === bx8 + 13 ? OUT : y === base8 - 3 ? ROCK[4] : y === base8 - 2 ? ROCK[3] : ROCK[1];
+        if (y === base8 - 3 && (x === bx8 || x === bx8 + 13)) continue;   // 角を丸く
+        if (cb !== OUT && hash(x, y, 141) < 0.18) cb = moss(x, y, 142);
+        putOver(x, y, cb, ty);
+      }
+      // 柱：左が明るく右が暗い。みぞ（3本）。上のはしはぎざぎざに折れている
+      for (x = 0; x < 10; x++) {
+        var jag = Math.floor(hash(tx * 10 + x, ty, 143) * 4) + (x > 5 ? 1 : 0);
+        for (y = top9 + jag; y <= base8 - 4; y++) {
+          var c9;
+          if (x === 0 || x === 9 || y === top9 + jag) c9 = OUT;
+          else if (y === top9 + jag + 1) c9 = ROCK[4];                      // 折れ口の面
+          else c9 = x <= 2 ? ROCK[3] : x <= 5 ? ROCK[2] : x <= 7 ? ROCK[1] : ROCK[0];
+          if ((x === 3 || x === 6) && y > top9 + jag + 1) c9 = ROCK[x === 3 ? 1 : 0];   // みぞ
+          // 下ほど苔が多い。ところどころ、ひび
+          var mossK = (y - top9) / (base8 - top9);
+          if (c9 !== OUT && y > top9 + jag + 1 && noise((sx8 + x) / 2.5, y / 3, 144) + mossK * 0.35 > 0.88) c9 = moss(x, y, 145);
+          if (c9 !== OUT && hash(sx8 + x, y, 146) < 0.03) c9 = ROCK[0];
+          putOver(sx8 + x, y, c9, ty);
+        }
+      }
+      pebbles(tx, ty, 2 + Math.floor(hash(tx, ty, 147) * 2));
+    }
 
     // ---------- 7. 鍵のかかった扉と、つる ----------
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {

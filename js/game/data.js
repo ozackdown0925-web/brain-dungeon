@@ -493,13 +493,13 @@ var GameData = (function () {
 
   // 職の系統に入っているか
   function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
-  // 場所の名前（2026-10-18 保護者が決定）。ダンジョン2・3は、まだ行けない（地図では「？？？」）
+  // 場所の名前（2026-10-18 保護者が決定）。ダンジョン2・3は、前のダンジョンの主をたおすまで行けない（地図では「？？？」）
   var PLACES = { region: "フォレストヴェール", base: "エルム村", dungeon1: "新緑の樹海", dungeon2: "瘴気の森", dungeon3: "原生の秘境" };
   // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
   //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
   //   depthBase：強さの深さ＝depthBase＋階。敵の強さ・ごほうび・拾う装備のレベルに使う（樹海は 0 で、今までと同じ）
-  //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫。tiles.js・rooms.js）
+  //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫、wild＝遺跡と湖の型・深い緑。tiles.js・rooms.js）
   // 瘴気の森のボスは大ガマ（5階）と沼の魔女（10階）（段階4）。深さは仮（段階6で直す）。
   var DUNGEONS = {
     forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
@@ -514,9 +514,20 @@ var GameData = (function () {
               before: ["森のいちばん奥に、紫の霧がうずまいている。", "霧の中から、杖を持った魔女が現れた。", "「瘴気は、わたしの力。この森は、だれにもわたさないよ！」"],
               after: ["魔女は、霧といっしょに消えていった。", "森をおおっていた瘴気が晴れ、月の光がさしこむ。", "瘴気の森に、静けさがもどった。"] }
       }
+    },
+    // 原生の秘境（段階1、2026-10-25）：15階（8階にゴーレム、15階にダークエルフ）。沼の魔女をたおすと開く。
+    // ゴーレムとダークエルフを作るまで（段階4・5）は、大ガマと沼の魔女を仮に使う。深さ・装備の段は仮（段階6で直す）
+    hikyo: {
+      id: "hikyo", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 1,
+      bosses: {
+        8: { enemy: "frog_boss", title: "岩をくだく者",          // 仮：ゴーレムを作るまで大ガマ（段階4）
+             before: ["（かり）遺跡の奥で、大きな岩が動いた。"], after: ["（かり）岩の巨人は、くずれて動かなくなった。"] },
+        15: { enemy: "witch_boss", title: "秘境をきわめし者",   // 仮：ダークエルフを作るまで沼の魔女（段階5）
+              before: ["（かり）いちばん奥の遺跡に、黒い影が立っている。"], after: ["（かり）秘境に、静けさがもどった。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo"];
   // 装備の段（2026-10-22）：0＝銅（新緑の樹海）、1＝鉄（瘴気の森）。段ごとの名前（書いていない段は item の名前）
   // 弓・杖・服・ローブは鉄ではないので、それらしい名前にした（保護者があとで直してよい）
   var TIER_NAMES = {

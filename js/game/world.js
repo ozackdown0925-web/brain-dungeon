@@ -46,10 +46,10 @@ var World = (function () {
     }
     return this.rows[ty].charAt(tx);
   };
-  // 通れないところ：岩の壁・木・水
+  // 通れないところ：岩の壁・木・水・崩れた石柱（I。原生の秘境）
   Room.prototype.solidAt = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V";
+    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V" || t === "I";
   };
   // タイルを1つ書きかえる（鍵で扉を開けたときなど）
   Room.prototype.setTile = function (tx, ty, ch) {
@@ -57,10 +57,10 @@ var World = (function () {
     this.rows[ty] = r.substring(0, tx) + ch + r.substring(tx + 1);
     this.ver = (this.ver || 0) + 1;   // 絵を描き直す印
   };
-  // 矢や魔法が止まるところ：岩の壁と木（水の上は飛んでいける）
+  // 矢や魔法が止まるところ：岩の壁と木と石柱（水の上は飛んでいける）
   Room.prototype.blocksShot = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "T" || t === "L" || t === "V";
+    return t === "#" || t === "T" || t === "L" || t === "V" || t === "I";
   };
   // 敵が部屋の外に出ないようにする
   Room.prototype.keepInside = function (e) {
