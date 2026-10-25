@@ -391,6 +391,21 @@ var GameData = (function () {
       reach: 18, windup: 0.6, cooldown: 2.0, color: "#b49ad8",
       onHit: { type: "poison", chance: 0.3, dur: 6 }
     },
+    // ---- 原生の秘境の物理の敵（段階2、2026-10-25 保護者と決定）。数字は遊んでみてから直す ----
+    // オオカミ：2〜3びきの群れで出る（1階から）。速い。まわりを回りながら、すきを見てとびこんでかみつく
+    wolf: {
+      name: "オオカミ", kind: "wolf", hp: 30, patk: 8, pdef: 2, mdef: 2,
+      res: { slash: 1.5, fire: 1.25 }, speed: 48, r: 5,
+      reach: 12, circle: 34, windup: 0.35, cooldown: 1.6, lunge: 8, color: "#464c62"
+    },
+    // ワイルドボア（5階から）：ゆっくり近づき、赤い線で予告してから突進する（よけられる大きめの技。線は走り出す0.3秒前まで向きを合わせ直す）。
+    // 壁や岩にぶつかると、2秒ふらつく（すきあり）。近くでは牙でつき上げる。かたくて HP が多い
+    boar: {
+      name: "ワイルドボア", kind: "boar", hp: 64, patk: 9, pdef: 5, mdef: 2,
+      res: { pierce: 1.25, fire: 1.25, strike: 0.75 }, speed: 20, r: 7,
+      reach: 12, windup: 0.5, cooldown: 1.8, color: "#7a5230",
+      chargeMin: 24, chargeRange: 150, chargeMax: 180, chargeWarn: 0.8, chargeSpeed: 220, chargeMult: 2.2, chargeEvery: 4.5, tired: 2
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
