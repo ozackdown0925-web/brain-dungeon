@@ -406,6 +406,16 @@ var GameData = (function () {
       reach: 12, windup: 0.5, cooldown: 1.8, color: "#7a5230",
       chargeMin: 24, chargeRange: 150, chargeMax: 180, chargeWarn: 0.8, chargeSpeed: 220, chargeMult: 2.2, chargeEvery: 4.5, tired: 2
     },
+    // ---- 原生の秘境の魔法の敵（段階3、2026-10-25 保護者と決定）。数字は遊んでみてから直す ----
+    // ダークウィスプ（6階から）：ふわふわ漂い、はなれたところから闇の玉を撃つ（ダーク。魔法のダメージ）。
+    // ときどき消えて、べつの場所に現れ、すぐに闇の玉を撃つ（blinkEvery〜＋2秒ごと。近くにいられると fleeAfter 秒たてば早めに消える）。
+    // 消えかけ・現れかけ（blinkTime 秒ずつ）は攻撃が当たらない。物理（斬・刺・打）は半減、光が大きな弱点
+    dark_wisp: {
+      name: "ダークウィスプ", kind: "dwisp", hp: 28, patk: 4, matk: 11, pdef: 6, mdef: 3,
+      res: { slash: 0.5, pierce: 0.5, strike: 0.5, light: 1.75, dark: 0 }, speed: 22, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.7, cooldown: 2.4, orbSpeed: 95, color: "#3a1a5a",
+      blinkEvery: 5.5, blinkTime: 0.35, fleeGap: 26, fleeAfter: 2.5, appearMin: 70, appearMax: 130
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
