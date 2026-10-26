@@ -60,44 +60,13 @@ var Sprites = (function () {
                    up: ["................", "...AAAAAAAAAA...", "..ATTUUHUUTTTA..", "..ATUHUUUTUTTA..", "..AUHUUTUUTUTA..", "..AKKKKKKKKKKA..", "..AUUUUUUUUUTA..", "..AUTUUTUUTUTA..", "..ATUUUTUUTUTA..", "..ATTUTTUTTTTA..", "...ATTTTUTTTA...", "....ATFEEFTA....", "..AHUKKXXKKUHA..", ".AUTAHUUHUTATUA.", ".AUTAUHUUTUATUA.", ".AUTAKXKKXKATUA.", ".AHUAUHUTUTAUHA.", ".AEEAHUUTUTAEEA.", "..AAAUHUUTTAAA..", "...AUHUUTUTTA...", "...AHUHUUTUTA...", "...AUUHUTUTTA...", "...AKXKKXKXKA...", "....AXXAAXXA...."],
                    side: ["................", "..AAAAAAAAAA....", "..AAHUUTTTTTA...", "..AHHUTUUTTTA...", "..ATUHHUTTTTA...", ".AKKKKKKKKKKA...", ".ATAFATHUTTTA...", ".ATAFAAATETTA...", "..AAEXHFAFTA....", "...AEXEFFTTA....", "...AEEFAAAA.....", "....AFAHUTAA....", ".....AKHUTTA....", "....AAKHUUTTA...", "....AUXHUTUTA...", "....AUKXKXKXA...", ".....AXHAEEFA...", "....AUKUHAEFA...", "....AUXHUTTA....", "...AUKHUUTTA....", "...AHXUHUTTTA...", "...AUKUHUTUTA...", "...AKXKKXKXA....", "....AXXAXXA....."] } }
   };
-  // 組み合わせの上級職：保護者がペイントで描いた絵（2026-10-21。前・横・後ろの 16×24。横は右向きに描いたので、左右を反転して入れた）。
-  // 絵の色が多いので、職ごとの色の一覧（pal。小文字 a〜）を持つ。髪の色は絵のまま（顔の番号では変わらない）。
-  // swap は歩くときの足の色、sleeve は横向きで攻撃するときの腕の色（そで・そでの影）。
-  // 保護者の絵（2026-10-21）：黒いよろいと赤いマント
-  LOOK.magicknight = { from: "warrior", swap: { D: "f", C: "a", J: "l", I: "e" }, sleeve: ["d", "g"],
-    pal: { a: "#f1f1ed", b: "#080009", c: "#1f2130", d: "#907a74", e: "#625258", f: "#a43a39", g: "#000010", h: "#872427", i: "#bfa9a2", j: "#060815", k: "#030210", l: "#232639", m: "#19192b", n: "#41293c", o: "#34060c", p: "#b97a57" },
-    map: {
-      down: [".....AAAAAA.....", "....AccgmncA....", "...AcnegceecA...", "...AkcemkcecA...", "..AkccbppbcckA..", "..AjnmedpekmgA..", "...AmkmppleggA..", "....AfnppedeA...", ".AA.AoppppdbAAA.", ".AaAabbddbkaeaA.", "..AlbdlaajbblA..", "..AacmeddeniaaA.", "..AjjllednngAA..", ".AelgAjnnjmgmdA.", ".AibkklddmbjbaA.", ".AnAbjndibbkgnA.", ".AdbjngnejAgbeA.", ".AhelaideaajnbA.", "..AbiebiigbionA.", "..AobdikkdiboiA.", ".AboonndbcncooA.", ".AbAjcllAcjkAoA.", ".AA.AelAAleA.AA.", "....AAAA.AAA..A."],
-      up: [".....AAAAAA.....", "....AbeecmjA....", "...AkeeecAmA....", "...AceccgcggA...", "..AjccgccmckA...", "..AAAccgcAmjA...", "...AmkmgjjmgA...", "....AgkgcggA....", ".AA.AkggkgkA.A..", ".AaAdbiaaddbAA..", "..AlmbfoofdmnA..", "..AdohhffhibiA..", "..AjAoiooaijkA..", "..AcdohaifibmA..", ".AjbahfaafhablA.", ".AlgiffaafhajeA.", ".AlahffaafhhiAA.", "..AahffaafhhA.A.", "..AhhffaafhfaA..", "..AhhfhaahfhiA..", "..AhhfdaaofhhA..", ".AihhfdaaofhhaA.", ".AidhfdaaohhdiA.", "..AAAAAAAAAAAA.."],
-      side: ["....AAAAAA......", "...AjAcjceAA....", "..AkkjcceelA....", "..AgjmcmgcgA....", "..AkkmeblckA....", "..AedegbgcgA....", "...AnbAibjA.....", "...AeifbkA......", "...AidbaadAA....", "....AdamibA.....", "....AdbeilA.....", "...AdAelljaA....", "...AnlbaaaaA....", "....AmgddmaA....", "....AblkAeaA....", "....AbjlebbfA...", "....AcgddbbfA...", "....AibfdbbfA...", "....AAdddobafA..", "....AeiccooafA..", ".....AjdgknafA..", ".....AlmnkAafA..", ".....AlelA.AA...", ".....AAAAA.A...."] } };
-  // 保護者の絵（2026-10-21）：顔をおおう紺の忍び装束
-  LOOK.ninja = { from: "hunter", swap: { C: "e", D: "c" }, sleeve: ["n", "l"],
-    pal: { a: "#3d314a", b: "#16192c", c: "#1e1830", d: "#987565", e: "#000013", f: "#41394d", g: "#333147", h: "#232738", i: "#050518", j: "#2e293f", k: "#1b132b", l: "#201e31", m: "#06000d", n: "#030213", o: "#111022" },
-    map: {
-      down: [".....AAAAAA.....", "....AafaaagA....", "...AjgaaaajgA...", "...AgjaaagghA...", "...AjkkkkkcbA...", "...AjjddddaoA...", "...AcmmddmmbA...", "...AcfoffcfAA...", "....AlhffjdA....", "....AicffliA....", "...A.AiggiA.A...", "...AAhbehehAA...", "..AdmhbbghifA...", "..AdmibhbhnfdA..", "..AleehnbbeifA..", "..AiebgeifiilA..", ".AflnAehjjehdA..", ".AAflbleeAbidAA.", "...AiAbeA.AnA...", "...AA.AeiAjA....", "....AAbAibcA....", "....AfA.AbfA....", "....AbA..AbA....", "....AAA..AAA...."],
-      up: [".....AAAAAA.....", "....AgaaaagA....", "...AhfhaaaahA...", "...AajaaaaaaA...", "...AgkaaaacfA...", "...AcccgacclA...", "...AckckkkccA...", "....AocccciA....", "....AgekcigA....", "...AAnngaknA....", "...A.AAAgoA.A...", "...AA...AA.AA...", "...AdAAAA.AddA..", "..AdfblglAmfdA..", "..AkeilcbbiedA..", "..AbihgAAebncA..", "..AmihA..AlioA..", "..AmnA...AbnAA..", "...AbbAAAlAA....", "....AbfeiA.A....", "....AcbeebAA....", "....AjjAAohA....", "....AbA..AbA....", "....AAA..AAA...."],
-      side: [".....AAAAA......", "....AjaaajA.....", "...AgfajaagA....", "...AagafgaajA...", "...AkckbkakcA...", "...AddddbgkcA...", "...AdmddbgccA...", "...AfgafhcoA....", "...AafachcA.....", "....AfoeleA.....", ".....AleeAhA....", ".....AbhddiA....", "....AhhjddA.....", "....AlhnddA.....", ".....AlehfA.....", ".....AjnAjA.....", "....AneA.AA.....", "....AmmA.AA.....", ".....AkmAiA.....", ".....AighcA.....", ".....AbecbA.....", "......AeelA.....", "......AbeiA.....", "......AAAAA....."] } };
-  // 保護者の絵（2026-10-21）：はだかの上半身と茶色の腰布
-  LOOK.gladiator = { from: "warrior", swap: { D: "e", C: "d", J: "d", I: "d" }, sleeve: ["c", "i"],
-    pal: { a: "#010215", b: "#714032", c: "#c28d6d", d: "#523b35", e: "#422826", f: "#c0896a", g: "#06020d", h: "#1c0103", i: "#855940", j: "#141423", k: "#00010d", l: "#a9785d", m: "#c49579", n: "#3e1a22", o: "#0e1120", p: "#c3c3c3", q: "#000000" },
-    map: {
-      down: [".....aAAAAA.....", "....aAdjjjjA....", "...aadAjjdojA...", "..aAkAqAageaA...", "..aAkjAmmigjkA..", "..aAjkcmccigoA..", "..aAjakddhkaoA..", "...aApkddkpiA...", "....aidmcdiA....", "...AAailliaiA...", "..AcfcaiiafcmA..", "..AcbcfffclbcA..", ".AfmdlfllfieclA.", ".AmbeicfflbgicA.", ".AmkghhhhhhgefA.", ".AighnbbnbngnlA.", ".AfhkghanehadcA.", ".AlAeddhebngAAA.", "..A.AbnbebdA....", "...AbbeggnbA....", "...AbbekgebbA...", "....AeAAAeeA....", "....AdA..AA.....", "....AAA..AAA...."],
-      up: ["......AAAA......", "....AAaaaaA.....", "....AjakaojA....", "...AaajajjaAA...", "...AaaakaaaaA...", "...AaaaaaaaaA...", "...AaaaaaaaaA...", "...AAaaaaaaAA...", "....AAaakkAA....", "...AAAmAAAiAA...", "..AmccccffffmA..", "..AfiffcfccifA..", "..AcbifilcibfA..", "..AfgfcflclhlA..", ".AmlkhhhhhhgbmA.", ".AlbabbenbnaelA.", ".AcdgddbbbegbfA.", ".AAAgebbbbegAAA.", "....AdeneebA....", "....AbbkabbA....", "....AbekjeieA...", "....AeeAAedA....", "....AeA..AeA....", "....AAA..AAA...."],
-      side: ["......AAAAA.....", "....AAddjdjA....", "...AkjooodjjA...", "...AakkkgkejA...", "...AgmmgakjjA...", "....AmmcgkaaA...", "....AdhdgmaaA...", "....AdhpigaAA...", "....AcdcigAA....", ".....AlbbcAA....", "......AffccA....", ".....AmmnllA....", ".....AfidlclA...", ".....AflbncfA...", "......AhhdfA....", "......AnnlcA....", "......AneciA....", "......AnlchgA...", "......AnhihA....", ".......AddeA....", ".......AdbeA....", ".......AhenA....", "........AddA....", ".......AAAAA...."] } };
-  // 保護者の絵（2026-10-21）：白と金のよろい、金の髪
-  LOOK.paladin = { from: "warrior", swap: { D: "l", C: "g", J: "k", I: "o" }, sleeve: ["f", "b"],
-    pal: { a: "#d8c678", b: "#a9a99d", c: "#959286", d: "#f4fcf2", e: "#b6945a", f: "#090205", g: "#010109", h: "#987b48", i: "#fafdf7", j: "#c7b37b", k: "#716f70", l: "#4e4948", m: "#ded296", n: "#1e181b", o: "#f2f0d3" },
-    map: {
-      down: [".....AAAAAA.....", "....AmahamhA....", "...AammhamjhA...", "...AemaahaahA...", "..AeaaheehaaA...", "..AeaeeeehamhA..", "...AjlgjjfhmA...", "...AhecjjbhfA...", "...AjejejjhdA...", "..AicmfhhficiA..", "..AbchcjbcecbcA.", "..AnncmhaebnnA..", "..AnnbhhehbgnA..", ".AblgkbaeekgkbA.", ".AdcggkjjkggkoA.", ".AcAAkljblAAnbA.", ".AlgkicobconglA.", ".AggbfcbbcfbAkA.", ".AlnngAbcfggAlA.", ".AdglkbnnckglkA.", ".AillbjkgjbglcA.", ".AiglcfkckcglcA.", ".AoAAcicgocgAcA.", "..A..AAAAAAA.A.."],
-      up: ["....AAAAAA......", "....AaaaajA.....", "...AaaaaaajA....", "..AaaaaaaaaA....", "..AaaaaaaaaA....", "..AaeahaaeaeA...", "..AeaehaaeaA....", "...AneeeeehA....", "...AcfeaaefoA...", "..AdoogffffcdA..", "..AbbcbodbncbkA.", ".AlffkbcbdbnnA..", "AclnncbidobinA..", "AkfkgoimooikgbA.", "AcfofiiidddmfbA.", ".AlcfbiddddcfA..", "..AnmbbddiocmA..", "..AkiboddddcoA..", "..AbciddddddbA..", "..AocdidddiibiA.", "..AcididddiddcA.", ".AjbdbiddddbdcmA", "..AembidddibmcA.", "...AAAAAAAAAAA.."],
-      side: [".....AAAAA......", "....AaeaaaAA....", "...AaameaaaA....", "..AmeamahaaA....", "..AmhhamhaaA....", "...AejhaheaA....", "....AffaheeA....", "....AcmhleeA....", "....AjjfffA.....", ".....AfkccA.....", "....AbbbmdbA....", "....AjbjAnbA....", "....AhofjjfA....", "....AcbglmkA....", "....AblfeojA....", ".....AfgmbniA...", "....AkdfobgiA...", "....AllbbbfiA...", "....AlggkkliA...", "....AkongglmA...", ".....AccgAljdA..", ".....AfkblgjaA..", ".....AkobcfaA...", ".....AAAAAAA...."] } };
-  // 保護者の絵（2026-10-21）：むらさきのローブ、銀の髪
-  LOOK.sage = { from: "priest", swap: { J: "e" }, sleeve: ["a", "g"],
-    pal: { a: "#5f2656", b: "#8f918f", c: "#6b5d56", d: "#c59f86", e: "#3c1133", f: "#0b010c", g: "#2a182d", h: "#582b50", i: "#757572", j: "#54254d", k: "#451c3e", l: "#937a6e", m: "#220c1e", n: "#644343", o: "#140512" },
-    map: {
-      down: [".....AAAAAA.....", "....AibcibbA....", "....AbiiiiiiA...", "...AbibccbbcA...", "...AcbbclcbiiA..", "...AcbcddlcbbA..", "...AccfddffbA...", "....AldddidiA...", "...AfldddddkdA..", "...AmmkccfndA...", "..AijedemjdahA..", "...AodlibednmA..", "..AjeocnmdffjnAA", "AAcljgcgkfefhcdA", "AdlcjglkifeonmcA", "AffnojlcdokmmffA", "AlfcfalghfkgmffA", ".AofgalghfeamffA", ".AgkeacgafkhklA.", "..AjaadkjgdajmA.", "..AkajdjaedaahA.", ".AjhadfaakfjaejA", ".AkjalfaajfcakkA", ".AAAAAAAAAAAAAA."],
-      up: [".....AAAAA......", "....AbbbbbA.....", "...AbbbbbbbA....", "...AbbbbbbbA....", "...AbbbbbbbcA...", "..AcicbbbibcA...", "...AiccbccbcA...", "....AlllllgA....", "...AdejjhkdfA...", "...AkaaaaahgA...", "..AghhooojhhA...", "..AfdaaaahkdmA..", "..AemdnnndcoA...", "..AjggAAAmgeA...", "..AhggeaaggghA..", ".AhgmjaahhhoeA..", "..AggaaaahhggA..", ".AnfkaaaaajeoA..", "..AAheaaaaejgA..", "..AgheaaaaejA...", "..AgaeaaaaehgA..", "..AjjhaaaaaaeA..", "..AnjaaaaaaacA..", "..AAAAAAAAAAAA.."],
-      side: ["....AAAAAA......", "...AccibbiA.....", "...AbibbbbcA....", "..AbibbiiibA....", "..AccbibbbbA....", "...AdiibicbA....", "...AdfbbcibA....", "...AdnlcmccA....", "...AAdcfddddA...", ".....AleffhA....", ".....AhddmgA....", "....AhlgelA.....", "....AcAhemA.....", "....AfgjagA.....", "....AggeaklA....", "....AhoaakcA....", "....AhckjknA....", "....AflejkkA....", "....AmdcdekA....", "....AdcffneeA...", "....AdgfbgeeA...", "...AgdeeegehA...", "...AkoleaeeenA..", "...AAAAAAAAAA..."] } };
+  // 組み合わせの上級職：絵は下の ART（2026-10-26 保護者が描きなおした絵）。ここでは、もとにする職（from）だけ
+  LOOK.magicknight = { from: "warrior" };
+  LOOK.ninja = { from: "hunter" };
+  LOOK.gladiator = { from: "warrior" };
+  LOOK.paladin = { from: "warrior" };
+  LOOK.sage = { from: "priest" };
+  LOOK.tamer = { from: "hunter" };   // 魔物使い（まだ職はない。絵だけ）
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
@@ -639,6 +608,74 @@ var Sprites = (function () {
       },
       stride: [null, null, null, null, "...AmhA.AmhA...."],
       hand: ["j", "i"], sleeve: ["e", "f"]
+    },
+    // ---- 組み合わせの上級職（2026-10-26 保護者が描きなおした絵。前・後ろ・横（左向き）の 16×24。1行下げて入れた）。
+    // 髪の色は絵のまま（顔の番号では変わらない）。stride はもとの職の足の形に、この絵の色をのせた（マントは足の後ろに残す）
+    // 魔法剣士（黒いよろいと赤いマント）
+    magicknight: {
+      pal: { a: "#b9bab4", b: "#9b7e6a", c: "#5e3434", d: "#ff8c39", e: "#706d7d", f: "#a51f1f", g: "#ffc68c", h: "#ffefde", i: "#4c0d0d", j: "#2c2c2f", k: "#553514", l: "#8d4016", m: "#5e3838", n: "#b54545" },
+      map: {
+        down: ["................", "................", ".....AAAAAA.....", "....AabbbccA....", "...AbbbbbbbcA...", "..AabbcbcbbbcA..", "..AacbcbccbbcA..", "..AbcbcbcccbcA..", "..AbccdccdcccA..", "..AccAAdcAAccA..", "...ccefggAhAcA..", "...AAgiggAgAA...", ".AAhfAggggAffhA.", "..AAhhAddAjhhA..", "..AeAAjjjjAAeA..", "..AejjklfijjeA..", ".AjjAkjjjjkAjjA.", ".AjeAjklfijAejA.", ".AjeAAjjjjAAejA.", "..AAAjejjejAAA..", "..fiAmjjjjmAif..", "..fiAmnAAnmAif..", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", ".....AAAAAA.....", "....AabccbcA....", "...AbbbcbbbcA...", "..AbbbbbbbbbcA..", "..AbbcbbbbbbcA..", "..AcbcbbcbbccA..", "..AcbccbcbbccA..", "..AccccccbcccA..", "..AccccccccccA..", "...AcccAcccAA...", ".AffAAcAAcAAAfA.", "..AiiAAiiAAiiA..", "..AdfeiifiiedA..", "..AffihfffhifA..", ".AdffiihhefifdA.", ".AdfiiiehififdA.", ".AffiifehifiifA.", "..ffiifehiffif..", "..ffiifheiffif..", "..ffiifheiffif..", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "................", "....AAAAAAA.....", "...AabbbbbcAA...", "..AbbbbbbbbccA..", ".AbbbbbccbbccA..", ".AbbcbbcccbbcA..", ".AcbccbbcccbcA..", "..cbcdcbcccccA..", "..AcdAAccbcccA..", "...AdAhccbcccA..", "...AgAgcdbccA...", "...AgggdAfffhA..", "....AddAAhhhA...", "....AAjjAjeAf...", "....AlfjAjeAf...", ".....jjjAjjAif..", ".....lfAjejAif..", ".....AAAjejAif..", ".....jAeAAAiif..", ".....jAejjAiff..", "....AAAAmmA.ff..", "....AAnnmmA.f...", ".....AAAAAA....."]
+      },
+      stride: ["....AjAejjAiif..", "...AmmAeAmmAff..", "...AmmAAmAmmAf..", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["g", "d"], sleeve: ["e", "j"]
+    },
+    // 忍者（紺の忍び装束。顔をおおうので髪の色は変わらない）
+    ninja: {
+      pal: { a: "#2f2c4a", b: "#484678", c: "#6b6188", d: "#a29cca", e: "#606060", f: "#848a8a", g: "#b64343", h: "#ff8c39", i: "#ffc68c", j: "#c47327", k: "#71702f" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....AaaaaaaA....", "...AaabcbbaaA...", "...AabcdbbbaA...", "...AaaaaaaaaA...", "...AeefgffeeA...", "...aeeffgfeea...", "...aAAAhAAAAaa..", "....AiAhiAiA.a..", "....AAbcbbAA....", "...dcaAbbAacd...", "..acbacAAdabcA..", "..acbcbbdcbbcA..", "..ebAebdcceAbe..", "..bfAaeffeaAfb..", "..biAbbbbbbAib..", "..AAAbcaacbAAA..", "....AbcaacbA....", ".....abaaba.....", ".....ggAAgg.....", ".....AjAAjA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....AacbaaaA....", "...AabbbbbbaA...", "...AaabbbbaaA...", "...AAAAAAAAAA...", "...AAAaaaaAAA...", "...AaaaaabaaA...", "....Aaaaaabb....", ".....AAAAAb.....", "....bbabbabb....", "...cbabaababc...", "..AbAbbbbbaAbA..", "..AbAbbbbbaAbA..", "..ebAabbbaaAbe..", "..beAaeeeeaAeb..", "..biAaabbaaAib..", "..AAAabaabaAAA..", "....abbaabba....", ".....bbaabb.....", ".....ggAAgg.....", ".....AjAAjA....."],
+        side: ["................", "................", "................", ".....AAAAAAA....", "....AccbbaaaA...", "...AcbbbbbaaaA..", "...AbbbbbaaaaA..", "...AbbaaaaAAAA..", "...AgfeeAAAAAA..", "...AffeekaaaaA..", "...AhAAhbbaaA...", "...AiAibbaaA.b..", "...AbbbaaAA...b.", "....AaaAAbcA....", "....AAbaAabA....", "...AbdcbacbA....", "...AbcbaAcbA....", "....AfeAheeA....", "....acbAhbbA....", ".....cbbAAA.....", ".....acbaA......", "......acbA......", ".....AjjgA......", ".....AAAAA......"]
+      },
+      stride: ["....AcbAAcbA....", "...AcbAbAbaA....", "...AbaAcbAbaA...", "..AjjgAjgAjjgA..", "..AAAAAAAAAAAA.."],
+      hand: ["i", "h"], sleeve: ["b", "a"]
+    },
+    // 剣闘士（はだかの胸と緑のズボン。腕もはだか）
+    gladiator: {
+      pal: { a: "#593131", b: "#b9bab4", c: "#9b7e6a", d: "#ff8c39", e: "#ffc68c", f: "#ffefde", g: "#a54848", h: "#4d2d14", i: "#1a511e", j: "#a78767", k: "#f0f3c4", l: "#5c761b", m: "#253224", n: "#1e3e18" },
+      map: {
+        down: ["................", "................", ".....abcacb.....", "....babcacca....", "...accaaacaab...", "...caaaaaaaca...", "...aaadeddaaa...", "...cadefeddaa...", "...aaAdedAAaa...", "...aaAAdAAAAa...", "...aAgAggAgAa...", "..AggAdeedAggA..", ".AhAghAddAhgAhA.", "..AdAghfehgAdA..", "..AeAgheehgAeA..", "..AedhhddhhdeA..", ".AghAhheehhAhgA.", ".AhgAijkkjiAghA.", ".AhgAAliilAAghA.", "..AAAiliiliAAA..", "....AmiiiimA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", ".....cbcccc.....", "....bcbcaccc....", "...bccccabacc...", "...ccaccabaca...", "...acaccacaca...", "...acaccacaaa...", "...acaccacaaa...", "...aaacaacaaa...", "...AaaaaaaaaA...", "..ggAaaAaaaAgg..", ".AAghAAhAAAhgAA.", "..AAhAhhhhhhAA..", "..AdAhgggghAdA..", "..AdAhhgghhAdA..", ".AghAghhhhgAhgA.", ".AhgAghhhhgAghA.", ".AhgAAAAAAAAghA.", "..AAAiliiliAAA..", "....AmiiiimA....", "....AmnAAnmA....", "....AmmAAmmA....", "....AAnAAnAA...."],
+        side: ["................", "................", ".....bcaccca....", "....baaaaaaaa...", "...caabbcccaa...", "...cacaaaaacah..", "...Adaaacccach..", "...Aeddccaaaah..", "...AfdAdaecahA..", "...AeAAdedaahA..", "...AgAgdddahhA..", "...AeeddAgggAA..", "....AddAhgAAhA..", ".....AAhAddhh...", ".....dhgAdeAh...", ".....ehgAdeAh...", ".....dhgAhgAh...", ".....khAhghAh...", ".....AAAhghA....", ".....iAlAAA.....", ".....iAliiA.....", "....AAAAmmA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AiAliiA.....", "...AmmAlAmmA....", "...AmmAAmAmmA...", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["e", "d"], sleeve: ["e", "d"]
+    },
+    // 聖騎士（白いよろいと青いマント）
+    paladin: {
+      pal: { a: "#ffefde", b: "#9b7e6a", c: "#5e3434", d: "#ff8c39", e: "#eeeeed", f: "#ffc68c", g: "#1c1a67", h: "#2648cc", i: "#898989", j: "#bdbdbd", k: "#c48e00", l: "#ffde68", m: "#551414" },
+      map: {
+        down: ["................", "................", ".....AAAAAA.....", "....AabbbccA....", "...AbbbbbbbcA...", "..AabbcbcbbbcA..", "..AacbcbccbbcA..", "..AbcbcbcccbcA..", "...bccdccdcccA..", "...ccAAdcAAcc...", "....ceAffAaAc...", "....AfAffAfA....", ".AghhAffffAhhgA.", "..AAggAddAggAA..", "..AiAAiiiiAAiA..", "..AeijjaajjieA..", ".AklAmijjimAlkA.", ".AjeAkkiikkAejA.", ".AjeAAilliAAejA.", "..AAAjejjejAAA..", "..hgAcjiijcAgh..", "..hgAcbAAbcAgh..", "....AccAAccA....", ".....AbAAbA....."],
+        up: ["................", "................", ".....AAAAAA.....", "....AabccbcA....", "...AbbbcbbbcA...", "..AbbbbbbbbbcA..", "..AbbcbbbbbbcA..", "..AcbcbbcbbccA..", "..AcbccbcbbccA..", "...ccccccbccc...", "...AccccccccA...", "....AccAcccA....", ".AhggAAAAAAgghA.", "..AggggggggggA..", "..AjhkgghgkhjA..", "..AhhglkklhghA..", ".AjhhggllhhghjA.", ".AjhgglhllhghjA.", ".AhhgkhhkgkgghA.", "..hhgkhhhgkhgh..", "..hhkghhhghkgh..", "..hhkghhhghkgh..", "....AccAAccA....", ".....AbAAbA....."],
+        side: ["................", "................", "....AAAAAAA.....", "...AabbbbbcAA...", "..AabbbbbbbccA..", ".AbbbbbccbbccA..", ".AbbcbbcccbbcA..", ".AcbccbbcccbcA..", "..cbcdcbcccccA..", "..AcdAAccfccA...", "...AdAaccdcA....", "...AfAfcdbA.....", "...AfffdAhhhgA..", "....AddAAgggA...", "....AAiiAjeAh...", "....iejiAjeAh...", "....ijimAlkAgh..", ".....lkAjejAgh..", ".....AAAjejAgh..", ".....jAeAAAggh..", ".....jAejjAghh..", ".....AAAccAghh..", "....AAbbccA.h...", ".....AAAAAA....."]
+      },
+      stride: ["....AjAejjAggh..", "...AccAeAccAhh..", "...AccAAcAccAh..", "..AbbcAbcAbccA..", "..AAAAAAAAAAAA.."],
+      hand: ["l", "k"], sleeve: ["e", "j"]
+    },
+    // 賢者（むらさきのローブ）
+    sage: {
+      pal: { a: "#592a2a", b: "#815656", c: "#ba8787", d: "#f3cf76", e: "#b39400", f: "#ff9b53", g: "#ffcd9a", h: "#ffefde", i: "#48284c", j: "#aa55b9", k: "#7f2975", l: "#782580", m: "#b54545", n: "#5e3838" },
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....AabccbaA....", "...AabbaabbdA...", "...AabaaacbeA...", "...AbbfggfcAA...", "...AbfghggcbA...", "...AbAAhAAcbA...", "...abheggecba...", "...ibgdggdcbi...", "...eiAggggAie...", "...jedAffAAdj...", "..AkildkldeikA..", "..AlilkedllilA..", ".AfmAiedkleAmfA.", ".AfgieldleeAgfA.", ".AfgiikekliigfA.", "..AAklkedlkiAA..", "...ikldAedlli...", "...ikieAAeiAi...", "...iAeAAAAeAi...", "...eenmAAmnee..."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....AbccabaA....", "...AbbbbabbaA...", "...AdbbbbbbaA...", "...AdebbabbaA...", "...AeAbbabaaA...", "...AAabbabaaA...", "...AaabbaaaaA...", "...AaaaaaaaaA...", "...AAaaaaaAiA...", "..AeiAAAAAiieA..", "..AieiiiiiieiA..", "..AiidAAAAeiiA..", ".AgmilddeelimgA.", ".AgfiileeliifgA.", ".AffiiilliiiffA.", "..AAillillliiA..", "...AilkillliA...", "...AilkliliiA...", "...AilkliliAA...", "...eedddeeeee..."],
+        side: ["................", "................", "................", "....aaaAAAA.....", "...bbbbbbaaa....", "..Aabbbbbbaaa...", ".Abaacbbbbaaa...", ".AbAffcbbbbaa...", ".AbAhgfcbbbaA...", "..bAgAAcabaaA...", "..aAgehcabaaA...", "..aAgdfcabaaA...", "..aAggffAbaaA...", "...aaffAiAAAei..", "....AAeiilkiAe..", "....AeklilkiAi..", "....ekliillAA...", "....djiAfgmA....", "....djlAfgfAl...", "....eklkAAAli...", "....eklkllili...", "....idillkiiA...", "....iedlniiiA...", ".....Aeddeeee..."]
+      },
+      stride: [null, null, null, null, "...AnmAdAnmAe..."],
+      hand: ["g", "f"], sleeve: ["j", "k"]
+    },
+    // 魔物使い（狩人＋魔術師。銀のとがった髪と緑の服。2026-10-26 の絵。職はまだ作っていない）
+    tamer: {
+      pal: { a: "#595959", b: "#bababa", c: "#818181", d: "#ff8c39", e: "#ffefde", f: "#ffc68c", g: "#295c40", h: "#88a898", i: "#7d7b18", j: "#2b2b85", k: "#f3d27f", l: "#69c3e5", m: "#5e3838", n: "#b54545" },
+      map: {
+        down: ["................", ".......a........", "...a..aa.aaa....", "...aaAbaaca.....", "...baacabaabc...", "...acaaacaacaaA.", ".AcbcaaaaacaaA..", "..Aaacaadaaba...", "..cacadaddaaca..", ".AacaAAaAAAaaA..", "...caeAffAeAaa..", "..ghgfAffAfAhg..", ".ggghAffffAhggg.", "..AggAAddAAggA..", ".gAfghgggghgfAg.", "..AfdghhhhgdfA..", ".AdiAiggggiAidA.", ".AdfAjikkijAfdA.", ".AdfAAljjlAAfdA.", "..AAAdfmmfdAAA..", "....AmdmmdmA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "........a.......", "....aaa.aa..a...", ".....acaabAaa...", "...cbaabacaab...", ".Aaacaacaaaca...", "..AaacaaaaacbcA.", "...abaaaaacaaA..", "..acaaaaaaacac..", "..AaaaaaaaaacaA.", "..aacaaacaaac...", "..ghccAacAaghg..", "...AgAAacAAgg...", "..gggggAaAAggg..", ".gggghhAaAhgggg.", "..AdgggAAgggdA..", ".AdiAAgAggAAidA.", ".AdfAjiiiijAfdA.", ".AdfAAljjlAAfdA.", "..AAAdfmmfdAAA..", "....AmdmmdmA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "......a.........", "....a.aaa.......", ".aaAcabcaaaa....", "..cabacaacaaa...", "..acacaaaaccaa..", ".aaaaaacbaaaaaA.", "aabcaaaacbaaaaa.", ".abaafaaacaaaa..", "..cafAAaafaaaA..", "..aAfAedadaaa...", "..aAfAfddggac...", "...AfffdghgAac..", "....Addghgggac..", "....AAgggAAgAa..", "....AhhgAdfA.A..", "....AgggAkiA.A..", "....AkiAdfdA....", ".....AAAdfdA....", ".....jAlAAA.....", ".....dAfddA.....", "....AAAAmmA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AjAljjA.....", "...AmmAfAmmA....", "...AmmAAmAmmA...", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["f", "d"], sleeve: ["f", "d"]
     }
   };
   // 横向きの攻撃：前（左）へのばす腕の色 [そで, そでの影]
