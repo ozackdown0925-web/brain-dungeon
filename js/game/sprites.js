@@ -66,6 +66,7 @@ var Sprites = (function () {
   LOOK.gladiator = { from: "warrior" };
   LOOK.paladin = { from: "warrior" };
   LOOK.sage = { from: "priest" };
+  LOOK.tamer = { from: "hunter" };   // 魔物使い（まだ職はない。絵だけ）
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
@@ -664,6 +665,17 @@ var Sprites = (function () {
       },
       stride: [null, null, null, null, "...AnmAdAnmAe..."],
       hand: ["g", "f"], sleeve: ["j", "k"]
+    },
+    // 魔物使い（狩人＋魔術師。銀のとがった髪と緑の服。2026-10-26 の絵。職はまだ作っていない）
+    tamer: {
+      pal: { a: "#595959", b: "#bababa", c: "#818181", d: "#ff8c39", e: "#ffefde", f: "#ffc68c", g: "#295c40", h: "#88a898", i: "#7d7b18", j: "#2b2b85", k: "#f3d27f", l: "#69c3e5", m: "#5e3838", n: "#b54545" },
+      map: {
+        down: ["................", ".......a........", "...a..aa.aaa....", "...aaAbaaca.....", "...baacabaabc...", "...acaaacaacaaA.", ".AcbcaaaaacaaA..", "..Aaacaadaaba...", "..cacadaddaaca..", ".AacaAAaAAAaaA..", "...caeAffAeAaa..", "..ghgfAffAfAhg..", ".ggghAffffAhggg.", "..AggAAddAAggA..", ".gAfghgggghgfAg.", "..AfdghhhhgdfA..", ".AdiAiggggiAidA.", ".AdfAjikkijAfdA.", ".AdfAAljjlAAfdA.", "..AAAdfmmfdAAA..", "....AmdmmdmA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "........a.......", "....aaa.aa..a...", ".....acaabAaa...", "...cbaabacaab...", ".Aaacaacaaaca...", "..AaacaaaaacbcA.", "...abaaaaacaaA..", "..acaaaaaaacac..", "..AaaaaaaaaacaA.", "..aacaaacaaac...", "..ghccAacAaghg..", "...AgAAacAAgg...", "..gggggAaAAggg..", ".gggghhAaAhgggg.", "..AdgggAAgggdA..", ".AdiAAgAggAAidA.", ".AdfAjiiiijAfdA.", ".AdfAAljjlAAfdA.", "..AAAdfmmfdAAA..", "....AmdmmdmA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "......a.........", "....a.aaa.......", ".aaAcabcaaaa....", "..cabacaacaaa...", "..acacaaaaccaa..", ".aaaaaacbaaaaaA.", "aabcaaaacbaaaaa.", ".abaafaaacaaaa..", "..cafAAaafaaaA..", "..aAfAedadaaa...", "..aAfAfddggac...", "...AfffdghgAac..", "....Addghgggac..", "....AAgggAAgAa..", "....AhhgAdfA.A..", "....AgggAkiA.A..", "....AkiAdfdA....", ".....AAAdfdA....", ".....jAlAAA.....", ".....dAfddA.....", "....AAAAmmA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AjAljjA.....", "...AmmAfAmmA....", "...AmmAAmAmmA...", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["f", "d"], sleeve: ["f", "d"]
     }
   };
   // 横向きの攻撃：前（左）へのばす腕の色 [そで, そでの影]
