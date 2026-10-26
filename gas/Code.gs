@@ -9,7 +9,8 @@
 // ・Claude 用：記録の書き出し（?action=export）、問題の書き出し（?action=questions）、問題の取りこみ（POST action=import）
 //   いずれも管理用の鍵が必要。成績管理フォルダの upload.py・mark_misses.py が使うので形を変えない。
 //   export は子ども（child）の記録だけを返す。&player=parent でそのプレイヤー、&player=all で全員分（各行に player が付く）。
-// ・切りかえが終わるまで、GAS が配る今の画面（doGet の HTML と google.script.run 用の関数）も残す。
+// ・画面は配らない（GAS が配っていた旧画面「毎日4問ドリル」と google.script.run 用の関数は 2026-10-27 に消した。
+//   鍵なしで問題・答え・記録が見えてしまうため）。URL だけを開いても { error } が返るだけ。
 // ・ゲーム（Brain Dungeon）のセーブ・冒険の記録・保護者の暗証番号（段階G-1）：
 //   セーブは「セーブ」シートにプレイヤーごとに1行（大きいときは右の列へ分けて入れる）。区切りごとの控えは「セーブの控え」シートに最近の10回分。
 //   冒険の記録は「冒険の記録」シートに1回1行。保護者の暗証番号は固定で、スプレッドシートのメニューから1回入れる。
@@ -63,7 +64,7 @@ function setup() {
   Logger.log('画像フォルダ：' + folder.getName() + '（' + folder.getId() + '）');
 }
 
-// ---------- 公開ページ ----------
+// ---------- GET の窓口 ----------
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.action === 'export') {
@@ -75,20 +76,7 @@ function doGet(e) {
     return json_({ questions: readQuestions_(false) });
   }
   if (p.action) return json_(READ_ACTIONS.indexOf(p.action) >= 0 ? api_(p.action, p) : { error: 'unknown action' });
-  if (p.page === 'editor') {
-    return HtmlService.createTemplateFromFile('editor').evaluate()
-      .setTitle('問題エディタ')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-  return HtmlService.createTemplateFromFile('index').evaluate()
-    .setTitle('毎日4問ドリル')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-function include(name) {
-  return HtmlService.createHtmlOutputFromFile(name).getContent();
+  return json_({ error: 'forbidden' });   // 画面は配らない（旧画面は 2026-10-27 に消した）
 }
 
 // Claude からの問題の取りこみ
@@ -124,9 +112,9 @@ const READ_ACTIONS = ['check', 'drillQuestions', 'image', 'history'];   // GET �
 const PLAYER_ACTIONS = {
   check: function (p, role, player) { return { role: role, player: player }; },
   drillQuestions: function () { return { questions: readQuestions_(true) }; },
-  image: function (p) { return { src: getImage(String(p.id || '')) }; },
+  image: function (p) { return { src: getImage_(String(p.id || '')) }; },
   history: function (p, role, player) { return { records: readRecords_(player), player: player }; },
-  saveAnswer: function (p, role, player) { saveAnswer(p.record, player); return {}; },
+  saveAnswer: function (p, role, player) { saveAnswer_(p.record, player); return {}; },
   // ゲーム（段階G-1）
   loadGame: function (p, role, player) { return loadGame_(player); },
   saveGame: function (p, role, player) { return saveGame_(player, p); },
@@ -141,9 +129,9 @@ const PLAYER_ACTIONS = {
 };
 const ADMIN_ACTIONS = {
   questions: function () { return { questions: readQuestions_(false) }; },
-  saveQuestion: function (p) { return { question: adminSaveQuestion(p.key, p.question) }; },
-  deleteQuestion: function (p) { adminDeleteQuestion(p.key, String(p.id || '')); return {}; },
-  uploadImage: function (p) { return { id: adminUploadImage(p.key, p.dataUrl, p.name) }; },
+  saveQuestion: function (p) { return { question: adminSaveQuestion_(p.key, p.question) }; },
+  deleteQuestion: function (p) { adminDeleteQuestion_(p.key, String(p.id || '')); return {}; },
+  uploadImage: function (p) { return { id: adminUploadImage_(p.key, p.dataUrl, p.name) }; },
   export: function (p) { return { records: readRecords_(p.player || DEFAULT_PLAYER) }; },
   sounds: function () { return { sounds: listSounds_() }; },
   uploadSound: function (p) { return uploadSound_(String(p.name || ''), p.dataUrl); },
@@ -167,16 +155,8 @@ function api_(action, p) {
   }
 }
 
-// ---------- ドリルから呼ばれる（google.script.run 版。切りかえが終わったら消す） ----------
-function getQuestions() {
-  return readQuestions_(true);
-}
-
-function getHistory() {
-  return readRecords_(DEFAULT_PLAYER);
-}
-
-function getImage(id) {
+// ---------- 問題の画像・答えの保存（窓口から呼ばれる。名前の最後の _ は、外から直接呼べない印） ----------
+function getImage_(id) {
   const folder = getImageFolder_();
   const file = DriveApp.getFileById(id);
   const parents = file.getParents();
@@ -187,8 +167,8 @@ function getImage(id) {
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
 }
 
-function saveAnswer(rec, player) {
-  if (PLAYERS.indexOf(player) < 0) player = DEFAULT_PLAYER;   // google.script.run 版（子どもの iPad）からは player なし
+function saveAnswer_(rec, player) {
+  if (PLAYERS.indexOf(player) < 0) player = DEFAULT_PLAYER;
   if (!rec || typeof rec !== 'object') throw new Error('bad record');
   const date = String(rec.date || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('bad date');
@@ -207,17 +187,8 @@ function saveAnswer(rec, player) {
   return true;
 }
 
-// ---------- エディタから呼ばれる（管理用の鍵が必要） ----------
-function adminCheck(key) {
-  return isKey_(key);
-}
-
-function adminListQuestions(key) {
-  mustKey_(key);
-  return readQuestions_(false);
-}
-
-function adminSaveQuestion(key, q) {
+// ---------- 問題の追加・修正・削除（窓口から呼ばれる。管理用の鍵が必要） ----------
+function adminSaveQuestion_(key, q) {
   mustKey_(key);
   if (!q || !q.id) throw new Error('IDがありません');
   if (SUBJECTS.indexOf(q.subject) < 0) throw new Error('教科を選んでください');
@@ -225,7 +196,7 @@ function adminSaveQuestion(key, q) {
   return readQuestionById_(q.id);
 }
 
-function adminDeleteQuestion(key, id) {
+function adminDeleteQuestion_(key, id) {
   mustKey_(key);
   withLock_(() => {
     const sheet = getQuestionSheet_();
@@ -235,7 +206,7 @@ function adminDeleteQuestion(key, id) {
   return true;
 }
 
-function adminUploadImage(key, dataUrl, name) {
+function adminUploadImage_(key, dataUrl, name) {
   mustKey_(key);
   const m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl || '');
   if (!m) throw new Error('画像を読みこめませんでした');
