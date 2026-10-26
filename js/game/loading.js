@@ -41,12 +41,47 @@ var Loading = (function () {
     "秘境の8階には、岩の番人がいるらしい……。",
     "秘境の15階の奥には、弓の名手がいるという……。"
   ];
-  var lastTip = -1;
+  // ダンジョンごとの「うわさ」（2026-10-27 保護者の案）：敵の弱点のヒント。全部は言い切らず「〜らしい」にして、
+  // 試して見つける楽しさを残す。そのダンジョンに入るときは、Tips よりうわさを多めに出す。文は Claude の仮の文（保護者があとで直す）
+  var RUMORS = {
+    forest1: [
+      "つる草やキノコの魔物は、火をきらうらしい……",
+      "ゴブリンの剣士は、たたく攻撃が苦手だとか……",
+      "大きな蜂は、矢や槍で突くとよく効くらしい……",
+      "森の主は、火をこわがっているという……"
+    ],
+    shouki: [
+      "骸骨はかたいが、たたく攻撃でくだけるという……",
+      "骸骨には、矢や槍がささりにくいらしい……",
+      "瘴気の霊には、剣も弓もあまり効かないらしい。光が苦手だとか……",
+      "毒ガエルは、剣で斬られるのが苦手らしい……",
+      "沼の魔女は、光をきらうらしい……"
+    ],
+    hikyo: [
+      "オオカミは、剣で斬られるのに弱いらしい……",
+      "ダークウィスプには、剣も弓もこぶしもあまり効かないらしい。光が苦手だとか……",
+      "岩の番人は、水をかけられるのをいやがるらしい……",
+      "弓の名手は、矢や槍で突かれるのに弱いという……"
+    ]
+  };
+  var RUMOR_RATE = 0.6;   // うわさを出す割合
+  var lastTip = -1, lastRumor = "";
   function pickTip() {
     var i = Math.floor(Math.random() * TIPS.length);
     if (i === lastTip) i = (i + 1) % TIPS.length;
     lastTip = i;
     return TIPS[i];
+  }
+  // { head, text }：dungeon にうわさがあれば、RUMOR_RATE の割合でうわさ（同じものは続けない）
+  function pickHint(dungeon) {
+    var list = dungeon && RUMORS[dungeon];
+    if (list && list.length && Math.random() < RUMOR_RATE) {
+      var j = Math.floor(Math.random() * list.length);
+      if (list[j] === lastRumor) j = (j + 1) % list.length;
+      lastRumor = list[j];
+      return { head: "うわさ", text: list[j] };
+    }
+    return { head: "Tips", text: pickTip() };
   }
 
   var box = null;
@@ -59,14 +94,15 @@ var Loading = (function () {
     return box;
   }
 
-  // ロード画面：title（例「新緑の樹海 3階へ」）を出して、2秒たったら then()
-  function show(title, then) {
+  // ロード画面：title（例「新緑の樹海 3階へ」）を出して、2秒たったら then()。dungeon：入るダンジョン（うわさを出す）
+  function show(title, then, dungeon) {
+    var hint = pickHint(dungeon);
     var b = make(); b.textContent = "";
     var inner = el("div", "load-inner");
     inner.appendChild(el("h2", "load-title", title));
     var tip = el("div", "load-tip");
-    tip.appendChild(el("div", "load-tip-head", "Tips"));
-    tip.appendChild(el("p", "", pickTip()));
+    tip.appendChild(el("div", "load-tip-head", hint.head));
+    tip.appendChild(el("p", "", hint.text));
     inner.appendChild(tip);
     var dots = el("div", "load-dots");
     for (var i = 0; i < 3; i++) dots.appendChild(el("span", ""));
@@ -106,5 +142,5 @@ var Loading = (function () {
     next();
   }
 
-  return { show: show, lines: lines, TIPS: TIPS };
+  return { show: show, lines: lines, TIPS: TIPS, RUMORS: RUMORS };
 })();
