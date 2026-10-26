@@ -601,7 +601,7 @@ var Combat = (function () {
     if (!spots.length) spots.push({ x: a.x + a.face.x * 40, y: a.y + a.face.y * 40 });
     spots.forEach(function (sp) {
       // 予告 0.6→0.4秒。予告のあいだ、輪がねらった敵についていく（2026-10-26：動く敵に外れないように）
-      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, follow: sp.e || null };
+      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, track: sp.e || null };
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {

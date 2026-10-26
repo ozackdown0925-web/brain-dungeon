@@ -674,7 +674,7 @@ var Bosses = (function () {
       var h = hazards[i];
       h.t += dt;
       if (h.kind === "line") continue; // 大突進の線は、ボスが走り終わると消える
-      if (h.follow && h.t < h.warn && !h.follow.dead) { h.x = h.follow.x; h.y = h.follow.y; }   // 魔物使いの瘴気の柱：予告のあいだ、ねらった敵についていく
+      if (h.track && h.t < h.warn && !h.track.dead) { h.x = h.track.x; h.y = h.track.y; }   // 魔物使いの瘴気の柱：予告のあいだ、ねらった敵についていく（track。大ガマの follow とは別。2026-10-26 名前がぶつかって大ガマが消えたので分けた）
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
         var inside = h.kind === "circle"
