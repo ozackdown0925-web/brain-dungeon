@@ -558,7 +558,7 @@ var Combat = (function () {
   // 魔法陣から主があらわれ（呼ぶあいだは止まる）、大技を1回、敵に使って消える。強さは呼んだ仲間の魔攻で決まる
   //   大木の魔物：根の大波（自分を中心に十字。部屋のはしからはしまでの横と縦の帯）
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
-  //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して、近くの敵をねらって1つずつ撃つ。敵をつらぬく）
+  //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して（さわった敵にも当たる）、少し回ってから近くの敵を1体ずつねらって撃つ。敵をつらぬく）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
   var SUMMON = { appear: 0.3, stay: 1.4, stand: 0.6 };   // 2026-10-26：当たるまでを早く（あらわれる 0.5→0.3秒）
   function summon(c, f) {
@@ -566,15 +566,20 @@ var Combat = (function () {
     a.busy = Math.max(a.busy, SUMMON.stand * k);
     var fx = a.face.x, fy = a.face.y;
     var sx = a.x - fx * 20 + (Math.abs(fy) > 0.5 ? 18 : 0), sy = a.y - fy * 14;   // 仲間の少し後ろ（たてを向いているときは横）
-    var s = { kind: f.boss, x: sx, y: sy, t: 0, max: SUMMON.stay + (f.boss === "elf_boss" ? ELF_ORB.gather + ELF_ORB.n * ELF_ORB.gap : 0), face: { x: fx >= 0 ? 1 : -1, y: 0 } };
-    if (f.boss === "elf_boss") { s.orbN = ELF_ORB.n; s.slots = []; for (var o = 0; o < ELF_ORB.n; o++) s.slots.push(o); s.ang = Math.random() * Math.PI * 2; }
+    var s = { kind: f.boss, x: sx, y: sy, t: 0, max: SUMMON.stay + (f.boss === "elf_boss" ? ELF_ORB.gather + ELF_ORB.orbit + ELF_ORB.n * ELF_ORB.gap : 0), face: { x: fx >= 0 ? 1 : -1, y: 0 } };
+    if (f.boss === "elf_boss") {
+      s.orbN = ELF_ORB.n; s.slots = []; for (var o = 0; o < ELF_ORB.n; o++) s.slots.push(o); s.ang = Math.random() * Math.PI * 2;
+      s.c = c; s.touch = { stat: f.stat, mult: f.touch, elem: f.elem, push: 3 }; s.hitT = [];
+    }
     summons.push(s);
     Sound.play("skill");
     var spec = { stat: f.stat, mult: f.mult, elem: f.elem, status: f.status, push: 4 };
     later(SUMMON.appear, function () {
       if (f.boss === "tree_boss") summonRoots(c, spec, a);
       else if (f.boss === "witch_boss") summonPillars(c, spec, a);
-      else if (f.boss === "elf_boss") for (var n = 0; n < ELF_ORB.n; n++) later(ELF_ORB.gather + n * ELF_ORB.gap, function () { summonOrbShot(c, spec, s); });
+      else if (f.boss === "elf_boss") {
+        for (var n = 0; n < ELF_ORB.n; n++) later(ELF_ORB.gather + ELF_ORB.orbit + n * ELF_ORB.gap, (function (k) { return function () { summonOrbShot(c, spec, s, k); }; })(n));
+      }
     });
   }
   function summonRoots(c, spec, a) {
@@ -601,7 +606,7 @@ var Combat = (function () {
     if (!spots.length) spots.push({ x: a.x + a.face.x * 40, y: a.y + a.face.y * 40 });
     spots.forEach(function (sp) {
       // 予告 0.6→0.4秒。予告のあいだ、輪がねらった敵についていく（2026-10-26：動く敵に外れないように）
-      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, follow: sp.e || null };
+      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, track: sp.e || null };
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {
@@ -613,18 +618,19 @@ var Combat = (function () {
     });
   }
   // ダークエルフ（2026-10-26 作りなおし）：まわりに闇の玉を6つ回して、近くの敵をねらって1つずつ撃つ（敵をつらぬく）
-  var ELF_ORB = { n: 6, gather: 0.4, gap: 0.16 };
+  var ELF_ORB = { n: 6, gather: 0.4, orbit: 0.8, gap: 0.22 };   // 2026-10-26：そろってから0.8秒回って撃つ。回る玉は、さわった敵にも当たる
   function elfOrbPos(s, i) {
     var a = s.ang + s.slots[i] / s.orbN * Math.PI * 2;
     return { x: s.x + Math.cos(a) * 26, y: s.y - 18 + Math.sin(a) * 15 };
   }
-  function summonOrbShot(c, spec, s) {
+  // k 番めの玉：近い順に敵をえらび、玉ごとにちがう敵をねらう（敵が少なければ、近い敵からくり返す。2026-10-26：1体だけにかたまっていたため）
+  function summonOrbShot(c, spec, s, k) {
     if (!s.slots.length) return;
-    var list = Enemies.hostile(), best = 0, bd = 1e9, tgt = null;
-    // ねらう敵：呼んだ場所からいちばん近い敵。玉は、その敵にいちばん近いものから撃つ
-    list.forEach(function (e) { var dx = e.x - s.x, dy = e.y - s.y, d = dx * dx + dy * dy; if (!tgt || d < bd) { tgt = e; bd = d; } });
-    bd = 1e9;
-    for (var i = 0; i < s.slots.length; i++) {
+    var list = Enemies.hostile().slice().sort(function (p, q) {
+      return (p.x - s.x) * (p.x - s.x) + (p.y - s.y) * (p.y - s.y) - (q.x - s.x) * (q.x - s.x) - (q.y - s.y) * (q.y - s.y);
+    });
+    var tgt = list.length ? list[k % list.length] : null, best = 0, bd = 1e9;
+    for (var i = 0; i < s.slots.length; i++) {   // 玉は、ねらう敵にいちばん近いものから撃つ
       var op = elfOrbPos(s, i), d2 = tgt ? (tgt.x - op.x) * (tgt.x - op.x) + (tgt.y - op.y) * (tgt.y - op.y) : 0;
       if (d2 < bd) { bd = d2; best = i; }
     }
@@ -633,8 +639,26 @@ var Combat = (function () {
     var ang = tgt ? Math.atan2(tgt.y - 3 - o.y, tgt.x - o.x) : s.ang + best;
     var speed = 190;
     shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: spec.elem, pierce: true, dark: true, push: 4 },
-      x: o.x, y: o.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 200 / speed, size: 4, color: "#a040ff", arrow: false });
+      x: o.x, y: o.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 220 / speed, size: 4, color: "#a040ff", arrow: false });
     Sound.play("skill");
+  }
+  // 回っている玉：まわし、さわった敵に当てる（1つの玉が同じ敵に当たるのは0.6秒に1回まで）
+  function updateSummonOrbs(s, dt) {
+    if (!s.slots || !s.slots.length) return;
+    s.ang += 3.2 * dt;
+    if (s.t < SUMMON.appear) return;
+    var shown = Math.min(s.slots.length, Math.ceil(s.orbN * Math.min(1, (s.t - SUMMON.appear + 0.1) / ELF_ORB.gather)));
+    s.hitT = s.hitT.filter(function (h) { h.t -= dt; return h.t > 0; });
+    for (var i = 0; i < shown; i++) {
+      var op = elfOrbPos(s, i), sl = s.slots[i];
+      Enemies.hostile().forEach(function (e) {
+        var dx = e.x - op.x, dy = (e.y - 3) - op.y;
+        if (dx * dx + dy * dy > (e.r + 6) * (e.r + 6)) return;
+        if (s.hitT.some(function (h) { return h.sl === sl && h.e === e; })) return;
+        s.hitT.push({ sl: sl, e: e, t: 0.6 });
+        hitEnemy(e, s.c, s.touch, op.x, op.y);
+      });
+    }
   }
   function drawSummons(ctx, cam) {
     summons.forEach(function (s) {
@@ -659,7 +683,6 @@ var Combat = (function () {
       ctx.restore();
       ctx.globalAlpha = 1;
       if (s.slots && s.slots.length) {   // ダークエルフ：まわりを回る闇の玉（1つずつあらわれる）
-        s.ang += 3.2 / 60;
         var shown = Math.min(s.slots.length, Math.ceil(s.orbN * Math.min(1, (s.t - SUMMON.appear + 0.1) / ELF_ORB.gather)));
         for (var oi = 0; oi < shown; oi++) {
           var op = elfOrbPos(s, oi);
@@ -731,7 +754,7 @@ var Combat = (function () {
       if (zn.t <= 0) zones.splice(z, 1);
     }
     for (var k = effects.length - 1; k >= 0; k--) { effects[k].t -= dt; if (effects[k].t <= 0) effects.splice(k, 1); }
-    for (var m = summons.length - 1; m >= 0; m--) { summons[m].t += dt; if (summons[m].t >= summons[m].max) summons.splice(m, 1); }
+    for (var m = summons.length - 1; m >= 0; m--) { summons[m].t += dt; updateSummonOrbs(summons[m], dt); if (summons[m].t >= summons[m].max) summons.splice(m, 1); }
   }
 
   function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; summons.length = 0; cast = null; }

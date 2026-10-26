@@ -325,8 +325,8 @@ var GameData = (function () {
       fx: [{ t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
     { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 18, ct: 15,
       fx: [{ t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
-    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわりに闇の玉を6つ回して、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 20, ct: 18,
-      fx: [{ t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 0.6, elem: "dark" }] },
+    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 20, ct: 18,
+      fx: [{ t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
@@ -513,7 +513,8 @@ var GameData = (function () {
   // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
   // ときどき闇の玉を扇に3つ（ダーク・魔法）。近づかれると回転斬り（まわり）→ 後ろへ宙返りして距離をとる（宙返りのあいだは当たらない）。
   // 大技のダークアロー（2026-10-26 保護者の案で作りなおし）：動きながら、まわりに闇の玉を daCount 個（3〜4。HP が半分を切ると daCountHalf の5〜6）
-  // 回して、プレイヤーをねらって1つずつ撃つ（間かく daGap 秒）。撃った玉は、飛ぶ向きに長い光の尾をひく。終わるとふらつく（すきあり）。
+  // 回して（あらわれるのに daWindup 秒、そのあと daOrbit 秒回る。回っている玉にさわると daTouch のダメージ）、プレイヤーをねらって1つずつ撃つ（間かく daGap 秒）。
+  // 撃った玉は、飛ぶ向きに長い光の尾をひく。終わるとふらつく（すきあり）。
   // HP が半分を切ると、弓が3本になる。光が弱点、闇は効かない
   ENEMIES.elf_boss = {
     name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 3200, patk: 24, matk: 30, pdef: 8, mdef: 12,
@@ -521,7 +522,7 @@ var GameData = (function () {
     keepMin: 80, keepMax: 140, aimTime: 0.45, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
     orbEvery: 7, orbCount: 3, orbCountHalf: 5, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
     spinRange: 22, spinWarn: 0.45, spinRadius: 34, spinMult: 1.4, spinEvery: 2.5, flipTime: 0.45, flipSpeed: 190,
-    daEvery: 13, daEveryHalf: 9, daCount: [3, 4], daCountHalf: [5, 6], daWindup: 0.9, daGap: 0.45, daGapHalf: 0.32, daSpeed: 175, daMult: 2.0, daR: 7, tired: 1.8
+    daEvery: 13, daEveryHalf: 9, daCount: [3, 4], daCountHalf: [5, 6], daWindup: 0.9, daOrbit: 1.4, daGap: 0.45, daGapHalf: 0.32, daSpeed: 175, daMult: 2.0, daR: 7, daTouch: 0.8, tired: 1.8
   };
 
   // ボスの階層（段階4-3）。前後の短い文章は Claude が書いた仮の文。保護者が直す。
