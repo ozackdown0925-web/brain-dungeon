@@ -827,7 +827,7 @@
     }
     if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" ? room.theme : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" ? room.theme : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
       for (var sp = 0; sp < 5; sp++) {
         var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
         if (ph > 0.85) continue;

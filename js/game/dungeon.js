@@ -65,8 +65,8 @@ var Dungeon = (function () {
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
-  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : ForestRooms; }
-  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : BossRoom; }
+  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : ForestRooms; }
+  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -168,7 +168,14 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
-    if (theme === "wild") {
+    if (theme === "cave") {
+      // 黒鉄の坑道（地方2の段階1、2026-10-27）：坑道の敵ができるまでの仮。ゴブリンの部隊に、キノコの魔物・ワイルドボア・影の魔導士・瘴気の霊がまざる
+      for (var ci = 0; ci < n; ci++) types.push(SQUAD[ci % 3]);
+      if (rnd() < 0.35) types[0] = "mushroom";
+      if (rnd() < 0.4) types[1] = "shadow_mage";
+      if (floor >= 4 && rnd() < 0.35) types[types.length - 1] = "boar";
+      if (floor >= 6 && rnd() < 0.4) types[2] = "wisp";
+    } else if (theme === "wild") {
       // 原生の秘境（段階1、2026-10-25）：新緑の樹海と瘴気の森の敵がまざる。部屋ごとにゴブリンか骸骨の部隊。
       var sq = rnd() < 0.5 ? SQUAD : SKULL_SQUAD;
       for (var wi = 0; wi < n; wi++) types.push(sq[wi % 3]);
@@ -305,7 +312,7 @@ var Dungeon = (function () {
   // ---------- 鍵と扉・宝箱・罠（段階4-2） ----------
   // 部屋のつなぎ方と別の順の数を使う（4-1 と同じ seed なら、部屋のつなぎ方と敵は同じまま）
   function placeThings(dg, floor, seed, dungeon) {
-    var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild";
+    var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave";
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -416,13 +423,14 @@ var Dungeon = (function () {
     // 罠：毒の沼（2×2）と落とし穴（1マス）。深い階層ほど少し多い。一部は踏むまで見えない
     // 瘴気の森：部屋の型にも毒の沼があるうえに、罠も樹海より多い（毒の沼が多め。落とし穴は少なめ）
     // 原生の秘境（2026-10-25 保護者と決定）：罠は落とし穴と毒の沼だけ。樹海より2つ多く、落とし穴が多め
-    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : 0);
+    // 黒鉄の坑道（2026-10-27、仮）：樹海より1つ多く、落とし穴が多め
+    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : cave ? 1 : 0);
     var trapRooms = keys.filter(function (k) { return k !== dg.start && notNest(k); });
     var perRoom = {};
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
       var tk = pick(rnd, trapRooms);
       if ((perRoom[tk] || 0) >= 2) continue;
-      var pit = rnd() < (swamp ? 0.25 : wild ? 0.7 : 0.45);
+      var pit = rnd() < (swamp ? 0.25 : wild ? 0.7 : cave ? 0.6 : 0.45);
       // 落とし穴はまわり1マスも通れるところだけ（せまい道をふさがないように）
       var ts = pit ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
@@ -457,6 +465,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
+    if (th === "cave") return ["goblin_sword", "goblin_spear", "goblin_archer", "shadow_mage", "boar"];   // 坑道（仮。今は巣を置かない）
     if (th === "wild") {
       pool = ["goblin_sword", "goblin_spear", "skeleton_sword", "skeleton_archer", "vine", "frog", "bee", "shadow_mage", "wolf", "wolf"];
       if (floor >= 5) pool.push("boar");

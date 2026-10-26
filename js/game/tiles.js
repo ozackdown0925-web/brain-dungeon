@@ -5,6 +5,7 @@
 //   I 崩れた石柱（原生の秘境）：1つだけなら折れて立っている柱、横に2つ以上ならぶと、たおれた柱
 // 部屋の色合い（room.theme）：forest（新緑の樹海）・swamp（瘴気の森。2026-10-21 保護者の案：同じ絵を青・紫の色にして、枯れた木をまぜる）
 //   wild（原生の秘境。2026-10-25 保護者と決定：樹海の絵を、少し深く暗い緑にして「奥地」らしく。水は深い青緑、岩は苔むした灰色）
+//   cave（黒鉄の坑道。2026-10-27：暗い岩の床。まわりの壁も岩のがけ）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -51,6 +52,20 @@ var Tiles = (function () {
       ROCK: pal(["#262a2a", "#3e4442", "#5a605a", "#7c8278", "#a2a89c"]),
       FLOWER: pal(["#e0e8c8", "#c8d860", "#c86a6a"]),
       VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
+      WITHER: null
+    },
+    // 黒鉄の坑道（地方2の段階1、2026-10-27）：暗い灰色の岩の床。まわりの壁も岩のがけ（森のしげみではない）。
+    // 花のかわりに小さな鉱石の光（水色・紫・金）、草むらは暗い苔
+    cave: {
+      GRASS: pal(["#1c1a20", "#27242c", "#322e38", "#3e3a44", "#544e5a"]),
+      DIRT: pal(["#261f18", "#372d22", "#493d2e", "#5b4e3a"]),
+      TALL: pal(["#121a1c", "#1c2829", "#263637", "#344c48", "#4a6a5e"]),
+      WATER: pal(["#08101e", "#101c34", "#182a4a", "#284670", "#7aa0cc"]),
+      LEAF: pal(["#100e14", "#1a1820", "#26232c", "#35313c", "#47424e"]),
+      BARK: pal(["#1e1814", "#33291f", "#4a3c2c", "#64523c"]),
+      ROCK: pal(["#16141a", "#28252e", "#3c3842", "#544f5a", "#706a76"]),
+      FLOWER: pal(["#9fe0ff", "#c8a0ff", "#f0d070"]),
+      VINE: pal(["#0c140e", "#18281a", "#244a26", "#3a6a36"]),
       WITHER: null
     }
   };
@@ -128,14 +143,16 @@ var Tiles = (function () {
       outer[k] = true;
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
+    // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
+    var OUTER = THEME === "cave" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];
     function kindRaw(tx, ty) {
       var t = tile(tx, ty);
       if (t === "#") {
-        if (tx < 0 || ty < 0 || tx >= w || ty >= h) return "forest";
-        return outer[tx + "," + ty] ? "forest" : "rock";
+        if (tx < 0 || ty < 0 || tx >= w || ty >= h) return OUTER;
+        return outer[tx + "," + ty] ? OUTER : "rock";
       }
       if (t === "T") return "tree";
       if (t === "~") return "water";
@@ -150,7 +167,7 @@ var Tiles = (function () {
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
     function kind(tx, ty) {
-      if (tx < -KB || ty < -KB || tx >= w + KB || ty >= h + KB) return "forest";
+      if (tx < -KB || ty < -KB || tx >= w + KB || ty >= h + KB) return OUTER;
       return kindGrid[(ty + KB) * KW + tx + KB];
     }
     // 1点ごとの「その種類の中か」：タイルのまんなかの値（中＝1・外＝0）を、なめらかにつないで 0.5 で切る。

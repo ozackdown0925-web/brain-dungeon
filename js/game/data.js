@@ -571,6 +571,15 @@ var GameData = (function () {
   function inLine(job, line) { return (LINES[line] || []).indexOf(job) >= 0; }
   // 場所の名前（2026-10-18 保護者が決定）。ダンジョン2・3は、前のダンジョンの主をたおすまで行けない（地図では「？？？」）
   var PLACES = { region: "フォレストヴェール", base: "エルム村", dungeon1: "新緑の樹海", dungeon2: "瘴気の森", dungeon3: "原生の秘境" };
+  // 地方（地方2の段階1、2026-10-27 保護者と決定）。地方ごとに拠点の町とワールドマップがある。
+  //   地方2の名前（フロストクレスト・鉱山の町ボルダ・黒鉄の坑道）は Claude の仮の名前（保護者があとで直す）
+  //   needs：このダンジョンが開くと、その地方へ行ける（ワールドマップの端の道から。null ならはじめから）
+  //   gate：町の出発の門の名前。art：町とワールドマップの絵（mapart.js）
+  var REGIONS = {
+    forestveil: { id: "forestveil", name: PLACES.region, base: PLACES.base, gate: "森の門", needs: null, art: { town: "town", world: "world" } },
+    frostcrest: { id: "frostcrest", name: "フロストクレスト", base: "鉱山の町ボルダ", gate: "山の門", needs: "kodo", art: { town: "town2", world: "world2" } }
+  };
+  var REGION_ORDER = ["forestveil", "frostcrest"];
   // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
   //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
@@ -578,9 +587,9 @@ var GameData = (function () {
   //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫、wild＝遺跡と湖の型・深い緑。tiles.js・rooms.js）
   // 瘴気の森のボスは大ガマ（5階）と沼の魔女（10階）（段階4）。深さは仮（段階6で直す）。
   var DUNGEONS = {
-    forest1: { id: "forest1", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
+    forest1: { id: "forest1", region: "forestveil", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
     shouki: {
-      id: "shouki", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp", tier: 1,
+      id: "shouki", region: "forestveil", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp", tier: 1,
       bosses: {
         // 前後の文は Claude が書いた仮の文（保護者があとで直す）
         5: { enemy: "frog_boss", title: "沼をしずめし者",
@@ -594,7 +603,7 @@ var GameData = (function () {
     // 原生の秘境（段階1、2026-10-25）：15階（8階にゴーレム、15階にダークエルフ）。沼の魔女をたおすと開く。
     // 深さは瘴気の森の続き（24＋階）。装備の段は鋼（段階6、2026-10-26。宝箱は鋼、開くとお店も鋼と特上の薬になる）
     hikyo: {
-      id: "hikyo", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
+      id: "hikyo", region: "forestveil", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
       bosses: {
         8: { enemy: "golem_boss", title: "岩をくだく者",         // ゴーレム（段階4、2026-10-25）。前後の文は Claude が書いた仮の文
              before: ["遺跡の広場に、苔むした大きな岩がころがっている。", "岩が音を立てて組み上がり、青い目が光った！"],
@@ -603,9 +612,26 @@ var GameData = (function () {
               before: ["いちばん奥の遺跡に、白い髪の弓使いが立っている。", "「ここまで来たか。だが、秘境の守りはわたしが最後だ」"],
               after: ["ダークエルフはひざをつき、弓を下ろした。", "「……見事だ。秘境の道は、おまえたちに開こう」"] }
       }
+    },
+    // 黒鉄の坑道（地方2の段階1、2026-10-27）：地方2（フロストクレスト）の1つ目。12階（6階に盗賊の頭領、12階にキングゴブリン）。
+    // ダークエルフ（原生の秘境の主）をたおすと開く。深さは秘境の続き（39＋階）。部屋は洞窟の型（theme: cave）。
+    // 階の数は仮。ボスは盗賊の頭領・キングゴブリンを作るまで、ゴーレム・ダークエルフを仮に使う（前後の文も仮）。装備の段は仕上げの段階で決める（今は鋼）
+    kodo: {
+      id: "kodo", region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
+      bosses: {
+        6: { enemy: "golem_boss", title: "坑道をひらく者",
+             before: ["坑道の広間に、たいまつの明かりがゆれている。", "奥から、大きな影が近づいてくる！"],
+             after: ["影は、坑道の奥へにげていった。", "先へ続く道が開いた。"] },
+        12: { enemy: "elf_boss", title: "黒鉄をきわめし者",
+              before: ["坑道のいちばん奥に、玉座のような岩がある。", "暗やみの中から、何者かがこちらをにらんでいる。"],
+              after: ["坑道に、静けさがもどった。", "山へ続く道が見えてきた。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo"];
+  // 地方の中のダンジョン（ワールドマップに出す順）
+  function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
+  function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
   // 装備の段（2026-10-22）：0＝銅（新緑の樹海）、1＝鉄（瘴気の森）、2＝鋼（原生の秘境。2026-10-26）。段ごとの名前（書いていない段は item の名前）
   // 弓・杖・服・ローブは鉄ではないので、それらしい名前にした（保護者があとで直してよい）
   var TIER_NAMES = {
@@ -651,6 +677,6 @@ var GameData = (function () {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
-    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
+    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, REGIONS: REGIONS, REGION_ORDER: REGION_ORDER, regionOf: regionOf, dungeonsIn: dungeonsIn, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
   };
 })();

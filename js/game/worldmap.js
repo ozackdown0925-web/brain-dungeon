@@ -10,12 +10,13 @@ var WorldMap = (function () {
   var trialEl = document.getElementById("trialScreen");
   var MW = 320, MH = 180;
 
-  // 地方：フォレストヴェール（2026-10-18 決定）。拠点（エルム村）1つとダンジョン。まだ行けない場所は「？？？」
+  // 地方ごとの地図の上の場所（地方2の段階1、2026-10-27）。拠点1つとダンジョン、となりの地方への道（kind: road）。
   // ダンジョンの階の数・ボス・開く条件は GameData.DUNGEONS。前のダンジョンの主をたおすと次が開く（2026-10-21 保護者と決定）
-  var REGION = {
-    name: GameData.PLACES.region,
-    spots: [
-      { id: "base", kind: "base", name: GameData.PLACES.base, x: 61, y: 124 },
+  // locked：まだ作っていない場所（いつも「？？？」）
+  var SPOTS = {
+    // フォレストヴェール（2026-10-18 決定）
+    forestveil: [
+      { id: "base", kind: "base", x: 61, y: 124 },
       // 新緑の樹海は右下の森（2026-10-18 保護者が決定）
       { id: "forest1", kind: "dungeon", x: 283, y: 122,
         note: "若葉のしげる深い樹海。ゴブリンの部隊と、つる草の魔物がすむ。7階に大オオカミ、14階に森の主がいる。" },
@@ -24,12 +25,34 @@ var WorldMap = (function () {
         note: "毒の沼が広がる、暗い森。5階と10階に、強い魔物がいる。" },
       // 原生の秘境はまんなかの大木の森。沼の魔女をたおすと開く（2026-10-25）
       { id: "hikyo", kind: "dungeon", x: 200, y: 76,
-        note: "大木と湖にかこまれた、古い遺跡の森。足もとの落とし穴に気をつけて。8階と15階に、強い魔物がいる。" }
+        note: "大木と湖にかこまれた、古い遺跡の森。足もとの落とし穴に気をつけて。8階と15階に、強い魔物がいる。" },
+      // 次の地方への道：北の山なみ。ダークエルフをたおすと開く（2026-10-27）
+      { id: "to_frost", kind: "road", to: "frostcrest", x: 150, y: 16 }
+    ],
+    // フロストクレスト（地方2。名前は仮）：洞窟 → 山 → 雪山。地図の絵は保護者が作る（それまでは mapart.js の仮の絵）
+    frostcrest: [
+      { id: "base", kind: "base", x: 70, y: 108 },
+      { id: "kodo", kind: "dungeon", x: 128, y: 92,
+        note: "黒い岩の山にほられた、古い坑道。盗賊とゴブリンがすみついている。6階と12階に、強い魔物がいる。" },
+      { id: "yama", kind: "dungeon", locked: true, x: 206, y: 74 },
+      { id: "yuki", kind: "dungeon", locked: true, x: 266, y: 34 },
+      // 前の地方への道：南西のはし
+      { id: "to_forest", kind: "road", to: "forestveil", x: 18, y: 164 }
     ]
   };
+  function region() { return GameData.regionOf(GameState.region()); }
+  function spots() { return SPOTS[region().id] || SPOTS.forestveil; }
   // 開いているか（作っていない場所はいつも閉じている）と、地図に出す名前
-  function isOpen(s) { return s.kind === "base" || (!s.locked && GameState.unlocked(s.id)); }
-  function nameOf(s) { return s.kind === "base" ? s.name : isOpen(s) ? GameData.dungeonOf(s.id).name : "？？？"; }
+  function isOpen(s) {
+    if (s.kind === "base") return true;
+    if (s.kind === "road") return GameState.regionOpen(s.to);
+    return !s.locked && GameState.unlocked(s.id);
+  }
+  function nameOf(s) {
+    if (s.kind === "base") return region().base;
+    if (s.kind === "road") return isOpen(s) ? GameData.regionOf(s.to).name + "へ" : "？？？";
+    return isOpen(s) ? GameData.dungeonOf(s.id).name : "？？？";
+  }
   function floorsOf(s) { return GameData.dungeonOf(s.id).floors; }
   var hover = null;
 
@@ -37,7 +60,7 @@ var WorldMap = (function () {
     Sound.bgm("world");
     el.hidden = false; dlg.hidden = true;
     document.getElementById("base").hidden = true;
-    document.getElementById("worldTitle").textContent = REGION.name;
+    document.getElementById("worldTitle").textContent = region().name;
     draw();
   }
   function close() { el.hidden = true; Base.showBase(null); }
@@ -56,15 +79,21 @@ var WorldMap = (function () {
     function r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
     function circle(x, y, rad, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill(); }
     // 地図の絵（mapart.js。読みこめたら描き直す）
-    var art = MapArt.get("world", draw);
+    var art = MapArt.get(region().art.world, draw);
     if (art) ctx.drawImage(art, 0, 0, MW, MH); else r(0, 0, MW, MH, "#6a9a4a");
     // 場所の印
-    REGION.spots.forEach(function (s) {
+    spots().forEach(function (s) {
       var lit = hover === s.id;
       // 印：絵の上に、場所がわかる小さな印（村は絵に描いてあるので、指したときだけ光る輪）
       ctx.lineWidth = 1.5;
       if (s.kind === "base") {
         if (lit) { ctx.strokeStyle = "#f2c14e"; ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, Math.PI * 2); ctx.stroke(); }
+      } else if (s.kind === "road" && isOpen(s)) {
+        // となりの地方への道：矢印の印
+        var rc = lit ? "#f2c14e" : "#9fe0ff";
+        circle(s.x, s.y, 7, "rgba(10,12,18,0.7)");
+        ctx.strokeStyle = rc; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = rc; ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("➜", s.x, s.y + 0.5);
       } else if (isOpen(s)) {
         ctx.strokeStyle = lit ? "#f2c14e" : "#ffe066"; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.stroke();
         circle(s.x, s.y, 3, lit ? "#f2c14e" : "#ffe066"); r(s.x - 1, s.y - 16, 2, 6, "#ffe066");
@@ -76,7 +105,7 @@ var WorldMap = (function () {
       ctx.textAlign = "center"; ctx.textBaseline = "top";
       var open = isOpen(s);
       var label = s.kind === "dungeon" && open ? nameOf(s) + "（" + reached(s) + "/" + floorsOf(s) + "階）" : nameOf(s);
-      var tw = Furi.width(ctx, label) + 6, ly = s.y + 12, rh = Furi.has(label) ? Furi.rubyHeight(8) : 0;   // ふりがなの分だけ札を上にのばす
+      var tw = Furi.width(ctx, label) + 6, ly = s.y + (s.y > MH - 30 ? -22 : 12), rh = Furi.has(label) ? Furi.rubyHeight(8) : 0;   // ふりがなの分だけ札を上にのばす
       var lx = Math.max(tw / 2 + 2, Math.min(MW - tw / 2 - 2, s.x));   // 名前の札が地図からはみ出さないように
       r(lx - tw / 2, ly - rh, tw, 11 + rh, lit ? "rgba(242,193,78,0.95)" : "rgba(10,12,18,0.78)");
       ctx.fillStyle = lit ? "#1a1408" : !open ? "#a3a8bd" : "#ece7da"; Furi.draw(ctx, label, lx, ly + 1.5, 8);
@@ -87,8 +116,9 @@ var WorldMap = (function () {
   function spotAt(ev) {
     var rect = cv.getBoundingClientRect();
     var x = (ev.clientX - rect.left) / rect.width * MW, y = (ev.clientY - rect.top) / rect.height * MH;
-    for (var i = 0; i < REGION.spots.length; i++) {
-      var s = REGION.spots[i];
+    var list = spots();
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i];
       if (Math.abs(x - s.x) <= 22 && y >= s.y - 16 && y <= s.y + 24) return s;
     }
     return null;
@@ -98,6 +128,7 @@ var WorldMap = (function () {
     if (!s) return;
     if (s.kind === "base") { close(); return; }
     if (!isOpen(s)) { showNote("まだ行けない場所。先のダンジョンの主をたおすと、道が開けるかも…？"); return; }
+    if (s.kind === "road") { goRegion(s.to); return; }
     // 休みの日と、1日に出発できる回数（保護者画面で決める。テスト用の設定で外せる）
     if (!GameState.unlimited() && !GameState.inSandbox()) {
       if (GameState.restToday()) { toRestTrial(); return; } // 休みの日：知恵の試練だけ
@@ -112,6 +143,13 @@ var WorldMap = (function () {
   });
   window.addEventListener("resize", function () { if (!el.hidden) draw(); });
 
+  // となりの地方へ移る（2026-10-27 保護者と決定：地図の端の道から）。移った先の地方の地図を出す。
+  // 拠点にもどると、その地方の町に入る
+  function goRegion(id) {
+    hover = null;
+    GameState.setRegion(id);
+    Loading.show(GameData.regionOf(id).name + "へ", function () { open(); showNote(GameData.regionOf(id).name + "に着いた。"); });
+  }
   function showNote(t) { document.getElementById("worldNote").textContent = t; }
 
   // ---------- 何階に挑むか ----------
