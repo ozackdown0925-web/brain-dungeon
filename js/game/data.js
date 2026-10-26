@@ -65,15 +65,19 @@ var GameData = (function () {
                    growth: { str: 2.0, vit: 1.5, mag: 2.0, int: 1.0 } },
     ninja:       { name: "忍者",     weapons: ["sword", "greatsword", "axe", "spear", "bow", "fist", "staff"], armor: "light", color: "#4a4a5a", tier: 2, from: "warrior", from2: "hunter",
                    growth: { str: 2.0, vit: 1.5, mag: 1.0, int: 1.5 } },
-    gladiator:   { name: "剣闘士",   weapons: ["sword", "axe"], armor: "heavy", color: "#c8643a", tier: 2, from: "warrior", from2: "fighter",
+    gladiator:   { name: "剣闘士",   weapons: ["sword", "axe"], armor: "light",   // 2026-10-26：重装備→軽装備（保護者。絵がはだかの胸なので）
+                 color: "#c8643a", tier: 2, from: "warrior", from2: "fighter",
                    growth: { str: 2.5, vit: 2.0, mag: 0.5, int: 0.5 } },
     paladin:     { name: "聖騎士",   weapons: ["spear"], armor: "heavy", color: "#e8e0b0", tier: 2, from: "warrior", from2: "priest",
                    growth: { str: 1.5, vit: 2.5, mag: 1.5, int: 1.0 } },
     sage:        { name: "賢者",     weapons: ["staff"], armor: "magic", color: "#4ec0a0", tier: 2, from: "mage", from2: "priest",
-                   growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 2.0 } }
+                   growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 2.0 } },
+    // 魔物使い（2026-10-26 保護者と決定）：狩人＋魔術師。弓と杖／軽装備。たおしたダンジョンの主を呼んで、大技を使わせる
+    tamer:       { name: "魔物使い", weapons: ["bow", "staff"], armor: "light", color: "#5c8a6a", tier: 2, from: "hunter", from2: "mage",
+                   growth: { str: 1.5, vit: 1.0, mag: 2.0, int: 2.0 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
-  var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage", "magicknight", "ninja", "gladiator", "paladin", "sage"];   // 作った上級職
+  var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage", "magicknight", "ninja", "gladiator", "paladin", "sage", "tamer"];   // 作った上級職
   function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
@@ -85,9 +89,10 @@ var GameData = (function () {
     { id: "whitemage", name: "白魔道士",   need: [["priest", 7]],  arms: "杖／魔法装備",                 note: "回復と、仲間を強くする魔法" },
     { id: "magicknight", name: "魔法剣士", need: [["warrior", 5], ["mage", 5]],    arms: "剣・大剣／重装備", note: "剣に火・水・草の力をのせる。魔術師の魔法も使える" },
     { id: "ninja", name: "忍者",       need: [["warrior", 5], ["hunter", 5]],  arms: "どの武器も／軽装備",   note: "どの武器でも戦える。忍術で身をかくす" },
-    { id: "gladiator", name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・斧／重装備",   note: "HPが少ないほど強くなる、連続の斬りわざ" },
+    { id: "gladiator", name: "剣闘士",     need: [["warrior", 5], ["fighter", 5]], arms: "剣・斧／軽装備",   note: "HPが少ないほど強くなる、連続の斬りわざ" },
     { id: "paladin", name: "聖騎士",     need: [["warrior", 5], ["priest", 5]],  arms: "槍／重装備",       note: "光の槍と守り。僧侶の魔法も使える" },
-    { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" }
+    { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" },
+    { id: "tamer", name: "魔物使い",   need: [["hunter", 5], ["mage", 5]],     arms: "弓・杖／軽装備",   note: "たおしたダンジョンの主を呼んで、大技を使わせる。魔術師の魔法も使える" }
   ];
   var TOP_JOBS = [
     { name: "聖剣士",     from: "騎士",       note: "光の剣でたたかう" },
@@ -99,13 +104,13 @@ var GameData = (function () {
     { name: "竜騎士",     from: "忍者",       note: "ジャンプと、敵を通りぬける突進" },
     { name: "剣闘王",     from: "剣闘士",     note: "まわりを何度も斬る大旋風" },
     { name: "聖騎士長",   from: "聖騎士",     note: "全員の受けるダメージを大きく減らす" },
-    { name: "召喚士",     from: "賢者",       note: "たおしたボスを呼んで大技を使わせる" }
+    { name: "召喚士",     from: "魔物使い",   note: "幻獣の祠でたおした幻獣を呼ぶ" }
   ];
   // 系統：その職と、その職からつながる上級職・最上級職
   // 組み合わせの上級職（2026-10-20）：魔法剣士は魔術師の系統、聖騎士は僧侶の系統、賢者は両方の系統にも入る
-  var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage"], hunter: ["hunter", "sniper"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
+  var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage", "tamer"], hunter: ["hunter", "sniper", "tamer"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
                 knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"],
-                magicknight: ["magicknight"], ninja: ["ninja"], gladiator: ["gladiator"], paladin: ["paladin"], sage: ["sage"] };
+                magicknight: ["magicknight"], ninja: ["ninja"], gladiator: ["gladiator"], paladin: ["paladin"], sage: ["sage"], tamer: ["tamer"] };
 
   // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
   // fx＝効果の並び。t の種類：
@@ -312,7 +317,20 @@ var GameData = (function () {
     { id: "sg.fire",  job: "sage", star: 6, name: "ファイアストーム", desc: "まわりに、炎のうずを起こす（火）。", short: "ストーム", cond: { line: "sage" }, mp: 16, ct: 10,
       fx: [{ t: "around", vis: "firestorm", stat: "m", mult: 2.2, radius: 50, elem: "fire", color: "#ff8a3d" }] },
     { id: "sg.meteor",job: "sage", star: 7, name: "メテオ", desc: "前の広いところに、隕石を3つ降らせる。", short: "メテオ", cond: { line: "sage" }, mp: 24, ct: 25,
-      fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] }
+      fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] },
+    // 魔物使い（2026-10-26 保護者と決定）：はじめはパッシブ。★1〜★6 は各ダンジョンの主を呼ぶ。呼べるのは、その★になって、その主をたおしているとき（boss）。
+    // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。数字は仮
+    { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
+    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "大木の魔物を呼ぶ。地面から根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 18, ct: 30,
+      fx: [{ t: "summon", boss: "tree_boss", stat: "m", mult: 2.4, elem: "grass" }] },
+    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 22, ct: 30,
+      fx: [{ t: "summon", boss: "witch_boss", stat: "m", mult: 2.6, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
+    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわり8方向に、敵をつらぬく闇の矢を2回撃つ（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 26, ct: 35,
+      fx: [{ t: "summon", boss: "elf_boss", stat: "m", mult: 1.0, elem: "dark" }] },
+    // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
+    { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
+    { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
+    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });

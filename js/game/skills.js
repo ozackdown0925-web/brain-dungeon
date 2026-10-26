@@ -152,11 +152,13 @@ var Combat = (function () {
   }
   // スキル用：狙う時間のあとに fn を行う（撃つ前後に止まる）。ため（charge）のあとでも同じ
   function aimThen(c, aim, fn) {
-    var a = A();
-    a.busy = Math.max(a.busy, aim.before + aim.after);
-    effects.push({ kind: "charge", t: aim.before, max: aim.before });
-    later(aim.before, function () { if (Party.current() !== c || c.down) return; fn(); });
+    var a = A(), k = castK(c), before = aim.before * k;
+    a.busy = Math.max(a.busy, (aim.before + aim.after) * k);
+    effects.push({ kind: "charge", t: before, max: before });
+    later(before, function () { if (Party.current() !== c || c.down) return; fn(); });
   }
+  // パッシブ「すばやい構え」（魔物使い、2026-10-26）：スキルの構え・ための時間にかける数（0.7 なら30%短い）
+  function castK(c) { return 1 - ((c && c.stats && c.stats.castcut) || 0); }
   function normalAttack(c) {
     var a = A();
     var w = GameData.WEAPONS[c.weapon];
@@ -227,7 +229,7 @@ var Combat = (function () {
     Sound.play("skill");
     // スキルの演出（2026-10-21 保護者の案）：構え（黄色い輪）→ 画面が少し暗くなり、使った仲間のまわりが光る → 技が出る。
     // どのスキルも 0.25 秒は構える。もともと構えやためが長いスキル（弓・魔法・ためる技）は、そのままの長さ。時間は止めない
-    var own = ownWindup(s.fx), col = castColor(s);
+    var own = ownWindup(s.fx) * castK(c), col = castColor(s), castT = CAST_TIME * castK(c);
     if (own > 0) {
       curSkill = id;
       run(c, s.fx, 0);
@@ -236,9 +238,9 @@ var Combat = (function () {
       return "";
     }
     var a = A();
-    a.busy = Math.max(a.busy, CAST_TIME);
-    effects.push({ kind: "charge", t: CAST_TIME, max: CAST_TIME });
-    later(CAST_TIME, function () {
+    a.busy = Math.max(a.busy, castT);
+    effects.push({ kind: "charge", t: castT, max: castT });
+    later(castT, function () {
       if (Party.current() !== c || c.down || c.status.sleep) {   // 構えているあいだに入れかえた・たおれた・眠った：MP と待ち時間はもどす
         c.mp = Math.min(c.stats.mp, c.mp + cost); c.ct[id] = 0; if (s.once) c.used[id] = false;
         return;
@@ -310,9 +312,10 @@ var Combat = (function () {
     for (var i = from; i < fx.length; i++) {
       var f = fx[i];
       if (f.t === "charge" || f.t === "pause") {   // pause：見た目を出さずに少し待つ（旋風撃の回転のあと）
-        A().busy = Math.max(A().busy, f.time);
-        if (f.t === "charge") effects.push({ kind: "charge", t: f.time, max: f.time });
-        later(f.time, (function (next) { return function () { run(c, fx, next); }; })(i + 1));
+        var ft = f.t === "charge" ? f.time * castK(c) : f.time;   // ためは「すばやい構え」で短くなる
+        A().busy = Math.max(A().busy, ft);
+        if (f.t === "charge") effects.push({ kind: "charge", t: ft, max: ft });
+        later(ft, (function (next) { return function () { run(c, fx, next); }; })(i + 1));
         return;
       }
       apply(c, f);
@@ -392,6 +395,9 @@ var Combat = (function () {
         aimThen(c, AIM.bolt, function () {
           zones.push({ c: c, f: f, x: a.x + a.face.x * f.dist, y: a.y + a.face.y * f.dist, t: f.dur, max: f.dur, tick: 0 });
         });
+        break;
+      case "summon":    // 魔物使い：ダンジョンの主を呼ぶ（2026-10-26）
+        summon(c, f);
         break;
       case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
         var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
@@ -545,6 +551,95 @@ var Combat = (function () {
 
   function later(t, fn) { queue.push({ t: t, fn: fn }); }
 
+  // ---------- 魔物使い：ダンジョンの主を呼ぶ（2026-10-26 保護者と決定） ----------
+  // 魔法陣から主があらわれ（呼ぶあいだは止まる）、大技を1回、敵に使って消える。強さは呼んだ仲間の魔攻で決まる
+  //   大木の魔物：根の大波（向いている方へ、部屋のはしからはしまでの帯を3本）
+  //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
+  //   ダークエルフ：ダークアロー（まわり8方向に、敵をつらぬく闇の矢を2回）
+  var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
+  var SUMMON = { appear: 0.5, stay: 1.6, stand: 0.6 };
+  function summon(c, f) {
+    var a = A(), k = castK(c);
+    a.busy = Math.max(a.busy, SUMMON.stand * k);
+    var fx = a.face.x, fy = a.face.y;
+    var sx = a.x - fx * 20 + (Math.abs(fy) > 0.5 ? 18 : 0), sy = a.y - fy * 14;   // 仲間の少し後ろ（たてを向いているときは横）
+    var s = { kind: f.boss, x: sx, y: sy, t: 0, max: SUMMON.stay + (f.boss === "elf_boss" ? 0.6 : 0), face: { x: fx >= 0 ? 1 : -1, y: 0 } };
+    summons.push(s);
+    Sound.play("skill");
+    var spec = { stat: f.stat, mult: f.mult, elem: f.elem, status: f.status, push: 4 };
+    later(SUMMON.appear, function () {
+      if (f.boss === "tree_boss") summonRoots(c, spec, a);
+      else if (f.boss === "witch_boss") summonPillars(c, spec, a);
+      else if (f.boss === "elf_boss") { summonArrows(c, spec, s, 0); later(0.5, function () { summonArrows(c, spec, s, Math.PI / 8); }); }
+    });
+  }
+  function summonRoots(c, spec, a) {
+    var room = hooks.room, W = 22, along = Math.abs(a.face.x) >= Math.abs(a.face.y);
+    [-30, 0, 30].forEach(function (off) {
+      var h = along ? { kind: "rect", x: 0, y: a.y + off - W / 2, w: room.pxW, h: W } : { kind: "rect", x: a.x + off - W / 2, y: 0, w: W, h: room.pxH };
+      h.warn = 0.45; h.erupt = 0.4;
+      h.ally = function (hz) {
+        Sound.play("hit");
+        Enemies.hostile().forEach(function (e) {
+          if (e.x > hz.x - e.r && e.x < hz.x + hz.w + e.r && e.y > hz.y - e.r && e.y < hz.y + hz.h + e.r) hitEnemy(e, c, spec, hz.x + hz.w / 2, hz.y + hz.h / 2);
+        });
+      };
+      Bosses.addAlly(h);
+    });
+  }
+  function summonPillars(c, spec, a) {
+    var list = Enemies.hostile().slice().sort(function (p, q) {
+      return (p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y) - (q.x - a.x) * (q.x - a.x) - (q.y - a.y) * (q.y - a.y);
+    }).slice(0, 5);
+    var spots = list.map(function (e) { return { x: e.x, y: e.y }; });
+    if (!spots.length) spots.push({ x: a.x + a.face.x * 40, y: a.y + a.face.y * 40 });
+    spots.forEach(function (sp) {
+      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.6, erupt: 0.5 };
+      h.ally = function (hz) {
+        Sound.play("hit");
+        Enemies.hostile().forEach(function (e) {
+          var dx = e.x - hz.x, dy = e.y - hz.y;
+          if (dx * dx + dy * dy < (hz.r + e.r) * (hz.r + e.r)) hitEnemy(e, c, spec, hz.x, hz.y);
+        });
+      };
+      Bosses.addAlly(h);
+    });
+  }
+  function summonArrows(c, spec, s, base) {
+    if (Party.current() !== c || c.down) return;
+    Sound.play("skill");
+    for (var i = 0; i < 8; i++) {
+      var ang = base + i * Math.PI / 4, speed = 130;
+      shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: spec.elem, pierce: true, dark: true, push: 4 },
+        x: s.x + Math.cos(ang) * 8, y: s.y - 10 + Math.sin(ang) * 8, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+        life: 170 / speed, size: 4, color: "#a040ff", arrow: false });
+    }
+  }
+  function drawSummons(ctx, cam) {
+    summons.forEach(function (s) {
+      var x = Math.round(s.x - cam.x), y = Math.round(s.y - cam.y);
+      var inK = Math.min(1, s.t / SUMMON.appear), outK = Math.min(1, (s.max - s.t) / 0.35), al = Math.max(0, Math.min(inK, outK));
+      // 足もとの魔法陣（緑の光の輪）
+      ctx.globalAlpha = al;
+      ctx.strokeStyle = "rgba(150,240,190,0.85)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x, y, 22, 10, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "rgba(220,255,230,0.6)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x, y, 15, 6.5, 0, 0, Math.PI * 2); ctx.stroke();
+      for (var n = 0; n < 6; n++) {
+        var an = clock * 2 + n * Math.PI / 3;
+        glowDot(ctx, x + Math.cos(an) * 22, y + Math.sin(an) * 10, 3, "#ffffff", "#7ae0a8", 0.8);
+      }
+      // 主の絵：下からせり上がるように出て、少しすけている
+      var rise = Math.round((1 - inK) * 10);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x - 70, y - 140, 140, 142); ctx.clip();   // 地面より下は見せない（せり上がる）
+      ctx.globalAlpha = al * 0.85;
+      Monsters.drawBoss(ctx, { def: { kind: s.kind }, face: s.face, flash: 0 }, x, y + rise, "stand");
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    });
+  }
+
   // ---------- 毎フレーム ----------
   var clock = 0;
   function update(dt) {
@@ -605,9 +700,10 @@ var Combat = (function () {
       if (zn.t <= 0) zones.splice(z, 1);
     }
     for (var k = effects.length - 1; k >= 0; k--) { effects[k].t -= dt; if (effects[k].t <= 0) effects.splice(k, 1); }
+    for (var m = summons.length - 1; m >= 0; m--) { summons[m].t += dt; if (summons[m].t >= summons[m].max) summons.splice(m, 1); }
   }
 
-  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; cast = null; }
+  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; summons.length = 0; cast = null; }
 
   // ---------- 描画 ----------
   function draw(cam) {
@@ -620,6 +716,7 @@ var Combat = (function () {
       ctx.beginPath(); ctx.moveTo(tx - 3, ty); ctx.lineTo(tx + 3, ty); ctx.lineTo(tx, ty + 4); ctx.closePath(); ctx.fill();
     }
     zones.forEach(function (zn) { drawZone(ctx, zn, cam); });
+    drawSummons(ctx, cam);
     shots.forEach(function (s) {
       var x = s.x - cam.x, y = s.y - cam.y;
       if (s.arrow) {   // 矢（今のまま）
@@ -628,6 +725,7 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
+      if (s.spec.dark) { Bosses.drawDarkArrow(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの闇の矢
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
       if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）

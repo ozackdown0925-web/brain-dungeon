@@ -266,7 +266,7 @@ var Town = (function () {
   function recommendEquip(h) {
     var rec = GameState.recommendEquip(h), pv = GameState.previewEquip(h, rec);
     if (!pv.changed) { say("いまの装備が、おすすめと同じ"); return; }
-    var magic = ["mage", "priest", "blackmage", "whitemage", "sage"].indexOf(h.job) >= 0;
+    var magic = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer"].indexOf(h.job) >= 0;
     var lines = ["おすすめの装備（" + (magic ? "魔攻 → 魔防 → 物攻 → 物防" : "物攻 → 物防 → 魔攻 → 魔防") + " の順にくらべた）"];
     ["weapon", "armor"].forEach(function (slot) {
       var w = slot === "weapon" ? "武器：" : "防具：";
