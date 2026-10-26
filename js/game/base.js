@@ -176,7 +176,10 @@ var Base = (function () {
       pbox.appendChild(card);
     });
 
-    // 町の絵（建物を押すと開く）
+    // 町の名前と絵（建物を押すと開く）。いる地方の町（2026-10-27）
+    var R = GameData.regionOf(GameState.region());
+    document.getElementById("baseTitle").textContent = R.base;
+    document.getElementById("baseHint").textContent = "建物を押すと開く。冒険には「" + R.gate + "」から出発する。";
     drawTown();
     document.getElementById("baseNote").textContent = "";
 
@@ -197,7 +200,7 @@ var Base = (function () {
   var TW = 320, TH = 180;
   // 建物の場所は、町の絵（assets/maps/elm_village.png）に合わせる
   var BUILDINGS = [
-    { id: "gate",    name: "森の門（出発）",   x: 136, y: 4,   w: 48, h: 30 },
+    { id: "gate",    name: "森の門（出発）",   x: 136, y: 4,   w: 48, h: 30 },   // 名前は地方の門（drawTown で決める）
     { id: "party",   name: "宿屋",             x: 18,  y: 16,  w: 58, h: 58 },
     { id: "shop",    name: "お店",             x: 18,  y: 100, w: 58, h: 40 },
     { id: "smith",   name: "鍛冶屋",           x: 242, y: 26,  w: 60, h: 48 },
@@ -220,8 +223,11 @@ var Base = (function () {
     ctx.imageSmoothingEnabled = false;
     function r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
     // 町の絵（mapart.js。読みこめたら描き直す）
-    var art = MapArt.get("town", drawTown);
+    // 地方2の町の絵は、保護者の絵ができるまで mapart.js の仮の絵（建物の場所はエルム村と同じ）
+    var R = GameData.regionOf(GameState.region());
+    var art = MapArt.get(R.art.town, drawTown);
     if (art) ctx.drawImage(art, 0, 0, TW, TH); else r(0, 0, TW, TH, "#3b5a2f");
+    BUILDINGS[0].name = R.gate + "（出発）";
     BUILDINGS.forEach(function (b) {
       var lit = hover === b.id;
       if (lit) {   // 指している建物を、金色のわくで囲む
@@ -312,6 +318,8 @@ var Base = (function () {
   // そのあと、レベルアップなどを1行ずつ → ロード画面（Tips）→ 拠点（2026-10-18 保護者の案）
   function returnFrom(result) {
     var report = GameState.applyAdventure(result);
+    // そのダンジョンの地方の町へ帰る（保護者のテスト用の出発で、ほかの地方のダンジョンに行ったときのため）
+    GameState.setRegion(GameData.dungeonOf(result.dungeon).region);
     baseEl.hidden = true; createEl.hidden = true;
     var list = [], lvSound = false;
     (report || []).forEach(function (p) {
@@ -324,7 +332,7 @@ var Base = (function () {
       });
     });
     Loading.lines(list, "", function () {
-      Loading.show(GameData.PLACES.base + "へ帰る", function () {
+      Loading.show(GameState.baseName() + "へ帰る", function () {
         showBase(null);
         if (result.tryMode) document.getElementById("baseNote").textContent = "試しモードだったので、出発する前のセーブにもどした（記録にもセーブにも残らない）。";
       });
@@ -335,7 +343,7 @@ var Base = (function () {
   function showReport(rep) {
     var box = document.getElementById("baseReport"); box.textContent = "";
     var r = rep.result;
-    box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor, r.dungeon) + "をクリアして、" + GameData.PLACES.base + "にもどった" : GameData.PLACES.base + "にもどった"));
+    box.appendChild(el("h3", "", r.cleared ? GameData.floorLabel(r.floor, r.dungeon) + "をクリアして、" + GameState.baseName() + "にもどった" : GameState.baseName() + "にもどった"));
     if (rep.note) box.appendChild(el("p", "", rep.note));
     if (!r.tryMode) box.appendChild(el("p", "", "持ち帰ったもの：" + r.gold + "G　鉱石 " + r.mat.iron + "　魔石 " + r.mat.stone + (r.mat.gem ? "　宝玉 " + r.mat.gem : "") + "　装備 " + r.items.length + "個" + (r.title ? "　称号「" + r.title + "」" : "")));
     if (rep.people.some(function (p) { return p.lines.some(function (t) { return t.indexOf("レベルが") === 0; }); })) Sound.play("levelup");

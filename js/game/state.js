@@ -82,6 +82,24 @@ var GameState = (function () {
     if (!dd.needs) return true;
     return progressOf(dd.needs).deepest >= GameData.dungeonOf(dd.needs).floors;
   }
+  // ---------- 地方（地方2の段階1、2026-10-27） ----------
+  // 地方に行けるか：その地方の needs のダンジョンが開いていれば行ける
+  function regionOpen(id) {
+    var R = GameData.REGIONS[id];
+    return !!R && (!R.needs || unlocked(R.needs));
+  }
+  // 今いる地方（拠点の町とワールドマップ）。行けない地方なら最初の地方
+  function region() {
+    var id = game && game.region;
+    return id && regionOpen(id) ? id : "forestveil";
+  }
+  function setRegion(id) {
+    if (!game || !regionOpen(id) || game.region === id) return;
+    game.region = id; save();
+  }
+  // 今いる地方の拠点の町の名前
+  function baseName() { return GameData.regionOf(region()).base; }
+
   // 今いちばん深く行った強さの深さ（お店の装備のレベルに使う）
   function deepestPower(g) {
     var best = 0;
@@ -256,6 +274,12 @@ var GameState = (function () {
     if (r.cleared && !r.tryMode) {
       GameData.DUNGEON_ORDER.forEach(function (id) {
         if (open0.indexOf(id) >= 0 || !unlocked(id)) return;
+        // 新しい地方の最初のダンジョンなら、地方への道が開けたことを知らせる（2026-10-27）
+        var R = GameData.regionOf(GameData.dungeonOf(id).region);
+        if (R.needs === id) {
+          report.push({ name: "", raw: true, lines: ["新しい地方「" + R.name + "」への道が開けた！（ワールドマップの北の山道から行ける）"], exp: 0 });
+          return;
+        }
         report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });
       });
       var st = shopTier();
@@ -964,7 +988,7 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
-    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,

@@ -133,7 +133,7 @@ var Loading = (function () {
       log.appendChild(el("div", "msg-line", item.text));
       if (item.sound && window.Sound) Sound.play(item.sound);
       i++;
-      if (i >= list.length) hint.textContent = "タップで " + GameData.PLACES.base + " へ";
+      if (i >= list.length) hint.textContent = "タップで " + GameState.baseName() + " へ";
       // 押しっぱなしで一気に進まないように、少しだけ間をあける
       ready = false; setTimeout(function () { ready = true; }, 250);
     }
