@@ -558,7 +558,7 @@ var Combat = (function () {
   // 魔法陣から主があらわれ（呼ぶあいだは止まる）、大技を1回、敵に使って消える。強さは呼んだ仲間の魔攻で決まる
   //   大木の魔物：根の大波（自分を中心に十字。部屋のはしからはしまでの横と縦の帯）
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
-  //   ダークエルフ：ダークアロー（まわり8方向に、敵をつらぬく闇の矢を2回）
+  //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して、近くの敵をねらって1つずつ撃つ。敵をつらぬく）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
   var SUMMON = { appear: 0.3, stay: 1.4, stand: 0.6 };   // 2026-10-26：当たるまでを早く（あらわれる 0.5→0.3秒）
   function summon(c, f) {
@@ -566,14 +566,15 @@ var Combat = (function () {
     a.busy = Math.max(a.busy, SUMMON.stand * k);
     var fx = a.face.x, fy = a.face.y;
     var sx = a.x - fx * 20 + (Math.abs(fy) > 0.5 ? 18 : 0), sy = a.y - fy * 14;   // 仲間の少し後ろ（たてを向いているときは横）
-    var s = { kind: f.boss, x: sx, y: sy, t: 0, max: SUMMON.stay + (f.boss === "elf_boss" ? 0.6 : 0), face: { x: fx >= 0 ? 1 : -1, y: 0 } };
+    var s = { kind: f.boss, x: sx, y: sy, t: 0, max: SUMMON.stay + (f.boss === "elf_boss" ? ELF_ORB.gather + ELF_ORB.n * ELF_ORB.gap : 0), face: { x: fx >= 0 ? 1 : -1, y: 0 } };
+    if (f.boss === "elf_boss") { s.orbN = ELF_ORB.n; s.slots = []; for (var o = 0; o < ELF_ORB.n; o++) s.slots.push(o); s.ang = Math.random() * Math.PI * 2; }
     summons.push(s);
     Sound.play("skill");
     var spec = { stat: f.stat, mult: f.mult, elem: f.elem, status: f.status, push: 4 };
     later(SUMMON.appear, function () {
       if (f.boss === "tree_boss") summonRoots(c, spec, a);
       else if (f.boss === "witch_boss") summonPillars(c, spec, a);
-      else if (f.boss === "elf_boss") { summonArrows(c, spec, s, 0); later(0.5, function () { summonArrows(c, spec, s, Math.PI / 8); }); }
+      else if (f.boss === "elf_boss") for (var n = 0; n < ELF_ORB.n; n++) later(ELF_ORB.gather + n * ELF_ORB.gap, function () { summonOrbShot(c, spec, s); });
     });
   }
   function summonRoots(c, spec, a) {
@@ -611,15 +612,29 @@ var Combat = (function () {
       Bosses.addAlly(h);
     });
   }
-  function summonArrows(c, spec, s, base) {
-    if (Party.current() !== c || c.down) return;
-    Sound.play("skill");
-    for (var i = 0; i < 8; i++) {
-      var ang = base + i * Math.PI / 4, speed = 130;
-      shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: spec.elem, pierce: true, dark: true, push: 4 },
-        x: s.x + Math.cos(ang) * 8, y: s.y - 10 + Math.sin(ang) * 8, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
-        life: 170 / speed, size: 4, color: "#a040ff", arrow: false });
+  // ダークエルフ（2026-10-26 作りなおし）：まわりに闇の玉を6つ回して、近くの敵をねらって1つずつ撃つ（敵をつらぬく）
+  var ELF_ORB = { n: 6, gather: 0.4, gap: 0.16 };
+  function elfOrbPos(s, i) {
+    var a = s.ang + s.slots[i] / s.orbN * Math.PI * 2;
+    return { x: s.x + Math.cos(a) * 26, y: s.y - 18 + Math.sin(a) * 15 };
+  }
+  function summonOrbShot(c, spec, s) {
+    if (!s.slots.length) return;
+    var list = Enemies.hostile(), best = 0, bd = 1e9, tgt = null;
+    // ねらう敵：呼んだ場所からいちばん近い敵。玉は、その敵にいちばん近いものから撃つ
+    list.forEach(function (e) { var dx = e.x - s.x, dy = e.y - s.y, d = dx * dx + dy * dy; if (!tgt || d < bd) { tgt = e; bd = d; } });
+    bd = 1e9;
+    for (var i = 0; i < s.slots.length; i++) {
+      var op = elfOrbPos(s, i), d2 = tgt ? (tgt.x - op.x) * (tgt.x - op.x) + (tgt.y - op.y) * (tgt.y - op.y) : 0;
+      if (d2 < bd) { bd = d2; best = i; }
     }
+    var o = elfOrbPos(s, best);
+    s.slots.splice(best, 1);
+    var ang = tgt ? Math.atan2(tgt.y - 3 - o.y, tgt.x - o.x) : s.ang + best;
+    var speed = 190;
+    shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: spec.elem, pierce: true, dark: true, push: 4 },
+      x: o.x, y: o.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 200 / speed, size: 4, color: "#a040ff", arrow: false });
+    Sound.play("skill");
   }
   function drawSummons(ctx, cam) {
     summons.forEach(function (s) {
@@ -643,6 +658,16 @@ var Combat = (function () {
       Monsters.drawBoss(ctx, { def: { kind: s.kind }, face: s.face, flash: 0 }, x, y + rise, "stand");
       ctx.restore();
       ctx.globalAlpha = 1;
+      if (s.slots && s.slots.length) {   // ダークエルフ：まわりを回る闇の玉（1つずつあらわれる）
+        s.ang += 3.2 / 60;
+        var shown = Math.min(s.slots.length, Math.ceil(s.orbN * Math.min(1, (s.t - SUMMON.appear + 0.1) / ELF_ORB.gather)));
+        for (var oi = 0; oi < shown; oi++) {
+          var op = elfOrbPos(s, oi);
+          ctx.globalAlpha = al * (op.y < s.y - 18 ? 0.6 : 1);
+          Bosses.drawDarkOrb(ctx, Math.round(op.x - cam.x), Math.round(op.y - cam.y), 1.0, clock);
+        }
+        ctx.globalAlpha = 1;
+      }
     });
   }
 
@@ -731,7 +756,7 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
-      if (s.spec.dark) { Bosses.drawDarkArrow(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの闇の矢
+      if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
       if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）

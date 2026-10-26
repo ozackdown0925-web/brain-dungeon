@@ -458,8 +458,9 @@ var Bosses = (function () {
       if (e.t <= 0) { e.untouchable = false; e.state = "recover"; e.t = 0.2; }
       return;
     }
-    if (e.state === "dark") {   // ダークアロー：まわりを回りながら、8方向に闇の矢（1回ごとに向きを半分ずらす）
+    if (e.state === "dark") {   // ダークアロー（2026-10-26 作りなおし）：まわりに闇の玉を回して、プレイヤーをねらって1つずつ撃つ
       e.t -= dt;
+      e.daAng = (e.daAng || 0) + dt * 3.2 * e.daSpin;
       if (!e.status.para) {
         var out = gap < d.keepMin ? -0.6 : gap > d.keepMax ? 0.6 : 0;
         var mx = -uy * e.strafe + ux * out, my = ux * e.strafe + uy * out, ml = Math.sqrt(mx * mx + my * my) || 1;
@@ -469,13 +470,18 @@ var Bosses = (function () {
         e.walk = (e.walk || 0) + dt * 8;
       }
       e.face = { x: ux, y: uy };
-      if (e.t <= 0) {
-        // 大きなエネルギー弾を、まわりにぐるっと（HP が半分を切ると12方向）。弾は少しずつ曲がり、1回ごとに向きも回るので、うずまきに広がる
-        var nw = half ? d.daWaysHalf : d.daWays, step = Math.PI * 2 / nw;
-        for (var q = 0; q < nw; q++) api.addArrow(e, e.daBase + q * step, d.daSpeed, { darkArrow: true, magic: true, pierce: true, big: true, mult: d.daMult, rad: d.daR, life: 3.2, curve: d.daCurve * e.daSpin });
-        e.daBase += step / 3 * e.daSpin; e.daFlash = 0.3;
-        e.vol--;
-        if (e.vol > 0) e.t = d.daWindup;
+      if (e.t <= 0 && e.daLeft > 0) {
+        // いちばん前（プレイヤーに近い）玉から撃つ。撃つときのプレイヤーの場所をねらう
+        var best = 0, bd = 1e9;
+        for (var q = 0; q < e.daLeft; q++) {
+          var op = orbPos(e, q), odx = p.x - op.x, ody = p.y - op.y, od = odx * odx + ody * ody;
+          if (od < bd) { bd = od; best = q; }
+        }
+        var o = orbPos(e, best);
+        e.daLeft--; e.daSlots.splice(best, 1);
+        api.addArrow(e, Math.atan2(p.y - 6 - o.y, p.x - o.x), d.daSpeed, { darkArrow: true, magic: true, big: true, mult: d.daMult, rad: d.daR, life: 2.6, ox: o.x, oy: o.y });
+        e.daFlash = 0.2; Sound.play("skill");
+        if (e.daLeft > 0) e.t = half ? d.daGapHalf : d.daGap;
         else tire(e);   // 次のダークアローまでの時間は、始めたときから数える（眠りやしびれで止まっても、すぐにはくり返さない）
       }
       return;
@@ -485,8 +491,14 @@ var Bosses = (function () {
     if (p.down) return;
     e.face = { x: ux, y: uy };
     if (gap <= d.spinRange && e.ai.spin <= 0) { e.state = "spin"; e.t = d.spinWarn; return; }
-    if (e.ai.da <= 0) { e.state = "dark"; e.ai.da = half ? d.daEveryHalf : d.daEvery; e.vol = half ? d.daVolleysHalf : d.daVolleys; e.t = d.daWindup + 0.4;
-      e.daSpin = Math.random() < 0.5 ? 1 : -1; e.daBase = Math.random() * Math.PI * 2; Battle.pop(e.x, e.y - 50, "ダークアロー！", "#ef5b5b", 9); return; }
+    if (e.ai.da <= 0) {
+      var rng = half ? d.daCountHalf : d.daCount;
+      e.state = "dark"; e.ai.da = half ? d.daEveryHalf : d.daEvery; e.t = d.daWindup;
+      e.daN = rng[0] + Math.floor(Math.random() * (rng[1] - rng[0] + 1)); e.daLeft = e.daN; e.daSlots = [];
+      for (var sl = 0; sl < e.daN; sl++) e.daSlots.push(sl);   // 玉の場所（撃った玉の場所は空く）
+      e.daSpin = Math.random() < 0.5 ? 1 : -1; e.daAng = Math.random() * Math.PI * 2;
+      Battle.pop(e.x, e.y - 50, "ダークアロー！", "#ef5b5b", 9); return;
+    }
     if (e.ai.orb <= 0 && gap <= d.keepMax + 40) { e.state = "cast"; e.t = d.orbWindup; return; }
     if (e.cd <= 0 && gap <= d.keepMax + 60) { e.state = "aim"; e.t = d.aimTime; e.aim = { x: ux, y: uy }; return; }
     // ふだんは、はなれたところを回る
@@ -519,6 +531,34 @@ var Bosses = (function () {
   }
   // ダークアロー（2026-10-26 保護者の希望で、シューティングゲームのエネルギー弾のように大きく派手にした）：
   // うしろに光の残像、紫の光の玉がふくらんだり縮んだりして、まんなかは白く光る。life で光り方をずらす
+  // 回っている闇の玉 i の場所（エルフの胸のまわりを、横長の輪で回る）
+  function orbPos(e, i) {
+    var a = e.daAng + e.daSlots[i] / e.daN * Math.PI * 2;
+    return { x: e.x + Math.cos(a) * 26, y: e.y - 18 + Math.sin(a) * 15 };
+  }
+  // 回っている闇の玉（まるい光。尾はない）
+  function drawDarkOrb(ctx, x, y, s, glow) {
+    var pulse = 0.85 + 0.15 * Math.sin(glow * 12 + x * 0.1);
+    Combat.glowDot(ctx, x, y, 13 * s * pulse, "#e8c8ff", "#8a30e0", 0.7);
+    ctx.fillStyle = "rgba(60,10,110,0.85)"; ctx.beginPath(); ctx.arc(x, y, 5 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(245,220,255,0.95)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 5 * s, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(x - 1 - 1.5 * s), Math.round(y - 1 - 1.5 * s), 2, 2);
+  }
+  // 撃った闇の玉（2026-10-26）：飛ぶ向きにとがった頭と、後ろへのびる長い光の尾。回っている玉とちがって、向かう方向が分かる
+  function drawDarkBolt(ctx, x, y, vx, vy, life) {
+    var ang = Math.atan2(vy, vx), pulse = 0.9 + 0.1 * Math.sin((life || 0) * 30);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    var g = ctx.createLinearGradient(-34, 0, 0, 0);
+    g.addColorStop(0, "rgba(138,48,224,0)"); g.addColorStop(0.6, "rgba(160,64,255,0.55)"); g.addColorStop(1, "rgba(230,200,255,0.9)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(-4, -6 * pulse); ctx.lineTo(-4, 6 * pulse); ctx.closePath(); ctx.fill();   // 尾
+    ctx.restore();
+    Combat.glowDot(ctx, x, y, 14 * pulse, "#f0d8ff", "#a040ff", 0.75);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = "rgba(70,12,130,0.95)"; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, -6); ctx.lineTo(-2, 0); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill();   // とがった頭（矢じり）
+    ctx.strokeStyle = "rgba(245,225,255,0.95)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(1, -1, 4, 2);
+    ctx.restore();
+  }
   function drawDarkArrow(ctx, x, y, vx, vy, life) {
     var l = Math.sqrt(vx * vx + vy * vy) || 1, ux = vx / l, uy = vy / l, pulse = 0.85 + 0.15 * Math.sin((life || 0) * 28);
     for (var i = 5; i >= 1; i--) Combat.glowDot(ctx, x - ux * i * 6, y - uy * i * 6, (14 - i * 1.8) * pulse, "#e8c8ff", "#8a30e0", 0.6 - i * 0.1);
@@ -960,7 +1000,16 @@ var Bosses = (function () {
         var hx = x + (e.face.x > 0 ? -6 : 6);
         Combat.glowDot(ctx, hx, y + 14 - 48 + 3, 7 + Math.sin(glow * 10) * 2, "#e0c0ff", "#7a3ab8", 0.85);
       }
-      if (e.state === "dark") {   // 光が手もとに集まってくる
+      if (e.state === "dark" && e.daLeft > 0) {   // まわりを回る闇の玉（はじめは1つずつあらわれる）。奥の玉はエルフの後ろなので、うすく
+        var shown = e.daLeft === e.daN ? Math.min(e.daN, Math.ceil(e.daN * Math.min(1, 1.15 - Math.max(0, e.t) / d.daWindup))) : e.daLeft;
+        for (var oi = 0; oi < Math.min(shown, e.daLeft); oi++) {
+          var op2 = orbPos(e, oi), behind = op2.y < e.y - 18;
+          ctx.globalAlpha = behind ? 0.6 : 1;
+          drawDarkOrb(ctx, Math.round(op2.x - cam.x), Math.round(op2.y - cam.y), 1.3, glow);
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (e.state === "dark" && e.daLeft === e.daN) {   // 光が手もとに集まってくる（撃ちはじめるまで）
         var kg = Math.min(1, 1 - Math.max(0, e.t) / d.daWindup);
         for (var gq = 0; gq < 10; gq++) {
           var ga2 = gq * 0.628 + glow * 3 * (e.daSpin || 1), gr = 38 * (1 - ((kg + gq / 10) % 1));
@@ -969,7 +1018,7 @@ var Bosses = (function () {
         Combat.glowDot(ctx, x, y - 44, 5 + kg * 9, "#ffffff", "#9a40ff", 0.4 + 0.5 * kg);   // 頭の上に、闇の光が集まる
       }
       if (e.daFlash > 0) {   // 撃った光：紫の輪が広がる
-        var kf2 = 1 - e.daFlash / 0.3;
+        var kf2 = 1 - e.daFlash / 0.2;
         Combat.glowDot(ctx, x, y - 8, 30 * (1 - kf2) + 8, "#ffffff", "#b060ff", 0.55 * (1 - kf2));
         ctx.strokeStyle = "rgba(220,170,255," + (1 - kf2).toFixed(2) + ")"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(x, y - 8, 10 + 40 * kf2, 0, Math.PI * 2); ctx.stroke();
@@ -1012,5 +1061,5 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, shakeOffset: shakeOffset, addAlly: addAlly };
+           rockBreak: rockBreak, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
 })();

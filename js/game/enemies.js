@@ -28,7 +28,9 @@ var Enemies = (function () {
   // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
   function addArrow(e, angle, speed, opts) {
     // opts.dy：投げる高さ（ゴーレムは頭の上から）。opts.life：飛ぶ時間
-    arrows.push({ x: e.x + Math.cos(angle) * (e.r + 2), y: e.y + (opts && opts.dy || 0) + Math.sin(angle) * (e.r + 2), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+    // opts.ox・oy：飛び出す場所（ダークエルフの回る闇の玉。2026-10-26）
+    var sx = opts && opts.ox !== undefined ? opts.ox : e.x + Math.cos(angle) * (e.r + 2), sy = opts && opts.oy !== undefined ? opts.oy : e.y + (opts && opts.dy || 0) + Math.sin(angle) * (e.r + 2);
+    arrows.push({ x: sx, y: sy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
                   life: opts && opts.life || 2.6, from: e, opts: opts || null });
   }
 
@@ -627,7 +629,7 @@ var Enemies = (function () {
         Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 9 * (a.opts.spin || 1));
         return;
       }
-      if (a.opts && a.opts.darkArrow) { Bosses.drawDarkArrow(ctx, x, y, a.vx, a.vy, a.life); return; }   // ダークエルフのダークアロー
+      if (a.opts && a.opts.darkArrow) { Bosses.drawDarkBolt(ctx, x, y, a.vx, a.vy, a.life); return; }   // ダークエルフのダークアロー（撃った闇の玉）
       if (a.opts && a.opts.elfArrow) {   // ダークエルフのふつうの矢：銀の矢に、紫に光る矢じり
         var el = Math.sqrt(a.vx * a.vx + a.vy * a.vy), eux = a.vx / el, euy = a.vy / el;
         ctx.strokeStyle = "rgba(180,122,255,0.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - eux * 12, y - euy * 12); ctx.lineTo(x, y); ctx.stroke();
