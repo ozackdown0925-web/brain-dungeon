@@ -1,7 +1,8 @@
 // 知恵の試練（段階6-1）：ゲームの中の「毎日4問」。算数・国語・理科・社会を1問ずつ解くと、ダンジョンの扉が開く。
 // 問題の表示と答え合わせ・図への書きこみは、ドリルと同じ部品（js/drillcore.js）。GAS とのやりとりは js/api.js。
-// 出題のルール（CLAUDE.md・docs/game-design.md）：教科ごとに、①正解した回数が少ない問題が先、②同じなら優先度
-//   （テストでまちがえた問題（正答率30%未満は除く）→ 正答率の高い問題）、③それも同じなら日によって変える。3日後の復習はしない。
+// 出題のルール（CLAUDE.md・docs/game-design.md）：教科ごとに、①正解した回数が少ない問題が先、②同じなら、まちがえた問題
+//   （ドリルでまちがえた・テストでまちがえた（正答率30%以上））が先で、テストで正解した問題はあと（2026-10-27）、③同じなら優先度
+//   （テストでまちがえた問題（正答率30%未満は除く）→ 正答率の高い問題）、④それも同じなら日によって変える。3日後の復習はしない。
 // 問題と記録は GAS から（つなぎ先は sync.js。G-2 で「ためしの問題」はなくした）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Trial = (function () {
@@ -212,7 +213,11 @@ var Trial = (function () {
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
     var latest = latestTest(subject);
-    pool.sort(function (a, b) { return timesToday(a) - timesToday(b) || ok(a) - ok(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
+    // まちがえた問題が先（2026-10-27 保護者の希望）：正解した回数が同じなら、ドリルでまちがえた問題・テストでまちがえた問題
+    // （正答率30%以上）を先に出し、テストで正解した（まだドリルに出ていない）問題はそのあと。
+    // 前は正答率をそのまま点数にしていたので、みんなができる簡単な問題が、まちがえた問題と同じくらい先に出ていた
+    function missed(q) { return (h[q.id] && h[q.id].tries > 0 && h[q.id].ok === 0) || (q.testMiss && rateOf(q) >= 30) ? 0 : 1; }
+    pool.sort(function (a, b) { return timesToday(a) - timesToday(b) || ok(a) - ok(b) || missed(a) - missed(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
     var top = pool[0], th = h[top.id];
     return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }
