@@ -553,7 +553,7 @@ var Combat = (function () {
 
   // ---------- 魔物使い：ダンジョンの主を呼ぶ（2026-10-26 保護者と決定） ----------
   // 魔法陣から主があらわれ（呼ぶあいだは止まる）、大技を1回、敵に使って消える。強さは呼んだ仲間の魔攻で決まる
-  //   大木の魔物：根の大波（向いている方へ、部屋のはしからはしまでの帯を3本）
+  //   大木の魔物：根の大波（自分を中心に十字。部屋のはしからはしまでの横と縦の帯）
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
   //   ダークエルフ：ダークアロー（まわり8方向に、敵をつらぬく闇の矢を2回）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
@@ -574,14 +574,16 @@ var Combat = (function () {
     });
   }
   function summonRoots(c, spec, a) {
-    var room = hooks.room, W = 22, along = Math.abs(a.face.x) >= Math.abs(a.face.y);
-    [-30, 0, 30].forEach(function (off) {
-      var h = along ? { kind: "rect", x: 0, y: a.y + off - W / 2, w: room.pxW, h: W } : { kind: "rect", x: a.x + off - W / 2, y: 0, w: W, h: room.pxH };
+    // 2026-10-26 保護者の希望：向きが分かりにくいので、自分を中心に十字（横と縦の帯）に出す。まん中で重なっても、1体に当たるのは1回だけ
+    var room = hooks.room, W = 30, done = [];
+    [true, false].forEach(function (across) {
+      var h = across ? { kind: "rect", x: 0, y: a.y - W / 2, w: room.pxW, h: W } : { kind: "rect", x: a.x - W / 2, y: 0, w: W, h: room.pxH };
       h.warn = 0.45; h.erupt = 0.4;
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {
-          if (e.x > hz.x - e.r && e.x < hz.x + hz.w + e.r && e.y > hz.y - e.r && e.y < hz.y + hz.h + e.r) hitEnemy(e, c, spec, hz.x + hz.w / 2, hz.y + hz.h / 2);
+          if (done.indexOf(e) >= 0) return;
+          if (e.x > hz.x - e.r && e.x < hz.x + hz.w + e.r && e.y > hz.y - e.r && e.y < hz.y + hz.h + e.r) { done.push(e); hitEnemy(e, c, spec, a.x, a.y); }
         });
       };
       Bosses.addAlly(h);
