@@ -17,8 +17,11 @@ var Combat = (function () {
     var weapon = GameData.WEAPONS[c.weapon];
     // 「武器の属性」：魔法剣士の火炎剣などがかかっていれば、その属性（2026-10-20）
     var elem = spec.elem === "weapon" ? (c.enchant ? c.enchant.elem : weapon.element) : spec.elem;
-    var atk = spec.stat === "m" ? Party.eff(c, "matk") : Party.eff(c, "patk");
-    var def = spec.stat === "m" ? e.mdef : e.pdef * (e.status["break"] ? 0.7 : 1);
+    var pdef = e.pdef * (e.status["break"] ? 0.7 : 1);
+    // best：物攻と魔攻の高い方。守りは使った方（物攻なら物防、魔攻なら魔防）。魔物使いの呼ぶスキル（2026-10-26 保護者と決定）
+    var st = spec.stat === "best" ? (Party.eff(c, "matk") > Party.eff(c, "patk") ? "m" : "p") : spec.stat;
+    var atk = st === "m" ? Party.eff(c, "matk") : Party.eff(c, "patk");
+    var def = st === "m" ? e.mdef : pdef;
     if (spec.mult > 0) {
       var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
       dealt = res.amount;
@@ -557,7 +560,7 @@ var Combat = (function () {
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
   //   ダークエルフ：ダークアロー（まわり8方向に、敵をつらぬく闇の矢を2回）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
-  var SUMMON = { appear: 0.5, stay: 1.6, stand: 0.6 };
+  var SUMMON = { appear: 0.3, stay: 1.4, stand: 0.6 };   // 2026-10-26：当たるまでを早く（あらわれる 0.5→0.3秒）
   function summon(c, f) {
     var a = A(), k = castK(c);
     a.busy = Math.max(a.busy, SUMMON.stand * k);
@@ -578,7 +581,7 @@ var Combat = (function () {
     var room = hooks.room, W = 30, done = [];
     [true, false].forEach(function (across) {
       var h = across ? { kind: "rect", x: 0, y: a.y - W / 2, w: room.pxW, h: W } : { kind: "rect", x: a.x - W / 2, y: 0, w: W, h: room.pxH };
-      h.warn = 0.45; h.erupt = 0.4;
+      h.warn = 0.3; h.erupt = 0.4;   // 予告 0.45→0.3秒（2026-10-26）
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {
@@ -593,10 +596,11 @@ var Combat = (function () {
     var list = Enemies.hostile().slice().sort(function (p, q) {
       return (p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y) - (q.x - a.x) * (q.x - a.x) - (q.y - a.y) * (q.y - a.y);
     }).slice(0, 5);
-    var spots = list.map(function (e) { return { x: e.x, y: e.y }; });
+    var spots = list.map(function (e) { return { x: e.x, y: e.y, e: e }; });
     if (!spots.length) spots.push({ x: a.x + a.face.x * 40, y: a.y + a.face.y * 40 });
     spots.forEach(function (sp) {
-      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.6, erupt: 0.5 };
+      // 予告 0.6→0.4秒。予告のあいだ、輪がねらった敵についていく（2026-10-26：動く敵に外れないように）
+      var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, follow: sp.e || null };
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {
