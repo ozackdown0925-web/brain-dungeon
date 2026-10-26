@@ -470,7 +470,18 @@ var Bosses = (function () {
         e.walk = (e.walk || 0) + dt * 8;
       }
       e.face = { x: ux, y: uy };
-      if (e.t <= 0 && e.daLeft > 0) {
+      // 回っている玉にさわるとダメージ（2026-10-26 保護者の案）。1つの玉は0.6秒に1回まで
+      e.daHitT = e.daHitT || {};
+      var shownN = e.daPhase === "gather" ? Math.ceil(e.daN * Math.min(1, 1.15 - Math.max(0, e.t) / d.daWindup)) : e.daLeft;
+      for (var tq = 0; tq < Math.min(shownN, e.daLeft); tq++) {
+        var sl = e.daSlots[tq], tp = orbPos(e, tq);
+        e.daHitT[sl] = Math.max(0, (e.daHitT[sl] || 0) - dt);
+        var tdx = p.x - tp.x, tdy = (p.y - 6) - tp.y;
+        if (!p.down && e.daHitT[sl] <= 0 && tdx * tdx + tdy * tdy < (p.r + 6) * (p.r + 6)) { e.daHitT[sl] = 0.6; hurt(e, p.x, p.y - 8, { mult: d.daTouch, magic: true }); }
+      }
+      if (e.daPhase === "gather" && e.t <= 0) { e.daPhase = "orbit"; e.t = d.daOrbit; }   // そろったら、少し回ってから撃ちはじめる
+      else if (e.daPhase === "orbit" && e.t <= 0) { e.daPhase = "fire"; e.t = 0; }
+      if (e.daPhase === "fire" && e.t <= 0 && e.daLeft > 0) {
         // いちばん前（プレイヤーに近い）玉から撃つ。撃つときのプレイヤーの場所をねらう
         var best = 0, bd = 1e9;
         for (var q = 0; q < e.daLeft; q++) {
@@ -493,7 +504,7 @@ var Bosses = (function () {
     if (gap <= d.spinRange && e.ai.spin <= 0) { e.state = "spin"; e.t = d.spinWarn; return; }
     if (e.ai.da <= 0) {
       var rng = half ? d.daCountHalf : d.daCount;
-      e.state = "dark"; e.ai.da = half ? d.daEveryHalf : d.daEvery; e.t = d.daWindup;
+      e.state = "dark"; e.ai.da = half ? d.daEveryHalf : d.daEvery; e.t = d.daWindup; e.daPhase = "gather"; e.daHitT = {};
       e.daN = rng[0] + Math.floor(Math.random() * (rng[1] - rng[0] + 1)); e.daLeft = e.daN; e.daSlots = [];
       for (var sl = 0; sl < e.daN; sl++) e.daSlots.push(sl);   // 玉の場所（撃った玉の場所は空く）
       e.daSpin = Math.random() < 0.5 ? 1 : -1; e.daAng = Math.random() * Math.PI * 2;
@@ -1001,7 +1012,7 @@ var Bosses = (function () {
         Combat.glowDot(ctx, hx, y + 14 - 48 + 3, 7 + Math.sin(glow * 10) * 2, "#e0c0ff", "#7a3ab8", 0.85);
       }
       if (e.state === "dark" && e.daLeft > 0) {   // まわりを回る闇の玉（はじめは1つずつあらわれる）。奥の玉はエルフの後ろなので、うすく
-        var shown = e.daLeft === e.daN ? Math.min(e.daN, Math.ceil(e.daN * Math.min(1, 1.15 - Math.max(0, e.t) / d.daWindup))) : e.daLeft;
+        var shown = e.daPhase === "gather" ? Math.min(e.daN, Math.ceil(e.daN * Math.min(1, 1.15 - Math.max(0, e.t) / d.daWindup))) : e.daLeft;
         for (var oi = 0; oi < Math.min(shown, e.daLeft); oi++) {
           var op2 = orbPos(e, oi), behind = op2.y < e.y - 18;
           ctx.globalAlpha = behind ? 0.6 : 1;
@@ -1009,7 +1020,7 @@ var Bosses = (function () {
           ctx.globalAlpha = 1;
         }
       }
-      if (e.state === "dark" && e.daLeft === e.daN) {   // 光が手もとに集まってくる（撃ちはじめるまで）
+      if (e.state === "dark" && e.daPhase === "gather") {   // 光が手もとに集まってくる（玉がそろうまで）
         var kg = Math.min(1, 1 - Math.max(0, e.t) / d.daWindup);
         for (var gq = 0; gq < 10; gq++) {
           var ga2 = gq * 0.628 + glow * 3 * (e.daSpin || 1), gr = 38 * (1 - ((kg + gq / 10) % 1));

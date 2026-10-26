@@ -717,6 +717,7 @@ var GameState = (function () {
       var n = x.n;
       if (f.t === "shot" || f.t === "rain") n *= f.count || 1;
       if (f.t === "zone") n *= Math.max(1, Math.round((f.dur || 1) / (f.tick || 1)));
+      if (f.orbs) n *= f.orbs;    // 何回も当たるもの（呼んだダークエルフの闇の玉6つ。2026-10-26：おすすめで選ばれなかったため）
       p += f.mult * n;
     });
     return p;
