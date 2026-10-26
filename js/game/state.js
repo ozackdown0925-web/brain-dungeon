@@ -27,7 +27,13 @@ var GameState = (function () {
 
   // 古いセーブに、あとから足した項目を入れる
   function upgrade(g) {
+    game = g;   // learnSkills の中で図鑑を見るため（魔物使いのスキル）
     g.party.forEach(function (h) {
+      // 職に合わない装備は倉庫へ（2026-10-26：剣闘士を重装備から軽装備にした）
+      if (h.equip) ["weapon", "armor"].forEach(function (slot) {
+        var it = h.equip[slot], J = GameData.JOBS[h.job];
+        if (it && J && !(slot === "weapon" ? J.weapons.indexOf(it.base) >= 0 : it.base === J.armor)) { h.equip[slot] = null; g.storage.push(it); }
+      });
       if (!h.equip) h.equip = { weapon: null, armor: null };
       if (!h.setB) h.setB = [null, null, null];
       if (!h.weaponSets) h.weaponSets = {};
@@ -151,10 +157,16 @@ var GameState = (function () {
 
   // 今の職業のスキルを、★の数に合わせて上から順に覚える。覚えたスキルは、空いているスキル1〜3に自動でセットする。
   // ★k のスキルは ★(k−1) で覚える：★1 のスキルは、その職業になったときから使える（2026-10-17。Lv1 でも職業の差が出るように）。★7 は「極めた」印。
+  // そのボスをたおしたことがあるか（図鑑のたおした数。魔物使いのスキル、2026-10-26）
+  function beatBoss(type) {
+    var b = game && game.book && game.book.monsters[type];
+    return !!(b && b.kills > 0);
+  }
   function learnSkills(h) {
     var got = [], st = stars(h);
     GameData.SKILLS.forEach(function (sk) {
       if (sk.job !== h.job || sk.star > st + 1 || h.learned.indexOf(sk.id) >= 0) return;
+      if (sk.future || (sk.boss && !beatBoss(sk.boss))) return;   // 魔物使い：その主をたおしていないと覚えない。まだないスキルは覚えない
       h.learned.push(sk.id); got.push(sk.name);
       // 覚えたスキルは、空いている枠に自動でセットする（アクティブはセットA、空きがなければセットB。パッシブはパッシブの枠）
       if (!GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) return;
@@ -227,6 +239,10 @@ var GameState = (function () {
     Object.keys(r.kills || {}).forEach(function (t) {
       var b = game.book.monsters[t] || (game.book.monsters[t] = { kills: 0 });
       b.kills += r.kills[t];
+    });
+    // 主をはじめてたおすと、魔物使いがその主を呼ぶスキルを覚える（2026-10-26）
+    game.party.forEach(function (h, i) {
+      learnSkills(h).forEach(function (n) { report[i].lines.push("スキル「" + n + "」を覚えた！"); });
     });
     if (r.title && game.titles.indexOf(r.title) < 0) game.titles.push(r.title);
     var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier();
@@ -327,6 +343,7 @@ var GameState = (function () {
     // 組み合わせの上級職のパッシブ（2026-10-20）：魔力吸収・影分身・疾走・背水・闘志・オートヒール・聖なる盾（HPが少ないとき）・オートチャージ・賢者の知恵
     s.mpOnHit = p.mpOnHit || 0; s.double = p.double || 0; s.speedMul = 1 + (p.speed || 0); s.backwater = p.backwater || 0; s.fervor = p.fervor || 0;
     s.autoHeal = p.autoHeal || 0; s.cutLow = p.cutLow || 0; s.autoMp = p.autoMp || 0; s.ctcut = p.ctcut || 0;
+    s.castcut = p.castcut || 0;   // 魔物使い「すばやい構え」：スキルの構え・ための時間が短い（2026-10-26）
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
   }
@@ -624,7 +641,7 @@ var GameState = (function () {
   //   同じなら、上の段の職 → ★の大きいもの。セットBが使えるときは6枠ぜんぶ。
   //   セットA：攻撃1・攻撃2・回復　セットB：攻撃3・攻撃4・強化（セットBがないとき：攻撃1・回復・強化）
   // パッシブ：上の段の職 → ★の大きいものの順。
-  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage"];
+  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer"];
   function statOrder(h) { return MAGIC_JOBS.indexOf(h.job) >= 0 ? ["matk", "mdef", "patk", "pdef"] : ["patk", "pdef", "matk", "mdef"]; }
   function better(a, b, order) { // a が b より上なら 正
     for (var i = 0; i < order.length; i++) if (a[order[i]] !== b[order[i]]) return a[order[i]] - b[order[i]];

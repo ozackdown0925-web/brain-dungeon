@@ -639,13 +639,16 @@ var Bosses = (function () {
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
-        if (!p.down && inside && !h.from.dead) hurt(h.from, p.x, p.y - 8, h.opts || { mult: h.from.def.rootMult, big: true });
+        if (h.ally) h.ally(h);   // 魔物使いが呼んだ主の大技（2026-10-26）：プレイヤーではなく敵に当たる
+        else if (!p.down && inside && !h.from.dead) hurt(h.from, p.x, p.y - 8, h.opts || { mult: h.from.def.rootMult, big: true });
       }
       if (h.t >= h.warn + h.erupt) hazards.splice(i, 1);
     }
   }
 
   // ボスが倒れたら、地面の予告も消す
+  // 魔物使いが呼んだ主の大技を置く（2026-10-26）。h.ally(h) が、予告がおわったときに敵に当てる
+  function addAlly(h) { h.t = 0; h.hit = false; h.from = null; if (h.seed === undefined) h.seed = Math.random() * 100; hazards.push(h); }
   function bossDown() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; }
 
   // ---------- 描画 ----------
@@ -1008,5 +1011,5 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, shakeOffset: shakeOffset };
+           rockBreak: rockBreak, shakeOffset: shakeOffset, addAlly: addAlly };
 })();
