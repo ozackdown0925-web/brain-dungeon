@@ -17,8 +17,9 @@ var Combat = (function () {
     var weapon = GameData.WEAPONS[c.weapon];
     // 「武器の属性」：魔法剣士の火炎剣などがかかっていれば、その属性（2026-10-20）
     var elem = spec.elem === "weapon" ? (c.enchant ? c.enchant.elem : weapon.element) : spec.elem;
-    var atk = spec.stat === "m" ? Party.eff(c, "matk") : Party.eff(c, "patk");
-    var def = spec.stat === "m" ? e.mdef : e.pdef * (e.status["break"] ? 0.7 : 1);
+    var pdef = e.pdef * (e.status["break"] ? 0.7 : 1);
+    var atk = spec.stat === "m" ? Party.eff(c, "matk") : spec.stat === "avg" ? (Party.eff(c, "patk") + Party.eff(c, "matk")) / 2 : Party.eff(c, "patk");
+    var def = spec.stat === "m" ? e.mdef : spec.stat === "avg" ? (pdef + e.mdef) / 2 : pdef;   // avg：物攻と魔攻の平均（魔物使いの呼ぶスキル、2026-10-26）
     if (spec.mult > 0) {
       var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
       dealt = res.amount;

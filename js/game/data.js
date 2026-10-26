@@ -319,14 +319,14 @@ var GameData = (function () {
     { id: "sg.meteor",job: "sage", star: 7, name: "メテオ", desc: "前の広いところに、隕石を3つ降らせる。", short: "メテオ", cond: { line: "sage" }, mp: 24, ct: 25,
       fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] },
     // 魔物使い（2026-10-26 保護者と決定）：はじめはパッシブ。★1〜★6 は各ダンジョンの主を呼ぶ。呼べるのは、その★になって、その主をたおしているとき（boss）。
-    // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。数字は仮（2026-10-26：弱かったので、MP・待ち時間を下げ、倍率を上げた）
+    // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。強さは物攻と魔攻の平均（stat: "avg"。弓でも杖でも同じくらい）。数字は仮（2026-10-26：弱かったので、MP・待ち時間を下げ、倍率を上げた）
     { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
     { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "大木の魔物を呼ぶ。自分を中心に十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 16, ct: 15,
-      fx: [{ t: "summon", boss: "tree_boss", stat: "m", mult: 3.0, elem: "grass" }] },
+      fx: [{ t: "summon", boss: "tree_boss", stat: "avg", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
     { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 18, ct: 15,
-      fx: [{ t: "summon", boss: "witch_boss", stat: "m", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
+      fx: [{ t: "summon", boss: "witch_boss", stat: "avg", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
     { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわり8方向に、敵をつらぬく闇の矢を2回撃つ（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 20, ct: 18,
-      fx: [{ t: "summon", boss: "elf_boss", stat: "m", mult: 1.4, elem: "dark" }] },
+      fx: [{ t: "summon", boss: "elf_boss", stat: "avg", color: "#7ae0a8", mult: 1.4, elem: "dark" }] },
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
