@@ -858,6 +858,12 @@ var Town = (function () {
     var ELEM = GameData.ELEMENTS, MARK = { weak: "弱点", normal: "ふつう", half: "いまひとつ", none: "無効" };
     var mbox = el("div", "slot");
     mbox.appendChild(el("h3", "", "モンスター図鑑"));
+    // 効き方は今の敵の数字で出す（2026-10-27。敵の弱点を変えたとき、前の記録のまちがいが残らないように）
+    function nowMark(d, k, old) {
+      if (k === "none") return old;
+      var r = d.res && d.res.hasOwnProperty(k) ? d.res[k] : 1;
+      return r === 0 ? "none" : r < 1 ? "half" : r > 1 ? "weak" : "normal";
+    }
     Object.keys(GameData.ENEMIES).forEach(function (t) {
       var b = g.book.monsters[t], d = GameData.ENEMIES[t];
       if (d.training || d.notInBook) return;   // 訓練場の像・モンスターの巣は図鑑に出さない
@@ -866,7 +872,7 @@ var Town = (function () {
       row.appendChild(el("span", "item-name", d.name + (d.boss ? "（ボス）" : "")));
       row.appendChild(el("span", "item-extra", "たおした数 " + (b.kills || 0)));
       var tried = Object.keys(b.tried || {});
-      row.appendChild(el("span", "item-extra", tried.length ? "試した属性：" + tried.map(function (k) { return (k === "none" ? "属性なし" : ELEM[k]) + " " + MARK[b.tried[k]]; }).join("・") : "試した属性：まだない"));
+      row.appendChild(el("span", "item-extra", tried.length ? "試した属性：" + tried.map(function (k) { return (k === "none" ? "属性なし" : ELEM[k]) + " " + MARK[nowMark(d, k, b.tried[k])]; }).join("・") : "試した属性：まだない"));
       mbox.appendChild(row);
     });
     bodyEl.appendChild(mbox);

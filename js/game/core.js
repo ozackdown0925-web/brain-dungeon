@@ -211,6 +211,26 @@
     }
   }
   var boss = null; // 今の部屋のボス（いなければ null）
+  // ボスの HP バーの下に出す1行（2026-10-27 保護者と決定）：図鑑に記録がある（一度その属性で攻撃した）
+  // 属性の「弱点」と「無効」だけを出す。まだ何も分かっていなければ ""。戦いの途中で試すと、その場で足される
+  function bossWeakLine(e) {
+    var g = GameState.get();
+    var b = g && g.book && g.book.monsters ? g.book.monsters[e.type] : null;
+    if (!b || !b.tried) return "";
+    var weak = [], none = [];
+    Object.keys(GameData.ELEMENTS).forEach(function (k) {
+      if (k === "none") return;
+      if (!b.tried[k]) return;
+      // 効き方は今のボスの数字で決める（弱点を変えたあとでも、前の記録のまちがいが出ないように）
+      var r = Battle.resOf(e, k);
+      if (r > 1) weak.push(GameData.ELEMENTS[k]);
+      else if (r === 0) none.push(GameData.ELEMENTS[k]);
+    });
+    var s = [];
+    if (weak.length) s.push("弱点：" + weak.join("・"));
+    if (none.length) s.push("無効：" + none.join("・"));
+    return s.join("　");
+  }
 
   // 部屋の敵を全部たおしたとき：パッシブ「めいそう」などで少し回復する（2026-10-19）
   function roomCleared() {
@@ -917,11 +937,12 @@
     // ボスの HP（画面の上に大きく）
     var my2 = 34;
     if (boss && !boss.dead) {
-      var bw = Math.min(220, view.w - 260);
-      Render.rect(view.w / 2 - bw / 2 - 3, 29, bw + 6, 17, "rgba(10,12,18,0.72)");
+      var bw = Math.min(220, view.w - 260), wk = bossWeakLine(boss);
+      Render.rect(view.w / 2 - bw / 2 - 3, 29, bw + 6, wk ? 26 : 17, "rgba(10,12,18,0.72)");
       Render.text(boss.def.name, view.w / 2, 30, { size: 7, align: "center", bold: true, color: "#ffb0a8" });
       bar(view.w / 2 - bw / 2, 39, bw, 5, boss.hp / boss.maxHp, "#ef5b5b");
-      my2 = 50;
+      if (wk) Render.text(wk, view.w / 2, 46, { size: 7, align: "center", color: "#ffd27a" });
+      my2 = wk ? 59 : 50;
     }
     if (message.t > 0) Render.text(message.text, view.w / 2, my2, { size: 9, align: "center", bold: true });
 
