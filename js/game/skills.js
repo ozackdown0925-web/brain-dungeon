@@ -30,9 +30,14 @@ var Combat = (function () {
       e.swingsTaken = (e.swingsTaken || 0) + 1;
       Battle.showHit(e.x, e.y - 20, res, false);
       Sound.play("hit");
-      // 当たったところに、火花（物理）か、はじける光（魔法）を出す
-      effects.push({ kind: spec.stat === "m" ? "burst" : "spark", x: e.x, y: e.y - 6, t: 0.2, max: 0.2, ang: Math.random() * Math.PI,
-        color: spec.color || ELEM_COLOR[elem] || (spec.stat === "m" ? "#c9a8ff" : "#fff3c4") });
+      // 当たったところに、火花（物理）か、はじける光（魔法）を出す。
+      // 火・水・草・光・闇の攻撃は、属性ごとのエフェクト（2026-10-27 保護者と決定。魔法剣・魔法・スキルのどれでも）。
+      // 弱点をついたときは大きく・長く、効かないときは小さく・うすく
+      if (ELEM_COLOR[elem]) {
+        var rv = Battle.resOf(e, elem), big = rv > 1, none = rv <= 0, dur = big ? 0.55 : none ? 0.3 : 0.42;
+        effects.push({ kind: "elem", elem: elem, big: big, none: none, x: e.x, y: e.y - 6, t: dur, max: dur, ang: Math.random() * Math.PI * 2, seed: Math.random() * 100 });
+      } else effects.push({ kind: spec.stat === "m" ? "burst" : "spark", x: e.x, y: e.y - 6, t: 0.2, max: 0.2, ang: Math.random() * Math.PI,
+        color: spec.color || (spec.stat === "m" ? "#c9a8ff" : "#fff3c4") });
       if (e.status.sleep) delete e.status.sleep;
     }
     if (spec.status && Math.random() < spec.status.chance) Enemies.addStatus(e, spec.status.type, spec.status.dur);
@@ -926,6 +931,96 @@ var Combat = (function () {
     }
     ctx.restore();
   }
+  // ---------- 属性の当たりのエフェクト（2026-10-27 保護者と決定） ----------
+  // 火：炎がぼっと上がり、火の粉が上へ散る　水：しぶきが飛び散り、水の輪が広がる　草：葉が舞い、つむじ風の線が回る
+  // 光：十字の光がきらっと光り、光の粒が広がる　闇：黒紫のもやが渦を巻いて消える
+  // ドット絵に合わせて、小さな四角（1〜3点）でつくる。big：弱点（大きく・長く）、none：効かない（小さく・うすく）
+  function drawElemHit(ctx, ef, cam, p, q) {
+    var x = Math.round(ef.x - cam.x), y = Math.round(ef.y - cam.y), S = ef.big ? 1.5 : ef.none ? 0.6 : 1, A = ef.none ? 0.45 : 1;
+    function dot(dx, dy, sz, col, al) {
+      ctx.fillStyle = rgba(col, Math.max(0, Math.min(1, al)) * A);
+      ctx.fillRect(Math.round(x + dx) - (sz >> 1), Math.round(y + dy) - (sz >> 1), sz, sz);
+    }
+    function r(i) { return ((Math.sin(ef.seed + i * 12.9898) * 43758.5453) % 1 + 1) % 1; }   // 決まった乱数（0〜1）
+    var i, n, an, d;
+    if (ef.elem === "fire") {
+      glowDot(ctx, x, y, (5 + 7 * q) * S, "#fff2a0", "#ff8a3d", 0.75 * p * A);
+      // 炎：舌の形の炎がいくつか、ゆらゆら上へのぼって消える（下が太く黄色、上が細く赤い）
+      n = ef.big ? 6 : 4;
+      for (i = 0; i < n; i++) {
+        var fx = ((i + 0.5) / n - 0.5) * 12 * S + (r(i) - 0.5) * 3, fy = 3 - 10 * q * (0.6 + 0.6 * r(i + 3)) * S;
+        var fh = (7 + 5 * r(i + 6)) * S * (q < 0.25 ? q / 0.25 : 1 - (q - 0.25) * 0.8);
+        for (var k = 0; k < fh; k++) {
+          var kk = k / fh, wob = Math.sin(q * 16 + i * 2 + k * 0.5) * 1.5 * kk;
+          dot(fx + wob, fy - k, kk < 0.35 ? 3 : kk < 0.7 ? 2 : 1, kk < 0.3 ? "#fff2a0" : kk < 0.65 ? "#ff8a3d" : "#d04648", p * 1.3 * (1 - kk * 0.5));
+        }
+      }
+      // 火の粉：上へ散る
+      n = ef.big ? 12 : 8;
+      for (i = 0; i < n; i++) {
+        an = -Math.PI / 2 + (r(i + 10) - 0.5) * 2.2; d = (6 + 16 * r(i + 20)) * q * S;
+        dot(Math.cos(an) * d, Math.sin(an) * d - 4 * q, i % 3 ? 1 : 2, i % 2 ? "#ffd27a" : "#ff8a3d", p * 1.2);
+      }
+    } else if (ef.elem === "water") {
+      // 水の輪：横長に広がる
+      ctx.strokeStyle = rgba("#a8d8ff", 0.8 * p * A); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x, y + 4, (4 + 14 * q) * S, (2 + 5 * q) * S, 0, 0, Math.PI * 2); ctx.stroke();
+      if (ef.big) { ctx.strokeStyle = rgba("#5aa9ff", 0.6 * p * A); ctx.beginPath(); ctx.ellipse(x, y + 4, (2 + 9 * q) * S, (1 + 3 * q) * S, 0, 0, Math.PI * 2); ctx.stroke(); }
+      glowDot(ctx, x, y, (4 + 5 * q) * S, "#ffffff", "#5aa9ff", 0.6 * p * A);
+      // しぶき：上へはねてから落ちる（放物線）
+      n = ef.big ? 12 : 8;
+      for (i = 0; i < n; i++) {
+        an = -Math.PI / 2 + (r(i) - 0.5) * 2.6; var sp = (14 + 10 * r(i + 5)) * S;
+        var dx = Math.cos(an) * sp * q, dy = Math.sin(an) * sp * q + 22 * q * q;
+        dot(dx, dy, i % 3 ? 2 : 1, i % 2 ? "#5aa9ff" : "#deeed6", p * 1.3);
+      }
+    } else if (ef.elem === "grass") {
+      // つむじ風：回る弧の線
+      ctx.strokeStyle = rgba("#e0ffb0", 0.75 * p * A); ctx.lineWidth = 1;
+      for (i = 0; i < 2; i++) {
+        var a0 = ef.ang + i * Math.PI + q * 7, rr = (5 + 9 * q) * S;
+        ctx.beginPath(); ctx.ellipse(x, y, rr, rr * 0.6, 0, a0, a0 + 2.2); ctx.stroke();
+      }
+      // 葉：らせんにまわりながら外へ
+      n = ef.big ? 9 : 6;
+      for (i = 0; i < n; i++) {
+        an = ef.ang + i / n * Math.PI * 2 + q * 5; d = (4 + 13 * q) * S;
+        var lx = Math.cos(an) * d, ly = Math.sin(an) * d * 0.7 - 6 * q;
+        var flip = Math.sin(q * 14 + i) > 0;
+        dot(lx, ly, 2, "#9be36a", p * 1.3);
+        dot(lx + (flip ? 1 : -1), ly - 1, 1, "#e0ffb0", p * 1.3);
+        dot(lx + (flip ? -1 : 1), ly + 1, 1, "#3f8a3a", p * 1.3);
+      }
+    } else if (ef.elem === "light") {
+      glowDot(ctx, x, y, (5 + 9 * q) * S, "#ffffff", "#fff2a0", 0.8 * p * A);
+      // 十字のきらめき：のびてから細くなる
+      var L = (5 + 9 * Math.min(1, q * 2.5)) * S * (q < 0.6 ? 1 : 1 - (q - 0.6) * 1.5);
+      for (i = -L; i <= L; i++) {
+        var w = Math.abs(i) < L * 0.3 ? 2 : 1;
+        dot(i, 0, w, Math.abs(i) < 2 ? "#ffffff" : "#fff2a0", p * 1.3); dot(0, i, w, Math.abs(i) < 2 ? "#ffffff" : "#fff2a0", p * 1.3);
+      }
+      // 光の粒：まるく広がる
+      n = ef.big ? 10 : 6;
+      for (i = 0; i < n; i++) {
+        an = ef.ang + i / n * Math.PI * 2; d = (6 + 12 * q) * S;
+        dot(Math.cos(an) * d, Math.sin(an) * d * 0.8, (i + Math.floor(q * 8)) % 2 ? 1 : 2, "#fff2a0", p * 1.2);
+      }
+    } else {   // dark
+      // もや：まん中へうずを巻いてしぼむ
+      glowDot(ctx, x, y, (10 - 4 * q) * S, "#2a1040", "#9a5ad0", 0.65 * p * A);
+      n = ef.big ? 14 : 10;
+      for (i = 0; i < n; i++) {
+        an = ef.ang + i / n * Math.PI * 2 + q * 6; d = (14 - 10 * q) * S * (0.6 + 0.4 * r(i));
+        dot(Math.cos(an) * d, Math.sin(an) * d * 0.75, 2, i % 3 ? "#9a5ad0" : "#140c1c", p * 1.2);
+        dot(Math.cos(an - 0.3) * d * 1.1, Math.sin(an - 0.3) * d * 0.8, 1, "#c9a8ff", p);
+      }
+    }
+    if (ef.big && q < 0.35) {   // 弱点：はじめに白く光る輪
+      ctx.strokeStyle = rgba("#ffffff", (1 - q / 0.35) * 0.8); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, 6 + 30 * q, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
   function drawEffect(ctx, ef, a, cam) {
     var p = ef.t / ef.max, q = 1 - p;   // p：のこり、q：すすみぐあい
     if (ef.kind === "swirl") {   // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず
@@ -1128,6 +1223,8 @@ var Combat = (function () {
           glowDot(ctx, x + Math.cos(an) * dd, y + Math.sin(an) * dd - q * 6, 3, "#ffffff", ef.color, 0.6 * p);
         }
       }
+    } else if (ef.kind === "elem") {   // 属性の当たり（2026-10-27）
+      drawElemHit(ctx, ef, cam, p, q);
     } else if (ef.kind === "spark") {   // 物理の当たり：白い火花
       var sx = ef.x - cam.x, sy = ef.y - cam.y, len = 3 + 6 * q;
       ctx.strokeStyle = rgba("#ffffff", p); ctx.lineWidth = 1.5; ctx.lineCap = "round";
@@ -1189,5 +1286,5 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack };
 })();
