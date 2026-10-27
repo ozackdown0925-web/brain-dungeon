@@ -9,11 +9,16 @@ var Combat = (function () {
 
   function A() { return Party.actor; }
   // ---------- 行動のゲージ（2026-10-27 保護者と決定。ふつうの攻撃もスキルも同じ形） ----------
-  // 1本のゲージに「ため（攻撃が出る前・動けない）」「攻撃が出たあと動けない」「次のふつうの攻撃まで（動ける）」を色で分けて出し、
-  // 攻撃が出るところに白い線を引く。actStart で始め、actPre(t) で「t 秒後に攻撃が出る」と決める。
+  // 攻撃が出る前（ため・構え・詠唱）は、今までどおり体のまわりの黄色い輪。
+  // 攻撃が出たあとは、足もとの1本のゲージで「動けない時間（オレンジ）」と「次のふつうの攻撃まで（黄色）」を色で分ける。
+  // actStart で始め、actPre(t) で「t 秒後に攻撃が出る」と決める（ring：黄色い輪も出す）。
   // 動けない時間（busy）と次の攻撃までの時間（wait）は、core.js が毎フレーム読んでのばす
   function actStart() { A().act = { el: 0, pre: 0, busyEnd: 0, waitEnd: 0 }; }
-  function actPre(t) { var a = A(); if (!a.act) actStart(); a.act.pre = Math.max(a.act.pre, a.act.el + t); }
+  function actPre(t, noRing) {
+    var a = A(); if (!a.act) actStart();
+    a.act.pre = Math.max(a.act.pre, a.act.el + t);
+    if (!noRing && t > 0) effects.push({ kind: "charge", t: t, max: t });
+  }
 
   // ---------- 敵に当たる ----------
   // spec：{ stat, mult, elem, crit, status, push }、ox/oy：押し返す向きの元
@@ -332,7 +337,7 @@ var Combat = (function () {
       if (f.t === "charge" || f.t === "pause") {   // pause：見た目を出さずに少し待つ（旋風撃の回転のあと）
         var ft = f.t === "charge" ? f.time * castK(c) : f.time;   // ためは「すばやい構え」で短くなる
         A().busy = Math.max(A().busy, ft);
-        actPre(ft);   // ためのあとに技が出る（pause も、そのあとに出る）
+        actPre(ft, f.t !== "charge");   // ためのあとに技が出る（pause も、そのあとに出る。pause は輪を出さない）
         later(ft, (function (next) { return function () { run(c, fx, next); }; })(i + 1));
         return;
       }
