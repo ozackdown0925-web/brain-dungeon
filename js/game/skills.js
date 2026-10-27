@@ -180,10 +180,11 @@ var Combat = (function () {
       shootAfterAim(c, AIM.bolt, { stat: "m", mult: (w.bolt.power || 1) * k, elem: "none", speed: w.bolt.speed, range: w.bolt.range, size: 2, color: "#c9a8ff", onHit: mpOnHit }, dbl ? 2 : 1);
       return;
     }
-    // 大剣・斧（2026-10-26 保護者の希望）：振る前に少しためる（windup）。ためているあいだは動けない。
-    // ためた分だけ次の攻撃もおそくなるので、1秒あたりの強さが剣とほぼ同じになる
+    // 大剣・斧（2026-10-26 保護者の希望）：振る前に少しためる（windup）、振ったあとは少し動けない（recover）。
+    // 2026-10-27：ためが長いと、振る前に敵が動いて当てにくいので、前を短くして、残りを振ったあとに回した（合わせた長さは同じ）。
+    // ためと動けない時間の分だけ次の攻撃もおそくなるので、1秒あたりの強さが剣とほぼ同じになる
     if (w.windup) {
-      a.wait += w.windup;
+      a.wait += w.windup + (w.recover || 0);
       a.busy = Math.max(a.busy, w.windup);
       effects.push({ kind: "charge", t: w.windup, max: w.windup });
       later(w.windup, function () { if (Party.current() !== c || c.down) return; meleeSwing(c, w, k, dbl); });
@@ -205,6 +206,7 @@ var Combat = (function () {
     if (punch) effects.push({ kind: "punch", reach: w.reach, t: 0.22, max: 0.22, flip: a.swingFlip, color: c.enchant ? ELEM_COLOR[c.enchant.elem] : "#ffd27a" });
     var spec = { stat: "p", mult: (w.power || 1) * k, elem: "weapon" };
     if (hitArc(c, spec, w.reach, w.arc)) mpOnHit(c);
+    if (w.recover) a.busy = Math.max(a.busy, w.recover);   // 大剣・斧：振ったあと、少し動けない
     if (dbl) later(0.1, function () {   // 影分身：少しおくれて、もう1回
       if (Party.current() !== c || c.down) return;
       a.swing = 0.15; a.swingMax = 0.15; a.swingFlip = !a.swingFlip; a.swingColor = "#9a8ad0";

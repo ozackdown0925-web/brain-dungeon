@@ -1066,7 +1066,7 @@
       Combat.drawSlash(ctx, px, py - 3, A.face, A.swingArc, A.swingReach, A.swingColor, 1 - A.swing / sm, A.swingFlip);
     }
     if (A.wait > 0) {
-      var wt = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait") + (GameData.WEAPONS[c.weapon].windup || 0);
+      var wt = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait") + (GameData.WEAPONS[c.weapon].windup || 0) + (GameData.WEAPONS[c.weapon].recover || 0);
       bar(px - 8, py + 9, 16, 2, 1 - A.wait / wt, "#f2c14e");
     }
   }
