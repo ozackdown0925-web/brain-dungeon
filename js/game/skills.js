@@ -8,6 +8,12 @@ var Combat = (function () {
   var hooks = { onKill: function () {}, room: null };
 
   function A() { return Party.actor; }
+  // ---------- 行動のゲージ（2026-10-27 保護者と決定。ふつうの攻撃もスキルも同じ形） ----------
+  // 1本のゲージに「ため（攻撃が出る前・動けない）」「攻撃が出たあと動けない」「次のふつうの攻撃まで（動ける）」を色で分けて出し、
+  // 攻撃が出るところに白い線を引く。actStart で始め、actPre(t) で「t 秒後に攻撃が出る」と決める。
+  // 動けない時間（busy）と次の攻撃までの時間（wait）は、core.js が毎フレーム読んでのばす
+  function actStart() { A().act = { el: 0, pre: 0, busyEnd: 0, waitEnd: 0 }; }
+  function actPre(t) { var a = A(); if (!a.act) actStart(); a.act.pre = Math.max(a.act.pre, a.act.el + t); }
 
   // ---------- 敵に当たる ----------
   // spec：{ stat, mult, elem, crit, status, push }、ox/oy：押し返す向きの元
@@ -149,7 +155,7 @@ var Combat = (function () {
   function shootAfterAim(c, aim, spec, n) {
     var a = A();
     a.busy = aim.before + aim.after;
-    effects.push({ kind: "charge", t: aim.before, max: aim.before });
+    actPre(aim.before);
     later(aim.before, function () {
       if (Party.current() !== c || c.down) return;   // 狙っているあいだに入れかえた・たおれた
       Sound.play("swing");
@@ -162,7 +168,7 @@ var Combat = (function () {
   function aimThen(c, aim, fn) {
     var a = A(), k = castK(c), before = aim.before * k;
     a.busy = Math.max(a.busy, (aim.before + aim.after) * k);
-    effects.push({ kind: "charge", t: before, max: before });
+    actPre(before);
     later(before, function () { if (Party.current() !== c || c.down) return; fn(); });
   }
   // パッシブ「すばやい構え」（魔物使い、2026-10-26）：スキルの構え・ための時間にかける数（0.7 なら30%短い）
@@ -171,6 +177,7 @@ var Combat = (function () {
     var a = A();
     var w = GameData.WEAPONS[c.weapon];
     unhide();
+    actStart();
     a.wait = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait");
     // パッシブ「影分身」（2026-10-20）：1回の強さを下げて2回当てる。弓と魔法の玉は2つ飛ぶ
     var dbl = c.stats.double || 0, k = dbl ? dbl : 1;
@@ -186,7 +193,7 @@ var Combat = (function () {
     if (w.windup) {
       a.wait += w.windup + (w.recover || 0);
       a.busy = Math.max(a.busy, w.windup);
-      effects.push({ kind: "charge", t: w.windup, max: w.windup });
+      actPre(w.windup);
       later(w.windup, function () { if (Party.current() !== c || c.down) return; meleeSwing(c, w, k, dbl); });
       return;
     }
@@ -240,6 +247,7 @@ var Combat = (function () {
     // スキルの演出（2026-10-21 保護者の案）：構え（黄色い輪）→ 画面が少し暗くなり、使った仲間のまわりが光る → 技が出る。
     // どのスキルも 0.25 秒は構える。もともと構えやためが長いスキル（弓・魔法・ためる技）は、そのままの長さ。時間は止めない
     var own = ownWindup(s.fx) * castK(c), col = castColor(s), castT = CAST_TIME * castK(c);
+    actStart();
     if (own > 0) {
       curSkill = id;
       run(c, s.fx, 0);
@@ -249,7 +257,7 @@ var Combat = (function () {
     }
     var a = A();
     a.busy = Math.max(a.busy, castT);
-    effects.push({ kind: "charge", t: castT, max: castT });
+    actPre(castT);
     later(castT, function () {
       if (Party.current() !== c || c.down || c.status.sleep) {   // 構えているあいだに入れかえた・たおれた・眠った：MP と待ち時間はもどす
         c.mp = Math.min(c.stats.mp, c.mp + cost); c.ct[id] = 0; if (s.once) c.used[id] = false;
@@ -324,7 +332,7 @@ var Combat = (function () {
       if (f.t === "charge" || f.t === "pause") {   // pause：見た目を出さずに少し待つ（旋風撃の回転のあと）
         var ft = f.t === "charge" ? f.time * castK(c) : f.time;   // ためは「すばやい構え」で短くなる
         A().busy = Math.max(A().busy, ft);
-        if (f.t === "charge") effects.push({ kind: "charge", t: ft, max: ft });
+        actPre(ft);   // ためのあとに技が出る（pause も、そのあとに出る）
         later(ft, (function (next) { return function () { run(c, fx, next); }; })(i + 1));
         return;
       }

@@ -531,6 +531,7 @@
     A.inv = Math.max(0, A.inv - dt);
     A.hurtT = Math.max(0, (A.hurtT || 0) - dt);
     A.busy = Math.max(0, A.busy - dt);
+    if (A.act) A.act.el += dt;   // 行動のゲージ（skills.js の actStart）
     A.hidden = Math.max(0, (A.hidden || 0) - dt);   // 隠れみの術
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
@@ -1065,9 +1066,36 @@
       var sm = A.swingMax || 0.15;
       Combat.drawSlash(ctx, px, py - 3, A.face, A.swingArc, A.swingReach, A.swingColor, 1 - A.swing / sm, A.swingFlip);
     }
-    if (A.wait > 0) {
-      var wt = GameData.weaponWait(c.weapon, c.job) * Party.eff(c, "wait") + (GameData.WEAPONS[c.weapon].windup || 0) + (GameData.WEAPONS[c.weapon].recover || 0);
-      bar(px - 8, py + 9, 16, 2, 1 - A.wait / wt, "#f2c14e");
+    drawActGauge(px, py + 9);
+  }
+
+  // 行動のゲージ（2026-10-27 保護者と決定。ふつうの攻撃もスキルも同じ形）：足もとに1本。左から右へ時間が進む。
+  //   オレンジ＝ため（攻撃が出る前。動けない）、白い線＝攻撃が出るところ、
+  //   青むらさき＝攻撃が出たあと動けない、黄色＝次のふつうの攻撃まで（動ける）。すぎたところは明るく、これからのところは暗い。
+  //   長さは時間に合わせる（1秒＝24点。長い技は 44点に収まるようにちぢめる）
+  var GAUGE = { pre: ["#ff9a4d", "#7a4a2a"], post: ["#9a9ad8", "#4a4a80"], wait: ["#f2c14e", "#6a5a28"], pps: 24, max: 44 };
+  function drawActGauge(px, y) {
+    var g = A.act;
+    if (!g) return;
+    if (A.busy > 0) g.busyEnd = Math.max(g.busyEnd, g.el + A.busy);   // 0 のときは、のばさない
+    if (A.wait > 0) g.waitEnd = Math.max(g.waitEnd, g.el + A.wait);
+    var total = Math.max(g.pre, g.busyEnd, g.waitEnd);
+    if (g.el >= total || total <= 0) { A.act = null; return; }
+    var pps = Math.min(GAUGE.pps, GAUGE.max / total), W = Math.max(8, Math.round(total * pps)), x0 = Math.round(px - 14), H = 3;
+    var segs = [[0, g.pre, GAUGE.pre], [g.pre, g.busyEnd, GAUGE.post], [Math.max(g.pre, g.busyEnd), g.waitEnd, GAUGE.wait]];
+    Render.rect(x0 - 1, y - 1, W + 2, H + 2, "#140c1c");   // ふち
+    Render.rect(x0, y, W, H, "#2a2f42");
+    segs.forEach(function (sg) {
+      if (sg[1] <= sg[0]) return;
+      var a = Math.round(sg[0] / total * W), b = Math.round(sg[1] / total * W), now = Math.round(g.el / total * W);
+      if (b <= a) return;
+      Render.rect(x0 + a, y, b - a, H, sg[2][1]);                                 // これから（暗い）
+      var f = Math.min(b, Math.max(a, now));
+      if (f > a) Render.rect(x0 + a, y, f - a, H, sg[2][0]);                       // すぎたところ（明るい）
+    });
+    if (g.pre > 0.02) {   // 攻撃が出るところの白い線（上下に1点はみ出す）
+      var lx = x0 + Math.round(g.pre / total * W);
+      Render.rect(lx, y - 2, 1, H + 4, "#ffffff");
     }
   }
 
