@@ -209,6 +209,29 @@ var Base = (function () {
     { id: "book",    name: "書庫（図鑑）",     x: 184, y: 138, w: 54, h: 36 },
     { id: "help",    name: "掲示板（遊び方）", x: 198, y: 66,  w: 24, h: 20, board: true }
   ];
+  // 地方ごとの建物の場所（町の絵に合わせる。書いていない地方は上の BUILDINGS のまま＝エルム村）
+  // 鉱山の町ボルダ（2026-10-27）：門＝坑道の入口、宿屋＝赤い屋根の家、お店＝左下の看板の家、鍛冶屋＝炉の家、
+  //   転職の神殿＝白い教会、倉庫＝下の長い小屋、書庫＝まんなかの家、掲示板＝右下の看板
+  var LAYOUTS = {
+    frostcrest: {
+      gate:    { x: 148, y: 10,  w: 36, h: 36 },
+      party:   { x: 54,  y: 10,  w: 46, h: 58 },
+      shop:    { x: 10,  y: 118, w: 40, h: 38 },
+      smith:   { x: 222, y: 16,  w: 46, h: 56 },
+      job:     { x: 270, y: 62,  w: 42, h: 54 },
+      storage: { x: 84,  y: 128, w: 50, h: 40 },
+      book:    { x: 112, y: 66,  w: 44, h: 52 },
+      help:    { x: 262, y: 130, w: 24, h: 28 }
+    }
+  };
+  BUILDINGS.forEach(function (b) { b.home = { x: b.x, y: b.y, w: b.w, h: b.h }; });   // エルム村の場所を覚えておく
+  function placeBuildings(regionId) {
+    var L = LAYOUTS[regionId] || {};
+    BUILDINGS.forEach(function (b) {
+      var p = L[b.id] || b.home;
+      b.x = p.x; b.y = p.y; b.w = p.w; b.h = p.h;
+    });
+  }
   var townCanvas = document.getElementById("townMap"), townScale = 1, hover = null;
   function drawTown() {
     var dpr = window.devicePixelRatio || 1;
@@ -223,8 +246,8 @@ var Base = (function () {
     ctx.imageSmoothingEnabled = false;
     function r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
     // 町の絵（mapart.js。読みこめたら描き直す）
-    // 地方2の町の絵は、保護者の絵ができるまで mapart.js の仮の絵（建物の場所はエルム村と同じ）
     var R = GameData.regionOf(GameState.region());
+    placeBuildings(R.id);
     var art = MapArt.get(R.art.town, drawTown);
     if (art) ctx.drawImage(art, 0, 0, TW, TH); else r(0, 0, TW, TH, "#3b5a2f");
     BUILDINGS[0].name = R.gate + "（出発）";

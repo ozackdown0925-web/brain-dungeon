@@ -29,15 +29,16 @@ var WorldMap = (function () {
       // 次の地方への道：北の山なみ。ダークエルフをたおすと開く（2026-10-27）
       { id: "to_frost", kind: "road", to: "frostcrest", x: 150, y: 16 }
     ],
-    // フロストクレスト（地方2。名前は仮）：洞窟 → 山 → 雪山。地図の絵は保護者が作る（それまでは mapart.js の仮の絵）
+    // フロストクレスト（地方2。名前は仮）：洞窟 → 山 → 雪山。地図の絵は保護者が Gemini で作ったもの（2026-10-27）
+    // 町は左下、坑道は町の上の岩山の穴、山はまんなかの茶色い山、雪山は右上
     frostcrest: [
-      { id: "base", kind: "base", x: 70, y: 108 },
-      { id: "kodo", kind: "dungeon", x: 128, y: 92,
+      { id: "base", kind: "base", x: 60, y: 124 },
+      { id: "kodo", kind: "dungeon", x: 76, y: 80,
         note: "黒い岩の山にほられた、古い坑道。盗賊とドワーフがすみついている。6階と12階に、強い魔物がいる。" },
-      { id: "yama", kind: "dungeon", locked: true, x: 206, y: 74 },
-      { id: "yuki", kind: "dungeon", locked: true, x: 266, y: 34 },
-      // 前の地方への道：南西のはし
-      { id: "to_forest", kind: "road", to: "forestveil", x: 18, y: 164 }
+      { id: "yama", kind: "dungeon", locked: true, x: 196, y: 62 },
+      { id: "yuki", kind: "dungeon", locked: true, x: 282, y: 52 },
+      // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
+      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }
