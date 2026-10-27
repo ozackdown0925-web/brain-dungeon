@@ -168,6 +168,7 @@
     A.x = p.x; A.y = p.y; A.face = p.face; A.move = 0; A.turn = 0; A.running = false;
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
     run.inPit = false;
+    run.falls = [];   // 落ちてくる岩（落石の罠。部屋を出ると消える）
     A.inv = 0.6; // 部屋に入った直後は少しだけ無敵
     // たおした敵はもどらない。まだいる敵は、もとの場所に HP 満タンでいる。
     var lv = 0;
@@ -721,6 +722,16 @@
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
       if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); Sound.play("trap"); }
       var ch = Party.current();
+      if (t.type === "rock") {
+        // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
+        // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
+        if (!(t.wait > 0)) {
+          t.wait = 2.5;
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME });
+          say("頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+        }
+        continue;
+      }
       if (t.type === "swamp") {
         if (!ch.status.poison && run.swampCd <= 0) {
           Party.addStatus(ch, "poison", 8);
@@ -743,6 +754,7 @@
       }
     }
     run.inPit = onPit;
+    updateFalls(dt, c);
     // 部屋の型の毒の沼（P。瘴気の森）：罠の毒の沼と同じ（毒になっていなければ、毒になる）
     if (room.tile(tx, ty) === "P") {
       var pc = Party.current();
@@ -753,6 +765,58 @@
       }
     }
     return false;
+  }
+
+  // ---------- 落石（黒鉄の坑道） ----------
+  var FALL_TIME = 0.9, FALL_R = 13;
+  function updateFalls(dt, c) {
+    c.traps.forEach(function (t) { if (t.wait > 0) t.wait -= dt; });
+    if (!run.falls) run.falls = [];
+    run.falls.forEach(function (f) {
+      if (f.t > 0) {
+        f.t -= dt;
+        if (f.t <= 0) {
+          f.dust = 0.35;
+          Sound.play("hit");
+          var dx = A.x - f.x, dy = A.y - f.y, ch = Party.current();
+          if (dx * dx + dy * dy <= FALL_R * FALL_R && !ch.down) {
+            var dmg = Math.max(1, Math.round(ch.stats.hp * 0.1));
+            ch.hp = Math.max(1, ch.hp - dmg);
+            A.hurtT = 0.3;
+            Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
+            say("落石に当たった！");
+          }
+        }
+      } else f.dust -= dt;
+    });
+    run.falls = run.falls.filter(function (f) { return f.t > 0 || f.dust > 0; });
+  }
+  // 影はだんだん濃く大きく、岩は上から落ちてくる。落ちたら砂けむり
+  function drawFalls() {
+    if (!run.falls || !run.falls.length) return;
+    run.falls.forEach(function (f) {
+      var x = Math.round(f.x - cam.x), y = Math.round(f.y - cam.y);
+      if (f.t > 0) {
+        var k = 1 - f.t / FALL_TIME, ctx = Render.ctx;
+        ctx.fillStyle = "rgba(0,0,0," + (0.15 + 0.35 * k).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y, FALL_R * (0.5 + 0.5 * k), FALL_R * (0.5 + 0.5 * k) * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,90,64," + (0.3 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y, FALL_R, FALL_R * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
+        if (k > 0.35) {   // 岩：上から落ちてくる
+          var ry = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
+          Render.rect(x - 5, ry - 4, 10, 8, "#140c1c");
+          Render.rect(x - 4, ry - 3, 8, 6, "#544f5a");
+          Render.rect(x - 3, ry - 3, 4, 2, "#706a76");
+          Render.rect(x + 1, ry + 1, 3, 2, "#3c3842");
+        }
+      } else {   // 砂けむりと、くだけた石
+        var kd = 1 - f.dust / 0.35;
+        for (var i = 0; i < 8; i++) {
+          var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
+          Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
+        }
+      }
+    });
   }
 
   // 部屋が画面より大きいときは、キャラについていく。小さいときは、部屋を画面のまんなかに置く。
@@ -773,6 +837,7 @@
     drawThings();
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
+    drawFalls();
     if (cine && cine.kind === "boss") drawBossCine();
     Combat.drawCastBack(cam, view);   // スキルを使ったとき：画面が少し暗くなり、使った仲間のまわりが光る
     drawActor();
@@ -804,6 +869,9 @@
       var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
       if (t.type === "pit") {
         ctx.drawImage(Props.get("pit"), x, y);
+      } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
+        Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
+        Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");
       } else {   // 毒の沼：床の上に重ねる半とうめいの紫（2026-10-18 保護者の希望で、ドット絵にせず前の描き方のまま）
         Render.rect(x, y, t.w * T, t.h * T, "rgba(120,60,140,0.75)");
         var bb = Math.floor(glow * 2) % 3;

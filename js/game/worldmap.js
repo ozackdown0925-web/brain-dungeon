@@ -33,7 +33,7 @@ var WorldMap = (function () {
     frostcrest: [
       { id: "base", kind: "base", x: 70, y: 108 },
       { id: "kodo", kind: "dungeon", x: 128, y: 92,
-        note: "黒い岩の山にほられた、古い坑道。盗賊とゴブリンがすみついている。6階と12階に、強い魔物がいる。" },
+        note: "黒い岩の山にほられた、古い坑道。盗賊とドワーフがすみついている。6階と12階に、強い魔物がいる。" },
       { id: "yama", kind: "dungeon", locked: true, x: 206, y: 74 },
       { id: "yuki", kind: "dungeon", locked: true, x: 266, y: 34 },
       // 前の地方への道：南西のはし

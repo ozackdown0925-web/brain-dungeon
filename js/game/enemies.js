@@ -17,7 +17,7 @@ var Enemies = (function () {
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
       strafe: Math.random() < 0.5 ? 1 : -1, walk: Math.random() * 6, status: {},
-      fly: d.kind === "wisp" || d.kind === "dwisp"   // 瘴気の霊・ダークウィスプは浮いている（水の上も通る）
+      fly: d.kind === "wisp" || d.kind === "dwisp" || !!d.fly   // 瘴気の霊・ダークウィスプ・大コウモリは浮いている（水の上も通る）
     };
     list.push(e);
     return e;
@@ -190,6 +190,12 @@ var Enemies = (function () {
           var hy2 = gap > d.keep + 10 ? uy : gap < d.keep - 10 ? -uy : ux * e.strafe;
           e.hopDir = { x: hx2, y: hy2 }; e.hop = d.hopTime; e.hopCd = d.hopEvery; e.strafe = -e.strafe;
         }
+      } else if (d.kind === "lizard") {
+        // 火トカゲ（黒鉄の坑道、2026-10-27）：少しはなれたところで止まり、とどけば火の玉を吐く
+        if (gap > d.keep + 8) { mx = ux; my = uy; }
+        else if (gap < d.keep - 8) { mx = -ux; my = -uy; }
+        else e.face = { x: ux, y: uy };
+        if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
       } else if (d.kind === "caster") {
         // 影の魔導士（2026-10-21）：弓兵と同じく離れて回りこみ、闇の玉を撃つ
         if (gap < d.keepMin) { mx = -ux; my = -uy; }
@@ -433,8 +439,12 @@ var Enemies = (function () {
       if (!p.down && gap <= d.reach + 4) hurt(e, p.x, p.y - 8, { magic: true });
       return;
     }
-    if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）
-      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: { spit: true } });
+    if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）。水のスライムは水のつぶ
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: d.water ? { drop: true } : { spit: true } });
+      return;
+    }
+    if (d.kind === "lizard") {   // 火トカゲの火の玉（とどく距離は短い）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 3 + e.aim.y * 7, vx: e.aim.x * d.fireSpeed, vy: e.aim.y * d.fireSpeed, life: 0.75, from: e, ally: !!e.charm, opts: { fire: true } });
       return;
     }
     // 近い攻撃：構えたときの向きのまま。届けば当たる。剣士・槍兵は一歩ふみこんで振る（2026-10-18）
@@ -453,6 +463,7 @@ var Enemies = (function () {
     if (d.kind === "spear") e.thrust = 0.22;
     else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
     else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
+    else if (d.kind === "bee" && e.type === "bat") fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
     else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
 
@@ -544,12 +555,12 @@ var Enemies = (function () {
         var rr3 = d.reach + e.r;
         if (e.state === "windup") {   // とどく範囲が、だんだん濃くなる
           var kw = 1 - e.t / d.windup;
-          ctx.fillStyle = "rgba(150,100,200," + (0.08 + 0.2 * kw).toFixed(2) + ")";
+          ctx.fillStyle = (d.glow ? "rgba(240,208,112," : "rgba(150,100,200,") + (0.08 + 0.2 * kw).toFixed(2) + ")";   // 光の精は金色
           ctx.beginPath(); ctx.arc(x, y - 2, rr3, 0, Math.PI * 2); ctx.fill();
         }
         if (e.burst > 0) {   // はじける瘴気の輪
           var kb = 1 - e.burst / 0.4;
-          ctx.strokeStyle = "rgba(200,154,224," + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
+          ctx.strokeStyle = (d.glow ? "rgba(255,242,160," : "rgba(200,154,224,") + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(x, y - 2, rr3 * (0.5 + 0.6 * kb), 0, Math.PI * 2); ctx.stroke();
         }
       }
@@ -640,6 +651,17 @@ var Enemies = (function () {
       if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光
         Combat.glowDot(ctx, x, y, 7, "#1a0a2a", "#9a5ad0", 0.85);
         Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#2a1040");
+        return;
+      }
+      if (a.opts && a.opts.fire) {   // 火トカゲの火の玉：赤いふちに、黄色い芯
+        Combat.glowDot(ctx, x, y, 6, "#ffe066", "#f8a040", 0.85);
+        Render.rect(Math.round(x - a.vx * 0.04) - 1, Math.round(y - a.vy * 0.04) - 1, 2, 2, "rgba(208,70,72,0.6)");
+        Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#fff2a0");
+        return;
+      }
+      if (a.opts && a.opts.drop) {   // 水のスライムの水のつぶ：青と白
+        Render.rect(Math.round(x - a.vx * 0.03) - 1, Math.round(y - a.vy * 0.03) - 1, 2, 2, "rgba(89,125,206,0.5)");
+        Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#597dce"); Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#deeed6");
         return;
       }
       if (a.opts && a.opts.spit) {   // 毒のつば：紫と緑のしずく

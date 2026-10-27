@@ -169,12 +169,21 @@ var Dungeon = (function () {
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
     if (theme === "cave") {
-      // 黒鉄の坑道（地方2の段階1、2026-10-27）：坑道の敵ができるまでの仮。ゴブリンの部隊に、キノコの魔物・ワイルドボア・影の魔導士・瘴気の霊がまざる
-      for (var ci = 0; ci < n; ci++) types.push(SQUAD[ci % 3]);
-      if (rnd() < 0.35) types[0] = "mushroom";
-      if (rnd() < 0.4) types[1] = "shadow_mage";
-      if (floor >= 4 && rnd() < 0.35) types[types.length - 1] = "boar";
-      if (floor >= 6 && rnd() < 0.4) types[2] = "wisp";
+      // 黒鉄の坑道（地方2の段階2、2026-10-27 保護者と決定）：前半（1〜6階）は盗賊の部隊（剣士2・弓使い1のくり返し）に、
+      // 大コウモリと岩の虫（2階から）。後半（7〜12階）はドワーフの部隊（戦士2・鎚使い1）に、火トカゲ・水のスライム・光の精（9階から）・ときどき大コウモリ
+      if (floor <= 6) {
+        var TQ = ["thief_sword", "thief_archer", "thief_sword"];
+        for (var ci = 0; ci < n; ci++) types.push(TQ[ci % 3]);
+        if (rnd() < 0.5) { types[types.length - 1] = "bat"; if (n >= 5 && rnd() < 0.5) types[types.length - 2] = "bat"; }
+        if (floor >= 2 && rnd() < 0.4) types[0] = "rock_worm";
+      } else {
+        var DQ = ["dwarf_axe", "dwarf_hammer", "dwarf_axe"];
+        for (var di = 0; di < n; di++) types.push(DQ[di % 3]);
+        if (rnd() < 0.45) types[types.length - 1] = "fire_lizard";
+        if (rnd() < 0.4) types[0] = "slime";
+        if (floor >= 9 && rnd() < 0.45) types[1] = "light_sprite";
+        else if (rnd() < 0.2) types[1] = "bat";
+      }
     } else if (theme === "wild") {
       // 原生の秘境（段階1、2026-10-25）：新緑の樹海と瘴気の森の敵がまざる。部屋ごとにゴブリンか骸骨の部隊。
       var sq = rnd() < 0.5 ? SQUAD : SKULL_SQUAD;
@@ -430,13 +439,15 @@ var Dungeon = (function () {
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
       var tk = pick(rnd, trapRooms);
       if ((perRoom[tk] || 0) >= 2) continue;
-      var pit = rnd() < (swamp ? 0.25 : wild ? 0.7 : cave ? 0.6 : 0.45);
-      // 落とし穴はまわり1マスも通れるところだけ（せまい道をふさがないように）
-      var ts = pit ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
+      // 黒鉄の坑道（2026-10-27 保護者の案）：落石（rock。1マス）を足す。落石4割・落とし穴4割・毒の沼2割
+      var rv = rnd(), rock = cave && rv < 0.4;
+      var pit = !rock && (cave ? rv < 0.8 : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
+      // 落とし穴と落石はまわり1マスも通れるところだけ（せまい道をふさがないように）
+      var ts = pit || rock ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
       var tp = pick(rnd, ts);
-      dg.cells[tk].traps.push({ type: pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: pit ? 1 : 2, h: pit ? 1 : 2, hidden: rnd() < 0.35, found: false });
-      mark(tk, tp.x, tp.y, pit ? 1 : 2, pit ? 1 : 2, 1);
+      dg.cells[tk].traps.push({ type: rock ? "rock" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: pit || rock ? 1 : 2, h: pit || rock ? 1 : 2, hidden: rnd() < 0.35, found: false });
+      mark(tk, tp.x, tp.y, pit || rock ? 1 : 2, pit || rock ? 1 : 2, 1);
       perRoom[tk] = (perRoom[tk] || 0) + 1;
       t++;
     }
@@ -465,7 +476,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
-    if (th === "cave") return ["goblin_sword", "goblin_spear", "goblin_archer", "shadow_mage", "boar"];   // 坑道（仮。今は巣を置かない）
+    if (th === "cave") return floor <= 6 ? ["thief_sword", "thief_archer", "bat", "rock_worm"] : ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime"];   // 坑道（今は巣を置かない）
     if (th === "wild") {
       pool = ["goblin_sword", "goblin_spear", "skeleton_sword", "skeleton_archer", "vine", "frog", "bee", "shadow_mage", "wolf", "wolf"];
       if (floor >= 5) pool.push("boar");

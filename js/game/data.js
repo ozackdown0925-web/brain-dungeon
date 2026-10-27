@@ -434,6 +434,66 @@ var GameData = (function () {
       keepMin: 60, keepMax: 120, windup: 0.7, cooldown: 2.4, orbSpeed: 95, color: "#3a1a5a",
       blinkEvery: 5.5, blinkTime: 0.35, fleeGap: 26, fleeAfter: 2.5, appearMin: 70, appearMax: 130
     },
+    // ---- 黒鉄の坑道の敵（地方2の段階2、2026-10-27 保護者と決定）。数字は遊んでみてから直す ----
+    // 前半（1〜5階）は盗賊の子分（人間。絵は保護者が描く）に魔物、後半（7〜11階）はドワーフ（絵は保護者が描く）に魔物。
+    // 盗賊とドワーフは刺が弱点（盗賊は軽い服、ドワーフはよろいのすき間を突く。ドワーフは斬が半減）
+    // 盗賊の剣士：短剣で近づいて斬る。すばやい
+    thief_sword: {
+      name: "盗賊の剣士", kind: "melee", hp: 34, patk: 8, pdef: 3, mdef: 2,
+      res: { pierce: 1.5 }, speed: 34, r: 6,
+      reach: 13, windup: 0.3, cooldown: 1.0, lunge: 8, color: "#5a4a6a"
+    },
+    // 盗賊の弓使い：離れて矢を撃つ
+    thief_archer: {
+      name: "盗賊の弓使い", kind: "archer", hp: 30, patk: 7, pdef: 2, mdef: 2,
+      res: { pierce: 1.5 }, speed: 34, r: 6,
+      keepMin: 64, keepMax: 120, windup: 0.5, cooldown: 2.1, arrowSpeed: 130, color: "#4a5a3a"
+    },
+    // 大コウモリ：飛んで（水や穴の上も通る）、じぐざぐに近づいてかみつく。速いが HP は少ない。刺が弱点、打は半減
+    bat: {
+      name: "大コウモリ", kind: "bee", fly: true, hp: 18, patk: 7, pdef: 1, mdef: 2,
+      res: { pierce: 1.5, strike: 0.5 }, speed: 54, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.4, color: "#3a1a5a"
+    },
+    // 岩の虫：岩のからをかぶった虫。のろいが、かたくて HP が多い。打が弱点、斬と刺は半減
+    rock_worm: {
+      name: "岩の虫", kind: "melee", hp: 58, patk: 9, pdef: 7, mdef: 3,
+      res: { strike: 1.5, slash: 0.5, pierce: 0.5 }, speed: 14, r: 7,
+      reach: 13, windup: 0.55, cooldown: 1.7, lunge: 4, color: "#757161"
+    },
+    // ドワーフの戦士：斧で斬る。かたい
+    dwarf_axe: {
+      name: "ドワーフの戦士", kind: "melee", hp: 58, patk: 10, pdef: 7, mdef: 3,
+      res: { pierce: 1.5, slash: 0.5 }, speed: 22, r: 6,
+      reach: 14, windup: 0.45, cooldown: 1.4, lunge: 5, color: "#8a5428"
+    },
+    // ドワーフの鎚使い：ハンマーで重い一撃（当たるとしびれることがある）。構えが長い
+    dwarf_hammer: {
+      name: "ドワーフの鎚使い", kind: "melee", hp: 62, patk: 13, pdef: 7, mdef: 3,
+      res: { pierce: 1.5, slash: 0.5 }, speed: 18, r: 6,
+      reach: 16, windup: 0.75, cooldown: 2.0, lunge: 4, color: "#6a6474",
+      onHit: { type: "para", chance: 0.3, dur: 2 }
+    },
+    // 火トカゲ：少しはなれたところから、火の玉を吐く（とどく距離は短い）。水が弱点、火は効かない
+    fire_lizard: {
+      name: "火トカゲ", kind: "lizard", hp: 36, patk: 9, pdef: 3, mdef: 3,
+      res: { water: 1.5, fire: 0, slash: 1.25 }, speed: 26, r: 6,
+      reach: 70, keep: 46, windup: 0.6, cooldown: 2.2, fireSpeed: 115, color: "#d04648"
+    },
+    // 水のスライム：はねて近づき、水のつぶを飛ばす。斬と刺は半減、草が弱点、水は効かない
+    slime: {
+      name: "水のスライム", kind: "frog", hp: 40, patk: 8, pdef: 3, mdef: 3,
+      res: { slash: 0.5, pierce: 0.5, grass: 1.5, water: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#597dce", water: true
+    },
+    // 光の精（9階から）：ふわふわ浮いて近づき、まわりに光をはじけさせる（魔法のダメージ）。
+    // 物理（斬・刺・打）は半減、闇が大きな弱点、光は効かない
+    light_sprite: {
+      name: "光の精", kind: "wisp", hp: 28, patk: 4, matk: 10, pdef: 6, mdef: 4,
+      res: { slash: 0.5, pierce: 0.5, strike: 0.5, dark: 1.75, light: 0 }, speed: 30, r: 6,
+      reach: 18, windup: 0.6, cooldown: 2.0, color: "#f0d070", glow: true
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -613,9 +673,9 @@ var GameData = (function () {
               after: ["ダークエルフはひざをつき、弓を下ろした。", "「……見事だ。秘境の道は、おまえたちに開こう」"] }
       }
     },
-    // 黒鉄の坑道（地方2の段階1、2026-10-27）：地方2（フロストクレスト）の1つ目。12階（6階に盗賊の頭領、12階にキングゴブリン）。
+    // 黒鉄の坑道（地方2の段階1、2026-10-27）：地方2（フロストクレスト）の1つ目。12階（6階におかしら（盗賊）、12階にドワーフキング）。
     // ダークエルフ（原生の秘境の主）をたおすと開く。深さは秘境の続き（39＋階）。部屋は洞窟の型（theme: cave）。
-    // 階の数は仮。ボスは盗賊の頭領・キングゴブリンを作るまで、ゴーレム・ダークエルフを仮に使う（前後の文も仮）。装備の段は仕上げの段階で決める（今は鋼）
+    // 階の数は仮。ボスはおかしら・ドワーフキングを作るまで、ゴーレム・ダークエルフを仮に使う（前後の文も仮）。装備の段は仕上げの段階で決める（今は鋼）
     kodo: {
       id: "kodo", region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
       bosses: {
