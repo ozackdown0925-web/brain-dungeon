@@ -172,19 +172,37 @@ var Trial = (function () {
       if (!testAt[k] || at < testAt[k]) testAt[k] = at;
     });
   }
-  // 教科ごとに、いちばん新しいテスト（2026-10-20 保護者の希望：直近のテストを優先して出す）
-  function latestTest(subject) {
-    var best = "", at = "";
-    Object.keys(testAt).forEach(function (k) {
-      var p = k.split("|");
-      if (p[0] === subject && testAt[k] > at) { at = testAt[k]; best = p.slice(1).join("|"); }
-    });
-    return best;
+  // テストの種類：出典が「カリテ」で始まる＝カリキュラムテスト、「組分け」で始まる＝組分けテスト（2026-10-28）
+  function kindOf(q) {
+    var t = testOf(q);
+    if (t.indexOf("カリテ") === 0) return "c";
+    if (t.indexOf("組分け") === 0 || t.indexOf("組み分け") === 0) return "k";
+    return "";
   }
-  // 点数：正答率＋テストでまちがえた（30%以上のとき）100＋直近のテスト 200
-  function priority(q, latest) {
+  // 教科ごとに、直近2回のカリキュラムテスト（組分けは直近2回のカリテから出やすいので、同じ順位の中で先に出す。2026-10-28）
+  function recentCurriculum(subject) {
+    var list = [];
+    Object.keys(testAt).forEach(function (k) {
+      var p = k.split("|"), name = p.slice(1).join("|");
+      if (p[0] === subject && name.indexOf("カリテ") === 0) list.push({ name: name, at: testAt[k] });
+    });
+    list.sort(function (x, y) { return x.at < y.at ? 1 : x.at > y.at ? -1 : 0; });
+    return list.slice(0, 2).map(function (x) { return x.name; });
+  }
+  // 正答率が入っているか（入っていない問題は順位の外＝いちばん後ろ）
+  function hasRate(q) { return DrillCore.asList(q.parts).some(function (p) { var v = Number(p.rate); return isFinite(v) && v > 0; }); }
+  // 出題の順位（2026-10-28 保護者の希望。カリテは高得点、組分けは平均以上をめざす）
+  //  1 カリテ 正答率80%以上でまちがえた　2 組分け 80%以上でまちがえた
+  //  3 カリテ 50〜80%でまちがえた　4 カリテ 50〜80%　5 組分け 50〜80%でまちがえた　6 組分け 50〜80%
+  //  7 カリテ 50%以下　8 それ以外（組分けの50%以下・80%以上で正解した問題・正答率や出典がない問題）
+  // 「まちがえた」＝テストでまちがえた（チェックあり）か、ドリルでまちがえてまだ正解していない
+  function rankOf(q, wrong) {
+    var k = kindOf(q);
+    if (!k || !hasRate(q)) return 8;
     var r = rateOf(q);
-    return Math.round(r) + (q.testMiss && r >= 30 ? 100 : 0) + (latest && testOf(q) === latest ? 200 : 0);
+    if (r >= 80) return wrong ? (k === "c" ? 1 : 2) : 8;
+    if (r > 50) return k === "c" ? (wrong ? 3 : 4) : (wrong ? 5 : 6);
+    return k === "c" ? 7 : 8;
   }
   // 前の日と前の前の日に、まちがえた問題（今日は、出した問題をもう出さないので入れない）
   function missedRecently(subject) {
@@ -212,12 +230,16 @@ var Trial = (function () {
     function timesToday(q) { return shown.filter(function (id) { return id === q.id; }).length; }   // 問題が足りないときは、今日出した回数が少ないもの
     var h = historyFor(subject);
     function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
-    var latest = latestTest(subject);
-    // まちがえた問題が先（2026-10-27 保護者の希望）：正解した回数が同じなら、ドリルでまちがえた問題・テストでまちがえた問題
-    // （正答率30%以上）を先に出し、テストで正解した（まだドリルに出ていない）問題はそのあと。
-    // 前は正答率をそのまま点数にしていたので、みんなができる簡単な問題が、まちがえた問題と同じくらい先に出ていた
-    function missed(q) { return (h[q.id] && h[q.id].tries > 0 && h[q.id].ok === 0) || (q.testMiss && rateOf(q) >= 30) ? 0 : 1; }
-    pool.sort(function (a, b) { return timesToday(a) - timesToday(b) || ok(a) - ok(b) || missed(a) - missed(b) || priority(b, latest) - priority(a, latest) || hash(a.id + today) - hash(b.id + today); });
+    var recent = recentCurriculum(subject);
+    function wrong(q) { return !!q.testMiss || !!(h[q.id] && h[q.id].tries > 0 && h[q.id].ok === 0); }
+    function rank(q) { return rankOf(q, wrong(q)); }
+    function notRecent(q) { return recent.indexOf(testOf(q)) >= 0 ? 0 : 1; }
+    function at(q) { return testAt[q.subject + "|" + testOf(q)] || ""; }
+    // ①今日出した回数（問題が足りないとき）②正解した回数が少ない ③順位 ④直近2回のカリテ ⑤新しいテスト ⑥日によって変える
+    pool.sort(function (a, b) {
+      return timesToday(a) - timesToday(b) || ok(a) - ok(b) || rank(a) - rank(b) || notRecent(a) - notRecent(b) ||
+        (at(a) < at(b) ? 1 : at(a) > at(b) ? -1 : 0) || hash(a.id + today) - hash(b.id + today);
+    });
     var top = pool[0], th = h[top.id];
     return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
   }
