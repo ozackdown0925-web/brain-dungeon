@@ -14,7 +14,7 @@ var DrillChart = (function () {
   var PERIODS = [{ days: 14, name: "2週間" }, { days: 30, name: "1か月" }, { days: 0, name: "全部" }];
   var SVGNS = "http://www.w3.org/2000/svg";
 
-  var state = { unit: "q", days: 14, hide: {} };
+  var state = { unit: "q", days: 14, hide: {}, day: "" };
   var records = null, box = null, loading = false;
 
   function el(tag, cls, text) {
@@ -128,7 +128,9 @@ var DrillChart = (function () {
     box.appendChild(lg);
 
     box.appendChild(chart(s));
+    box.appendChild(el("p", "note", "日付をタップすると、その日の問題と答えが見られる。"));
     box.appendChild(table(s, played));
+    if (state.day) box.appendChild(detail(state.day));
   }
   function toggleGroup(items, cur, on) {
     var g = el("div", "dc-tg");
@@ -184,7 +186,11 @@ var DrillChart = (function () {
     t.appendChild(hr);
     played.slice().reverse().forEach(function (d) {
       var tr = el("tr"), wd = parseDay(d).getDay();
-      tr.appendChild(el("td", "dc-d" + (wd === 0 || wd === 6 ? " we" : ""), dayLabel(d) + "（" + WEEK[wd] + "）"));
+      var dt = el("td", "dc-d" + (wd === 0 || wd === 6 ? " we" : ""));
+      var db = el("button", "dc-day" + (state.day === d ? " on" : ""), dayLabel(d) + "（" + WEEK[wd] + "）"); db.type = "button";
+      db.onclick = function () { state.day = state.day === d ? "" : d; render(); if (state.day) setTimeout(function () { var x = document.getElementById("dcDetail"); if (x) x.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0); };
+      dt.appendChild(db); tr.appendChild(dt);
+      if (state.day === d) tr.className = "dc-sel";
       SUBJECTS.concat([TOTAL]).forEach(function (sub) {
         var v = pick(s.cell[d][sub.id], state.unit), r = rate(v);
         var td = el("td", r === null ? "dc-none" : r >= 80 ? "dc-hi" : r >= 50 ? "dc-mid" : "dc-lo");
@@ -195,6 +201,117 @@ var DrillChart = (function () {
     });
     wrap.appendChild(t);
     return wrap;
+  }
+
+  // ---------- その日の問題と答え（2026-10-29） ----------
+  var questions = null;   // { id: 問題 }
+  function valueText(v) {
+    if (v == null || v === "") return "";
+    if (Array.isArray(v)) return v.map(valueText).filter(Boolean).join("、");
+    if (typeof v === "object") {
+      if ("n" in v || "d" in v) { var w = String(v.w || "").trim(), n = String(v.n || "").trim(), dd = String(v.d || "").trim(); return n || dd ? (w ? w + "と" : "") + n + "/" + dd : w; }
+      return JSON.stringify(v);
+    }
+    return String(v);
+  }
+  function subjectOf(id) { for (var i = 0; i < SUBJECTS.length; i++) if (SUBJECTS[i].id === id) return SUBJECTS[i]; return { id: id, name: id, color: "#ece7da" }; }
+  function detail(d) {
+    var wrap = el("div", "dc-detail"); wrap.id = "dcDetail";
+    var wd = parseDay(d).getDay();
+    var head = el("div", "dc-detail-h");
+    head.appendChild(el("b", "", dayLabel(d) + "（" + WEEK[wd] + "）の問題と答え"));
+    var cl = el("button", "btn small-btn", "とじる"); cl.type = "button";
+    cl.onclick = function () { state.day = ""; render(); };
+    head.appendChild(cl);
+    wrap.appendChild(head);
+    var list = records.filter(function (r) { return normDate(r.date) === d && r.qid; });
+    // 解いた順。教科ごとに何番目かで「何回目」かを決める
+    list.sort(function (a, b) { return String(a.answeredAt || "") < String(b.answeredAt || "") ? -1 : 1; });
+    var nth = {};
+    list.forEach(function (r) { nth[r.subject] = (nth[r.subject] || 0) + 1; r._round = nth[r.subject]; });
+    list.sort(function (a, b) {
+      var sa = SUBJECTS.indexOf(subjectOf(a.subject)), sb = SUBJECTS.indexOf(subjectOf(b.subject));
+      return a._round - b._round || sa - sb;
+    });
+    var body = el("div", "");
+    wrap.appendChild(body);
+    if (!questions) {
+      body.appendChild(el("p", "note", "問題を読みこんでいます…"));
+      Sync.drillQuestions().then(function (qs) {
+        questions = {};
+        qs.forEach(function (q) { questions[q.id] = q; });
+        body.textContent = ""; fillDetail(body, list);
+      }, function (err) {
+        questions = {};
+        body.textContent = "";
+        body.appendChild(el("p", "note", "問題を読みこめなかったので、答えだけ出します（" + (err.kind === "network" ? "インターネットにつながらない" : err.message) + "）"));
+        fillDetail(body, list);
+        questions = null;
+      });
+    } else fillDetail(body, list);
+    return wrap;
+  }
+  function fillDetail(body, list) {
+    var round = 0;
+    list.forEach(function (r) {
+      if (r._round !== round) { round = r._round; body.appendChild(el("div", "dc-round", round + "回目")); }
+      body.appendChild(card(r, questions && questions[r.qid]));
+    });
+  }
+  function card(r, q) {
+    var sub = subjectOf(r.subject);
+    var c = el("div", "dc-q " + (r.correct ? "is-ok" : "is-ng"));
+    var h = el("div", "dc-q-h");
+    var nm = el("b", "", sub.name); nm.style.color = sub.color;
+    h.appendChild(nm);
+    h.appendChild(el("span", "dc-q-mark " + (r.correct ? "ok" : "ng"), r.correct ? "○" : "×"));
+    h.appendChild(el("span", "dc-q-unit", (q && q.unit) || r.unit || ""));
+    c.appendChild(h);
+    if (q && q.source) c.appendChild(el("div", "dc-q-src", q.source + (q.testMiss ? "　（テストでまちがえた）" : "")));
+    if (!q) c.appendChild(el("p", "note", "この問題は今は出題していないので、問題文は出せない（答えだけ）"));
+    if (q && q.text) c.appendChild(el("p", "dc-q-text", q.text));
+    var qparts = q ? DrillCore.asList(q.parts) : [];
+    // 図は、ボタンを押したときだけ読みこむ（大きいので）
+    var imgs = q ? DrillCore.asList(q.images) : [];
+    if (imgs.length) {
+      var fb = el("button", "btn small-btn", "問題の図を見る（" + imgs.length + "枚）"); fb.type = "button";
+      var fig = el("div", "dc-q-figs");
+      fb.onclick = function () {
+        fb.remove();
+        imgs.forEach(function (id) {
+          var ph = el("div", "note", "図を読みこみ中…"); fig.appendChild(ph);
+          Sync.image(id).then(function (src) {
+            if (!src) { ph.textContent = "図を読みこめませんでした"; return; }
+            var im = document.createElement("img"); im.src = src; im.alt = "問題の図"; im.className = "dc-q-img";
+            fig.replaceChild(im, ph);
+          }, function () { ph.textContent = "図を読みこめませんでした"; });
+        });
+      };
+      c.appendChild(fb); c.appendChild(fig);
+    }
+    // 小問ごと：子どもの答え・正しい答え・○×
+    var rparts = Array.isArray(r.parts) && r.parts.length ? r.parts : [{ label: "", value: r.input, correct: r.correct, note: r.note }];
+    var tw = el("div", "dc-table-w"), t = el("table", "dc-table dc-ans");
+    var hr = el("tr");
+    ["", "子どもの答え", "正しい答え", ""].forEach(function (x) { hr.appendChild(el("th", "", x)); });
+    t.appendChild(hr);
+    rparts.forEach(function (p, i) {
+      var qp = qparts[i] || null, tr = el("tr");
+      var lb = (p && p.label) || (qp && qp.label) || (rparts.length > 1 ? String(i + 1) : "");
+      tr.appendChild(el("td", "dc-d", lb));
+      var given = valueText(p && p.value);
+      tr.appendChild(el("td", given ? "" : "dc-none", given || "（空欄）"));
+      tr.appendChild(el("td", "", qp ? DrillCore.answerText(qp) : "－"));
+      tr.appendChild(el("td", p && p.correct ? "dc-hi" : "dc-lo", p && p.correct ? "○" : "×"));
+      t.appendChild(tr);
+      if (qp && qp.prompt) { var pr = el("tr", "dc-prompt"); var pt = el("td", "", qp.prompt); pt.colSpan = 4; pr.appendChild(pt); t.insertBefore(pr, tr); }
+    });
+    tw.appendChild(t); c.appendChild(tw);
+    if (q && q.explanation) {
+      var ex = el("details", "dc-q-ex"); ex.appendChild(el("summary", "", "解説"));
+      ex.appendChild(el("p", "", q.explanation)); c.appendChild(ex);
+    }
+    return c;
   }
 
   function load() {
@@ -216,7 +333,7 @@ var DrillChart = (function () {
   }
 
   // 保護者画面を開くたびに読みこみ直す
-  function show(target) { records = null; render(target); }
+  function show(target) { records = null; questions = null; state.day = ""; render(target); }
 
   return { show: show, render: render, _summarize: summarize, _countOf: countOf };
 })();

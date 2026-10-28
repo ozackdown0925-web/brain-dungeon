@@ -187,6 +187,22 @@ var Sync = (function () {
   // ---------- 保護者の暗証番号（GAS で確かめる。番号は固定） ----------
   // もどり値：Promise { match, locked（受けつけない残り秒）, notSet }
   function checkPin(pin) { return BDApi.call("pinCheck", { pin: pin }, key()); }
+  // 保護者画面で、その日の問題を見るため（2026-10-29）：問題（出題するものだけ）と図
+  var qCache = null, imgCache = {};
+  function drillQuestions() {
+    if (!qCache) {
+      qCache = BDApi.call("drillQuestions", {}, key(), { timeout: 60000 }).then(function (r) { return r.questions || []; });
+      qCache.catch(function () { qCache = null; });
+    }
+    return qCache;
+  }
+  function image(id) {
+    if (!imgCache[id]) {
+      imgCache[id] = BDApi.call("image", { id: id }, key(), { timeout: 60000 }).then(function (r) { return r.src; });
+      imgCache[id].catch(function () { delete imgCache[id]; });
+    }
+    return imgCache[id];
+  }
   // 子どもの知恵の試練の記録（保護者画面のグラフ用。2026-10-29）
   // GAS がまだ古い（childHistory がない）ときは、子どもの端末なら history で代わりに読む。保護者の端末では読めない
   function childHistory() {
@@ -201,7 +217,7 @@ var Sync = (function () {
 
   return {
     connected: connected, player: player, playerLabel: playerLabel, url: url, markDirty: markDirty,
-    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory,
+    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, drillQuestions: drillQuestions, image: image,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };
 })();
