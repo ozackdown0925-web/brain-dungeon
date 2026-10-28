@@ -187,10 +187,21 @@ var Sync = (function () {
   // ---------- 保護者の暗証番号（GAS で確かめる。番号は固定） ----------
   // もどり値：Promise { match, locked（受けつけない残り秒）, notSet }
   function checkPin(pin) { return BDApi.call("pinCheck", { pin: pin }, key()); }
+  // 子どもの知恵の試練の記録（保護者画面のグラフ用。2026-10-29）
+  // GAS がまだ古い（childHistory がない）ときは、子どもの端末なら history で代わりに読む。保護者の端末では読めない
+  function childHistory() {
+    return BDApi.call("childHistory", {}, key(), { timeout: 60000 }).then(function (r) { return r.records || []; }, function (err) {
+      if (String(err && err.message || "").indexOf("unknown action") >= 0) {
+        if (player() === "child") return BDApi.call("history", {}, key(), { timeout: 60000 }).then(function (r) { return r.records || []; });
+        var e = new Error("GAS がまだ新しくなっていません（childHistory がない）"); e.kind = "old"; throw e;
+      }
+      throw err;
+    });
+  }
 
   return {
     connected: connected, player: player, playerLabel: playerLabel, url: url, markDirty: markDirty,
-    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin,
+    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };
 })();
