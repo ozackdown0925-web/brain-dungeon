@@ -140,6 +140,8 @@ var Trial = (function () {
   // この回（round）に、この教科で解いた記録
   function itemOf(subject) { return todayList(subject)[round - 1]; }
   // 正解した回数：前の日の記録と、今日のこの回より前の記録
+  // ok は部分点つき（2026-10-29 保護者の希望）：小問3つのうち2つできたら 0.67 回。全問正解は1回。
+  // 小問の一部だけまちがえた問題が先頭に居すわって、ほかの問題が出なくなるのを防ぐ。full は全問正解した回数
   function historyFor(subject) {
     var h = {};
     Object.keys(days).forEach(function (d) {
@@ -148,11 +150,18 @@ var Trial = (function () {
       if (d === today) list = list.slice(0, round - 1);
       list.forEach(function (it) {
         if (!it || !it.qid) return;
-        var x = h[it.qid] || (h[it.qid] = { ok: 0, tries: 0 });
-        x.tries++; if (it.correct) x.ok++;
+        var x = h[it.qid] || (h[it.qid] = { ok: 0, full: 0, tries: 0 });
+        x.tries++; x.ok += creditOf(it); if (it.correct) x.full++;
       });
     });
     return h;
+  }
+  // 1回の記録の点：全問正解は1、まちがえたら小問の正解の割合（小問がなければ0）
+  function creditOf(it) {
+    if (it.correct) return 1;
+    var ps = Array.isArray(it.parts) ? it.parts.filter(function (p) { return p && typeof p === "object"; }) : [];
+    if (!ps.length) return 0;
+    return ps.filter(function (p) { return p.correct === true; }).length / ps.length;
   }
   function rateOf(q) {
     var r = DrillCore.asList(q.parts).map(function (p) { return Number(p.rate); }).filter(function (v) { return isFinite(v) && v > 0; });
@@ -229,19 +238,19 @@ var Trial = (function () {
     if (fresh.length) pool = fresh;
     function timesToday(q) { return shown.filter(function (id) { return id === q.id; }).length; }   // 問題が足りないときは、今日出した回数が少ないもの
     var h = historyFor(subject);
-    function ok(q) { return h[q.id] ? h[q.id].ok : 0; }
+    function ok(q) { return h[q.id] ? Math.round(h[q.id].ok * 100) / 100 : 0; }
     var recent = recentCurriculum(subject);
-    function wrong(q) { return !!q.testMiss || !!(h[q.id] && h[q.id].tries > 0 && h[q.id].ok === 0); }
+    function wrong(q) { return !!q.testMiss || !!(h[q.id] && h[q.id].tries > 0 && h[q.id].full === 0); }
     function rank(q) { return rankOf(q, wrong(q)); }
     function notRecent(q) { return recent.indexOf(testOf(q)) >= 0 ? 0 : 1; }
     function at(q) { return testAt[q.subject + "|" + testOf(q)] || ""; }
-    // ①今日出した回数（問題が足りないとき）②正解した回数が少ない ③順位 ④直近2回のカリテ ⑤新しいテスト ⑥日によって変える
+    // ①今日出した回数（問題が足りないとき）②正解した回数（部分点つき）が少ない ③順位 ④直近2回のカリテ ⑤新しいテスト ⑥日によって変える
     pool.sort(function (a, b) {
       return timesToday(a) - timesToday(b) || ok(a) - ok(b) || rank(a) - rank(b) || notRecent(a) - notRecent(b) ||
         (at(a) < at(b) ? 1 : at(a) > at(b) ? -1 : 0) || hash(a.id + today) - hash(b.id + today);
     });
     var top = pool[0], th = h[top.id];
-    return { qid: top.id, review: !!(th && th.tries > 0 && th.ok === 0) };
+    return { qid: top.id, review: !!(th && th.tries > 0 && th.full === 0) };
   }
 
   // ---------- 記録（送れないときは iPad の中に控えて、あとで送る） ----------
