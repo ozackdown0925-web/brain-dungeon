@@ -913,7 +913,11 @@ var GameState = (function () {
   function isWeekend() { var d = new Date().getDay(); return d === 0 || d === 6; }
   function perDayToday() { var p = parent(); return isWeekend() ? (p.perWeekend || 4) : p.perDay; }
   function adventuredToday() { return adventuresToday() >= perDayToday(); }
-  function unlimited() { try { return localStorage.getItem("bd-test-unlimited") === "1"; } catch (e) { return false; } }
+  // 保護者のデバッグ用の枠（2026-10-29）は、いつも回数・休みの日の決まりなし
+  function unlimited() {
+    if (window.Sync && Sync.isDebug && Sync.isDebug()) return true;
+    try { return localStorage.getItem("bd-test-unlimited") === "1"; } catch (e) { return false; }
+  }
   function setUnlimited(on) { try { if (on) localStorage.setItem("bd-test-unlimited", "1"); else localStorage.removeItem("bd-test-unlimited"); } catch (e) { /* そのまま */ } }
 
   // ---------- セーブの復元（最近の10回分） ----------

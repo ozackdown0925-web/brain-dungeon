@@ -119,10 +119,13 @@ const PLAYER_ACTIONS = {
   childHistory: function () { return { records: readRecords_(DEFAULT_PLAYER) }; },
   saveAnswer: function (p, role, player) { saveAnswer_(p.record, player); return {}; },
   // ゲーム（段階G-1）
-  loadGame: function (p, role, player) { return loadGame_(player); },
-  saveGame: function (p, role, player) { return saveGame_(player, p); },
-  checkpoints: function (p, role, player) { return { checkpoints: listCheckpoints_(player) }; },
-  loadCheckpoint: function (p, role, player) { return { data: loadCheckpoint_(player, String(p.id || '')) }; },
+  // セーブの枠（2026-10-29）：保護者は slot='debug' で「デバッグ用」の枠を使える。ふだん（slot なし）は「対戦用」
+  loadGame: function (p, role, player) { return loadGame_(saveOwner_(player, p)); },
+  saveGame: function (p, role, player) { return saveGame_(saveOwner_(player, p), p); },
+  checkpoints: function (p, role, player) { return { checkpoints: listCheckpoints_(saveOwner_(player, p)) }; },
+  loadCheckpoint: function (p, role, player) { return { data: loadCheckpoint_(saveOwner_(player, p), String(p.id || '')) }; },
+  saveSlots: function (p, role, player) { return saveSlots_(player); },
+  moveSaveToDebug: function (p, role, player) { return moveSaveToDebug_(player); },
   logAdventure: function (p, role, player) { logAdventure_(player, p.entry); return {}; },
   adventures: function (p, role, player) { return { adventures: readAdventures_(player) }; },
   pinStatus: function () { return pinStatus_(); },
@@ -218,6 +221,44 @@ function adminUploadImage_(key, dataUrl, name) {
 }
 
 // ---------- ゲーム（段階G-1） ----------
+// セーブの枠（2026-10-29 保護者の希望）：保護者だけ、セーブを2つ持てる。
+//   「対戦用」＝ふだんの枠（行の名前 parent）。子どもと同じ決まりで進め、子どもが闘技場で戦う相手になる。
+//   「デバッグ用」＝ slot='debug'（行の名前 parent#debug）。先へ進めて確かめる用。「セーブ」「セーブの控え」シートで使う。
+const DEBUG_SUFFIX = '#debug';
+function saveOwner_(player, p) {
+  return player === 'parent' && p && p.slot === 'debug' ? player + DEBUG_SUFFIX : player;
+}
+// 枠ごとに、セーブがあるか・保存日時
+function saveSlots_(player) {
+  const sheet = getSheet_(SAVE_SHEET, SAVE_HEADERS);
+  const one = name => {
+    const row = findRow_(sheet, 1, name);
+    if (!row) return { exists: false, savedAt: '' };
+    return { exists: true, savedAt: sheet.getRange(row, 2).getDisplayValue() };
+  };
+  const out = { main: one(player) };
+  if (player === 'parent') out.debug = one(player + DEBUG_SUFFIX);
+  return out;
+}
+// 今の保護者のセーブ（と控え）を「デバッグ用」に移す。対戦用は空になる（ゲームはキャラクリから）。デバッグ用がもうあれば移さない
+function moveSaveToDebug_(player) {
+  if (player !== 'parent') throw new Error('parent only');
+  return withLock_(() => {
+    const sheet = getSheet_(SAVE_SHEET, SAVE_HEADERS);
+    if (findRow_(sheet, 1, player + DEBUG_SUFFIX)) throw new Error('debug save exists');
+    const row = findRow_(sheet, 1, player);
+    if (!row) return { moved: false };
+    sheet.getRange(row, 1).setNumberFormat('@').setValue(player + DEBUG_SUFFIX);
+    const cp = getSheet_(CHECKPOINT_SHEET, CHECKPOINT_HEADERS);
+    const n = cp.getLastRow() - 1;
+    if (n > 0) {
+      const who = cp.getRange(2, 3, n, 1).getDisplayValues();
+      for (let i = 0; i < who.length; i++) if (who[i][0] === player) who[i][0] = player + DEBUG_SUFFIX;
+      cp.getRange(2, 3, n, 1).setNumberFormat('@').setValues(who);
+    }
+    return { moved: true };
+  });
+}
 // セーブ：プレイヤーごとに1行。返す data は JSON の文字列のまま（画面で読む）
 function loadGame_(player) {
   const sheet = getSheet_(SAVE_SHEET, SAVE_HEADERS);

@@ -5,7 +5,8 @@
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Sync = (function () {
   var URL_KEY = "bd-gas-url";
-  var META_KEY = "bd-sync";              // { player, rev（GAS にあるセーブの版）, dirty（まだ送っていない変更がある） }
+  var META_KEY = "bd-sync";              // { player, rev（GAS にあるセーブの版）, dirty（まだ送っていない変更がある）, slot（保護者のセーブの枠。"debug" か ""） }
+  var DEBUG_CORRECT_KEY = "bd-debug-correct";   // デバッグ用の枠で、知恵の試練をとばしたときの正解数
   var LOG_KEY = "bd-adv-pending";        // まだ送れていない冒険の記録
   var PLAYER_NAME = { child: "", parent: "保護者" };
 
@@ -18,9 +19,35 @@ var Sync = (function () {
   function key() { return BDApi.getKey("player"); }
   function connected() { return !!(url() && key()); }
   function meta() { var m = readJSON(META_KEY, null); return m && typeof m === "object" ? m : { player: "", rev: 0, dirty: false }; }
-  function setMeta(m) { writeJSON(META_KEY, m); }
+  // slot を書かなかったときは、今の枠のまま
+  function setMeta(m) { if (!("slot" in m)) m.slot = meta().slot || ""; writeJSON(META_KEY, m); }
   function player() { return meta().player || ""; }
-  function playerLabel() { return PLAYER_NAME[player()] || ""; }
+  function playerLabel() { return player() === "parent" ? (isDebug() ? "保護者・デバッグ用" : "保護者・対戦用") : (PLAYER_NAME[player()] || ""); }
+
+  // ---------- 保護者のセーブの枠（2026-10-29） ----------
+  // 対戦用＝ふだんの枠（子どもと同じ決まり。子どもが闘技場で戦う相手）。デバッグ用＝先へ進めて確かめる枠：
+  // 回数・休みの日の決まりなし、知恵の試練はとばす（正解数を選ぶ）、試練と冒険の記録は GAS に送らない
+  function isDebug() { return player() === "parent" && meta().slot === "debug"; }
+  function slotParams(p) { p = p || {}; if (isDebug()) p.slot = "debug"; return p; }
+  function debugCorrect() { try { var n = Number(localStorage.getItem(DEBUG_CORRECT_KEY)); return isFinite(n) && n >= 0 && n <= 4 && localStorage.getItem(DEBUG_CORRECT_KEY) !== null ? n : 4; } catch (e) { return 4; } }
+  function setDebugCorrect(n) { try { localStorage.setItem(DEBUG_CORRECT_KEY, String(n)); } catch (e) { /* そのまま */ } }
+  function saveSlots() { return BDApi.call("saveSlots", {}, key()); }
+  // 枠を切りかえる：まだ送っていない変更を送ってから、iPad の中を空にして読みこみ直す
+  function switchSlot(slot) {
+    var m = meta();
+    var first = m.dirty && GameState.get() ? save("", "") : Promise.resolve();
+    return first.then(function () {
+      setMeta({ player: m.player, rev: 0, dirty: false, slot: slot === "debug" ? "debug" : "" });
+      GameState.wipeLocal();
+      location.reload();
+    });
+  }
+  // 今のセーブ（と控え）をデバッグ用に移し、デバッグ用に切りかえる。対戦用はキャラクリから始まる
+  function moveToDebug() {
+    var m = meta();
+    var first = m.dirty && GameState.get() ? save("", "") : Promise.resolve();
+    return first.then(function () { return BDApi.call("moveSaveToDebug", {}, key()); }).then(function () { return switchSlot("debug"); });
+  }
   // GameState.save() のたびに呼ぶ：まだ GAS に送っていない変更がある
   function markDirty() {
     if (GameState.inSandbox && GameState.inSandbox()) return; var m = meta(); if (!m.dirty) { m.dirty = true; setMeta(m); } }
@@ -50,7 +77,7 @@ var Sync = (function () {
           // はじめてつないだ・別のプレイヤーに変えた：この iPad のゲームのデータは捨てて、GAS のセーブを使う（2026-10-17 決定）
           GameState.wipeLocal();
           writeJSON(LOG_KEY, []);
-          m = { player: r.player, rev: 0, dirty: false };
+          m = { player: r.player, rev: 0, dirty: false, slot: "" };
           setMeta(m);
         }
         box.hidden = true;
@@ -96,7 +123,7 @@ var Sync = (function () {
   // GAS のセーブと iPad の中の控えをくらべて、新しい方を使う。done(hasGame)
   function start(done) {
     if (!connected()) { reconnect(""); return; }
-    BDApi.call("loadGame", {}, key()).then(function (r) {
+    BDApi.call("loadGame", slotParams({}), key()).then(function (r) {
       var m = meta();
       var local = GameState.load();
       if (local && m.dirty && Number(m.rev) === Number(r.rev)) {
@@ -130,7 +157,7 @@ var Sync = (function () {
     var g = GameState.get();
     if (!g || !connected()) return Promise.resolve();
     var m = meta();
-    return BDApi.call("saveGame", { data: JSON.stringify(g), base: Number(m.rev) || 0, checkpoint: label || "", summary: summary || "" }, key())
+    return BDApi.call("saveGame", slotParams({ data: JSON.stringify(g), base: Number(m.rev) || 0, checkpoint: label || "", summary: summary || "" }), key())
       .then(function (r) {
         if (r.conflict) {
           // ほかの端末（や古い画面）が先に保存していた：GAS のセーブを読みこみ直す
@@ -152,6 +179,7 @@ var Sync = (function () {
   // entry：{ date, kind, floor, correct, subjects }
   function log(entry) {
     if (GameState.inSandbox && GameState.inSandbox()) return;
+    if (isDebug()) return;   // デバッグ用の枠の冒険は、冒険の記録に入れない
     var list = readJSON(LOG_KEY, []);
     list.push(entry);
     writeJSON(LOG_KEY, list);
@@ -173,9 +201,9 @@ var Sync = (function () {
   }
 
   // ---------- セーブの控え（保護者画面） ----------
-  function checkpoints() { return BDApi.call("checkpoints", {}, key()).then(function (r) { return r.checkpoints || []; }); }
+  function checkpoints() { return BDApi.call("checkpoints", slotParams({}), key()).then(function (r) { return r.checkpoints || []; }); }
   function restore(id, label) {
-    return BDApi.call("loadCheckpoint", { id: id }, key()).then(function (r) {
+    return BDApi.call("loadCheckpoint", slotParams({ id: id }), key()).then(function (r) {
       if (!GameState.adopt(r.data)) throw new Error("控えを読めませんでした");
       var g = GameState.get();
       g.today = { date: GameState.todayStr(), adventure: null };
@@ -216,7 +244,8 @@ var Sync = (function () {
   }
 
   return {
-    connected: connected, player: player, playerLabel: playerLabel, url: url, markDirty: markDirty,
+    connected: connected, player: player, playerLabel: playerLabel,
+    isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, switchSlot: switchSlot, moveToDebug: moveToDebug, url: url, markDirty: markDirty,
     start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, drillQuestions: drillQuestions, image: image,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };
