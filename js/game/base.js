@@ -282,6 +282,7 @@ var Base = (function () {
     Town.open(b.id);
   });
   document.getElementById("parentBtn").addEventListener("click", function () { Parent.open(); });
+  document.getElementById("arenaBtn").addEventListener("click", function () { Town.open("arena"); });   // 闘技場（2026-10-30）
   townCanvas.addEventListener("mousemove", function (ev) {
     var b = buildingAt(ev), id = b ? b.id : null;
     townCanvas.style.cursor = b ? "pointer" : "default";

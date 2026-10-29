@@ -514,6 +514,18 @@ var Dungeon = (function () {
              training: true, dungeon: "forest1", power: 1 };
   }
 
+  // ---------- 闘技場（2026-10-30） ----------
+  // 道のない1部屋。敵は置かない（相手は core.js の闘技場の処理が出す）。出口・鍵・宝箱・罠・泉はない
+  function arenaFloor() {
+    var c = { x: 2, y: 1, kind: "start", doors: [], name: "闘技場", visited: true, chests: [], traps: [], pickups: [], key: null, ckey: null, enemies: [] };
+    c.room = buildRoom(ArenaRoom, []);
+    c.room.theme = "cave";
+    c.center = centerSpot(c.room);
+    var cells = {}; cells[key(2, 1)] = c;
+    return { floor: 1, seed: 0, cells: cells, start: key(2, 1), exit: null, boss: false, lock: null, hasKey: false, hasCKey: false,
+             training: true, arena: true, dungeon: "forest1", power: 1 };
+  }
+
   // 部屋の外へ出た向き（出ていなければ null）
   function leftRoom(room, a) {
     if (a.x < 0) return "w";
@@ -582,7 +594,7 @@ var Dungeon = (function () {
   function mapSize(cw, ch, gap) { return { w: GRID_W * cw + (GRID_W - 1) * gap, h: GRID_H * ch + (GRID_H - 1) * gap }; }
 
   return {
-    generate: generate, trainingFloor: trainingFloor, startPoint: startPoint, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
+    generate: generate, trainingFloor: trainingFloor, arenaFloor: arenaFloor, startPoint: startPoint, newSeed: newSeed, doorTiles: doorTiles, leftRoom: leftRoom, neighbor: neighbor, entryPoint: entryPoint,
     enemyDepth: enemyDepth, rewardScale: rewardScale, drawMap: drawMap, mapSize: mapSize, nestPool: nestPool, DIRS: DIRS
   };
 })();
