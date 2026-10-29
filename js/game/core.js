@@ -502,9 +502,10 @@
     // cut：パッシブ「守りの誓い」「聖なる盾」。cutLow：聖なる盾の、HPが半分より少ないときの上のせ
     var cut = (c.stats.cut || 0) + (c.hp < c.stats.hp * 0.5 ? (c.stats.cutLow || 0) : 0);
     // 魔法の攻撃（影の魔導士・瘴気の霊。2026-10-21）は、敵の魔攻と仲間の魔防で計算する。ほかは物攻と物防
+    // opts.atk：攻撃力をじかに決める（闘技場の相手のスキル。2026-10-30）
     var res = opts.magic
-      ? Battle.damage((e.matk || e.patk) * (opts.mult || 1) * (1 - cut), Party.eff(c, "mdef"), { element: "dark", res: null, crit: 0, minPct: 0.3 })
-      : Battle.damage(e.patk * (opts.mult || 1) * (1 - cut), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // minPct：最低でも攻撃力の30%
+      ? Battle.damage((opts.atk !== undefined ? opts.atk : (e.matk || e.patk)) * (opts.mult || 1) * (1 - cut), Party.eff(c, "mdef"), { element: "dark", res: null, crit: 0, minPct: 0.3 })
+      : Battle.damage((opts.atk !== undefined ? opts.atk : e.patk) * (opts.mult || 1) * (1 - cut), Party.eff(c, "pdef"), { element: "slash", res: null, crit: 0, minPct: 0.3 });   // minPct：最低でも攻撃力の30%
     tally.hitsTaken++;
     Battle.showHit(A.x, A.y - 18, res, true);
     Sound.play("hurt");
@@ -1396,9 +1397,10 @@
   }
   function arenaSpawn(i, x, y) {
     var r = arena.rivals[i];
-    var e = Enemies.spawnRival(r.hero, i, x, y);
+    r.store = r.store || {};
+    var e = Enemies.spawnRival(r.hero, i, x, y, r.store);
     if (r.hp === null) r.hp = e.maxHp;
-    r.maxHp = e.maxHp; e.hp = r.hp;
+    r.maxHp = e.maxHp; e.hp = r.hp; r.mpMax = e.maxMp;
     e.cd = 0.8;
     arena.cur = i; arena.e = e;
     Battle.pop(x, y - 30, r.hero.name + "（" + GameData.JOBS[r.hero.job].name + "）", "#ffb0a0", 8);
@@ -1482,6 +1484,7 @@
       var hp = r.down ? 0 : r.hp === null ? 1 : r.maxHp ? Math.max(0, r.hp) / r.maxHp : 1;
       Render.rect(bx, by + 9, 42, 3, "#2a2f42");
       Render.rect(bx, by + 9, Math.round(42 * hp), 3, r.down ? "#4a4f62" : "#ef5b5b");
+      if (r.store && r.store.mp !== undefined && r.mpMax) { Render.rect(bx, by + 13, 42, 1, "#2a2f42"); Render.rect(bx, by + 13, Math.round(42 * Math.max(0, r.store.mp) / r.mpMax), 1, "#5aa9ff"); }
     });
   }
 
