@@ -179,6 +179,12 @@ var WorldMap = (function () {
     el.hidden = true;
     // 全開放の試し：知恵の試練はなし（4問正解・4教科の加護あり）。もどると出発する前にもどり、記録にもセーブにも残らない
     if (GameState.inSandbox()) { Base.depart(floor, null, { minutes: 10, correct: 4, subjects: ["math", "japanese", "science", "social"] }, dungeon); return; }
+    // 保護者のデバッグ用の枠（2026-10-29）：知恵の試練はとばす。正解数は保護者画面で選ぶ（加護は算数から順に）。記録には入れない
+    if (window.Sync && Sync.isDebug()) {
+      var n = Sync.debugCorrect();
+      Base.depart(floor, { correct: n, subjects: ["math", "japanese", "science", "social"].slice(0, n) }, null, dungeon);
+      return;
+    }
     // 出発ごとに新しい4問（1日に出発できる回数まで。テスト用に回数の制限をはずしたときは、最後の回をくり返す）
     var round = Math.min(GameState.adventuresToday() + 1, GameState.perDayToday());   // 土日は4回まで（2026-10-25）
     Trial.open(floor, function (res) { Base.depart(floor, res, null, dungeon); }, { round: round, dungeon: dungeon });

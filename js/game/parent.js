@@ -100,7 +100,7 @@ var Parent = (function () {
     document.getElementById("parentToday").textContent = "今日の出発：" + GameState.adventuresToday() + " / " + GameState.perDayToday() + " 回" +
       (GameState.isWeekend() ? "（土日）" : "") +
       (GameState.restToday() ? "　（今日は休みの日）" : "") +
-      (GameState.unlimited() ? "　※この端末は、テスト用の設定で回数の制限をはずしている" : "");
+      (Sync.isDebug() ? "　※デバッグ用のセーブなので、回数・休みの日の決まりはない" : GameState.unlimited() ? "　※この端末は、テスト用の設定で回数の制限をはずしている" : "");
 
     // 休みの日
     var week = document.getElementById("parentWeek"); week.textContent = "";
@@ -133,6 +133,7 @@ var Parent = (function () {
     renderHistory();
     renderDiag();
     renderConnect();
+    renderSlots();
 
     // 試しモード
     Base.fillFloorSelect("tryFloor");
@@ -242,6 +243,55 @@ var Parent = (function () {
       box.appendChild(el("p", "note", err.kind === "network" ? "インターネットにつながりませんでした" : "読みこめませんでした（" + err.message + "）"));
     });
   }
+
+  // 保護者のセーブの枠（2026-10-29）：対戦用とデバッグ用を切りかえる。保護者の端末だけに出す
+  function renderSlots() {
+    var sec = document.getElementById("slotSection");
+    sec.hidden = Sync.player() !== "parent";
+    if (sec.hidden) return;
+    var dbg = Sync.isDebug(), box = document.getElementById("slotBox");
+    document.getElementById("slotNow").textContent = "今のセーブ：" + (dbg ? "デバッグ用" : "対戦用");
+    document.getElementById("slotDebugFoot").hidden = !dbg;
+    if (dbg) fillSelect("slotCorrect", [0, 1, 2, 3, 4], Sync.debugCorrect(), function (n) { return n + "問"; });
+    box.textContent = "";
+    box.appendChild(el("p", "note", "読みこんでいます…"));
+    Sync.saveSlots().then(function (r) {
+      box.textContent = "";
+      var main = r.main || {}, debug = r.debug || {};
+      function line(name, x) { return name + "：" + (x.exists ? "あり（" + x.savedAt + " に保存）" : "まだない"); }
+      box.appendChild(el("p", "note", line("対戦用", main) + "　／　" + line("デバッグ用", debug)));
+      var foot = el("div", "test-foot");
+      if (!debug.exists && main.exists && !dbg) {
+        var mv = el("button", "btn small-btn", "今のセーブをデバッグ用に移す"); mv.type = "button";
+        mv.onclick = function () {
+          Dialog.confirm("今のセーブ（と、セーブの控え）をデバッグ用に移します。\n対戦用は空になり、キャラクリから始めます。よいですか？", function () {
+            mv.disabled = true;
+            Sync.moveToDebug().then(null, function (err) { mv.disabled = false; render("移せませんでした（" + err.message + "）"); });
+          }, null, { yes: "移す" });
+        };
+        foot.appendChild(mv);
+      }
+      var to = dbg ? "" : "debug";
+      var sw = el("button", "btn small-btn", dbg ? "対戦用に切りかえる" : "デバッグ用に切りかえる"); sw.type = "button";
+      sw.onclick = function () {
+        var target = to ? debug : main;
+        Dialog.confirm((to ? "デバッグ用" : "対戦用") + "のセーブに切りかえます。" + (target.exists ? "" : "\nまだセーブがないので、キャラクリから始めます。") + "よいですか？", function () {
+          sw.disabled = true;
+          Sync.switchSlot(to).then(null, function (err) { sw.disabled = false; render("切りかえられませんでした（" + err.message + "）"); });
+        }, null, { yes: "切りかえる" });
+      };
+      foot.appendChild(sw);
+      box.appendChild(foot);
+    }, function (err) {
+      box.textContent = "";
+      var m = String(err && err.message || "");
+      box.appendChild(el("p", "note", m.indexOf("unknown action") >= 0 ? "GAS を新しくすると使えるようになります" :
+        err.kind === "network" ? "インターネットにつながりませんでした" : "読みこめませんでした（" + m + "）"));
+    });
+  }
+  document.getElementById("slotCorrect").addEventListener("change", function (e) {
+    Sync.setDebugCorrect(Number(e.target.value)); document.getElementById("parentNote").textContent = "デバッグ用の試練の正解数を変えました";
+  });
 
   // つなぎ先
   function renderConnect() {
