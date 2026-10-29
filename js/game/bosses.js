@@ -937,7 +937,7 @@ var Bosses = (function () {
       Monsters.drawBoss(ctx, e, x, y + 14 - 4 + bob, cast ? "cast" : "stand");
       ctx.restore();
       if (cast) {   // 杖の先（頭がい骨）の紫の光
-        var sx = x - 11, sy = y + 14 - 4 + bob - 46 + 3;   // 杖の先の頭がい骨
+        var sx = x - 12, sy = y + 14 - 4 + bob - 46 + 3;   // 杖の先の頭がい骨（2026-10-30 描き直しで1点左へ）
         Combat.glowDot(ctx, sx, sy, 9 + Math.sin(glow * 10) * 2, "#ffe0ff", e.state === "pillar" ? "#e070ff" : "#9a5ad0", 0.85);
       }
       if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる（1点ずつ）
