@@ -25,6 +25,59 @@ var Enemies = (function () {
 
   function clear() { list.length = 0; arrows.length = 0; fxs.length = 0; Bosses.clear(); }
 
+  // ---------- 闘技場の相手（2026-10-30）：相手のプレイヤーの仲間を、CPU が動かす敵にする ----------
+  // 能力は仲間と同じ（装備・パッシブをふくむ GameState.heroStats）。動きは武器で決める：
+  //   弓 → 弓兵、杖（魔術師の系統）→ 魔導士（魔法の玉）、槍 → 槍兵、それ以外 → 近くで斬る。スキルはまだ使わない（段階2の最初の版）
+  // 攻撃の強さは「攻撃力 × 武器の倍率」（仲間のふつうの攻撃と同じ）。属性の弱点はない
+  function rivalDef(h, idx) {
+    var st = GameState.heroStats(h), wt = GameState.heroWeaponType(h), W = GameData.WEAPONS[wt] || GameData.WEAPONS.sword;
+    var wait = GameData.weaponWait(wt, h.job) * (st.waitMul || 1);
+    var mage = !!(W.bolt && GameData.inLine(h.job, W.boltFor));
+    var d = {
+      name: h.name, notInBook: true, rivalOf: idx, hp: st.hp, pdef: st.pdef, mdef: st.mdef, res: {}, r: 6, speed: 38,
+      patk: Math.round(st.patk * (W.power || 1) * 10) / 10, matk: 0,
+      windup: 0.3, cooldown: Math.max(0.25, wait - 0.3), lunge: 4, color: "#c8c0a8"
+    };
+    if (wt === "bow") { d.kind = "archer"; d.keepMin = 60; d.keepMax = 110; d.arrowSpeed = (W.shot && W.shot.speed) || 170; d.windup = 0.35; }
+    else if (mage) { d.kind = "caster"; d.matk = Math.round(st.matk * (W.bolt.power || 1) * 10) / 10; d.keepMin = 45; d.keepMax = 80; d.orbSpeed = W.bolt.speed || 140; d.windup = 0.4; d.cooldown = Math.max(0.3, wait - 0.4); }
+    else if (wt === "spear") { d.kind = "spear"; d.reach = W.reach || 28; d.keep = 18; }
+    else { d.kind = "melee"; d.reach = W.reach || 18; }
+    return d;
+  }
+  // 相手の仲間 h を、x・y に出す。idx：何人目か（0〜2）
+  function spawnRival(h, idx, x, y) {
+    var type = "rival_" + idx;
+    GameData.ENEMIES[type] = rivalDef(h, idx);
+    var e = spawn(type, x, y, 1);
+    e.rival = { hero: h, idx: idx, job: h.job, hair: h.face || 0, weapon: GameState.heroWeaponType(h) };
+    e.face = { x: 0, y: 1 };
+    return e;
+  }
+  function remove(e) { var i = list.indexOf(e); if (i >= 0) list.splice(i, 1); }
+  function drawRival(ctx, e, x, y) {
+    var R = e.rival, moving = e.state === "chase";
+    var ph = Math.sin(e.walk || 0);
+    var atk = e.state === "windup" || (e.state === "recover" && e.t > 0.2);
+    var frame = atk ? "attack" : !moving ? "stand" : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
+    var dd = Sprites.dirOf(e.face);
+    var mode = atk ? "attack" : "hold";
+    var behind = mode === "hold" ? dd.dir !== "down" : dd.dir === "up";
+    Render.rect(x - 6, y + 5, 12, 3, "rgba(0,0,0,0.35)");
+    if (e.flash > 0) Combat.glowDot(ctx, x, y - 6, 14, "#ffffff", "#ffffff", 0.6);
+    if (behind) Sprites.drawWeapon(ctx, R.weapon, e.face, x, y + 6, mode, 0);
+    Sprites.drawHero(ctx, R.job, R.hair, e.face, frame, x, y + 6);
+    if (!behind) Sprites.drawWeapon(ctx, R.weapon, e.face, x, y + 6, mode, 0);
+    // 相手のしるし：足もとに赤い輪
+    ctx.strokeStyle = "rgba(239,91,91,0.8)"; ctx.lineWidth = 1;
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 5, 8, 3.5, 0, 0, Math.PI * 2); else ctx.arc(x, y + 5, 8, 0, Math.PI * 2); ctx.stroke();
+    if (e.dead) return;
+    if (e.state === "windup") Render.text("！", x, y - 26, { size: 9, align: "center", bold: true, color: "#ffd24a" });
+    Render.rect(x - 9, y - 21, 18, 2, "#2a2f42");
+    Render.rect(x - 9, y - 21, Math.round(18 * Math.max(0, e.hp) / e.maxHp), 2, "#ef5b5b");
+    var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
+    if (marks.length) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 9, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
+  }
+
   // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
   function addArrow(e, angle, speed, opts) {
     // opts.dy：投げる高さ（ゴーレムは頭の上から）。opts.life：飛ぶ時間
@@ -508,6 +561,7 @@ var Enemies = (function () {
       var x = Math.round(e.x - cam.x), y = Math.round(e.y - cam.y);
       var d = e.def;
       ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (e.rival) { drawRival(ctx, e, x, y); ctx.globalAlpha = 1; return; }   // 闘技場の相手（2026-10-30）
       if (Bosses.isBoss(e)) { Bosses.draw(e, cam, clock); ctx.globalAlpha = 1; return; }
       if (d.kind === "nest") { drawNest(ctx, e, x, y); ctx.globalAlpha = 1; return; }
       if (d.kind === "dwisp" && !e.dead && (e.state === "vanish" || e.state === "appear")) {
@@ -736,5 +790,5 @@ var Enemies = (function () {
   }
   function updateFx(dt) { for (var i = fxs.length - 1; i >= 0; i--) { fxs[i].t -= dt; if (fxs[i].t <= 0) fxs.splice(i, 1); } }
 
-  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, hostile: hostile, charm: charm, list: list, update: update, draw: draw, addStatus: addStatus };
+  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, hostile: hostile, charm: charm, list: list, update: update, draw: draw, addStatus: addStatus, spawnRival: spawnRival, remove: remove };
 })();

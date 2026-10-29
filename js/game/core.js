@@ -457,6 +457,7 @@
   }
 
   Combat.hooks.onKill = function (e) {
+    if (dg && dg.arena) { arenaKill(e); return; }      // 闘技場：相手の1人をたおした
     if (dg && dg.training) { trainKill(e); return; }   // 訓練場：ごほうびはなし。像はすぐ元にもどる
     tally.kills++; tally.swingsToKill += e.swingsTaken || 0;
     run.kills++;
@@ -516,7 +517,8 @@
     if (fell) {
       Sound.play("down");
       tally.downs++;
-      if (Party.allDown() && dg.training) trainRevive();
+      if (Party.allDown() && dg.arena) arenaEnd(false);
+      else if (Party.allDown() && dg.training) trainRevive();
       else if (Party.allDown()) { if (canBossRetry()) showBossRetry(); else finish("wipe"); } else showChoose(c);
     }
   }
@@ -536,8 +538,8 @@
 
     var asleep = !!c.status.sleep, para = !!c.status.para;
     var nAlive = Enemies.alive().length;
-    A.running = nAlive === 0; // 部屋の敵を全滅させたら走る
-    if (run.roomAlive > 0 && nAlive === 0) roomCleared();
+    A.running = nAlive === 0 && !dg.arena; // 部屋の敵を全滅させたら走る（闘技場では走らない）
+    if (run.roomAlive > 0 && nAlive === 0 && !dg.arena) roomCleared();
     run.roomAlive = nAlive;
     var a = Input.axis();
     A.turn = Math.max(0, (A.turn || 0) - dt);
@@ -593,7 +595,7 @@
     Battle.update(dt);
     if (run.over) return; // 倒れて冒険が終わったとき
     if (dg.training) {   // 訓練場：時間・出口・控えはない。回復の泉と、数字を数えるだけ
-      trainUpdate(dt);
+      if (dg.arena) arenaUpdate(dt); else trainUpdate(dt);
       checkThings(dt);
       updateCamera();
       updateButtons(false);
@@ -979,7 +981,7 @@
     if (trial.tryMode) Render.text("試しモード（記録に残らない）", 7, yy, { size: 6, color: "#ffb36b" });
 
     // 上のまんなか：階層と残り時間（残り1分で赤くなり、点滅する）
-    if (dg.training) drawTrainHud();   // 訓練場：時間と地図のかわりに、たしかめるための数字
+    if (dg.arena) drawArenaHud(); else if (dg.training) drawTrainHud();   // 訓練場：時間と地図のかわりに、たしかめるための数字
     else {
       var tl = Math.ceil(run.timeLeft), mm = Math.floor(tl / 60), ss = tl % 60;
       var low = run.timeLeft <= 60;
@@ -1251,6 +1253,7 @@
   // 拠点から呼ぶ：出発する
   window.Adventure = {
     settings: settings,
+    startArena: startArena,   // 闘技場（2026-10-30）：cfg { rivals（相手の仲間3人）, who（相手の名前）, onEnd(win) }
     // t.dungeon：どのダンジョンか（省くと新緑の樹海）
     start: function (floor, seed, t) {
       trial = t || { correct: settings.correct, subjects: [], test: true };
@@ -1366,6 +1369,122 @@
     Sound.bgm("town");
     Town.openTraining();
   }
+  // ---------- 闘技場（2026-10-30 保護者と決定） ----------
+  // 相手のプレイヤーの3人（子どもには保護者の対戦用）を CPU が動かす。今の戦闘と同じく、表に出るのは1人ずつ。
+  // 相手の3人をたおせば勝ち、こちらの3人がたおれたら負け。時間の制限はない。道具は使えない。経験値・お金・素材は入らない。
+  // CPU の切りかえ：HP が 30% を下まわり、待っている仲間の HP が半分より多ければ、交代する（交代したら10秒は交代しない）
+  var arena = null;
+  function startArena(cfg) {
+    arena = { who: cfg.who || "相手", rivals: cfg.rivals.map(function (h) { return { hero: h, hp: null, maxHp: 0, down: false }; }),
+              cur: -1, e: null, next: 0, swapCd: 8, over: false, clock: 0, onEnd: cfg.onEnd };
+    trial = { correct: 0, subjects: [], test: true, training: true };
+    settings.correct = 0; settings.dungeon = "forest1";
+    dg = Dungeon.arenaFloor();
+    Party.setup(GameState.get().party.map(function (h) { return Party.fromHero(h); }));
+    Party.resetAll();
+    active = true; paused = false; choosing = false; cine = null;
+    pauseEl.hidden = true; chooseEl.hidden = true;
+    A.wait = 0; A.busy = 0; A.down = false; A.move = 0;
+    run = newRun();
+    enterRoom(dg.start, null);
+    var c = dg.cells[dg.start];
+    A.x = c.center.x; A.y = c.center.y + 44; A.face = { x: 0, y: -1 };
+    prerender(dg);
+    arenaSpawn(0, c.center.x, c.center.y - 44);
+    say("闘技場：" + arena.who + "のパーティとの対戦！ 3人をたおせば勝ち");
+    updateButtons(true); Sound.bgm("boss"); Sound.play("boss");
+  }
+  function arenaSpawn(i, x, y) {
+    var r = arena.rivals[i];
+    var e = Enemies.spawnRival(r.hero, i, x, y);
+    if (r.hp === null) r.hp = e.maxHp;
+    r.maxHp = e.maxHp; e.hp = r.hp;
+    e.cd = 0.8;
+    arena.cur = i; arena.e = e;
+    Battle.pop(x, y - 30, r.hero.name + "（" + GameData.JOBS[r.hero.job].name + "）", "#ffb0a0", 8);
+    return e;
+  }
+  function arenaNextIndex(pred) {
+    for (var k = 1; k <= arena.rivals.length; k++) {
+      var j = (arena.cur + k) % arena.rivals.length;
+      var r = arena.rivals[j];
+      if (!r.down && j !== arena.cur && (!pred || pred(r))) return j;
+    }
+    return -1;
+  }
+  function arenaKill(e) {
+    var r = arena.rivals[arena.cur];
+    r.down = true; r.hp = 0;
+    Battle.pop(e.x, e.y - 34, r.hero.name + " をたおした！", "#f2c14e", 9);
+    Sound.play("down");
+    arena.e = null;
+    arena.spot = { x: e.x, y: e.y };
+    if (arenaNextIndex() < 0) { arena.next = 0; arena.win = 1.2; return; }   // 3人ともたおした：少しして勝ち
+    arena.next = 1.2;   // 少しして、次の相手が出てくる
+  }
+  function arenaUpdate(dt) {
+    if (arena.over) return;
+    arena.clock += dt;
+    if (arena.win !== undefined) { arena.win -= dt; if (arena.win <= 0) arenaEnd(true); return; }
+    if (arena.next > 0) {
+      arena.next -= dt;
+      if (arena.next <= 0) {
+        var c = dg.cells[curKey], j = arenaNextIndex();
+        // 仲間から少しはなれたところに出す
+        var sx = A.x < c.center.x ? c.center.x + 70 : c.center.x - 70, sy = A.y < c.center.y ? c.center.y + 30 : c.center.y - 30;
+        if (j >= 0) arenaSpawn(j, sx, sy);
+      }
+      return;
+    }
+    var e = arena.e;
+    if (!e || e.dead) return;
+    arena.rivals[arena.cur].hp = e.hp;
+    arena.swapCd -= dt;
+    if (arena.swapCd <= 0 && e.hp < e.maxHp * 0.3 && e.state === "chase") {
+      var j2 = arenaNextIndex(function (r) { return r.hp === null || r.hp > r.maxHp * 0.5 || (r.maxHp === 0); });
+      if (j2 >= 0) {
+        var x = e.x, y = e.y;
+        Enemies.remove(e);
+        Battle.pop(x, y - 34, "交代！", "#ffb0a0", 9);
+        arenaSpawn(j2, x, y);
+        arena.swapCd = 10;
+      }
+    }
+  }
+  function arenaEnd(win, gaveUp) {
+    if (!arena || arena.over) return;
+    arena.over = true;
+    var downs = Party.members().filter(function (m) { return m.down; }).length;
+    var beat = arena.rivals.filter(function (r) { return r.down; }).length;
+    var lines = win
+      ? [arena.who + "のパーティに勝った！", "たおれた仲間：" + downs + "人　かかった時間：" + Math.round(arena.clock) + "秒"]
+      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　また明日、挑戦しよう！"];
+    Sound.play(win ? "levelup" : "down");
+    showStory(win ? "勝った！" : "負けた…", lines, "闘技場にもどる", function () { leaveArena(win); });
+  }
+  function leaveArena(win) {
+    var done = arena && arena.onEnd;
+    setPaused(false);
+    active = false; dg = null; arena = null;
+    Enemies.clear(); Combat.clear(); Battle.clear();
+    Sound.bgm("town");
+    if (done) done(win);
+  }
+  function drawArenaHud() {
+    if (!arena) return;
+    var w = 150, x0 = view.w / 2 - w / 2;
+    Render.rect(x0, 3, w, 30, "rgba(10,12,18,0.72)");
+    Render.text("闘技場　VS " + arena.who, view.w / 2, 5, { size: 7, align: "center", color: "#ffb0a0" });
+    arena.rivals.forEach(function (r, i) {
+      var bx = x0 + 6 + i * 48, by = 15;
+      var cur = i === arena.cur && arena.e && !arena.e.dead;
+      Render.text(r.hero.name, bx, by, { size: 6, color: r.down ? "#6a6f82" : cur ? "#ffd24a" : "#ece7da" });
+      var hp = r.down ? 0 : r.hp === null ? 1 : r.maxHp ? Math.max(0, r.hp) / r.maxHp : 1;
+      Render.rect(bx, by + 9, 42, 3, "#2a2f42");
+      Render.rect(bx, by + 9, Math.round(42 * hp), 3, r.down ? "#4a4f62" : "#ef5b5b");
+    });
+  }
+
   document.getElementById("trainReset").addEventListener("click", function () {
     if (!training) return;
     resetTrainStats();
@@ -1380,6 +1499,10 @@
   document.getElementById("resumeBtn").addEventListener("click", function () { setPaused(false); });
   // メニューから冒険をやめる：時間切れと同じ（拾った物と経験値は持ち帰り、階層は進まない）（2026-10-17 決定）
   document.getElementById("quitBtn").addEventListener("click", function () {
+    if (dg && dg.arena) {   // 闘技場：やめると負け（1日1回なので、確かめてから）
+      Dialog.confirm("降参しますか？\n（負けになります。今日の対戦は終わりです）", function () { setPaused(false); arenaEnd(false, true); }, null, { yes: "降参する", no: "続ける" });
+      return;
+    }
     if (dg && dg.training) { leaveTraining(); return; }
     Dialog.confirm("冒険をやめて拠点にもどりますか？\n（拾った物と経験値は持ち帰れるけれど、階層は進みません）", function () {
       setPaused(false);
@@ -1394,9 +1517,9 @@
     Input.releaseAll();
     // 訓練場：道具と地図は出さず、「訓練場を出る」と「数字を0にもどす」
     var tr = !!(dg && dg.training);
-    document.getElementById("quitBtn").textContent = tr ? "訓練場を出る（宿屋にもどる）" : "冒険をやめて拠点にもどる";
+    document.getElementById("quitBtn").textContent = dg && dg.arena ? "降参する（負けになる）" : tr ? "訓練場を出る（宿屋にもどる）" : "冒険をやめて拠点にもどる";
     pauseEl.querySelector(".toolbox").hidden = tr; pauseEl.querySelector(".mapbox").hidden = tr;
-    document.getElementById("trainReset").hidden = !tr;
+    document.getElementById("trainReset").hidden = !tr || !!dg.arena;
     if (on && !tr) { drawBigMap(); buildTools(); snapshot(); }
   }
 

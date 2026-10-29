@@ -31,6 +31,8 @@ var Sync = (function () {
   function slotParams(p) { p = p || {}; if (isDebug()) p.slot = "debug"; return p; }
   function debugCorrect() { try { var n = Number(localStorage.getItem(DEBUG_CORRECT_KEY)); return isFinite(n) && n >= 0 && n <= 4 && localStorage.getItem(DEBUG_CORRECT_KEY) !== null ? n : 4; } catch (e) { return 4; } }
   function setDebugCorrect(n) { try { localStorage.setItem(DEBUG_CORRECT_KEY, String(n)); } catch (e) { /* そのまま */ } }
+  // 闘技場の相手のパーティ（2026-10-30）。もどり値：Promise { party（なければ null）, savedAt, who }
+  function rivalParty() { return BDApi.call("rivalParty", {}, key(), { timeout: 60000 }); }
   function saveSlots() { return BDApi.call("saveSlots", {}, key()); }
   // 枠を切りかえる：まだ送っていない変更を送ってから、iPad の中を空にして読みこみ直す
   function switchSlot(slot) {
@@ -245,7 +247,7 @@ var Sync = (function () {
 
   return {
     connected: connected, player: player, playerLabel: playerLabel,
-    isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, switchSlot: switchSlot, moveToDebug: moveToDebug, url: url, markDirty: markDirty,
+    isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, rivalParty: rivalParty, switchSlot: switchSlot, moveToDebug: moveToDebug, url: url, markDirty: markDirty,
     start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, drillQuestions: drillQuestions, image: image,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };

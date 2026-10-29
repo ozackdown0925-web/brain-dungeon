@@ -126,6 +126,8 @@ const PLAYER_ACTIONS = {
   loadCheckpoint: function (p, role, player) { return { data: loadCheckpoint_(saveOwner_(player, p), String(p.id || '')) }; },
   saveSlots: function (p, role, player) { return saveSlots_(player); },
   moveSaveToDebug: function (p, role, player) { return moveSaveToDebug_(player); },
+  // 闘技場（2026-10-30）：相手のパーティ（子ども→保護者の対戦用、保護者→子ども）。3人の仲間だけを返す
+  rivalParty: function (p, role, player) { return rivalParty_(player); },
   logAdventure: function (p, role, player) { logAdventure_(player, p.entry); return {}; },
   adventures: function (p, role, player) { return { adventures: readAdventures_(player) }; },
   pinStatus: function () { return pinStatus_(); },
@@ -239,6 +241,16 @@ function saveSlots_(player) {
   const out = { main: one(player) };
   if (player === 'parent') out.debug = one(player + DEBUG_SUFFIX);
   return out;
+}
+// 闘技場の相手：子どもには保護者の「対戦用」、保護者には子どものパーティ。セーブのうち仲間（party）だけを返す
+function rivalParty_(player) {
+  const other = player === 'parent' ? 'child' : 'parent';
+  const r = loadGame_(other);
+  if (!r.data) return { party: null, savedAt: '' };
+  let g = null;
+  try { g = JSON.parse(r.data); } catch (err) { g = null; }
+  if (!g || !Array.isArray(g.party)) return { party: null, savedAt: '' };
+  return { party: g.party, savedAt: r.savedAt, who: other };
 }
 // 今の保護者のセーブ（と控え）を「デバッグ用」に移す。対戦用は空になる（ゲームはキャラクリから）。デバッグ用がもうあれば移さない
 function moveSaveToDebug_(player) {
