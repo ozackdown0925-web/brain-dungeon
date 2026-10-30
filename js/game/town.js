@@ -580,15 +580,16 @@ var Town = (function () {
   }
   // ---------- 闘技場（2026-10-30 保護者と決定） ----------
   // 子どもは保護者の「対戦用」パーティと、保護者は子どものパーティと戦う。相手は CPU が動かす。レベルはそのまま。
-  // 1日1回だけ（保護者のデバッグ用の枠と、テスト用に回数の制限をはずした端末は何回でも）。ごほうびは今のところなし
+  // 1日3回まで（2026-10-31 に1回から3回へ。保護者のデバッグ用の枠と、テスト用に回数の制限をはずした端末は何回でも）。ごほうびは今のところなし
   var rivalCache = null;
   function renderArena(g) {
     var me = Sync.player(), who = me === "parent" ? "子ども" : "保護者";
     var box = el("div", "arena");
-    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。1日1回だけ。"));
-    var a = GameState.arena(), today = GameState.arenaToday();
+    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。1日" + GameState.ARENA_PER_DAY + "回まで。"));
+    var a = GameState.arena(), today = GameState.arenaToday(), left = GameState.arenaLeft();
     var free = Sync.isDebug() || GameState.unlimited();
-    box.appendChild(el("p", "", "これまで：" + (a.wins || 0) + "勝 " + (a.losses || 0) + "敗" + (today ? "　今日：" + (today.win ? "勝ち" : "負け") : "")));
+    box.appendChild(el("p", "", "これまで：" + (a.wins || 0) + "勝 " + (a.losses || 0) + "敗" + (today ? "　今日：" + today.tw + "勝 " + today.tl + "敗" : "")));
+    if (!free) box.appendChild(el("p", "", "今日あと " + left + " 回 対戦できる"));
     var foes = el("div", "arena-foes");
     foes.appendChild(el("p", "note", "相手を読みこんでいます…"));
     box.appendChild(foes);
@@ -598,13 +599,14 @@ var Town = (function () {
       Adventure.startArena({ rivals: rivalCache.party.slice(0, 3), who: who, onEnd: function (win) {
         GameState.recordArena(win);
         open("arena");
-        say(win ? "勝った！ おめでとう！" : "負けてしまった… また明日、挑戦しよう");
+        var rest = GameState.arenaLeft();
+        say(win ? "勝った！ おめでとう！" : rest > 0 ? "負けてしまった… もう一度挑戦してみよう" : "負けてしまった… また明日、挑戦しよう");
       } });
     }, "big");
     go.disabled = true;
     go.style.marginTop = "10px";
     box.appendChild(go);
-    if (today && !free) box.appendChild(el("p", "note", "今日の対戦は終わり。また明日！"));
+    if (left <= 0 && !free) box.appendChild(el("p", "note", "今日の対戦は終わり。また明日！"));
     bodyEl.appendChild(box);
     Sync.rivalParty().then(function (r) {
       rivalCache = r;
@@ -617,7 +619,7 @@ var Town = (function () {
         line.appendChild(el("span", "item-extra", (GameData.WEAPONS[wt] ? GameData.WEAPONS[wt].name : "") + "　HP " + st.hp + "　物攻 " + Math.round(st.patk) + "　魔攻 " + Math.round(st.matk) + "　物防 " + Math.round(st.pdef) + "　魔防 " + Math.round(st.mdef)));
         foes.appendChild(line);
       });
-      go.disabled = !!(today && !free);
+      go.disabled = left <= 0 && !free;
     }, function (err) {
       foes.textContent = "";
       var m = String(err && err.message || "");

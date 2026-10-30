@@ -827,14 +827,23 @@ var GameState = (function () {
 
   // ---------- 冒険の途中（段階5-3） ----------
   // 今日の日付（端末の時計。iPad の日本時間）
-  // ---------- 闘技場（2026-10-30）：1日1回。勝ち・負けの数 ----------
-  // game.arena：{ date（最後に戦った日）, win（その日の結果）, wins, losses }
+  // ---------- 闘技場（2026-10-30）：1日3回（2026-10-31 に1回から3回へ）。勝ち・負けの数 ----------
+  // game.arena：{ date（最後に戦った日）, win（最後の結果）, n（その日に戦った回数）, tw・tl（その日の勝ち・負け）, wins, losses }
+  // n がない前のセーブは、その日に1回戦ったことにする
+  var ARENA_PER_DAY = 3;
   function arena() { var a = game && game.arena; return a && typeof a === "object" ? a : { date: "", win: false, wins: 0, losses: 0 }; }
-  function arenaToday() { var a = arena(); return a.date === todayStr() ? a : null; }
+  function arenaToday() {
+    var a = arena();
+    if (a.date !== todayStr()) return null;
+    var n = a.n || 1;
+    return { n: n, tw: a.tw !== undefined ? a.tw : (a.win ? 1 : 0), tl: a.tl !== undefined ? a.tl : (a.win ? 0 : 1), win: !!a.win };
+  }
+  function arenaLeft() { var t = arenaToday(); return Math.max(0, ARENA_PER_DAY - (t ? t.n : 0)); }
   function recordArena(win) {
     if (!game || sandbox) return;
-    var a = arena();
-    game.arena = { date: todayStr(), win: !!win, wins: (a.wins || 0) + (win ? 1 : 0), losses: (a.losses || 0) + (win ? 0 : 1) };
+    var a = arena(), t = arenaToday() || { n: 0, tw: 0, tl: 0 };
+    game.arena = { date: todayStr(), win: !!win, n: t.n + 1, tw: t.tw + (win ? 1 : 0), tl: t.tl + (win ? 0 : 1),
+                   wins: (a.wins || 0) + (win ? 1 : 0), losses: (a.losses || 0) + (win ? 0 : 1) };
     save();
     if (window.Sync) Sync.save("闘技場で" + (win ? "勝った" : "負けた"), summary());
   }
@@ -1003,7 +1012,7 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
-    arena: arena, arenaToday: arenaToday, recordArena: recordArena,
+    arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,

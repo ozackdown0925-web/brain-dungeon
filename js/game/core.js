@@ -1460,7 +1460,7 @@
     var beat = arena.rivals.filter(function (r) { return r.down; }).length;
     var lines = win
       ? [arena.who + "のパーティに勝った！", "たおれた仲間：" + downs + "人　かかった時間：" + Math.round(arena.clock) + "秒"]
-      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　また明日、挑戦しよう！"];
+      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　" + (GameState.arenaLeft() > 1 ? "もう一度、挑戦してみよう！" : "また明日、挑戦しよう！")];
     Sound.play(win ? "levelup" : "down");
     showStory(win ? "勝った！" : "負けた…", lines, "闘技場にもどる", function () { leaveArena(win); });
   }
@@ -1502,8 +1502,8 @@
   document.getElementById("resumeBtn").addEventListener("click", function () { setPaused(false); });
   // メニューから冒険をやめる：時間切れと同じ（拾った物と経験値は持ち帰り、階層は進まない）（2026-10-17 決定）
   document.getElementById("quitBtn").addEventListener("click", function () {
-    if (dg && dg.arena) {   // 闘技場：やめると負け（1日1回なので、確かめてから）
-      Dialog.confirm("降参しますか？\n（負けになります。今日の対戦は終わりです）", function () { setPaused(false); arenaEnd(false, true); }, null, { yes: "降参する", no: "続ける" });
+    if (dg && dg.arena) {   // 闘技場：やめると負け（1日3回までの1回に数えるので、確かめてから）
+      Dialog.confirm("降参しますか？\n（負けになります。今日の対戦の1回に数えます）", function () { setPaused(false); arenaEnd(false, true); }, null, { yes: "降参する", no: "続ける" });
       return;
     }
     if (dg && dg.training) { leaveTraining(); return; }

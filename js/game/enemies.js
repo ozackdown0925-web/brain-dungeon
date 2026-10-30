@@ -4,6 +4,8 @@ var Enemies = (function () {
   var list = [];
   var arrows = [];
   var fxs = [];     // 敵の攻撃の見た目（剣の斬り・かみつき・針。2026-10-19）
+  var rivalLater = [];   // 闘技場の相手のスキル：少しあとに当たるもの（矢の雨・メテオ・ビーム。2026-10-31）
+  var rivalZones = [];   // 闘技場の相手のスキル：その場に残るもの（炎の壁・ポイズンミスト・ダークホール）
 
   // depth：強さの深さ（docs/draft.md 2。深さ d で HP ×(1＋0.12×(d−1))、攻撃 ×(1＋0.10×(d−1))）。省くと1。
   function spawn(type, x, y, depth) {
@@ -23,7 +25,7 @@ var Enemies = (function () {
     return e;
   }
 
-  function clear() { list.length = 0; arrows.length = 0; fxs.length = 0; Bosses.clear(); }
+  function clear() { list.length = 0; arrows.length = 0; fxs.length = 0; rivalLater.length = 0; rivalZones.length = 0; Bosses.clear(); }
 
   // ---------- 闘技場の相手（2026-10-30）：相手のプレイヤーの仲間を、CPU が動かす敵にする ----------
   // 能力は仲間と同じ（装備・パッシブをふくむ GameState.heroStats）。動きは武器で決める：
@@ -77,7 +79,7 @@ var Enemies = (function () {
       var s = id && GameData.SKILL[id];
       if (!s || s.passive || !s.fx) return;
       var p = { id: id, name: s.name, mp: s.mp || 0, ct: s.ct || 4, prep: 0.5, mult: 0, range: 0, ranged: false, magic: false,
-                heal: 0, cure: false, buffs: [], status: null, color: "" };
+                heal: 0, cure: false, buffs: [], status: null, color: "", fx: [] };
       function dmg(f, k) {
         p.mult += (f.mult || 0) * k;
         if (f.stat === "m" || (f.stat === "best" && e.base.sm > e.base.sp)) p.magic = true;
@@ -85,6 +87,7 @@ var Enemies = (function () {
         if (f.color && !p.color) p.color = f.color;
       }
       s.fx.forEach(function (f) {
+        if (f.t === "shot" || f.t === "beam" || f.t === "rain" || f.t === "zone") p.fx.push(f);   // 仲間と同じ見た目で出す（2026-10-31）
         if (f.t === "charge") p.prep += f.time || 0;
         else if (f.t === "arc") { dmg(f, 1); p.range = Math.max(p.range, f.reach || e.base.reach + 4); }
         else if (f.t === "around") { dmg(f, 1); p.range = Math.max(p.range, f.radius || 26); p.ring = true; }
@@ -104,7 +107,7 @@ var Enemies = (function () {
         else if (f.t === "enchant") p.buffs.push({ stat: "patk", pct: 0.15, dur: f.dur || 15 });
       });
       // はなれて戦う相手（弓・魔法）の近くの技は、光る玉にして飛ばす（近づかないので、そのままでは届かない）
-      if ((p.mult > 0 || p.status) && !p.ranged && (e.def.kind === "archer" || e.def.kind === "caster")) { p.ranged = true; p.range = Math.max(p.range, 90); p.ring = false; }
+      if ((p.mult > 0 || p.status) && !p.ranged && (e.def.kind === "archer" || e.def.kind === "caster")) { p.fx = []; p.ranged = true; p.range = Math.max(p.range, 90); p.ring = false; }
       if (p.mult > 0 || p.status) p.kind = "attack";   // ダメージのない技（スリープなど）は、状態異常だけ
       else if (p.heal > 0 || p.cure) p.kind = "heal";
       else if (p.buffs.length) p.kind = "buff";
@@ -171,7 +174,8 @@ var Enemies = (function () {
     // 攻撃：強さは「攻撃力 × スキルの倍率」（仲間のスキルと同じ）。強くする技の効き目も入れる
     var m = e.mul || { patk: 1, matk: 1 };
     var opts = { atk: p.magic ? e.base.sm * m.matk : e.base.sp * m.patk, mult: p.mult, magic: p.magic, status: p.status, big: p.mult >= 2, noDamage: p.mult <= 0 };
-    if (p.ranged) {
+    if (p.ranged && p.fx.length) { p.fx.forEach(function (f) { rivalFire(e, p, f, P); }); return; }
+    if (p.ranged) {   // 呼び出し（魔物使い）など：光る玉を飛ばす
       var sp = p.speed || 170;
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * sp, vy: e.aim.y * sp, life: Math.max(0.6, p.range / sp + 0.2), from: e,
                     opts: { skillShot: true, color: p.color, size: p.mult >= 2 ? 6 : 4, atk: opts.atk, mult: opts.mult, magic: opts.magic, status: opts.status, big: opts.big, noDamage: opts.noDamage } });
@@ -180,6 +184,94 @@ var Enemies = (function () {
     if (p.ring) fxs.push({ kind: "ring", e: e, col: p.color, reach: p.range, t: 0.3, max: 0.3 });
     else fxs.push({ kind: "slash", col: p.color, e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: p.range, t: 0.25, max: 0.25, flip: Math.random() < 0.5 });
     if (!P.down && gap <= p.range + 4) hit(e, P.x, P.y - 8, opts);
+  }
+  // 闘技場の相手が、遠くへのスキルを仲間のスキルと同じ見た目で出す（2026-10-31 保護者の希望：三本矢がただの玉になっていた）
+  //   shot＝矢・火の玉・手裏剣など（数・広がりも同じ）、rain＝矢の雨・メテオ（ねらった場所に落ちる）、
+  //   zone＝炎の壁・ポイズンミスト・ダークホール（その場に残って、中にいると当たる）、beam＝前へのびる光のビーム
+  function rivalOpts(e, f, p) {
+    var m = e.mul || { patk: 1, matk: 1 };
+    var mg = f.stat === "m" || (f.stat === "best" && e.base.sm > e.base.sp);
+    var st = f.status && RIVAL_STATUS[f.status.type] ? f.status : null;
+    return { atk: mg ? e.base.sm * m.matk : e.base.sp * m.patk, mult: f.mult || 0, magic: mg, status: st, big: (f.mult || 0) >= 2, noDamage: !(f.mult > 0) };
+  }
+  function rivalFire(e, p, f, P) {
+    var o = rivalOpts(e, f, p), ang = Math.atan2(e.aim.y, e.aim.x);
+    if (f.t === "shot") {
+      var n = f.count || 1, spread = f.spread || 0, speed = f.speed || 170, range = f.range || 150;
+      var col = f.color || (o.magic ? "#c9a8ff" : "#e8d8b0");
+      for (var k = 0; k < n; k++) {
+        var a = ang + (k - (n - 1) / 2) * spread;
+        arrows.push({ x: e.x + Math.cos(a) * 6, y: e.y - 3 + Math.sin(a) * 6, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: range / speed, from: e,
+                      opts: { skillShot: true, spec: f, color: col, size: f.size || 1, arrow: !f.size, pierce: !!f.pierce, explode: f.explode || 0,
+                              atk: o.atk, mult: o.mult, magic: o.magic, status: o.status, big: o.big, noDamage: o.noDamage } });
+      }
+      return;
+    }
+    if (f.t === "rain") {   // ねらった相手の足もとに降らせる
+      var cx = P.x, cy = P.y;
+      if (f.look === "meteor") {
+        Combat.addEffect({ kind: "ring", x: cx, y: cy, r: f.radius + 10, t: 0.3 + f.count * 0.3 + 0.4, max: 0.3 + f.count * 0.3 + 0.4, color: "#ff8a3d" });
+        for (var mm = 0; mm < f.count; mm++) {
+          var an = Math.random() * Math.PI * 2, dd = Math.random() * f.radius * 0.8;
+          rivalDrop(e, o, cx + Math.cos(an) * dd, cy + Math.sin(an) * dd * 0.7, 0.1 + mm * 0.3, 0.3, f.hitRadius || 22, "meteor");
+        }
+        return;
+      }
+      Combat.addEffect({ kind: "ring", x: cx, y: cy, r: f.radius, t: 0.15 + f.count * 0.12 + 0.3, max: 0.15 + f.count * 0.12 + 0.3, color: "#e8d8b0" });
+      for (var r = 0; r < f.count; r++) {
+        rivalDrop(e, o, cx + (Math.random() - 0.5) * f.radius * 1.4, cy + (Math.random() - 0.5) * f.radius * 1.4, 0.05 + r * 0.12, 0.12, 12, "arrowfall");
+      }
+      return;
+    }
+    if (f.t === "zone") {   // ねらった相手のところに出す（はなれれば当たらない）
+      var gx = e.x + e.aim.x * Math.max(f.dist || 30, 0), gy = e.y + e.aim.y * Math.max(f.dist || 30, 0);
+      var toP = Math.sqrt((P.x - e.x) * (P.x - e.x) + (P.y - e.y) * (P.y - e.y));
+      if (toP > (f.dist || 30)) { gx = P.x; gy = P.y; }
+      rivalZones.push({ e: e, f: f, o: o, x: gx, y: gy, t: f.dur || 3, max: f.dur || 3, tick: 0.2 });
+      return;
+    }
+    if (f.t === "beam") {   // 十字の光のあと、前へ光のビーム
+      var bx0 = e.x, by0 = e.y - 4;
+      Combat.addEffect({ kind: "crossflash", e: { x: e.x, y: e.y, face: { x: e.aim.x, y: e.aim.y } }, t: 0.35, max: 0.35, color: f.color || "#fff2a0" });
+      rivalLater.push({ t: 0.3, fn: function (pp, hurt, room) {
+        var ux = Math.cos(ang), uy = Math.sin(ang), len = f.length || 190;
+        for (var d0 = 8; d0 < len; d0 += 4) {
+          if (room.blocksShot(Math.floor((bx0 + ux * d0) / World.TILE), Math.floor((by0 + 4 + uy * d0) / World.TILE))) { len = d0; break; }
+        }
+        Combat.addEffect({ kind: "beam", x: bx0, y: by0, ang: ang, len: len, w: f.width || 16, t: 0.55, max: 0.55, color: f.color || "#fff2a0" });
+        Sound.play("hit");
+        var ex = pp.x - bx0, ey = (pp.y - 3) - by0, along = ex * ux + ey * uy, side = Math.abs(-ex * uy + ey * ux);
+        if (!pp.down && along > -pp.r && along < len + pp.r && side <= (f.width || 16) / 2 + pp.r) hurt(e, pp.x, pp.y - 8, o);
+      } });
+    }
+  }
+  // 空から落ちてくるもの（矢の雨の1本・メテオの1つ）：wait 秒後に落ちはじめ、さらに land 秒後に当たる
+  function rivalDrop(e, o, x, y, wait, land, rad, look) {
+    rivalLater.push({ t: wait, fn: function () {
+      Combat.addEffect({ kind: look, x: x, y: y, t: look === "meteor" ? 0.75 : 0.45, max: look === "meteor" ? 0.75 : 0.45 });
+      rivalLater.push({ t: land, fn: function (pp, hurt) {
+        if (look === "meteor") { Combat.addEffect({ kind: "boom", x: x, y: y, r: rad, t: 0.45, max: 0.45 }); Sound.play("hit"); }
+        var dx = pp.x - x, dy = pp.y - y;
+        if (!pp.down && dx * dx + dy * dy <= (rad + pp.r) * (rad + pp.r)) hurt(e, pp.x, pp.y - 8, o);
+      } });
+    } });
+  }
+  function updateRivalFx(dt, p, hurt, room) {
+    for (var i = rivalLater.length - 1; i >= 0; i--) {
+      var q = rivalLater[i];
+      q.t -= dt;
+      if (q.t <= 0) { rivalLater.splice(i, 1); q.fn(p, hurt, room); }
+    }
+    for (var z = rivalZones.length - 1; z >= 0; z--) {
+      var zn = rivalZones[z];
+      zn.t -= dt; zn.tick -= dt;
+      if (zn.tick <= 0) {
+        zn.tick = zn.f.tick || 0.5;
+        var dx = p.x - zn.x, dy = p.y - zn.y, rr = (zn.f.radius || 20) + p.r;
+        if (!p.down && dx * dx + dy * dy <= rr * rr) hurt(zn.e, p.x, p.y - 8, zn.o);
+      }
+      if (zn.t <= 0) rivalZones.splice(z, 1);
+    }
   }
   function remove(e) { var i = list.indexOf(e); if (i >= 0) list.splice(i, 1); }
   function drawRival(ctx, e, x, y) {
@@ -457,6 +549,8 @@ var Enemies = (function () {
       if (dist < min) room.move(a, dx / dist * (min - dist), dy / dist * (min - dist));
     }
 
+    if (rivalLater.length || rivalZones.length) updateRivalFx(dt, p, hurt, room);
+
     // 矢
     for (var k = arrows.length - 1; k >= 0; k--) {
       var ar = arrows[k];
@@ -465,6 +559,7 @@ var Enemies = (function () {
         var cr = ar.opts.curve * dt, cc = Math.cos(cr), cs = Math.sin(cr), nvx = ar.vx * cc - ar.vy * cs;
         ar.vy = ar.vx * cs + ar.vy * cc; ar.vx = nvx;
       }
+      if (ar.opts && ar.opts.skillShot) { ar.trail = ar.trail || []; ar.trail.push({ x: ar.x, y: ar.y }); if (ar.trail.length > 7) ar.trail.shift(); }
       ar.x += ar.vx * dt; ar.y += ar.vy * dt;
       var tx = Math.floor(ar.x / World.TILE), ty = Math.floor(ar.y / World.TILE);
       var hitWall = room.blocksShot(tx, ty);
@@ -484,6 +579,7 @@ var Enemies = (function () {
       var ddx = ar.x - p.x, ddy = ar.y - p.y, hr = p.r + 2 + (ar.opts && ar.opts.rad || 0);   // rad：大きなもの（ゴーレムの岩）
       if (!ar.ally && !p.down && !ar.hitP && ddx * ddx + ddy * ddy < hr * hr) {
         hurt(ar.from, ar.x, ar.y, ar.opts);
+        if (ar.opts && ar.opts.explode) { Combat.addEffect({ kind: "boom", x: ar.x, y: ar.y, r: ar.opts.explode, t: 0.45, max: 0.45 }); Sound.play("hit"); }   // フレイムボムなど
         if (ar.opts && ar.opts.pierce) { ar.hitP = true; continue; }   // 貫通する矢（ダークアロー）は、当たってもそのまま飛ぶ
         if (ar.opts && ar.opts.rock) rockBreak(ar, false);
         arrows.splice(k, 1); continue;
@@ -821,6 +917,7 @@ var Enemies = (function () {
       }
     });
     ctx.globalAlpha = 1;
+    rivalZones.forEach(function (zn) { Combat.drawZone(ctx, zn, cam); });
     fxs.forEach(function (f) { drawFx(ctx, f, cam); });
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
@@ -839,7 +936,11 @@ var Enemies = (function () {
         Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#b47aff");
         return;
       }
-      if (a.opts && a.opts.skillShot) {   // 闘技場の相手のスキルの玉：スキルの色に光る
+      if (a.opts && a.opts.skillShot && a.opts.spec) {   // 闘技場の相手のスキル：仲間のスキルと同じ見た目（2026-10-31）
+        Combat.drawShot(ctx, { x: a.x, y: a.y, vx: a.vx, vy: a.vy, life: a.life, trail: a.trail, spec: a.opts.spec, color: a.opts.color, size: a.opts.size, arrow: a.opts.arrow }, cam);
+        return;
+      }
+      if (a.opts && a.opts.skillShot) {   // 闘技場の相手のスキルの玉（呼び出しなど）：スキルの色に光る
         Combat.glowDot(ctx, x, y, a.opts.size + 4, "#ffffff", a.opts.color, 0.9);
         return;
       }
