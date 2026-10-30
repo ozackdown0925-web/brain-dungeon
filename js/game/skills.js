@@ -791,7 +791,13 @@ var Combat = (function () {
     }
     zones.forEach(function (zn) { drawZone(ctx, zn, cam); });
     drawSummons(ctx, cam);
-    shots.forEach(function (s) {
+    shots.forEach(function (s) { drawShot(ctx, s, cam); });
+    effects.forEach(function (ef) { drawEffect(ctx, ef, a, cam); });
+    drawCastFront(ctx, cam);
+  }
+  // 飛ぶもの1つをかく（闘技場の相手のスキルも、これで同じ見た目にする。2026-10-31）
+  // s：{ x, y, vx, vy, trail, spec, color, size, arrow, life }
+  function drawShot(ctx, s, cam) {
       var x = s.x - cam.x, y = s.y - cam.y;
       if (s.arrow) {   // 矢（今のまま）
         var len = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
@@ -807,10 +813,8 @@ var Combat = (function () {
         return;
       }
       if (s.spec.elem === "fire") drawFireball(ctx, s, x, y, cam); else drawOrb(ctx, s, x, y, cam);
-    });
-    effects.forEach(function (ef) { drawEffect(ctx, ef, a, cam); });
-    drawCastFront(ctx, cam);
   }
+  function addEffect(ef) { effects.push(ef); }
 
   // ---------- 絵の部品（2026-10-19。ドット絵ではなく、光とすけ感で表す） ----------
   function rgba(hex, al) {
@@ -1060,7 +1064,8 @@ var Combat = (function () {
       return;
     }
     if (ef.kind === "crossflash") {   // グランドクロスのため：キャラの前に光の十字が広がる
-      var cx2 = a.x - cam.x + a.face.x * 8, cy2 = a.y - cam.y - 6 + a.face.y * 6, s2 = 4 + 10 * Math.min(1, q * 1.6);
+      var who = ef.e || a;   // ef.e：闘技場の相手（2026-10-31）
+      var cx2 = who.x - cam.x + who.face.x * 8, cy2 = who.y - cam.y - 6 + who.face.y * 6, s2 = 4 + 10 * Math.min(1, q * 1.6);
       glowDot(ctx, cx2, cy2, s2 * 1.8, "#ffffff", ef.color, 0.7);
       ctx.fillStyle = rgba("#ffffff", 0.95);
       ctx.fillRect(cx2 - 1.5, cy2 - s2, 3, s2 * 2); ctx.fillRect(cx2 - s2 * 0.7, cy2 - s2 * 0.35, s2 * 1.4, 3);
@@ -1301,5 +1306,6 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack };
+  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack,
+           drawShot: drawShot, drawZone: drawZone, addEffect: addEffect };
 })();
