@@ -536,14 +536,16 @@ var GameData = (function () {
     res: { water: 0.5, strike: 0.75, slash: 1.25 }, speed: 0, r: 16,
     reach: 30, windup: 0.5, cooldown: 1.3, hopSpeed: 120, hopTime: 0.4, hopEvery: 1.1, color: "#4e7a3a",
     // 2026-10-22：かわせなかったので、予告 1.1→1.4秒、輪 30→26、輪がとまるのは出る 0.9 秒前（前は0.35秒前）
-    diveEvery: 7, diveEveryHalf: 5, diveWarn: 1.4, diveLock: 0.9, diveRadius: 26, diveMult: 3.0,
+    // 2026-11-01 保護者の感想（簡単になった。2回に1回は当たるように）：輪 26→32、輪がとまるのは出る 0.9→0.75 秒前。
+    //   止まっていると、輪がとまってから外へ出るのに 0.73 秒かかる（ほぼ当たる）。歩きつづけていれば輪が少しおくれるので、すぐ動けばよけられる
+    diveEvery: 7, diveEveryHalf: 5, diveWarn: 1.4, diveLock: 0.75, diveRadius: 32, diveMult: 3.0,
     rainEvery: 9, rainWarn: 0.9, rainRadius: 16, rainMult: 0.8
   };
   // 沼の魔女（10階・主）：魔法が中心。離れたところから闇の玉を3つ。近づくと消えて、べつの場所に現れる。
-  // 瘴気の柱（大技。地面の紫の輪で予告）、瘴気の霊を呼ぶ。光が弱点、闇は効かない
+  // 瘴気の柱（大技。地面の紫の輪で予告）、瘴気の霊を呼ぶ。光が弱点、闇は効かない、斬はいまひとつ
   ENEMIES.witch_boss = {
     name: "沼の魔女", kind: "witch_boss", boss: true, hp: 2600, patk: 18, matk: 32, pdef: 7, mdef: 12,
-    res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 20, r: 10,
+    res: { light: 1.5, dark: 0, strike: 1.25, slash: 0.6 }, speed: 20, r: 10,   // 斬はいまひとつ（2026-11-01 保護者の希望：剣で簡単にたおせたので）
     keepMin: 70, keepMax: 130, windup: 0.6, cooldown: 2.2, orbSpeed: 95, color: "#4a2e72",
     pillarEvery: 9, pillarEveryHalf: 6, pillarWarn: 1.2, pillarRadius: 22, pillarMult: 2.6,
     // 2026-10-22 保護者の感想（遠くから攻撃できないと当てられない）で、近くで戦えるようにした：
@@ -602,6 +604,7 @@ var GameData = (function () {
   // 状態異常（docs/draft.md 1.7）
   var STATUS = {
     poison: { name: "毒", color: "#e070ff" },   // 2026-10-22：黄緑だと地面にまぎれるので、明るい紫に
+    venom:  { name: "猛毒", color: "#ff3fb0" },   // 2026-11-01：瘴気の森のボスの毒。1秒ごとに最大HPの5%（毒の約3倍）。毒消しで治る
     para:   { name: "しびれ", color: "#ffe066" },
     sleep:  { name: "眠り", color: "#b48cf0" },
     "break": { name: "防御ダウン", color: "#ff9a4d" }

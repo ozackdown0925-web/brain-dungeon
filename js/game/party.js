@@ -111,6 +111,16 @@ var Party = (function () {
         }
         s.poison.t -= dt; if (s.poison.t <= 0) delete s.poison;
       }
+      if (s.venom) {   // 猛毒（2026-11-01）：1秒ごとに最大HPの5%。毒と同じく、猛毒では倒れない（HP1で止まる）
+        s.venom.tick -= dt;
+        if (s.venom.tick <= 0) {
+          s.venom.tick += 1;
+          var vd = Math.max(1, Math.round(c.stats.hp * 0.05));
+          c.hp = Math.max(1, c.hp - vd);
+          Battle.pop(actor.x, actor.y - 18, "猛毒 " + vd, GameData.STATUS.venom.color, 10);
+        }
+        s.venom.t -= dt; if (s.venom.t <= 0) delete s.venom;
+      }
       ["para", "sleep"].forEach(function (k) { if (s[k]) { s[k].t -= dt; if (s[k].t <= 0) delete s[k]; } });
     });
   }
@@ -120,7 +130,9 @@ var Party = (function () {
     var aura = 0;
     members.forEach(function (m) { if (!m.down && m.stats && m.stats.aura > aura) aura = m.stats.aura; });
     if (aura && Math.random() < aura) { Battle.pop(actor.x, actor.y - 28, "ふせいだ", "#ffffff", 8); return; }
+    if (type === "poison" && c.status.venom) return;   // 猛毒のときは、ふつうの毒にはならない
     if (type === "poison") c.status.poison = { t: dur, tick: 2 };
+    else if (type === "venom") { delete c.status.poison; c.status.venom = { t: dur, tick: 1 }; }   // 猛毒は毒の上書き
     else c.status[type] = { t: dur };
     Battle.pop(actor.x, actor.y - 28, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);
   }

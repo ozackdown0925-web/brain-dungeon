@@ -661,11 +661,11 @@
     (c.pickups || []).forEach(function (u) {
       if (u.taken || !near(u.x, u.y, 11)) return;
       var herb = u.kind === "herb", cure = u.kind === "cure", alive = Party.members().filter(function (m) { return !m.down; });
-      var need = alive.some(function (m) { return cure ? !!m.status.poison : herb ? m.hp < m.stats.hp : m.mp < m.stats.mp; });
+      var need = alive.some(function (m) { return cure ? !!(m.status.poison || m.status.venom) : herb ? m.hp < m.stats.hp : m.mp < m.stats.mp; });
       if (!need) return;
       u.taken = true;
       alive.forEach(function (m) {
-        if (cure) delete m.status.poison;
+        if (cure) { delete m.status.poison; delete m.status.venom; }   // 猛毒も治る（2026-11-01）
         else if (herb) m.hp = Math.min(m.stats.hp, m.hp + Math.max(1, Math.round(m.stats.hp * 0.10)));
         else m.mp = Math.min(m.stats.mp, m.mp + Math.max(1, Math.round(m.stats.mp * 0.08)));
       });
@@ -1560,8 +1560,9 @@
           });
         });
       } else {
-        add(t.name + n, !!c.status[t.cures], function () {
-          GameState.useTool(k); Sound.play("heal"); delete c.status[t.cures]; note.textContent = c.name + "の" + GameData.STATUS[t.cures].name + "が治った";
+        var cureKey = t.cures === "poison" && c.status.venom ? "venom" : t.cures;   // 毒消しは猛毒も治す（2026-11-01）
+        add(t.name + n, !!c.status[cureKey], function () {
+          GameState.useTool(k); Sound.play("heal"); delete c.status[cureKey]; note.textContent = c.name + "の" + GameData.STATUS[cureKey].name + "が治った";
         });
       }
     });
