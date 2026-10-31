@@ -249,7 +249,7 @@ var Bosses = (function () {
         for (var i = 0; i < n; i++) {
           var a = Math.random() * Math.PI * 2, rr = i === 0 ? 0 : 24 + Math.random() * 70;
           hazards.push({ kind: "circle", look: "drop", from: e, x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr, r: d.rainRadius, t: 0, warn: d.rainWarn + i * 0.08, erupt: 0.35, hit: false,
-                         opts: { mult: d.rainMult, status: { type: "poison", chance: 0.8, dur: 8 } } });
+                         opts: { mult: d.rainMult, status: { type: "venom", chance: 0.8, dur: 8 } } });   // 猛毒（2026-11-01）
         }
         e.state = "recover"; e.t = 0.5; e.ai.rain = d.rainEvery;
       }
@@ -313,7 +313,7 @@ var Bosses = (function () {
         for (var i = 0; i < n; i++) {
           var a = Math.random() * Math.PI * 2, rr = i === 0 ? 0 : 40 + Math.random() * 50;
           hazards.push({ kind: "circle", look: "pillar", from: e, x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr, r: d.pillarRadius, t: 0, warn: d.pillarWarn, erupt: 0.5, hit: false,
-                         opts: { magic: true, mult: d.pillarMult, big: true, status: { type: "poison", chance: 0.5, dur: 8 } } });
+                         opts: { magic: true, mult: d.pillarMult, big: true, status: { type: "venom", chance: 0.5, dur: 8 } } });   // 猛毒（2026-11-01）
         }
         tire(e); e.ai.pillar = half ? d.pillarEveryHalf : d.pillarEvery;
       }

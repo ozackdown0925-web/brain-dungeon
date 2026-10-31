@@ -317,7 +317,7 @@ var GameState = (function () {
     hiether:  { name: "上MP回復薬", price: 400, mp: 50, tier: 1, note: "MP を 50 回復" },
     xether:   { name: "特上MP回復薬", price: 1200, mp: 100, tier: 2, note: "MP を 100 回復" },
     revive:   { name: "復活薬", price: 1000, note: "たおれた仲間を HP30% で復活" },   // 2026-10-18 に 150G から変更
-    antidote: { name: "毒消し", price: 20, note: "毒を治す", cures: "poison" },
+    antidote: { name: "毒消し", price: 20, note: "毒・猛毒を治す", cures: "poison" },
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
