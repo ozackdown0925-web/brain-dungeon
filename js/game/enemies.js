@@ -79,7 +79,7 @@ var Enemies = (function () {
       var s = id && GameData.SKILL[id];
       if (!s || s.passive || !s.fx) return;
       var p = { id: id, name: s.name, mp: s.mp || 0, ct: s.ct || 4, prep: 0.5, mult: 0, range: 0, ranged: false, magic: false,
-                heal: 0, cure: false, buffs: [], status: null, color: "", fx: [] };
+                heal: 0, cure: false, buffs: [], status: null, color: "", fx: [], seq: s.fx, summon: null };
       function dmg(f, k) {
         p.mult += (f.mult || 0) * k;
         if (f.stat === "m" || (f.stat === "best" && e.base.sm > e.base.sp)) p.magic = true;
@@ -100,14 +100,14 @@ var Enemies = (function () {
         else if (f.t === "shot" || f.t === "beam") { dmg(f, 1); p.ranged = true; p.range = Math.max(p.range, f.range || f.length || 130); p.speed = f.speed || 180; }
         else if (f.t === "zone") { dmg(f, Math.max(1, (f.dur || 3) / (f.tick || 0.5)) * 0.5); p.ranged = true; p.range = Math.max(p.range, (f.dist || 30) + (f.radius || 20) + 40); }
         else if (f.t === "rain") { dmg(f, (f.count || 3) * 0.6); p.ranged = true; p.range = Math.max(p.range, (f.dist || 56) + (f.radius || 26)); }
-        else if (f.t === "summon") { dmg(f, 1); p.ranged = true; p.range = Math.max(p.range, 110); }
+        else if (f.t === "summon") { dmg(f, 1); p.ranged = true; p.range = Math.max(p.range, 110); p.summon = f; }
+        else if (f.t === "pierceDash") { dmg(f, 1); p.range = Math.max(p.range, (f.dist || 60) * 0.8); }   // グランドチャージ（2026-11-01 使うようにした）
         else if (f.t === "heal" || f.t === "regen") p.heal += f.pct || 0;
         else if (f.t === "cure") p.cure = true;
         else if (f.t === "buff" && /^(patk|matk|pdef|mdef|wait)$/.test(f.stat)) p.buffs.push({ stat: f.stat, pct: f.pct, dur: f.dur || 15 });
         else if (f.t === "enchant") p.buffs.push({ stat: "patk", pct: 0.15, dur: f.dur || 15 });
       });
-      // はなれて戦う相手（弓・魔法）の近くの技は、光る玉にして飛ばす（近づかないので、そのままでは届かない）
-      if ((p.mult > 0 || p.status) && !p.ranged && (e.def.kind === "archer" || e.def.kind === "caster")) { p.fx = []; p.ranged = true; p.range = Math.max(p.range, 90); p.ring = false; }
+      // はなれて戦う相手（弓・魔法）の近くの技も、こちらが近くにいるときだけ、仲間と同じ見た目で使う（2026-11-01。前は光る玉にして飛ばしていた）
       if (p.mult > 0 || p.status) p.kind = "attack";   // ダメージのない技（スリープなど）は、状態異常だけ
       else if (p.heal > 0 || p.cure) p.kind = "heal";
       else if (p.buffs.length) p.kind = "buff";
@@ -161,13 +161,13 @@ var Enemies = (function () {
       var add = Math.round(e.maxHp * p.heal);
       if (add > 0) { e.hp = Math.min(e.maxHp, e.hp + add); Battle.pop(e.x, e.y - 24, "+" + add, "#7ee08a", 10); }
       if (p.cure) e.status = {};
-      fxs.push({ kind: "ring", e: e, col: p.color, reach: 14, t: 0.5, max: 0.5 });
+      Combat.addEffect({ kind: "glow", e: e, t: 0.5, max: 0.5, color: p.cure && !p.heal ? "#ffffff" : "#6fd08c" });   // 仲間の回復と同じ光（2026-11-01）
       return;
     }
     if (p.kind === "buff") {
       p.buffs.forEach(function (b) { e.bf.push({ stat: b.stat, pct: b.pct, t: b.dur, from: p.id }); });
       rivalStats(e);
-      fxs.push({ kind: "ring", e: e, col: p.color, reach: 14, t: 0.5, max: 0.5 });
+      Combat.addEffect({ kind: "glow", e: e, t: 0.4, max: 0.4, color: "#f2c14e" });   // 仲間の強くする技と同じ光（2026-11-01）
       Battle.pop(e.x, e.y - 24, "パワーアップ！", p.color, 8);
       return;
     }
@@ -175,7 +175,9 @@ var Enemies = (function () {
     var m = e.mul || { patk: 1, matk: 1 };
     var opts = { atk: p.magic ? e.base.sm * m.matk : e.base.sp * m.patk, mult: p.mult, magic: p.magic, status: p.status, big: p.mult >= 2, noDamage: p.mult <= 0 };
     if (p.ranged && p.fx.length) { p.fx.forEach(function (f) { rivalFire(e, p, f, P); }); return; }
-    if (p.ranged) {   // 呼び出し（魔物使い）など：光る玉を飛ばす
+    if (p.summon) { rivalSummon(e, p.summon, P); e.t = Combat.SUMMON.appear + 0.6; return; }   // 魔物使いの呼び出し（2026-11-01）
+    if (p.seq) { rivalMelee(e, p); return; }   // 近くの技：仲間のスキルと同じ見た目（2026-11-01）
+    if (p.ranged) {   // 弓・魔法の相手が近くの技を使ったとき：光る玉を飛ばす
       var sp = p.speed || 170;
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * sp, vy: e.aim.y * sp, life: Math.max(0.6, p.range / sp + 0.2), from: e,
                     opts: { skillShot: true, color: p.color, size: p.mult >= 2 ? 6 : 4, atk: opts.atk, mult: opts.mult, magic: opts.magic, status: opts.status, big: opts.big, noDamage: opts.noDamage } });
@@ -188,6 +190,112 @@ var Enemies = (function () {
   // 闘技場の相手が、遠くへのスキルを仲間のスキルと同じ見た目で出す（2026-10-31 保護者の希望：三本矢がただの玉になっていた）
   //   shot＝矢・火の玉・手裏剣など（数・広がりも同じ）、rain＝矢の雨・メテオ（ねらった場所に落ちる）、
   //   zone＝炎の壁・ポイズンミスト・ダークホール（その場に残って、中にいると当たる）、beam＝前へのびる光のビーム
+  // ---------- 闘技場の相手の近くの技（2026-11-01 保護者の希望：対戦で見た目がうまく出ていない技をなおす） ----------
+  // 仲間のスキルの fx を順番に出す（ため・待ち・踏みこみ・斬り・まわり・連続・突進・回復・強化）。見た目は仲間と同じ（skills.js の効果を、相手の場所で描く）
+  function alive(e) { return !e.dead && list.indexOf(e) >= 0; }
+  function rivalMelee(e, p) {
+    var at = 0, wt = e.rival.weapon;
+    p.seq.forEach(function (f) {
+      if (f.t === "charge") return;   // ためは、構えの時間に入れてある
+      if (f.t === "pause") { at += f.time || 0; return; }
+      if (f.t === "rapid") {
+        for (var r = 0; r < (f.count || 1); r++) (function (hf) { if (hf) rivalLater.push({ t: at + r * (f.interval || 0.12), fn: function (pp, hurt) { rivalHit(e, hf, pp, hurt, wt, f.step || 0); } }); })(f.hits ? f.hits[r % f.hits.length] : f.hit);
+        at += (f.count || 1) * (f.interval || 0.12);
+        return;
+      }
+      (function (ff, t0) { rivalLater.push({ t: t0, fn: function (pp, hurt) { rivalHit(e, ff, pp, hurt, wt, 0); } }); })(f, at);
+      if (f.t === "dash" || f.t === "pierceDash") at += 0.12;
+    });
+    e.t = Math.max(0.45, at + 0.35);   // 技が終わるまで、ほかの動きをしない
+  }
+  function rivalHit(e, f, pp, hurt, wt, step) {
+    if (!alive(e)) return;
+    var ax = e.aim.x, ay = e.aim.y, room = hooksRoom;
+    e.face = { x: ax, y: ay };
+    var o = rivalOpts(e, f);
+    function gapTo() { var dx = pp.x - e.x, dy = pp.y - e.y; return Math.sqrt(dx * dx + dy * dy) - e.r - pp.r; }
+    if (step && room) {   // 迅雷斬：一歩ふみこむ
+      var sx = e.x, sy = e.y; room.move(e, ax * step, ay * step);
+      Combat.addEffect({ kind: "trail", x0: sx, y0: sy, x1: e.x, y1: e.y, t: 0.25, max: 0.25 });
+    }
+    if (f.t === "dash" || f.t === "pierceDash") {   // とっしん・グランドチャージ：前へ走る（とっしんは相手の手前で止まる、グランドチャージは通りぬける）
+      var x0 = e.x, y0 = e.y, go = f.dist || 40, hitP = false;
+      if (f.t === "dash") go = Math.max(0, Math.min(go, gapTo() - 2));
+      for (var s = 0; s < Math.ceil(go / 3) && room; s++) {
+        var bx = e.x, by = e.y; room.move(e, ax * 3, ay * 3);
+        if (Math.abs(e.x - bx) + Math.abs(e.y - by) < 0.5) break;
+        if (f.t === "pierceDash" && !hitP && gapTo() <= 4) { hitP = true; if (!pp.down) hurt(e, pp.x, pp.y - 8, o); }
+      }
+      Combat.addEffect({ kind: "trail", x0: x0, y0: y0, x1: e.x, y1: e.y, t: 0.4, max: 0.4 });
+      if (f.t === "pierceDash") Combat.addEffect({ kind: "lance", e: e, reach: 22, t: 0.25, max: 0.25 });
+      return;
+    }
+    if (f.t === "arc") {
+      var rch = f.reach || (GameData.WEAPONS[wt] || {}).reach || 18, arc = f.arc || (GameData.WEAPONS[wt] || {}).arc || 1;
+      if (f.vis === "lance") Combat.addEffect({ kind: "lance", e: e, reach: rch, t: 0.22, max: 0.22, color: f.color });
+      else if (f.vis === "smash") Combat.addEffect({ kind: "smash", x: e.x + ax * rch * 0.7, y: e.y + ay * rch * 0.7, t: 0.45, max: 0.45 });
+      else if (f.vis === "quake") Combat.addEffect({ kind: "crack", x: e.x, y: e.y, lines: Combat.crackLines(Math.atan2(ay, ax), rch * 1.3, f.arc || 0.8), t: 0.7, max: 0.7 });
+      else if (wt === "fist") Combat.addEffect({ kind: "punch", e: e, reach: rch, t: 0.22, max: 0.22, big: true, flip: Math.random() < 0.5, color: f.color || "#fff3c4" });
+      if (f.vis !== "lance" && !(wt === "fist" && !f.vis)) fxs.push({ kind: "slash", col: f.color || "#ffe7a0", e: e, aim: { x: ax, y: ay }, reach: rch, arc: arc, t: 0.22, max: 0.22, flip: Math.random() < 0.5 });
+      Sound.play("swing");
+      var g = gapTo(), dx = pp.x - e.x, dy = pp.y - e.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (!pp.down && g <= rch + 4 && (dx * ax + dy * ay) / d >= Math.cos(Math.min(Math.PI, arc + 0.3))) hurt(e, pp.x, pp.y - 8, o);
+      return;
+    }
+    if (f.t === "around") {
+      var rad = f.radius || 26;
+      if (f.vis === "spin" || f.vis === "sweep") Combat.addEffect({ kind: "spin", e: e, low: f.vis === "sweep", r: rad, flip: Math.random() < 0.5, t: 0.3, max: 0.3, color: f.color || (f.vis === "sweep" ? "#ffcf8a" : "#ffe7a0") });
+      else if (f.vis === "flame" || f.vis === "firestorm" || f.vis === "leaf") Combat.addEffect({ kind: "swirl", look: f.vis, x: e.x, y: e.y, r: rad, t: 0.8, max: 0.8, seed: Math.random() * 6 });
+      else if (f.vis === "tidal") Combat.addEffect({ kind: "tidal", x: e.x, y: e.y, r: rad, t: 0.7, max: 0.7, seed: Math.random() * 6 });
+      else Combat.addEffect({ kind: "wave", x: e.x, y: e.y, r: rad, t: f.stat === "m" ? 0.5 : 0.25, max: f.stat === "m" ? 0.5 : 0.25, color: f.color || "#ffe7a0", magic: f.stat === "m", seed: Math.random() * 6 });
+      Sound.play("swing");
+      var ddx = pp.x - e.x, ddy = pp.y - e.y;
+      if (!pp.down && ddx * ddx + ddy * ddy <= (rad + pp.r) * (rad + pp.r)) hurt(e, pp.x, pp.y - 8, o);
+      return;
+    }
+    if (f.t === "heal" || f.t === "regen") {   // 気の拳・守護の光などの、回復の部分
+      var add = Math.round(e.maxHp * (f.pct || 0));
+      if (add > 0) { e.hp = Math.min(e.maxHp, e.hp + add); Battle.pop(e.x, e.y - 24, "+" + add, "#7ee08a", 10); }
+      Combat.addEffect({ kind: "glow", e: e, t: 0.5, max: 0.5, color: "#6fd08c" });
+      return;
+    }
+    if (f.t === "buff" && /^(patk|matk|pdef|mdef|wait)$/.test(f.stat)) {
+      e.bf.push({ stat: f.stat, pct: f.pct, t: f.dur || 15, from: "seq" }); rivalStats(e);
+      Combat.addEffect({ kind: "glow", e: e, t: 0.4, max: 0.4, color: "#f2c14e" });
+    }
+  }
+  // 魔物使いの呼び出し：主の絵が出て、仲間が呼んだときと同じ大技を、こちらへ使う
+  //   大木の魔物＝こちらを中心に十字の根、沼の魔女＝こちらの足もとに瘴気の柱、ダークエルフ＝闇の玉を6つ撃つ
+  function rivalSummon(e, f, P) {
+    var o = rivalOpts(e, f), S = Combat.SUMMON;
+    var sx = e.x - e.aim.x * 20, sy = e.y - e.aim.y * 14;
+    Combat.showSummon(f.boss, sx, sy, P.x >= sx ? 1 : -1);
+    Sound.play("skill");
+    var cx = P.x, cy = P.y;
+    rivalLater.push({ t: S.appear, fn: function (pp, hurt, room) {
+      if (!alive(e)) return;
+      var hz = Bosses.hazards();
+      if (f.boss === "tree_boss") {
+        var W = 30;
+        hz.push({ kind: "rect", from: e, x: 0, y: cy - W / 2, w: room.pxW, h: W, t: 0, warn: 0.6, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: o });
+        hz.push({ kind: "rect", from: e, x: cx - W / 2, y: 0, w: W, h: room.pxH, t: 0, warn: 0.6, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: o });   // 十字のもう1本（まんなかで重なっても、当たったあとの無敵で1回だけ）
+      } else if (f.boss === "witch_boss") {
+        for (var i = 0; i < 3; i++) {
+          var a = Math.random() * Math.PI * 2, rr = i === 0 ? 0 : 30 + Math.random() * 30;
+          hz.push({ kind: "circle", look: "pillar", from: e, x: pp.x + Math.cos(a) * rr, y: pp.y + Math.sin(a) * rr, r: 18, t: 0, warn: 0.6, erupt: 0.5, hit: false, opts: i === 0 ? o : { atk: o.atk, mult: o.mult * 0.5, magic: o.magic, status: o.status } });
+        }
+      } else {
+        for (var k = 0; k < 6; k++) (function (k2) {
+          rivalLater.push({ t: 0.4 + k2 * 0.22, fn: function (p2) {
+            if (!alive(e)) return;
+            var dx = p2.x - sx, dy = p2.y - 10 - sy, d = Math.sqrt(dx * dx + dy * dy) || 1;
+            arrows.push({ x: sx, y: sy - 10, vx: dx / d * 150, vy: dy / d * 150, life: 1.6, from: e,
+                          opts: { darkArrow: true, atk: o.atk, mult: (f.mult || 1) * 0.6, magic: o.magic, big: false } });
+          } });
+        })(k);
+      }
+    } });
+  }
   function rivalOpts(e, f, p) {
     var m = e.mul || { patk: 1, matk: 1 };
     var mg = f.stat === "m" || (f.stat === "best" && e.base.sm > e.base.sp);
@@ -716,6 +824,11 @@ var Enemies = (function () {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
       return;
     }
+    if (e.rival && d.kind === "caster") {   // 闘技場の相手の魔法の玉：仲間のふつうの魔法と同じ見た目（2026-11-01。前は敵の闇の玉だった）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e,
+                    opts: { skillShot: true, spec: { stat: "m", elem: "none" }, color: "#c9a8ff", size: 2, magic: true } });
+      return;
+    }
     if (d.kind === "caster" || d.kind === "dwisp") {   // 闇の玉（魔法のダメージ。ダークウィスプも）
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { orb: true, magic: true } });
       return;
@@ -746,6 +859,12 @@ var Enemies = (function () {
     if (d.kind === "vine") e.lash = 0.3;
     if (d.kind === "spore") e.puff = 0.45;   // 胞子の雲を少しのあいだ見せる
     // 攻撃の見た目（2026-10-19）：剣士は赤い斬り、子オオカミはかみつき、蜂は針、槍兵は槍をつき出す
+    if (e.rival) {   // 闘技場の相手：仲間のふつうの攻撃と同じ見た目（2026-11-01。槍は突きの光・拳は拳の衝撃。前は槍の突きが見えなかった）
+      if (d.kind === "spear") Combat.addEffect({ kind: "lance", e: e, reach: d.reach, t: 0.16, max: 0.16, thin: true, color: "#e8f4ff" });
+      else if (e.rival.weapon === "fist") Combat.addEffect({ kind: "punch", e: e, reach: d.reach, t: 0.22, max: 0.22, flip: Math.random() < 0.5, color: "#ffd27a" });
+      else fxs.push({ kind: "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, arc: (GameData.WEAPONS[e.rival.weapon] || {}).arc, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
+      return;
+    }
     if (d.kind === "spear") e.thrust = 0.22;
     else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
     else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
@@ -1015,7 +1134,7 @@ var Enemies = (function () {
   function drawFx(ctx, f, cam) {
     var e = f.e, x = e.x - cam.x, y = e.y - cam.y - 3, k = 1 - f.t / f.max, p = f.t / f.max;
     if (f.kind === "slash") {
-      Combat.drawSlash(ctx, x, y, f.aim, 0.9, f.reach + e.r + 2, f.col || "#ff7a6a", k, f.flip);
+      Combat.drawSlash(ctx, x, y, f.aim, f.arc || 0.9, f.reach + e.r + 2, f.col || "#ff7a6a", k, f.flip);
     } else if (f.kind === "bite") {   // かみつき：上と下のきばが、前で閉じる
       var bx = x + f.aim.x * (e.r + f.reach * 0.7), by = y + f.aim.y * (e.r + f.reach * 0.7), gap = 6 * (1 - Math.min(1, k * 1.6));
       ctx.strokeStyle = "rgba(255,255,255," + p.toFixed(2) + ")"; ctx.lineWidth = 2; ctx.lineCap = "round";

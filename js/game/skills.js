@@ -815,6 +815,8 @@ var Combat = (function () {
       if (s.spec.elem === "fire") drawFireball(ctx, s, x, y, cam); else drawOrb(ctx, s, x, y, cam);
   }
   function addEffect(ef) { effects.push(ef); }
+  // 呼び出しの主の絵だけを出す（闘技場の相手の魔物使い。2026-11-01）。face：1 なら右向き
+  function showSummon(kind, x, y, face) { summons.push({ kind: kind, x: x, y: y, t: 0, max: SUMMON.stay, face: { x: face >= 0 ? 1 : -1, y: 0 } }); }
 
   // ---------- 絵の部品（2026-10-19。ドット絵ではなく、光とすけ感で表す） ----------
   function rgba(hex, al) {
@@ -1041,6 +1043,7 @@ var Combat = (function () {
   }
 
   function drawEffect(ctx, ef, a, cam) {
+    if (ef.e) a = ef.e;   // ef.e：闘技場の相手（キャラのかわりに、その相手の場所・向きで描く。2026-11-01）
     var p = ef.t / ef.max, q = 1 - p;   // p：のこり、q：すすみぐあい
     if (ef.kind === "swirl") {   // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず
       var wx = ef.x - cam.x, wy = ef.y - cam.y - 3, wr = ef.r * (0.4 + 0.6 * Math.min(1, q * 2.2));
@@ -1064,8 +1067,7 @@ var Combat = (function () {
       return;
     }
     if (ef.kind === "crossflash") {   // グランドクロスのため：キャラの前に光の十字が広がる
-      var who = ef.e || a;   // ef.e：闘技場の相手（2026-10-31）
-      var cx2 = who.x - cam.x + who.face.x * 8, cy2 = who.y - cam.y - 6 + who.face.y * 6, s2 = 4 + 10 * Math.min(1, q * 1.6);
+      var cx2 = a.x - cam.x + a.face.x * 8, cy2 = a.y - cam.y - 6 + a.face.y * 6, s2 = 4 + 10 * Math.min(1, q * 1.6);
       glowDot(ctx, cx2, cy2, s2 * 1.8, "#ffffff", ef.color, 0.7);
       ctx.fillStyle = rgba("#ffffff", 0.95);
       ctx.fillRect(cx2 - 1.5, cy2 - s2, 3, s2 * 2); ctx.fillRect(cx2 - s2 * 0.7, cy2 - s2 * 0.35, s2 * 1.4, 3);
@@ -1307,5 +1309,5 @@ var Combat = (function () {
   }
 
   return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack,
-           drawShot: drawShot, drawZone: drawZone, addEffect: addEffect };
+           drawShot: drawShot, drawZone: drawZone, addEffect: addEffect, crackLines: crackLines, showSummon: showSummon, SUMMON: SUMMON };
 })();
