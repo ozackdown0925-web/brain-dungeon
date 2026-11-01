@@ -22,6 +22,7 @@ var Combat = (function () {
 
   // ---------- 敵に当たる ----------
   // spec：{ stat, mult, elem, crit, status, push }、ox/oy：押し返す向きの元
+  var RIVAL_CAP = 0.45;
   function hitEnemy(e, c, spec, ox, oy) {
     if (e.dead) return 0;
     var dealt = 0;
@@ -35,6 +36,8 @@ var Combat = (function () {
     var def = st === "m" ? e.mdef : pdef;
     if (spec.mult > 0) {
       var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
+      // 闘技場の相手：1回で HP の 45% までしかへらない（2026-11-01 保護者：ヘッドショットの会心などで一撃で倒せてしまった。どんな技でも3回は当てる）
+      if (e.rival && res.amount > Math.ceil(e.maxHp * RIVAL_CAP)) res.amount = Math.ceil(e.maxHp * RIVAL_CAP);
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;
