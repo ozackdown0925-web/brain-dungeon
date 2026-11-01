@@ -155,7 +155,7 @@ var GameData = (function () {
     { id: "h.back",    job: "hunter", star: 4, name: "たかの目",   short: "たか",   cond: null, passive: { range: 0.25 }, desc: "弓の矢と魔法の玉が、いつもより25%遠くまでとどく。" },
     { id: "h.para",    job: "hunter", star: 5, name: "急所ねらい", short: "急所",   cond: null, passive: { crit: 0.08 }, desc: "会心が出やすくなる（＋8%）。" },
     { id: "h.aim",    job: "hunter", star: 6, name: "ねらい撃ち", desc: "力をためて、遠くまで強い一発を撃つ。会心が出やすい。", short: "ねらい", cond: { weapons: ["bow"] }, mp: 8, ct: 8,
-      fx: [{ t: "charge", time: 1.0 }, { t: "shot", stat: "p", mult: 2.5, elem: "weapon", crit: 0.3, speed: 240, range: 200, size: 2 }] },
+      fx: [{ t: "charge", time: 1.0 }, { t: "shot", stat: "p", mult: 2.0, elem: "weapon", crit: 0.3, speed: 240, range: 200, size: 2 }] },   // 倍率 2.5→2.0（2026-11-01 保護者：一撃必殺になっていた。会心の出やすさはそのまま）
     { id: "h.rain",   job: "hunter", star: 7, name: "矢の雨", desc: "前のほうに、矢をたくさん降らせる。",     short: "矢の雨", cond: { weapons: ["bow"] }, mp: 14, ct: 15,
       fx: [{ t: "rain", stat: "p", mult: 0.6, elem: "weapon", count: 5, dist: 56, radius: 26 }] },
     // 武術家
@@ -220,7 +220,7 @@ var GameData = (function () {
       fx: [{ t: "shot", stat: "p", mult: 1.0, elem: "weapon", push: 40, color: "#a8d8ff" }] },
     { id: "s.steady", job: "sniper", star: 5, name: "狙撃の構え", desc: "止まっているあいだ、物攻が20%上がる。", short: "構え", cond: null, passive: { still: 0.20 } },
     { id: "s.head",   job: "sniper", star: 6, name: "ヘッドショット", desc: "1.5秒ためて、強い一発を撃つ。会心が出やすい。", short: "ヘッド", cond: { weapons: ["bow"] }, mp: 10, ct: 10,
-      fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.0, elem: "weapon", crit: 0.4, speed: 260, range: 220, size: 2 }] },
+      fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 2.3, elem: "weapon", crit: 0.4, speed: 260, range: 220, size: 2 }] },   // 倍率 3.0→2.3（2026-11-01 同上）
     { id: "s.blast",  job: "sniper", star: 7, name: "爆裂矢", desc: "当たると爆発して、まわりの敵にもダメージを与える矢。", short: "爆裂", cond: { weapons: ["bow"] }, mp: 14, ct: 12,
       fx: [{ t: "shot", stat: "p", mult: 2.5, elem: "weapon", speed: 200, range: 180, size: 2, color: "#ffb84a", explode: 28 }] },
     // 修行僧
