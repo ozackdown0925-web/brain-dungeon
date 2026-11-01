@@ -1376,8 +1376,10 @@
   function toughen(e) {
     var D = dg && !dg.training && !dg.arena ? GameData.dungeonOf(dg.dungeon) : null;
     if (!D || e.def.boss) return;
-    if (D.foeHp) { e.maxHp = Math.round(e.maxHp * D.foeHp); e.hp = e.maxHp; }
-    if (D.foeAtk) { e.patk = Math.round(e.patk * D.foeAtk * 10) / 10; e.matk = Math.round(e.matk * D.foeAtk * 10) / 10; }
+    var t = (D.foeType && D.foeType[e.type]) || {};   // 敵の種類ごとの上のせ（オオカミなど）
+    var hm = (D.foeHp || 1) * (t.hp || 1), am = (D.foeAtk || 1) * (t.atk || 1);
+    if (hm !== 1) { e.maxHp = Math.round(e.maxHp * hm); e.hp = e.maxHp; }
+    if (am !== 1) { e.patk = Math.round(e.patk * am * 10) / 10; e.matk = Math.round(e.matk * am * 10) / 10; }
   }
   // ---------- 闘技場（2026-10-30 保護者と決定） ----------
   // 相手のプレイヤーの3人（子どもには保護者の対戦用）を CPU が動かす。今の戦闘と同じく、表に出るのは1人ずつ。
