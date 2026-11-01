@@ -669,7 +669,8 @@ var GameData = (function () {
       id: "hikyo", region: "forestveil", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
       // foeHp・foeAtk：ふつうの敵（ボスはのぞく）の HP・攻撃の上のせ（2026-11-01 保護者の感想：剣闘士の100こえの一撃で、ほぼみんな一撃でたおせた。
       //   装備が鋼の段になって攻撃がぐっと上がるのに、敵は深さの分しか強くならないため）。数字は遊んでみてから直す
-      foeHp: 1.8, foeAtk: 1.2,
+      //   2026-11-01 昼（保護者：もうちょっと強くても。特にオオカミ）：HP 1.8→2.2、攻撃 1.2→1.3。オオカミはさらに HP ×1.4・攻撃 ×1.15（foeType）
+      foeHp: 2.2, foeAtk: 1.3, foeType: { wolf: { hp: 1.4, atk: 1.15 } },
       bosses: {
         8: { enemy: "golem_boss", title: "岩をくだく者",         // ゴーレム（段階4、2026-10-25）。前後の文は Claude が書いた仮の文
              before: ["遺跡の広場に、苔むした大きな岩がころがっている。", "岩が音を立てて組み上がり、青い目が光った！"],
