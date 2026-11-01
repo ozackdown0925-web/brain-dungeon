@@ -181,6 +181,7 @@
       if (slot.dead) return;
       if (dg.training) { spawnStatue(slot); return; }   // 訓練場の像
       var e = Enemies.spawn(slot.type, slot.x, slot.y, slot.boss ? bossDepth : depth);
+      if (!slot.boss) toughen(e);
       GameState.noteSeen(slot.type); // 図鑑：たたかった敵
       e.slot = slot;
       if (slot.nest && c.nest.hp !== null) e.hp = Math.min(e.maxHp, c.nest.hp);   // 巣は、けずった HP のまま
@@ -435,6 +436,7 @@
     var slot = { type: type, tx: Math.floor(spot.x / T), ty: Math.floor(spot.y / T), x: spot.x, y: spot.y, dead: false, fromNest: true };
     c.enemies.push(slot);
     var e = Enemies.spawn(type, spot.x, spot.y, run.depth || dg.power);
+    toughen(e);
     e.slot = slot; e.cd = 0.8;
     GameState.noteSeen(type);
     ne.birth = 0.5;
@@ -1369,6 +1371,13 @@
     Enemies.clear(); Combat.clear(); Battle.clear();
     Sound.bgm("town");
     Town.openTraining();
+  }
+  // ダンジョンごとの、ふつうの敵の強さの上のせ（data.js の foeHp・foeAtk。2026-11-01 原生の秘境）
+  function toughen(e) {
+    var D = dg && !dg.training && !dg.arena ? GameData.dungeonOf(dg.dungeon) : null;
+    if (!D || e.def.boss) return;
+    if (D.foeHp) { e.maxHp = Math.round(e.maxHp * D.foeHp); e.hp = e.maxHp; }
+    if (D.foeAtk) { e.patk = Math.round(e.patk * D.foeAtk * 10) / 10; e.matk = Math.round(e.matk * D.foeAtk * 10) / 10; }
   }
   // ---------- 闘技場（2026-10-30 保護者と決定） ----------
   // 相手のプレイヤーの3人（子どもには保護者の対戦用）を CPU が動かす。今の戦闘と同じく、表に出るのは1人ずつ。
