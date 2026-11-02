@@ -894,8 +894,8 @@ var Town = (function () {
     det.appendChild(el("div", "sk-name", t.name));
     det.appendChild(el("div", "sk-kind", "最上級職　★1つに熟練度 " + GameState.STAR_NEED_TOP));
     det.appendChild(el("p", "sk-desc", t.note));
-    // 条件は、上級職を極めるだけでなく、物語の進み方や道具なども考える（2026-10-22 保護者）。決まるまで「？？？？」
-    detLine(det, "条件", "？？？？");
+    // 条件（2026-11-03 保護者が決定）：もとの上級職の熟練度が MAX（★7）と、地方2（フロストクレスト）のクリア
+    detLine(det, "条件", t.from + "の熟練度 MAX（★7）・地方2（" + GameData.REGIONS.frostcrest.name + "）をクリア");
     det.appendChild(el("p", "sk-why", "まだなれない（最上級職は、これから作る）"));
   }
   function growthText(g) {
