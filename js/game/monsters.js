@@ -17,10 +17,178 @@ var Monsters = (function () {
     g: "#d8f078", "1": "#5ea84a", "2": "#3e7a34", "3": "#24502a", "4": "#122818",
     t: "#a87a4a", u: "#7a5230", v: "#4a3020", w: "#2a1a12"
   };
+  // 盗賊（2026-11-03 保護者の絵）の色。ほかの敵の絵とぶつからないように、盗賊だけの一覧にする（A＝ふちどりは PAL と同じ）
+  //   弓使いは紫のフード・オリーブの上着、剣士はおかしらに合わせた茶色のフード・緑の上着・紺のズボン
+  var THIEF_PAL = { A: "#140c1c",
+    q: "#442a82", r: "#8269e5", o: "#7d7b18", f: "#ff8c39", s: "#ffc68c", h: "#5e3838", j: "#295c40", k: "#b54545", y: "#f3d27f",
+    l: "#6a4228", m: "#b07448", z: "#283050", Z: "#46557e", n: "#2e6a3e", x: "#1c3e2a", p: "#3a2a22" };
+  var SMALL_PAL = { thief_sword: THIEF_PAL, thief_archer: THIEF_PAL };
   var WHITE = "#ffffff";
 
   // ふつうの敵（立っている絵。side は左向き）。vine は動かないので1方向だけ
   var SMALL = {
+    // 盗賊の弓使い（2026-11-03 保護者が描いた絵。16×24、前・後ろ・横（左向き）。弓は enemies.js で上に重ねる）
+    thief_archer: {
+      down: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....ArrrqqqA....",
+          "...ArqqqqqqrA...",
+          "...AqrrrqrqAA...",
+          "...ArqqqqqqqA...",
+          "..AAqAAAAAAqAA..",
+          "...AAAfAfAAAAA..",
+          "...AAAAsAAAAA...",
+          "..A.AfAsfAfA.A..",
+          "...AqAfsssAqA...",
+          "..AAjqAffAqjAA..",
+          "..AAArqqqqqAAA..",
+          "..AoAjrqqqjAoA..",
+          ".AooAojrqjoAooA.",
+          ".AfoAqojjoqAofA.",
+          ".AfsAAqqqqAAsfA.",
+          "..AAAqrrrqqAAA..",
+          "....AAqqqqAA....",
+          "....AhAAAAhA....",
+          "....AhhAAhhA....",
+          "....AkhAAhkA....",
+          "................"
+        ],
+      up: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....ArrrrqqA....",
+          "...ArqqqqqqrA...",
+          "...AqqqqAAqAA...",
+          "...ArrrqqqqrA...",
+          "..AAqqqqrqqqAA..",
+          "..AAAqqqqrqAA...",
+          "..A.AAqrqrAA....",
+          "....AAqAqrAA....",
+          "...AqAAAqrAqA...",
+          "..AqqqqAqqAqqA..",
+          "..AAAqrqqrqAAA..",
+          "..AoAqqrrqqAoA..",
+          ".AooAAqqqqAAooA.",
+          ".AfsAqooooqAsfA.",
+          ".AfsAArqqrAAsfA.",
+          "..AAAqrqqrqAAA..",
+          "....AAqqqqAA....",
+          "....AAAAAAAA....",
+          "....AhhAAhhA....",
+          "....AkhAAhkA....",
+          "................"
+        ],
+      side: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....ArrrqqqA....",
+          "...AqqqqqAAqA...",
+          "...ArrrqrqqAA...",
+          "..AAqqqqqqqqA...",
+          "..AAAAAAqqrAA...",
+          ".A.AAfAAAqqqA...",
+          "...AfAAAAfqAA...",
+          "...AsAsfAfAAqr..",
+          "...AsssfAAA.Aq..",
+          "....AffAAqqA.q..",
+          "....AAqqAqAA....",
+          "....ArroAAoA....",
+          "....AqoqAooA....",
+          "....AyoAfsoA....",
+          ".....AAAfsfA....",
+          ".....qArAAA.....",
+          ".....AAAAAA.....",
+          "....AAAAhhA.....",
+          "....AAkkhhA.....",
+          ".....AAAAAA.....",
+          "................"
+        ]
+    },
+    // 盗賊の剣士（弓使いの絵の色違い。おかしらに合わせた茶色のフード・緑・紺。剣は enemies.js で上に重ねる）
+    thief_sword: {
+      down: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....AmmmlllA....",
+          "...AmllllllmA...",
+          "...AlmmmlmlAA...",
+          "...AmlllllllA...",
+          "..AAlAAAAAAlAA..",
+          "...AAAfAfAAAAA..",
+          "...AAAAsAAAAA...",
+          "..A.AfAsfAfA.A..",
+          "...AlAfsssAlA...",
+          "..AAxlAffAlxAA..",
+          "..AAAZzzzzzAAA..",
+          "..AnAxZzzzxAnA..",
+          ".AnnAnxZzxnAnnA.",
+          ".AfnAznxxnzAnfA.",
+          ".AfsAAzzzzAAsfA.",
+          "..AAAzZZZzzAAA..",
+          "....AAzzzzAA....",
+          "....ApAAAApA....",
+          "....AppAAppA....",
+          "....AkpAApkA....",
+          "................"
+        ],
+      up: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....AmmmmllA....",
+          "...AmllllllmA...",
+          "...AllllAAlAA...",
+          "...AmmmllllmA...",
+          "..AAllllmlllAA..",
+          "..AAAllllmlAA...",
+          "..A.AAlmlmAA....",
+          "....AAlAlmAA....",
+          "...AlAAAlmAlA...",
+          "..AllllAllAllA..",
+          "..AAAzZzzZzAAA..",
+          "..AnAzzZZzzAnA..",
+          ".AnnAAzzzzAAnnA.",
+          ".AfsAznnnnzAsfA.",
+          ".AfsAAZzzZAAsfA.",
+          "..AAAzZzzZzAAA..",
+          "....AAzzzzAA....",
+          "....AAAAAAAA....",
+          "....AppAAppA....",
+          "....AkpAApkA....",
+          "................"
+        ],
+      side: [
+          "................",
+          "................",
+          ".....AAAAAA.....",
+          "....AmmmlllA....",
+          "...AlllllAAlA...",
+          "...AmmmlmllAA...",
+          "..AAllllllllA...",
+          "..AAAAAAllmAA...",
+          ".A.AAfAAAlllA...",
+          "...AfAAAAflAA...",
+          "...AsAsfAfAAlm..",
+          "...AsssfAAA.Al..",
+          "....AffAAllA.l..",
+          "....AAzzAzAA....",
+          "....AZZnAAnA....",
+          "....AznzAnnA....",
+          "....AynAfsnA....",
+          ".....AAAfsfA....",
+          ".....zAZAAA.....",
+          ".....AAAAAA.....",
+          "....AAAAppA.....",
+          "....AAkkppA.....",
+          ".....AAAAAA.....",
+          "................"
+        ]
+    },
     goblin_sword: {
       down: [
           "................",
@@ -2911,8 +3079,6 @@ var Monsters = (function () {
   };
   // 盗賊とドワーフは、保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。絵が届いたら SMALL に足して、ここから消す）
   var PLACEHOLDER = {
-    thief_sword:  { base: "goblin_sword",  swap: { Q: "E", R: "E", O: "C", C: "Y", V: "A", D: "Y", F: "X" } },
-    thief_archer: { base: "goblin_archer", swap: { Q: "E", R: "E", O: "C", C: "Y", V: "A", D: "Y", F: "X" } },
     dwarf_axe:    { base: "goblin_sword",  swap: { Q: "E", R: "W", O: "C", C: "T", V: "U", D: "C", Y: "V" } },
     dwarf_hammer: { base: "goblin_spear",  swap: { Q: "E", R: "W", O: "C", C: "T", V: "U", D: "C", Y: "V" } }
   };
@@ -2964,7 +3130,7 @@ var Monsters = (function () {
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
     }
-    cache[k] = toCanvas(g, false, white);
+    cache[k] = toCanvas(g, false, white, SMALL_PAL[type]);
     return cache[k];
   }
   // 足もと（x, y）を基準に描く
