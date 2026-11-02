@@ -560,7 +560,9 @@ var GameData = (function () {
   //   爆弾投げ：こちらの足もとに爆弾（落ちる場所に輪で予告。HP半分から3つ）。HP が半分になると、子分（盗賊の剣士と弓使い）を1回だけ呼ぶ。
   //   HP 半分から速くなる（動き・斬り・大技の間かく）。刺が弱点（子分と同じ）
   ENEMIES.bandit_boss = {
-    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 3400, patk: 30, matk: 0, pdef: 9, mdef: 8,
+    // 2026-11-03 保護者：Lv19（ゴーレムをたおしたところ）で普通に勝てた。斬が効きにくいゴーレムと、剣で戦うとほぼ同じだったので、
+    //   坑道6階に来るころ（Lv24〜25くらい）に合わせて強くした：HP 3400→4800、物攻 30→36、物防 9→11
+    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 36, matk: 0, pdef: 11, mdef: 8,
     res: { pierce: 1.5 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
     reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
     dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
