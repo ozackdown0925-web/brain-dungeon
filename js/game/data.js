@@ -554,6 +554,19 @@ var GameData = (function () {
     blinkEvery: 10, blinkEveryHalf: 7, nearTime: 1.5, appearMin: 60, appearMax: 110, tired: 2.0, summonEvery: 16
   };
 
+  // ---- 黒鉄の坑道のボス（地方2の段階3、2026-11-03 保護者と決定）。数字は仮（遊んでみてから直す） ----
+  // 盗賊のおかしら（6階・中ボス）：すばやく近づいて剣で2回斬る（HP半分から3回）。
+  //   影走り：床に赤い線で予告 → その線を一気に走りぬけて斬る（線から出ればよけられる）。
+  //   爆弾投げ：こちらの足もとに爆弾（落ちる場所に輪で予告。HP半分から3つ）。HP が半分になると、子分（盗賊の剣士と弓使い）を1回だけ呼ぶ。
+  //   HP 半分から速くなる（動き・斬り・大技の間かく）。刺が弱点（子分と同じ）
+  ENEMIES.bandit_boss = {
+    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 3400, patk: 30, matk: 0, pdef: 9, mdef: 8,
+    res: { pierce: 1.5 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
+    reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
+    dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
+    bombEvery: 10, bombEveryHalf: 7, bombCount: 1, bombCountHalf: 3, bombWindup: 0.5, bombWarn: 1.1, bombRadius: 26, bombMult: 1.8
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -686,9 +699,9 @@ var GameData = (function () {
     kodo: {
       id: "kodo", region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
       bosses: {
-        6: { enemy: "golem_boss", title: "坑道をひらく者",
-             before: ["坑道の広間に、たいまつの明かりがゆれている。", "奥から、大きな影が近づいてくる！"],
-             after: ["影は、坑道の奥へにげていった。", "先へ続く道が開いた。"] },
+        6: { enemy: "bandit_boss", title: "盗賊をこらしめし者",   // 盗賊のおかしら（段階3、2026-11-03）。前後の文は Claude が書いた仮の文
+             before: ["坑道の広間に、たいまつの明かりがゆれている。", "フードをかぶった男が、剣をくるりと回した。", "「ここはおれたち盗賊のなわばりだ。生きて帰れると思うなよ！」"],
+             after: ["おかしらはひざをつき、剣を落とした。", "「くっ……おぼえてろ！」 煙といっしょに、おかしらは消えていった。", "坑道の奥へ、道が続いている。"] },
         12: { enemy: "elf_boss", title: "黒鉄をきわめし者",
               before: ["坑道のいちばん奥に、玉座のような岩がある。", "暗やみの中から、何者かがこちらをにらんでいる。"],
               after: ["坑道に、静けさがもどった。", "山へ続く道が見えてきた。"] }
