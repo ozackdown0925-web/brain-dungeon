@@ -26,13 +26,14 @@ var Bosses = (function () {
     var d = e.def;
     e.ai = { charge: d.chargeEvery ? 4 : 0, howl: d.howlEvery ? 8 : 0, roots: d.rootEvery ? 5 : 0, pollen: d.pollenEvery ? 9 : 0,
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
-             rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0 };
+             rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
+             dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
-        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark") { e.state = "recover"; e.t = 0.4; }
+        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash") { e.state = "recover"; e.t = 0.4; }
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
 
@@ -44,12 +45,13 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -126,6 +128,114 @@ var Bosses = (function () {
       e.face = { x: ux, y: uy };
     } else if (e.cd <= 0) {
       e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+    }
+  }
+
+  // ---------- 盗賊のおかしら（黒鉄の坑道6階。2026-11-03 保護者と決定） ----------
+  // すばやく近づいて剣で2回斬る（HP半分から3回）。影走り（赤い線で予告 → 走りぬけて斬る）。爆弾投げ（足もとに輪で予告）。
+  // HP が半分になると、子分（盗賊の剣士と弓使い）を1回だけ呼び、速くなる
+  function bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.pose = Math.max(0, (e.pose || 0) - dt);       // 斬ったあとの絵を出す時間
+    e.slashT = Math.max(0, (e.slashT || 0) - dt);   // 斬りの光
+    if (e.state === "windup") {   // 剣を構える → 斬りへ
+      e.t -= dt;
+      if (e.t <= 0) { e.state = "slash"; e.left = half ? d.slashesHalf : d.slashes; e.t = 0; }
+      return;
+    }
+    if (e.state === "slash") {   // 2回（3回）つづけて斬る。1回ごとに少しふみこむ
+      e.t -= dt;
+      if (e.t > 0) return;
+      var ddx = p.x - e.x, ddy = p.y - e.y, dl = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+      if (!p.down) { e.aim = { x: ddx / dl, y: ddy / dl }; e.face = { x: e.aim.x, y: e.aim.y }; }
+      if (dl - e.r - p.r > 4) room.move(e, e.aim.x * Math.min(8, dl - e.r - p.r - 4), e.aim.y * Math.min(8, dl - e.r - p.r - 4));
+      var g2 = Math.sqrt((p.x - e.x) * (p.x - e.x) + (p.y - e.y) * (p.y - e.y)) - e.r - p.r;
+      if (!p.down && g2 <= d.reach + 4) hurt(e, p.x, p.y - 8, { mult: d.slashMult });
+      e.pose = 0.3; e.slashT = 0.2; e.slashFlip = !e.slashFlip;
+      Sound.play("swing");
+      e.left--;
+      if (e.left > 0) { e.t = d.slashGap; return; }
+      e.state = "recover"; e.t = 0.45; e.cd = half ? d.cooldownHalf : d.cooldown;
+      return;
+    }
+    if (e.state === "warn") {   // 影走りの予告：赤い線。走り出す 0.3 秒前まで向きを合わせ直す
+      e.t -= dt;
+      if (e.t > 0.3 && !p.down && e.chargeLine) {
+        var ax = p.x - e.x, ay = p.y - e.y, al = Math.sqrt(ax * ax + ay * ay) || 1;
+        ax /= al; ay /= al;
+        e.aim = { x: ax, y: ay }; e.face = { x: ax, y: ay };
+        e.chargeLen = Math.min(240, rayLength(room, e.x, e.y, ax, ay, e.r));
+        e.chargeLine.x2 = e.x + ax * e.chargeLen; e.chargeLine.y2 = e.y + ay * e.chargeLen;
+      }
+      if (e.t <= 0) { e.state = "charge"; e.travel = 0; e.hitDone = false; e.dashFrom = { x: e.x, y: e.y }; }
+      return;
+    }
+    if (e.state === "charge") {   // 影走り：線のとおりに走りぬける（プレイヤーにぶつかっても止まらない）
+      var step = d.dashSpeed * dt, bx = e.x, by = e.y;
+      room.move(e, e.aim.x * step, e.aim.y * step);
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step; e.walk += dt * 24;
+      var px = p.x - e.x, py = p.y - e.y;
+      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 6) * (e.r + p.r + 6)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.dashMult, big: true }); e.slashT = 0.2; }
+      if (moved < step * 0.4 || e.travel >= e.chargeLen) {
+        Combat.addEffect({ kind: "trail", x0: e.dashFrom.x, y0: e.dashFrom.y, x1: e.x, y1: e.y, t: 0.45, max: 0.45 });   // 走ったあとの残像
+        e.state = "recover"; e.t = 0.8; e.pose = 0.6;
+        removeLines(e);
+      }
+      return;
+    }
+    if (e.state === "throw") {   // 爆弾を投げる：足もとに輪で予告 → 爆発
+      e.t -= dt;
+      if (e.t <= 0) {
+        var n = half ? d.bombCountHalf : d.bombCount;
+        for (var i = 0; i < n; i++) {
+          var a = Math.random() * Math.PI * 2, rr = i === 0 ? 0 : 36 + Math.random() * 40;
+          hazards.push({ kind: "circle", look: "bomb", from: e, x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr, r: d.bombRadius, t: 0, warn: d.bombWarn + i * 0.15, erupt: 0.45, hit: false,
+                         sx: e.x, sy: e.y - 16, opts: { mult: d.bombMult, big: true } });
+        }
+        e.state = "recover"; e.t = 0.5; e.pose = 0.4; e.ai.bomb = half ? d.bombEveryHalf : d.bombEvery;
+      }
+      return;
+    }
+    if (e.state === "call") {   // 子分を呼ぶ
+      e.t -= dt;
+      if (e.t <= 0) {
+        ["thief_sword", "thief_archer"].forEach(function (t, k) {
+          var ang = Math.random() * Math.PI * 2, f = api.spawn(t, e.x + Math.cos(ang) * 34, e.y + Math.sin(ang) * 34, 44);
+          f.summoned = true;
+        });
+        e.state = "recover"; e.t = 0.5;
+      }
+      return;
+    }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (half && !e.called) {   // HP が半分：子分を呼ぶ（1回だけ）。ここから速くなる
+      e.called = true;
+      e.state = "call"; e.t = 0.6;
+      Battle.pop(e.x, e.y - 44, "おまえたち、出てこい！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.dash <= 0) {
+      e.aim = { x: ux, y: uy };
+      e.chargeLen = Math.min(240, rayLength(room, e.x, e.y, ux, uy, e.r));
+      e.chargeLine = { kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 4, t: 0, warn: half ? d.dashWarnHalf : d.dashWarn };
+      hazards.push(e.chargeLine);
+      e.state = "warn"; e.t = half ? d.dashWarnHalf : d.dashWarn; e.ai.dash = (half ? d.dashEveryHalf : d.dashEvery) + Math.random() * 2;
+      Battle.pop(e.x, e.y - 44, "影走り！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.bomb <= 0) {
+      e.state = "throw"; e.t = d.bombWindup;
+      Battle.pop(e.x, e.y - 44, "爆弾だ！", "#ff9a4d", 9);
+      return;
+    }
+    if (gap > d.reach - 2) {
+      var sp = half ? d.speedHalf : d.speed;
+      if (!e.status.para) { room.move(e, ux * sp * dt, uy * sp * dt); e.walk += dt * 10; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
     }
   }
 
@@ -688,6 +798,7 @@ var Bosses = (function () {
       if (h.track && h.t < h.warn && !h.track.dead) { h.x = h.track.x; h.y = h.track.y; }   // 魔物使いの瘴気の柱：予告のあいだ、ねらった敵についていく（track。大ガマの follow とは別。2026-10-26 名前がぶつかって大ガマが消えたので分けた）
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
+        if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
@@ -764,7 +875,7 @@ var Bosses = (function () {
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : locked ? [255, 60, 50] : [240, 150, 90];
+    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.t < h.warn) {
       ctx.fillStyle = c(0.10 + 0.25 * k + 0.05 * Math.sin(glow * 16));
@@ -779,6 +890,12 @@ var Bosses = (function () {
         ctx.fillStyle = "#9a5ad0"; ctx.fillRect(Math.round(x) - 2, Math.round(y - hy) - 4, 4, 5);
         ctx.fillStyle = "#b8e870"; ctx.fillRect(Math.round(x) - 1, Math.round(y - hy) - 3, 2, 2);
       }
+      if (h.look === "bomb") {   // おかしらの爆弾：投げたところから、山なりに飛んでくる（導火線の火花つき）
+        var bx2 = (h.sx - cam.x) + (x - (h.sx - cam.x)) * k, by2 = (h.sy - cam.y) + (y - (h.sy - cam.y)) * k - Math.sin(k * Math.PI) * 60;
+        ctx.fillStyle = "#1e1a22"; ctx.beginPath(); ctx.arc(bx2, by2 - 4, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#4a4652"; ctx.fillRect(Math.round(bx2) - 2, Math.round(by2) - 7, 2, 2);
+        Combat.glowDot(ctx, bx2 + 3, by2 - 9, 3 + Math.sin(glow * 40), "#ffffff", "#ffb84a", 0.9);
+      }
       if (locked) Render.text("！", x, y - h.r * 0.7 - 12, { size: 11, align: "center", bold: true, color: "#ff5040" });
       if (h.look === "dive") {   // 沼の中を進んでくる泡
         for (var b = 0; b < 4; b++) { var ph = (glow * 2 + b / 4) % 1; ctx.fillStyle = "rgba(200,220,150," + (1 - ph).toFixed(2) + ")"; ctx.fillRect(Math.round(x + Math.sin(b * 2.1) * h.r * 0.5), Math.round(y - ph * 8), 2, 2); }
@@ -786,6 +903,14 @@ var Bosses = (function () {
       return;
     }
     var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
+    if (h.look === "bomb") {   // 爆発：はじける火の玉と、広がる輪と、火花
+      var orr = h.r * (0.5 + 0.8 * Math.sqrt(q));
+      Combat.glowDot(ctx, x, y - 4, orr, "#fff3c4", "#ff6a1f", 0.85 * fade);
+      ctx.strokeStyle = "rgba(255,231,160," + (0.8 * fade).toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y - 4, orr * 1.05, 0, Math.PI * 2); ctx.stroke();
+      for (var bs = 0; bs < 10; bs++) { var ab = bs / 10 * Math.PI * 2, db = orr * (0.8 + 0.6 * q); Combat.glowDot(ctx, x + Math.cos(ab) * db, y - 4 + Math.sin(ab) * db, 2.5, "#ffffff", "#ffb84a", fade); }
+      return;
+    }
     if (h.look === "pillar") {   // 紫の柱が立つ
       var hh = 70 * Math.min(1, q * 4);
       var g = ctx.createLinearGradient(0, y - hh, 0, y);
@@ -981,6 +1106,19 @@ var Bosses = (function () {
           Render.rect(gx, gy - 1, 1, 3, "#ffe066"); Render.rect(gx - 1, gy, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "bandit_boss") {
+      // 盗賊のおかしら（48×48、右向きの絵）：足もとは y＋14。斬ったあと・走りぬけたあとは「攻撃後」の絵。歩くと少し上下にゆれる
+      var bph = Math.sin(e.walk || 0), bob2 = e.state === "chase" && Math.abs(bph) > 0.5 ? -1 : 0;
+      Render.rect(x - 14, y + 10, 28, 5, "rgba(0,0,0,0.35)");
+      if (e.state === "windup" || e.state === "throw" || e.state === "warn") Combat.glowDot(ctx, x, y - 8, 22, "#ffffff", e.state === "throw" ? "#ff9a4d" : "#ef5b5b", 0.25 + 0.15 * Math.sin(glow * 20));
+      if (e.state === "charge") {   // 走っているあいだの残像
+        ctx.save(); ctx.globalAlpha = 0.3;
+        Monsters.drawBoss(ctx, e, x - e.aim.x * 14, y + 14 - e.aim.y * 10, "stand");
+        ctx.restore();
+      }
+      Monsters.drawBoss(ctx, e, x, y + 14 + bob2, e.pose > 0 || e.state === "charge" ? "attack" : "stand");
+      if (e.slashT > 0) Combat.drawSlash(ctx, x, y - 6, e.aim || e.face, 1.1, d.reach + 14, "#ffe7a0", 1 - e.slashT / 0.2, e.slashFlip);
+      if (e.state === "windup" || e.state === "warn") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: e.state === "warn" ? "#ef5b5b" : "#ffd24a" });
     } else if (d.kind === "elf_boss") {
       // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
       var hop = 0, rot = 0;

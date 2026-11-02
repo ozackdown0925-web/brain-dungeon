@@ -381,6 +381,7 @@ var Enemies = (function () {
       if (zn.t <= 0) rivalZones.splice(z, 1);
     }
   }
+  var THIEF_WEAPON = { thief_sword: "sword", thief_archer: "bow" };
   function remove(e) { var i = list.indexOf(e); if (i >= 0) list.splice(i, 1); }
   function drawRival(ctx, e, x, y) {
     var R = e.rival, moving = e.state === "chase";
@@ -950,7 +951,16 @@ var Enemies = (function () {
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
+      // 盗賊（2026-11-03）：武器は絵に入っていないので、仲間と同じ武器の絵を重ねる（剣士＝剣、弓使い＝弓）
+      var tw = THIEF_WEAPON[e.type], tMode = null, tBehind = false;
+      if (tw && !e.dead) {
+        tMode = e.state === "windup" || (e.state === "recover" && e.t > 0.15) ? "attack" : "hold";
+        var tdd = Sprites.dirOf(e.face);
+        tBehind = tMode === "hold" ? tdd.dir !== "down" : tdd.dir === "up";
+        if (tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
+      }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
+      if (tw && !e.dead && !tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
       if (d.kind === "wisp" || d.kind === "dwisp") ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if ((d.kind === "caster" || d.kind === "dwisp") && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
         var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
