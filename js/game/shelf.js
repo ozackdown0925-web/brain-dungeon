@@ -1,19 +1,18 @@
 // 書庫の「知識の棚」（2026-11-04）：塾のプリント（確認テスト・言語知識テストなど）の一問一答を、覚えるまで間をあけて出す。
 // ・問題は GAS の「問題」シートの kind が "shelf" のもの（shelfQuestions）。塾の教材なので、このリポジトリには置かない。
 // ・答えは「書庫の記録」シート（shelfHistory・saveShelfAnswer）。知恵の試練の「記録」とは分ける。
-// ・出し方（docs/game-design.md の 6.8）：
-//   正解するたびに、次に出すまでの日数をのばす（翌日 → 3日後 → 1週間後 → 2週間後 → 1か月後）。まちがえたら翌日にもどす。
-//   1か月あけても正解したら「覚えた」（そのあとは2か月ごとにたしかめる）。
-//   その日に出すのは、①出す日が来た問題（復習。数の上限なし）→ ②まだ解いていない問題（1日 NEW_PER_DAY 問まで）。
-//   どちらも教科をまぜて、国語 → 理科 → 社会 → 算数 の順に1問ずつ回す（子どもに教科を選ばせない）。
-//   新しい問題は、新しいプリントから先に（プリントの中は問題の順）。
+// ・出し方（docs/game-design.md の 6.7。2026-11-04 に「キャッチアップを先に」へ変更）：
+//   1日 DAILY 問まで。①前にまちがえて、まだ2回目を解いていない問題（次の日に1回だけ）→ ②まだ解いていない問題（1周目）
+//   → ③1周目が終わったあとの、間をあけたたしかめ。教科はまぜて、国語 → 理科 → 社会 → 算数 の順に1問ずつ回す（子どもに選ばせない）。
+//   はじめて見て正解した問題は「知っている」（14日たったら1回たしかめ、正解なら「覚えた」）。
+//   2回目もまちがえた問題は「苦手」（1周目のあいだは追わない。そのあとは 3日後→1週間後→2週間後 と正解を続けたら「覚えた」。まちがえたら翌日）。
+//   新しい問題は、新しいプリントから先に（プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
 // ・保護者のデバッグ用の枠では、答えを GAS に送らない（この画面を開いているあいだだけ覚える）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Shelf = (function () {
-  var INTERVALS = [1, 3, 7, 14, 30];   // 正解が続いた回数ごとの、次に出すまでの日数
-  var KEEP_DAYS = 60;                   // 覚えた問題を、たしかめる間かく
-  var MASTER = INTERVALS.length + 1;    // この段（1か月あけて正解）で「覚えた」
-  var NEW_PER_DAY = 10;                 // 1日に出す新しい問題の数（数字は遊んでみてから直す）
+  var DAILY = 30;            // 1日に解く問題の数（数字は遊んでみてから直す）
+  var KNOWN_CHECK = 14;      // 「知っている」問題を、たしかめるまでの日数
+  var LADDER = [3, 7, 14];   // 「苦手」問題：正解が続いた回数ごとの、次に出すまでの日数。全部続けたら「覚えた」
   var ORDER = ["japanese", "science", "social", "math"];
   var PENDING_STORE = "bd-shelf-pending";
 
@@ -25,23 +24,27 @@ var Shelf = (function () {
   function subjectName(k) { return DrillCore.subjectName(k); }
 
   // ---------- 出し方（画面とは別。node でもためせるように、ここは DOM を使わない） ----------
-  // 問題ごとの今の様子：{ box（正解が続いた回数。0＝まちがえた）, due（次に出す日）, last（最後に解いた日）, tries, mastered }
+  // 問題ごとの今の様子：{ kind（"known" 知っている／"retry" 次の日にもう1回／"weak" 苦手／"mastered" 覚えた）, box（苦手の問題で正解が続いた回数）,
+  //   due（次に出す日）, last（最後に解いた日）, tries }
   function states(records) {
     var st = {};
     (records || []).slice().sort(function (a, b) {
       return a.date < b.date ? -1 : a.date > b.date ? 1 : (String(a.answeredAt) < String(b.answeredAt) ? -1 : String(a.answeredAt) > String(b.answeredAt) ? 1 : 0);
     }).forEach(function (r) {
       if (!r || !r.qid || !r.date) return;
-      var s = st[r.qid] || (st[r.qid] = { box: 0, due: "", last: "", tries: 0, mastered: false, lastCorrect: false });
-      s.tries++; s.last = r.date; s.lastCorrect = !!r.correct;
-      if (r.correct) {
-        s.box = Math.min(MASTER, s.box + 1);
-        if (s.box >= MASTER) s.mastered = true;
-        s.due = addDays(r.date, s.box >= MASTER ? KEEP_DAYS : INTERVALS[s.box - 1]);
-      } else {
-        s.box = 0; s.mastered = false;
-        s.due = addDays(r.date, 1);
+      var s = st[r.qid];
+      if (!s) {   // はじめて解いた
+        st[r.qid] = r.correct ? { kind: "known", box: 0, due: addDays(r.date, KNOWN_CHECK), last: r.date, tries: 1 }
+          : { kind: "retry", box: 0, due: addDays(r.date, 1), last: r.date, tries: 1 };
+        return;
       }
+      s.tries++; s.last = r.date;
+      if (!r.correct) { s.kind = "weak"; s.box = 0; s.due = addDays(r.date, 1); return; }
+      if (s.kind === "known" || s.kind === "mastered") { s.kind = "mastered"; s.due = ""; return; }
+      // retry・weak で正解：苦手の段を1つ上げる
+      s.kind = "weak"; s.box++;
+      if (s.box > LADDER.length) { s.kind = "mastered"; s.due = ""; return; }
+      s.due = addDays(r.date, LADDER[s.box - 1]);
     });
     return st;
   }
@@ -59,35 +62,42 @@ var Shelf = (function () {
   }
   // プリント名（出典の最初の空白まで）と、そのプリントを取りこんだ日時（同じプリントの問題でいちばん早い書きこみ日時）
   function sheetOf(q) { return String(q.source || "").split(" ")[0]; }
-  // その日の分：{ reviews: [問題], fresh: [問題], doneToday: 今日解いた数, newToday: 今日解いた新しい問題の数 }
-  function plan(questions, records, today, newPerDay) {
+  // その日の分：{ list: [{ q, why（"retry"・"new"・"check"） }], doneToday, left（1周目の残り）, caughtUp（1周目が終わった） }
+  function plan(questions, records, today, daily) {
     var st = states((records || []).filter(function (r) { return r.date < today; }));
     var todayIds = {};
     (records || []).forEach(function (r) { if (r && r.date === today && r.qid) todayIds[r.qid] = true; });
-    var newToday = Object.keys(todayIds).filter(function (id) { return !st[id]; }).length;
-    var Q = (questions || []).filter(function (q) { return q && q.id && q.enabled !== false; });
-    var reviews = Q.filter(function (q) { var s = st[q.id]; return s && !todayIds[q.id] && s.due <= today; });
-    reviews.sort(function (a, b) { var x = st[a.id], y = st[b.id]; return (x.due < y.due ? -1 : x.due > y.due ? 1 : 0) || x.box - y.box || (a.id < b.id ? -1 : 1); });
+    var doneToday = Object.keys(todayIds).length;
+    var room = Math.max(0, (daily == null ? DAILY : daily) - doneToday);
+    var Q = (questions || []).filter(function (q) { return q && q.id && q.enabled !== false && !todayIds[q.id]; });
+    // ①前にまちがえて、まだ2回目を解いていない問題
+    var retry = Q.filter(function (q) { var s = st[q.id]; return s && s.kind === "retry"; });
+    retry.sort(function (a, b) { return st[a.id].last < st[b.id].last ? -1 : st[a.id].last > st[b.id].last ? 1 : (a.id < b.id ? -1 : 1); });
+    // ②まだ解いていない問題（新しいプリントが先）
     var sheetAt = {};
-    Q.forEach(function (q) { var k = q.subject + "|" + sheetOf(q), at = String(q.updatedAt || ""); if (!sheetAt[k] || (at && at < sheetAt[k])) sheetAt[k] = at; });
-    var fresh = Q.filter(function (q) { return !st[q.id] && !todayIds[q.id]; });
+    (questions || []).forEach(function (q) { if (!q) return; var k = q.subject + "|" + sheetOf(q), at = String(q.updatedAt || ""); if (!sheetAt[k] || (at && at < sheetAt[k])) sheetAt[k] = at; });
+    var fresh = Q.filter(function (q) { return !st[q.id]; });
     fresh.sort(function (a, b) {
       var x = sheetAt[a.subject + "|" + sheetOf(a)] || "", y = sheetAt[b.subject + "|" + sheetOf(b)] || "";
       return (x < y ? 1 : x > y ? -1 : 0) || (sheetOf(a) < sheetOf(b) ? -1 : sheetOf(a) > sheetOf(b) ? 1 : 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     });
-    var limit = Math.max(0, (newPerDay == null ? NEW_PER_DAY : newPerDay) - newToday);
-    fresh = mix(fresh).slice(0, limit);
-    return { reviews: mix(reviews), fresh: fresh, doneToday: Object.keys(todayIds).length, newToday: newToday };
+    // ③1周目が終わったあとの、たしかめ（知っている問題の1回・苦手の問題）
+    var check = Q.filter(function (q) { var s = st[q.id]; return s && (s.kind === "known" || s.kind === "weak") && s.due && s.due <= today; });
+    check.sort(function (a, b) { var x = st[a.id], y = st[b.id]; return (x.due < y.due ? -1 : x.due > y.due ? 1 : 0) || (a.id < b.id ? -1 : 1); });
+    var list = mix(retry).map(function (q) { return { q: q, why: "retry" }; })
+      .concat(mix(fresh).map(function (q) { return { q: q, why: "new" }; }));
+    if (!fresh.length) list = list.concat(mix(check).map(function (q) { return { q: q, why: "check" }; }));
+    return { list: list.slice(0, room), doneToday: doneToday, left: fresh.length, caughtUp: !fresh.length };
   }
-  // 教科ごとの数：{ 教科: { total, mastered, learning（解いたことがあってまだ覚えていない）, unseen } }
+  // 教科ごとの数：{ 教科: { total, mastered（覚えた）, known（知っている）, weak（苦手・もう1回）, unseen（まだ） } }
   function summary(questions, records) {
     var st = states(records), out = {};
     (questions || []).forEach(function (q) {
       if (!q || q.enabled === false) return;
-      var o = out[q.subject] || (out[q.subject] = { total: 0, mastered: 0, learning: 0, unseen: 0 });
+      var o = out[q.subject] || (out[q.subject] = { total: 0, mastered: 0, known: 0, weak: 0, unseen: 0 });
       var s = st[q.id];
       o.total++;
-      if (!s) o.unseen++; else if (s.mastered) o.mastered++; else o.learning++;
+      if (!s) o.unseen++; else if (s.kind === "mastered") o.mastered++; else if (s.kind === "known") o.known++; else o.weak++;
     });
     return out;
   }
@@ -182,9 +192,11 @@ var Shelf = (function () {
   function fillPanel(body) {
     body.textContent = "";
     if (!Q.length) { body.appendChild(el("p", "sub", "まだ棚に本がない。塾のプリントの問題が入ると、ここで覚えられるようになる。")); return; }
-    var p = plan(Q, R, today), n = p.reviews.length + p.fresh.length;
-    body.appendChild(el("p", "shelf-today", n ? "今日の分：復習 " + p.reviews.length + " 問・新しい問題 " + p.fresh.length + " 問" :
+    var p = plan(Q, R, today), n = p.list.length;
+    var nr = p.list.filter(function (x) { return x.why === "retry"; }).length;
+    body.appendChild(el("p", "shelf-today", n ? "今日の分：" + n + " 問" + (nr ? "（そのうち、前にまちがえた問題 " + nr + " 問）" : "") + (p.doneToday ? "　今日はもう " + p.doneToday + " 問解いた" : "") :
       (p.doneToday ? "今日の分はおわり！ また明日。" : "今日解く問題はない。")));
+    body.appendChild(el("p", "sub", p.caughtUp ? "棚の本は全部1回読んだ。これからは、間をあけてたしかめる。" : "まだ読んでいない本：あと " + p.left + " 問"));
     if (debug) body.appendChild(el("p", "sub", "（デバッグ用の枠：答えは送らない）"));
     if (n) {
       var b = el("button", "btn", "今日の問題を解く（" + n + " 問）"); b.type = "button";
@@ -200,15 +212,16 @@ var Shelf = (function () {
       var bar = el("span", "shelf-books");
       var shown = Math.min(o.total, 40);
       for (var i = 0; i < shown; i++) {
-        var part = i < Math.round(shown * o.mastered / o.total) ? "got" : i < Math.round(shown * (o.mastered + o.learning) / o.total) ? "learn" : "";
+        var part = i < Math.round(shown * o.mastered / o.total) ? "got" : i < Math.round(shown * (o.mastered + o.known) / o.total) ? "known" :
+          i < Math.round(shown * (o.mastered + o.known + o.weak) / o.total) ? "learn" : "";
         bar.appendChild(el("i", "book" + (part ? " " + part : "")));
       }
       row.appendChild(bar);
-      row.appendChild(el("span", "shelf-count", "覚えた " + o.mastered + " / " + o.total));
+      row.appendChild(el("span", "shelf-count", "覚えた・知っている " + (o.mastered + o.known) + " / " + o.total + (o.weak ? "　もう少し " + o.weak : "")));
       shelves.appendChild(row);
     });
     body.appendChild(shelves);
-    body.appendChild(el("p", "sub", "正解するたびに、次に出るまでの日がのびる（翌日→3日後→1週間後→2週間後→1か月後）。1か月あけても正解できたら「覚えた」。"));
+    body.appendChild(el("p", "sub", "1日 " + DAILY + " 問。まちがえた問題は、次の日にもう1回出る。はじめて見て正解できた本は「知っている」（金のふち）、2週間たっても正解できたら「覚えた」（金）。"));
   }
 
   // ---------- 問題を解く画面 ----------
@@ -216,7 +229,7 @@ var Shelf = (function () {
   function notice(t) { var n = $("shelfNotice"); n.textContent = t || ""; n.hidden = !t; }
   function open(p) {
     Sound.bgm("trial");
-    queue = p.reviews.map(function (q) { return { q: q, review: true }; }).concat(p.fresh.map(function (q) { return { q: q, review: false }; }));
+    queue = p.list.slice();
     pos = 0; sessionDone = 0; sessionOk = 0;
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = $(id); if (e) e.hidden = true; });
@@ -236,18 +249,19 @@ var Shelf = (function () {
     if (pos >= queue.length) {
       card.hidden = true; ans.hidden = true; done.hidden = false;
       $("shelfProgress").textContent = "";
-      $("shelfDoneText").textContent = sessionDone ? "今日は " + sessionDone + " 問、そのうち " + sessionOk + " 問正解。" + "まちがえた問題は、明日また出てくる。" : "";
+      $("shelfDoneText").textContent = sessionDone ? sessionDone + " 問解いて、" + sessionOk + " 問正解。" + (sessionOk < sessionDone ? "まちがえた問題は、次の日にもう1回出てくる。" : "") : "";
       Sound.play("trialDone");
       return;
     }
     done.hidden = true; card.hidden = false; ans.hidden = false;
     var it = queue[pos], q = it.q;
-    $("shelfProgress").textContent = "今日の分 " + (pos + 1) + " / " + queue.length + (it.review ? "（復習）" : "（新しい問題）");
+    var WHY = { retry: "（前にまちがえた問題）", "new": "（はじめての問題）", check: "（たしかめ）" };
+    $("shelfProgress").textContent = "今日の分 " + (pos + 1) + " / " + queue.length + WHY[it.why];
     screen.dataset.s = q.subject; card.dataset.s = q.subject; ans.dataset.s = q.subject;
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
     DrillCore.renderQuestion(holder, q, {
       answerRoot: ans, keypad: true, imageLoader: loadImage,
-      extraMeta: [it.review ? "前に解いた問題" : "はじめての問題"],
+      review: it.why === "retry",
       onFinish: function (res) {
         var rec = { date: today, subject: q.subject, qid: q.id, input: res.input || "", correct: !!res.correct,
           self: (res.parts || []).some(function (x) { return x && x.self; }), answeredAt: new Date().toISOString(), parts: res.parts || [] };
@@ -264,5 +278,5 @@ var Shelf = (function () {
   }
   $("shelfDoneBack").addEventListener("click", close);
 
-  return { panel: panel, plan: plan, states: states, summary: summary, mix: mix, NEW_PER_DAY: NEW_PER_DAY, INTERVALS: INTERVALS };
+  return { panel: panel, plan: plan, states: states, summary: summary, mix: mix, DAILY: DAILY };
 })();

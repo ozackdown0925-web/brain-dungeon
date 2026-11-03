@@ -520,7 +520,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .dc-prompt td { color: var(--muted); font-size: 12px; text-align: left !important; border-bottom: 0; padding-bottom: 0; }
 .dc-q-ex { font-size: 13px; margin-top: 4px; } .dc-q-ex p { white-space: pre-wrap; margin: 4px 0; }
 
-/* 書庫の知識の棚の欄（2026-11-04）：教科ごとの本棚。金の本＝覚えた、白い本＝おぼえている途中 */
+/* 書庫の知識の棚の欄（2026-11-04）：教科ごとの本棚。金の本＝覚えた、金のふち＝知っている、白い本＝もう少し */
 .shelf-slot .shelf-today { font-weight: 700; margin: 4px 0 8px; }
 .shelf-rows { display: grid; gap: 6px; margin: 10px 0 6px; }
 .shelf-row { display: grid; grid-template-columns: 3.5em minmax(0, 1fr) auto; gap: 8px; align-items: center; }
@@ -532,5 +532,6 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books { display: flex; gap: 2px; align-items: flex-end; height: 26px; padding: 0 4px 3px; border-bottom: 4px solid #6b4522; overflow: hidden; }
 .shelf-books .book { display: block; width: 7px; height: 16px; border-radius: 1px; background: #3a3348; }
 .shelf-books .book.learn { background: #d9d2c3; height: 19px; }
+.shelf-books .book.known { background: #4a3f2a; height: 21px; box-shadow: inset 0 0 0 2px #f2c14e; }
 .shelf-books .book.got { background: #f2c14e; height: 22px; box-shadow: 0 0 4px rgba(242,193,78,0.6); }
 .shelf-row .shelf-count { font-size: 13px; white-space: nowrap; }
