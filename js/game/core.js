@@ -264,6 +264,14 @@
     chooseEl.hidden = false;
   }
 
+  // ダンジョンにはじめて入ったとき（2026-11-04）：そのダンジョンの短い文を1回だけ出す。読んでいるあいだは、時間も敵も止まる
+  function showIntro() {
+    var id = dg.dungeon, D = GameData.dungeonOf(id);
+    if (!D.intro || GameState.introSeen(id)) return;
+    GameState.seenIntro(id);
+    showStory(D.name, D.intro, "出発！", null);
+  }
+
   // ボスをたおした：子オオカミは逃げ、つるが消え、ごほうびの宝箱（レア以上）2つと出口が現れる
   function bossDefeated(e) {
     dg.bossDown = true; boss = null;
@@ -1262,6 +1270,7 @@
       trial = t || { correct: settings.correct, subjects: [], test: true };
       settings.correct = trial.correct; settings.dungeon = trial.dungeon || "forest1";
       startFloor(floor, seed); updateButtons(true); Sound.bgm("dungeon");
+      showIntro();
     },
     // 途中で閉じた冒険の続き（その階層の入口から）
     resume: function (a) {

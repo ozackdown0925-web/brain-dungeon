@@ -653,9 +653,15 @@ var GameData = (function () {
   //   地方2の名前（フロストクレスト・鉱山の町ボルダ・黒鉄の坑道）は Claude の仮の名前（保護者があとで直す）
   //   needs：このダンジョンが開くと、その地方へ行ける（ワールドマップの端の道から。null ならはじめから）
   //   gate：町の出発の門の名前。art：町とワールドマップの絵（mapart.js）
+  //   intro：その地方にはじめて着いたとき（ワールドマップを開いたとき）に1回だけ出す文。lore：町の名前の下にいつも出す1行
+  //   （2026-11-04。文は Claude が書いた仮の文。保護者があとで直す）
   var REGIONS = {
-    forestveil: { id: "forestveil", name: PLACES.region, base: PLACES.base, gate: "森の門", needs: null, art: { town: "town", world: "world" } },
-    frostcrest: { id: "frostcrest", name: "フロストクレスト", base: "鉱山の町ボルダ", gate: "山の門", needs: "kodo", art: { town: "town2", world: "world2" } }
+    forestveil: { id: "forestveil", name: PLACES.region, base: PLACES.base, gate: "森の門", needs: null, art: { town: "town", world: "world" },
+      intro: ["ここは森の地方、フォレストヴェール。", "魔王の力で、しずかだった森に魔物があふれだした。", "森のどこかに、魔物たちをたばねる主がいるという……。"],
+      lore: "森のはずれの小さな村。村の人たちは、3人の帰りを待っている。" },
+    frostcrest: { id: "frostcrest", name: "フロストクレスト", base: "鉱山の町ボルダ", gate: "山の門", needs: "kodo", art: { town: "town2", world: "world2" },
+      intro: ["山道をこえると、つめたい風がふきつけた。", "ここは鉱山の地方、フロストクレスト。", "坑道には盗賊がすみつき、山の上では雪がうずまいている……。"],
+      lore: "鉱石をほってくらす、山のふもとの町。坑道に盗賊が出て、町の人たちはこまっている。" }
   };
   var REGION_ORDER = ["forestveil", "frostcrest"];
   // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
@@ -664,10 +670,14 @@ var GameData = (function () {
   //   depthBase：強さの深さ＝depthBase＋階。敵の強さ・ごほうび・拾う装備のレベルに使う（樹海は 0 で、今までと同じ）
   //   theme：部屋の型と色合い（forest＝森の型・緑、swamp＝沼の型・青紫、wild＝遺跡と湖の型・深い緑。tiles.js・rooms.js）
   // 瘴気の森のボスは大ガマ（5階）と沼の魔女（10階）（段階4）。深さは仮（段階6で直す）。
+  //   intro：そのダンジョンにはじめて入ったときに1回だけ出す文。tagline：入るときのロード画面に、いつも出す1行
+  //   （2026-11-04。文は Claude が書いた仮の文。保護者があとで直す）
   var DUNGEONS = {
-    forest1: { id: "forest1", region: "forestveil", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
+    forest1: { id: "forest1", tagline: "若葉のしげる、深い樹海。", intro: ["木々のあいだから、やわらかな光がさしこんでいる。", "でも、しげみの奥から、ゴブリンの声が聞こえる……。", "森の主をたおして、樹海に平和をとりもどそう！"],
+      region: "forestveil", name: PLACES.dungeon1, short: "樹海", floors: 14, bosses: BOSSES, needs: null, depthBase: 0, theme: "forest", tier: 0 },
     shouki: {
-      id: "shouki", region: "forestveil", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp", tier: 1,
+      id: "shouki", tagline: "毒の沼が広がる、暗い森。", intro: ["空気がじっとりと重く、紫の霧がたちこめている。", "沼に入ると毒になる。足もとに気をつけて進もう。", "霧の奥で、だれかが笑っている……？"],
+      region: "forestveil", name: PLACES.dungeon2, short: "瘴気の森", floors: 10, needs: "forest1", depthBase: 14, theme: "swamp", tier: 1,
       bosses: {
         // 前後の文は Claude が書いた仮の文（保護者があとで直す）
         5: { enemy: "frog_boss", title: "沼をしずめし者",
@@ -681,7 +691,8 @@ var GameData = (function () {
     // 原生の秘境（段階1、2026-10-25）：15階（8階にゴーレム、15階にダークエルフ）。沼の魔女をたおすと開く。
     // 深さは瘴気の森の続き（24＋階）。装備の段は鋼（段階6、2026-10-26。宝箱は鋼、開くとお店も鋼と特上の薬になる）
     hikyo: {
-      id: "hikyo", region: "forestveil", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
+      id: "hikyo", tagline: "大木と湖にかこまれた、古い遺跡の森。", intro: ["見上げるほどの大木が、空をおおっている。", "湖のほとりには、崩れた石の柱がならぶ。むかしの町のあとだろうか。", "落とし穴に気をつけて、秘境の奥をめざそう。"],
+      region: "forestveil", name: PLACES.dungeon3, short: "秘境", floors: 15, needs: "shouki", depthBase: 24, theme: "wild", tier: 2,
       // foeHp・foeAtk：ふつうの敵（ボスはのぞく）の HP・攻撃の上のせ（2026-11-01 保護者の感想：剣闘士の100こえの一撃で、ほぼみんな一撃でたおせた。
       //   装備が鋼の段になって攻撃がぐっと上がるのに、敵は深さの分しか強くならないため）。数字は遊んでみてから直す
       //   2026-11-01 昼（保護者：もうちょっと強くても。特にオオカミ）：HP 1.8→2.2、攻撃 1.2→1.3。オオカミはさらに HP ×1.4・攻撃 ×1.15（foeType）
@@ -700,7 +711,8 @@ var GameData = (function () {
     // ダークエルフ（原生の秘境の主）をたおすと開く。深さは秘境の続き（39＋階）。部屋は洞窟の型（theme: cave）。
     // 階の数は仮。ボスはおかしら・ドワーフキングを作るまで、ゴーレム・ダークエルフを仮に使う（前後の文も仮）。装備の段は仕上げの段階で決める（今は鋼）
     kodo: {
-      id: "kodo", region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
+      id: "kodo", tagline: "黒い岩の山にほられた、古い坑道。", intro: ["ひんやりした風が、坑道の奥からふいてくる。", "かべには、つるはしでほったあとが、たくさん残っている。", "天井から、ぱらぱらと小石が落ちてきた……。落石に気をつけよう。"],
+      region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
       // 敵の強さの上のせ（2026-11-03。原生の秘境と同じくらいの手ごたえに合わせた。装備は秘境と同じ鋼の段なので、同じように上のせがいる）：
       //   HP ×1.9・攻撃 ×1.25。ドワーフと岩の虫は、もとの HP が高い（盗賊の約1.8倍）ので HP の上のせを小さく、ドワーフは攻撃も少し小さく
       foeHp: 1.9, foeAtk: 1.25, foeType: { dwarf_axe: { hp: 0.75, atk: 0.9 }, dwarf_hammer: { hp: 0.75, atk: 0.85 }, rock_worm: { hp: 0.75 } },

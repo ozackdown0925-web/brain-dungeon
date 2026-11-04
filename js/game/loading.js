@@ -109,6 +109,9 @@ var Loading = (function () {
     var b = make(); b.textContent = "";
     var inner = el("div", "load-inner");
     inner.appendChild(el("h2", "load-title", title));
+    // ダンジョンの1行の紹介（2026-11-04）
+    var D = dungeon && GameData.DUNGEONS[dungeon];
+    if (D && D.tagline) inner.appendChild(el("p", "load-sub", D.tagline));
     var tip = el("div", "load-tip");
     tip.appendChild(el("div", "load-tip-head", hint.head));
     tip.appendChild(el("p", "", hint.text));

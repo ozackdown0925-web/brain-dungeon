@@ -291,6 +291,7 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .town-wrap { display: flex; justify-content: center; margin: 6px 0 2px; }
 #townMap { display: block; border-radius: 10px; border: 2px solid #343b55; image-rendering: pixelated; touch-action: manipulation; }
 .town-hint { text-align: center; margin: 2px 0; }
+.town-lore { text-align: center; margin: 0 0 6px; color: #d8cfe8; font-size: 0.95rem; }
 .depart.flash { animation: flash 1s ease-out; border-radius: 10px; }
 @keyframes flash { 0% { background: rgba(242, 193, 78, 0.6); } 100% { background: transparent; } }
 .dim-line { opacity: 0.55; }
@@ -369,6 +370,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .load-screen[hidden] { display: none; }
 .load-inner { width: 100%; max-width: 560px; text-align: center; }
 .load-title { margin: 0 0 22px; font-size: 1.5rem; color: #f2c14e; letter-spacing: 0.08em; }
+.load-sub { margin: -12px 0 20px; font-size: 1.05rem; color: #e4dcf0; letter-spacing: 0.04em; }
 .load-tip { border: 2px solid rgba(242,193,78,0.55); border-radius: 12px; background: rgba(10,12,18,0.6); padding: 14px 18px; text-align: left; }
 .load-tip-head { font-size: 0.85rem; font-weight: 700; color: #f2c14e; margin-bottom: 4px; }
 .load-tip p { margin: 0; font-size: 1.05rem; line-height: 1.8; }

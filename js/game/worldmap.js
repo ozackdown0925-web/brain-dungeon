@@ -63,6 +63,14 @@ var WorldMap = (function () {
     document.getElementById("base").hidden = true;
     document.getElementById("worldTitle").textContent = region().name;
     draw();
+    showRegionIntro();
+  }
+  // その地方にはじめて来たとき（2026-11-04）：地方の短い文を1回だけ出す
+  function showRegionIntro() {
+    var R = region();
+    if (!R.intro || GameState.introSeen(R.id)) return;
+    GameState.seenIntro(R.id);
+    Dialog.alert(R.intro.join("\n"));
   }
   function close() { el.hidden = true; Base.showBase(null); }
   document.getElementById("worldBack").addEventListener("click", close);
