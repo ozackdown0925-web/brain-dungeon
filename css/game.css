@@ -347,7 +347,12 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .title-logo { margin: 12px 0 4px; font-size: clamp(28px, 6vw, 46px); letter-spacing: 0.08em; color: #f2c14e; text-shadow: 0 2px 0 #7a4a10, 0 0 16px rgba(242,193,78,0.45); }
 .title-logo span { display: block; font-size: 0.42em; letter-spacing: 0.4em; color: #cfc6e0; text-shadow: none; margin-top: 2px; }
 .title-story { max-width: 640px; margin: 4px auto 10px; text-align: left; font-size: 15px; line-height: 1.7; color: #e4dcf0; }
-.title-story p { margin: 0 0 4px; }
+.title-story p { margin: 0 0 6px; }
+/* 物語を1文字ずつ出す（2026-11-04）：まだの文字は見えないだけで、場所はとってある */
+.title-story .tc { opacity: 0; transition: opacity 0.25s; }
+.title-story .tc.on { opacity: 1; }
+#titleGo { transition: opacity 0.6s; }
+#titleGo.wait { opacity: 0; pointer-events: none; }
 .sound-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0 0; }
 .parent-entry.sound-row { justify-content: flex-end; }
 @media (max-height: 559px) and (orientation: landscape) {
