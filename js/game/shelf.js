@@ -3,7 +3,7 @@
 // ・答えは「書庫の記録」シート（shelfHistory・saveShelfAnswer）。知恵の試練の「記録」とは分ける。
 // ・出し方（docs/game-design.md の 6.7。2026-11-04 に「キャッチアップを先に」へ変更）：
 //   1日 DAILY 問まで。①前にまちがえて、まだ2回目を解いていない問題（次の日に1回だけ）→ ②まだ解いていない問題（1周目）
-//   → ③1周目が終わったあとの、間をあけたたしかめ。教科はまぜて、国語 → 理科 → 社会 → 算数 の順に1問ずつ回す（子どもに選ばせない）。
+//   → ③1周目が終わったあとの、間をあけたたしかめ。教科はまぜて回す（子どもに選ばせない）。同じ図・表・指示の小問（group）はまとめて続けて出し、教科ごとの小問の数がそろうように回す。
 //   はじめて見て正解した問題は「知っている」（14日たったら1回たしかめ、正解なら「覚えた」）。
 //   2回目もまちがえた問題は「苦手」（1周目のあいだは追わない。そのあとは 3日後→1週間後→2週間後 と正解を続けたら「覚えた」。まちがえたら翌日）。
 //   新しい問題は、新しいプリントから先に（プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
@@ -48,15 +48,47 @@ var Shelf = (function () {
     });
     return st;
   }
-  // 教科をまぜる：ORDER の順に1問ずつ回す（それぞれの教科の中の順は、渡した順のまま）
+  // 教科をまぜる（2026-11-04 保護者と決定）：同じ図・表・指示を使う小問（データの group が同じで、並びが続いているもの）は
+  // 「まとまり」として続けて出す。教科はまとまりごとに回し、それまでに出した小問の数がいちばん少ない教科を次にする
+  // （同じなら ORDER の順）。国語で8問のまとまりを出したら、理科・社会も8問くらいになるまで続けて出る。
+  // もどり値の項目には unit（まとまりの番号）をつける。1日の数で切るときに、まとまりを途中で切らないため。
+  function units(list) {
+    var out = [], last = null;
+    list.forEach(function (q) {
+      var g = q.group ? String(q.group) : "";
+      if (g && last && last.group === g) last.qs.push(q);
+      else { last = { group: g, qs: [q] }; out.push(last); }
+    });
+    return out;
+  }
   function mix(list) {
-    var by = {}, out = [];
+    var by = {}, out = [], count = {}, n = 0;
     list.forEach(function (q) { (by[q.subject] || (by[q.subject] = [])).push(q); });
     var keys = ORDER.filter(function (k) { return by[k]; }).concat(Object.keys(by).filter(function (k) { return ORDER.indexOf(k) < 0; }));
-    var left = true;
-    while (left) {
-      left = false;
-      keys.forEach(function (k) { if (by[k].length) { out.push(by[k].shift()); left = true; } });
+    keys.forEach(function (k) { by[k] = units(by[k]); count[k] = 0; });
+    for (;;) {
+      var pick = null;
+      keys.forEach(function (k) { if (by[k].length && (pick === null || count[k] < count[pick])) pick = k; });
+      if (pick === null) break;
+      var u = by[pick].shift();
+      u.qs.forEach(function (q) { out.push(q); });
+      count[pick] += u.qs.length;
+      out.unit = (out.unit || []).concat(u.qs.map(function () { return n; }));
+      n++;
+    }
+    return out;
+  }
+  // mix の結果に why をつけて並べる（unit はまとまりの番号。ほかの list と重ならないように start からかぞえる）
+  function tag(list, why, start) {
+    var m = mix(list);
+    return m.map(function (q, i) { return { q: q, why: why, unit: start + (m.unit ? m.unit[i] : i) }; });
+  }
+  // 1日の数で切る。まとまりは途中で切らない（さいごのまとまりは、数を少しこえても最後まで出す）
+  function cut(list, room) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      if (out.length >= room && !(out.length && list[i].unit === out[out.length - 1].unit)) break;
+      out.push(list[i]);
     }
     return out;
   }
@@ -84,10 +116,10 @@ var Shelf = (function () {
     // ③1周目が終わったあとの、たしかめ（知っている問題の1回・苦手の問題）
     var check = Q.filter(function (q) { var s = st[q.id]; return s && (s.kind === "known" || s.kind === "weak") && s.due && s.due <= today; });
     check.sort(function (a, b) { var x = st[a.id], y = st[b.id]; return (x.due < y.due ? -1 : x.due > y.due ? 1 : 0) || (a.id < b.id ? -1 : 1); });
-    var list = mix(retry).map(function (q) { return { q: q, why: "retry" }; })
-      .concat(mix(fresh).map(function (q) { return { q: q, why: "new" }; }));
-    if (!fresh.length) list = list.concat(mix(check).map(function (q) { return { q: q, why: "check" }; }));
-    return { list: list.slice(0, room), doneToday: doneToday, left: fresh.length, caughtUp: !fresh.length };
+    var list = tag(retry, "retry", 0);
+    list = list.concat(tag(fresh, "new", 100000));
+    if (!fresh.length) list = list.concat(tag(check, "check", 200000));
+    return { list: room > 0 ? cut(list, room) : [], doneToday: doneToday, left: fresh.length, caughtUp: !fresh.length };
   }
   // 教科ごとの数：{ 教科: { total, mastered（覚えた）, known（知っている）, weak（苦手・もう1回）, unseen（まだ） } }
   function summary(questions, records) {
