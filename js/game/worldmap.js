@@ -19,13 +19,13 @@ var WorldMap = (function () {
       { id: "base", kind: "base", x: 61, y: 124 },
       // 新緑の樹海は右下の森（2026-10-18 保護者が決定）
       { id: "forest1", kind: "dungeon", x: 283, y: 122,
-        note: "若葉のしげる深い樹海。ゴブリンの部隊と、つる草の魔物がすむ。7階に大オオカミ、14階に森の主がいる。" },
+        note: "7階に大オオカミ、14階に森の主がいる。" },
       // 瘴気の森は左上の沼。樹海の主をたおすと開く
       { id: "shouki", kind: "dungeon", x: 94, y: 60,
-        note: "毒の沼が広がる、暗い森。5階と10階に、強い魔物がいる。" },
+        note: "5階と10階に、強い魔物がいる。" },
       // 原生の秘境はまんなかの大木の森。沼の魔女をたおすと開く（2026-10-25）
       { id: "hikyo", kind: "dungeon", x: 200, y: 76,
-        note: "大木と湖にかこまれた、古い遺跡の森。足もとの落とし穴に気をつけて。8階と15階に、強い魔物がいる。" },
+        note: "足もとの落とし穴に気をつけて。8階と15階に、強い魔物がいる。" },
       // 次の地方への道：北の山なみ。ダークエルフをたおすと開く（2026-10-27）
       { id: "to_frost", kind: "road", to: "frostcrest", x: 150, y: 16 }
     ],
@@ -34,7 +34,10 @@ var WorldMap = (function () {
     frostcrest: [
       { id: "base", kind: "base", x: 60, y: 124 },
       { id: "kodo", kind: "dungeon", x: 76, y: 80,
-        note: "黒い岩の山にほられた、古い坑道。盗賊とドワーフがすみついている。6階と12階に、強い魔物がいる。" },
+        note: "6階と12階に、強い魔物がいる。" },
+      // 山道と雪山の説明（2026-11-04 保護者が書いた文。作るときに data.js の DUNGEONS の intro に移す）
+      //   山道：「雪山へと続く険しく冷たい一本道。」「頂上付近には「空の覇者である大怪鳥が巣食っている」と言い伝えられ、誰もが恐れて近寄らない。」
+      //   雪山：「魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。」「吹雪の向こう側では、巨大な雪の獣がうごめいているという。」
       { id: "yama", kind: "dungeon", locked: true, x: 196, y: 62 },
       { id: "yuki", kind: "dungeon", locked: true, x: 282, y: 52 },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
@@ -63,6 +66,14 @@ var WorldMap = (function () {
     document.getElementById("base").hidden = true;
     document.getElementById("worldTitle").textContent = region().name;
     draw();
+    showRegionIntro();
+  }
+  // その地方にはじめて来たとき（2026-11-04）：地方の短い文を1回だけ出す
+  function showRegionIntro() {
+    var R = region();
+    if (!R.intro || GameState.introSeen(R.id)) return;
+    GameState.seenIntro(R.id);
+    Dialog.alert(R.intro.join("\n"));
   }
   function close() { el.hidden = true; Base.showBase(null); }
   document.getElementById("worldBack").addEventListener("click", close);
@@ -158,7 +169,8 @@ var WorldMap = (function () {
     showNote("");
     var floors = floorsOf(s), deepest = reached(s), next = Math.min(floors, deepest + 1);
     document.getElementById("dlgTitle").textContent = nameOf(s);
-    document.getElementById("dlgNote").textContent = s.note;
+    // ダンジョンの説明（data.js の intro。2026-11-04 保護者が書いた文）と、ボスの階のお知らせ（s.note）
+    document.getElementById("dlgNote").textContent = (GameData.dungeonOf(s.id).intro || []).join("") + "\n" + s.note;
     var go = document.getElementById("dlgNext");
     go.textContent = deepest >= floors ? "主をたおした！ 好きな階を選ぼう" : next + "階に挑む" + (GameData.isBossFloor(s.id, next) ? "（ボス）" : "");
     go.disabled = deepest >= floors;

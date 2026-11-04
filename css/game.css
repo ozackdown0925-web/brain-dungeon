@@ -291,6 +291,7 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .town-wrap { display: flex; justify-content: center; margin: 6px 0 2px; }
 #townMap { display: block; border-radius: 10px; border: 2px solid #343b55; image-rendering: pixelated; touch-action: manipulation; }
 .town-hint { text-align: center; margin: 2px 0; }
+.town-lore { text-align: center; margin: 0 0 6px; color: #d8cfe8; font-size: 0.95rem; white-space: pre-line; line-height: 1.7; }
 .depart.flash { animation: flash 1s ease-out; border-radius: 10px; }
 @keyframes flash { 0% { background: rgba(242, 193, 78, 0.6); } 100% { background: transparent; } }
 .dim-line { opacity: 0.55; }
@@ -342,11 +343,17 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
   background: radial-gradient(ellipse at 50% 30%, #2a1838 0%, #0d0814 70%); color: #ece7da; padding: 12px 16px 24px; }
 .title-screen[hidden] { display: none; }
 .title-wrap { max-width: 900px; margin: 0 auto; text-align: center; }
-#titleArt { display: block; margin: 0 auto; border-radius: 10px; border: 2px solid #4a3060; image-rendering: pixelated; box-shadow: 0 0 30px rgba(255,58,74,0.15); }
+#titleArt { display: block; margin: 0 auto; border-radius: 10px; box-shadow: 0 0 30px rgba(255,58,74,0.15); }
+.title-logo .title-en { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* 題名は絵の中にあるので、画面には出さない */
 .title-logo { margin: 12px 0 4px; font-size: clamp(28px, 6vw, 46px); letter-spacing: 0.08em; color: #f2c14e; text-shadow: 0 2px 0 #7a4a10, 0 0 16px rgba(242,193,78,0.45); }
 .title-logo span { display: block; font-size: 0.42em; letter-spacing: 0.4em; color: #cfc6e0; text-shadow: none; margin-top: 2px; }
 .title-story { max-width: 640px; margin: 4px auto 10px; text-align: left; font-size: 15px; line-height: 1.7; color: #e4dcf0; }
-.title-story p { margin: 0 0 4px; }
+.title-story p { margin: 0 0 6px; }
+/* 物語を1文字ずつ出す（2026-11-04）：まだの文字は見えないだけで、場所はとってある */
+.title-story .tc { opacity: 0; transition: opacity 0.25s; }
+.title-story .tc.on { opacity: 1; }
+#titleGo { transition: opacity 0.6s; }
+#titleGo.wait { opacity: 0; pointer-events: none; }
 .sound-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0 0; }
 .parent-entry.sound-row { justify-content: flex-end; }
 @media (max-height: 559px) and (orientation: landscape) {
@@ -369,6 +376,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .load-screen[hidden] { display: none; }
 .load-inner { width: 100%; max-width: 560px; text-align: center; }
 .load-title { margin: 0 0 22px; font-size: 1.5rem; color: #f2c14e; letter-spacing: 0.08em; }
+.load-sub { margin: -12px 0 20px; font-size: 1.05rem; color: #e4dcf0; letter-spacing: 0.04em; }
 .load-tip { border: 2px solid rgba(242,193,78,0.55); border-radius: 12px; background: rgba(10,12,18,0.6); padding: 14px 18px; text-align: left; }
 .load-tip-head { font-size: 0.85rem; font-weight: 700; color: #f2c14e; margin-bottom: 4px; }
 .load-tip p { margin: 0; font-size: 1.05rem; line-height: 1.8; }
@@ -535,3 +543,4 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books .book.known { background: #4a3f2a; height: 21px; box-shadow: inset 0 0 0 2px #f2c14e; }
 .shelf-books .book.got { background: #f2c14e; height: 22px; box-shadow: 0 0 4px rgba(242,193,78,0.6); }
 .shelf-row .shelf-count { font-size: 13px; white-space: nowrap; }
+#dlgNote { white-space: pre-line; line-height: 1.7; }   /* ダンジョンの説明とボスの階のお知らせ（2026-11-04） */

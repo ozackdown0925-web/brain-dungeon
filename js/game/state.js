@@ -97,6 +97,13 @@ var GameState = (function () {
     if (!game || !regionOpen(id) || game.region === id) return;
     game.region = id; save();
   }
+  // 地方とダンジョンの、はじめの文（2026-11-04）を見たか。key は地方の id かダンジョンの id。見たら seenIntro で印をつける
+  function introSeen(key) { return !!(game && game.introSeen && game.introSeen[key]); }
+  function seenIntro(key) {
+    if (!game || introSeen(key)) return;
+    if (!game.introSeen) game.introSeen = {};
+    game.introSeen[key] = true; save();
+  }
   // 今いる地方の拠点の町の名前
   function baseName() { return GameData.regionOf(region()).base; }
 
@@ -1013,7 +1020,7 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
-    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore,

@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=135">
-<link rel="stylesheet" href="css/drillcore.css?v=135">
-<link rel="stylesheet" href="css/trial.css?v=135">
+<link rel="stylesheet" href="css/game.css?v=136">
+<link rel="stylesheet" href="css/drillcore.css?v=136">
+<link rel="stylesheet" href="css/trial.css?v=136">
 </head>
 <body>
 <div id="stage">
@@ -18,13 +18,15 @@
   <!-- 段階7-1：タイトル画面（1枚の絵と短い物語。絵はプログラムで描いたもの） -->
   <div id="titleScreen" class="title-screen" hidden>
     <div class="title-wrap">
-      <div class="title-art"><canvas id="titleArt" aria-label="魔王の城を見上げる3人のなかま"></canvas></div>
+      <div class="title-art"><img id="titleArt" src="assets/title.jpg?v=136" alt="Brain Dungeon。魔王の城を見上げる3人のなかま"></div>
       <div class="title-text">
-      <h1 class="title-logo">Brain Dungeon<span>ブレインダンジョン</span></h1>
-      <div class="title-story">
-        <p>むかしむかし、ある王国のはずれで、魔王が目をさましました。</p>
-        <p>魔王は世界を自分のものにしようと、森や山を、魔物のすむダンジョンに変えてしまいます。</p>
-        <p>立ち上がったのは、3人のなかま。知恵の試練をのりこえて力をつけ、魔王をたおす旅に出よう！</p>
+      <!-- 題名の文字は絵の中にある（2026-11-04 保護者が Gemini で作った絵）。ここは読み方だけ出す -->
+      <h1 class="title-logo"><span class="title-en">Brain Dungeon</span><span>ブレインダンジョン</span></h1>
+      <!-- 物語（2026-11-04 保護者が書いた文）：1段落ずつ、1文字ずつ出す。タップで早送り。出しきったら「はじめる」が出る（title.js） -->
+      <div class="title-story" id="titleStory">
+        <p>はるかな昔から平和だった世界は、突如として現れた魔王の手によって闇に包まれた。恐怖と絶望が大地を支配し、人々は光を失った世界でただ怯えるほかなかった。</p>
+        <p>世界が終焉へと向かう中、深い森に囲まれた小さな村――エルム村で、運命に導かれるように3人の若者が立ち上がった。彼らは絶望の闇を打ち払うため、まだ見ぬ魔王城を目指す決意を固める。</p>
+        <p>これは、無力な若者たちが絆を胸に世界を救う、長い旅路の物語。今、伝説の幕が上がろうとしている――。</p>
       </div>
       <button type="button" id="titleGo" class="btn big">はじめる</button>
       <div class="sound-row"><button type="button" class="btn small-btn sound-bgm">BGM：オン</button><button type="button" class="btn small-btn sound-se">効果音：オン</button></div>
@@ -328,6 +330,7 @@
   <div id="base" class="screen town" hidden>
     <div class="panel wide-panel">
       <h2 id="baseTitle">エルム村</h2>
+      <p id="baseLore" class="note town-lore"></p>
       <p id="baseMoney" class="money"></p>
       <div id="baseReport" class="report" hidden></div>
       <div class="town-wrap"><canvas id="townMap" aria-label="町の地図。建物を押すと開く"></canvas></div>
@@ -348,42 +351,41 @@
   </div>
 </div>
 
-<script src="config.js?v=135"></script>
-<script src="js/api.js?v=135"></script>
-<script src="js/game/furigana.js?v=135"></script>
-<script src="js/game/sync.js?v=135"></script>
-<script src="js/game/sound.js?v=135"></script>
-<script src="js/drillcore.js?v=135"></script>
-<script src="js/game/input.js?v=135"></script>
-<script src="js/game/render.js?v=135"></script>
-<script src="js/game/tiles.js?v=135"></script>
-<script src="js/game/world.js?v=135"></script>
-<script src="js/game/rooms.js?v=135"></script>
-<script src="js/game/dungeon.js?v=135"></script>
-<script src="js/game/loot.js?v=135"></script>
-<script src="js/game/data.js?v=135"></script>
-<script src="js/game/state.js?v=135"></script>
-<script src="js/game/faces.js?v=135"></script>
-<script src="js/game/battle.js?v=135"></script>
-<script src="js/game/enemies.js?v=135"></script>
-<script src="js/game/bosses.js?v=135"></script>
-<script src="js/game/sprites.js?v=135"></script>
-<script src="js/game/monsters.js?v=135"></script>
-<script src="js/game/props.js?v=135"></script>
-<script src="js/game/party.js?v=135"></script>
-<script src="js/game/skills.js?v=135"></script>
-<script src="js/game/town.js?v=135"></script>
-<script src="js/game/trial.js?v=135"></script>
-<script src="js/game/shelf.js?v=135"></script>
-<script src="js/game/drillchart.js?v=135"></script>
-<script src="js/game/parent.js?v=135"></script>
-<script src="js/game/worldmap.js?v=135"></script>
-<script src="js/game/mapart.js?v=135"></script>
-<script src="js/game/dialog.js?v=135"></script>
-<script src="js/game/loading.js?v=135"></script>
-<script src="js/game/base.js?v=135"></script>
-<script src="js/game/titleart.js?v=135"></script>
-<script src="js/game/title.js?v=135"></script>
-<script src="js/game/core.js?v=135"></script>
+<script src="config.js?v=136"></script>
+<script src="js/api.js?v=136"></script>
+<script src="js/game/furigana.js?v=136"></script>
+<script src="js/game/sync.js?v=136"></script>
+<script src="js/game/sound.js?v=136"></script>
+<script src="js/drillcore.js?v=136"></script>
+<script src="js/game/input.js?v=136"></script>
+<script src="js/game/render.js?v=136"></script>
+<script src="js/game/tiles.js?v=136"></script>
+<script src="js/game/world.js?v=136"></script>
+<script src="js/game/rooms.js?v=136"></script>
+<script src="js/game/dungeon.js?v=136"></script>
+<script src="js/game/loot.js?v=136"></script>
+<script src="js/game/data.js?v=136"></script>
+<script src="js/game/state.js?v=136"></script>
+<script src="js/game/faces.js?v=136"></script>
+<script src="js/game/battle.js?v=136"></script>
+<script src="js/game/enemies.js?v=136"></script>
+<script src="js/game/bosses.js?v=136"></script>
+<script src="js/game/sprites.js?v=136"></script>
+<script src="js/game/monsters.js?v=136"></script>
+<script src="js/game/props.js?v=136"></script>
+<script src="js/game/party.js?v=136"></script>
+<script src="js/game/skills.js?v=136"></script>
+<script src="js/game/town.js?v=136"></script>
+<script src="js/game/trial.js?v=136"></script>
+<script src="js/game/shelf.js?v=136"></script>
+<script src="js/game/drillchart.js?v=136"></script>
+<script src="js/game/parent.js?v=136"></script>
+<script src="js/game/worldmap.js?v=136"></script>
+<script src="js/game/mapart.js?v=136"></script>
+<script src="js/game/dialog.js?v=136"></script>
+<script src="js/game/loading.js?v=136"></script>
+<script src="js/game/base.js?v=136"></script>
+<script src="js/game/title.js?v=136"></script>
+<script src="js/game/core.js?v=136"></script>
 </body>
 </html>
