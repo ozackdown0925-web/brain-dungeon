@@ -179,7 +179,7 @@ var Base = (function () {
     // 町の名前と絵（建物を押すと開く）。いる地方の町（2026-10-27）
     var R = GameData.regionOf(GameState.region());
     document.getElementById("baseTitle").textContent = R.base;
-    document.getElementById("baseLore").textContent = R.lore || "";   // 町の1行の紹介（2026-11-04）
+    document.getElementById("baseLore").textContent = (R.lore || []).join("\n");   // 町の紹介（2026-11-04）
     document.getElementById("baseHint").textContent = "建物を押すと開く。冒険には「" + R.gate + "」から出発する。";
     drawTown();
     document.getElementById("baseNote").textContent = "";

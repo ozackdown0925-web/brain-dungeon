@@ -291,7 +291,7 @@ details.test summary { cursor: pointer; color: var(--gold); font-size: 14px; mar
 .town-wrap { display: flex; justify-content: center; margin: 6px 0 2px; }
 #townMap { display: block; border-radius: 10px; border: 2px solid #343b55; image-rendering: pixelated; touch-action: manipulation; }
 .town-hint { text-align: center; margin: 2px 0; }
-.town-lore { text-align: center; margin: 0 0 6px; color: #d8cfe8; font-size: 0.95rem; }
+.town-lore { text-align: center; margin: 0 0 6px; color: #d8cfe8; font-size: 0.95rem; white-space: pre-line; line-height: 1.7; }
 .depart.flash { animation: flash 1s ease-out; border-radius: 10px; }
 @keyframes flash { 0% { background: rgba(242, 193, 78, 0.6); } 100% { background: transparent; } }
 .dim-line { opacity: 0.55; }
@@ -543,3 +543,4 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books .book.known { background: #4a3f2a; height: 21px; box-shadow: inset 0 0 0 2px #f2c14e; }
 .shelf-books .book.got { background: #f2c14e; height: 22px; box-shadow: 0 0 4px rgba(242,193,78,0.6); }
 .shelf-row .shelf-count { font-size: 13px; white-space: nowrap; }
+#dlgNote { white-space: pre-line; line-height: 1.7; }   /* ダンジョンの説明とボスの階のお知らせ（2026-11-04） */
