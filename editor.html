@@ -65,7 +65,7 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
 </style>
 <script src="config.js?v=2"></script>
 <script src="js/api.js?v=2"></script>
-<script src="js/drillcore.js?v=6"></script>
+<script src="js/drillcore.js?v=7"></script>
 </head>
 <body>
 <div id="login" class="panel login" hidden>
@@ -105,7 +105,7 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
   <aside class="panel list" aria-label="問題の一覧">
     <div class="filters">
       <select id="fSubject" aria-label="教科"><option value="">すべての教科</option></select>
-      <select id="fState" aria-label="状態"><option value="">すべて</option><option value="on">出題する</option><option value="off">出題しない</option><option value="miss">テストでまちがえた</option></select>
+      <select id="fState" aria-label="状態"><option value="">すべて</option><option value="on">出題する</option><option value="off">出題しない</option><option value="miss">テストでまちがえた</option><option value="shelf">知識の棚</option><option value="trial">知恵の試練</option></select>
       <select id="fSource" class="full" aria-label="出典"><option value="">すべての出典</option></select>
       <input type="text" id="fText" class="full" placeholder="ことばでさがす（ID・単元・問題文・答え）">
     </div>
@@ -204,6 +204,8 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
     if (st === "on" && q.enabled === false) return false;
     if (st === "off" && q.enabled !== false) return false;
     if (st === "miss" && !q.testMiss) return false;
+    if (st === "shelf" && q.kind !== "shelf") return false;
+    if (st === "trial" && q.kind === "shelf") return false;
     if (src && testOf(q) !== src) return false;
     if (t && JSON.stringify(q).indexOf(t) < 0) return false;
     return true;
@@ -220,6 +222,7 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
       b.append(t1, t2);
       if (q.enabled === false) b.append(el("span", "t2 off", "出題しない"));
       if (q.testMiss) b.append(el("span", "t2", "テストでまちがえた"));
+      if (q.kind === "shelf") b.append(el("span", "t2", "知識の棚"));
       b.addEventListener("click", function () { guard(function () { open(q); }); });
       li.append(b); ul.append(li);
     });
@@ -402,7 +405,10 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
     cb.addEventListener("change", function () { cur.enabled = cb.checked; changed(); }); en.append(cb, document.createTextNode("出題する"));
     var tm = el("label", "f inline"); var cb2 = document.createElement("input"); cb2.type = "checkbox"; cb2.checked = !!cur.testMiss;
     cb2.addEventListener("change", function () { cur.testMiss = cb2.checked; changed(); }); tm.append(cb2, document.createTextNode("テストでまちがえた（先に出す）"));
-    var flags = el("div"); flags.style.display = "grid"; flags.append(en, tm);
+    // 書庫の知識の棚の問題（2026-11-04）：知恵の試練には出さず、書庫で覚えるまで間をあけて出す
+    var sh = el("label", "f inline"); var cb3 = document.createElement("input"); cb3.type = "checkbox"; cb3.checked = cur.kind === "shelf";
+    cb3.addEventListener("change", function () { if (cb3.checked) cur.kind = "shelf"; else delete cur.kind; changed(); }); sh.append(cb3, document.createTextNode("書庫の知識の棚の問題（知恵の試練には出さない）"));
+    var flags = el("div"); flags.style.display = "grid"; flags.append(en, tm, sh);
     g.append(flags);
     g.append(select("教科", DrillCore.SUBJECTS, cur.subject, function (v) { cur.subject = v; f.dataset.s = v; }));
     g.append(field("単元", cur.unit, function (v) { cur.unit = v; }, { placeholder: "例：場合の数・樹形図" }));
@@ -499,6 +505,9 @@ details summary { cursor: pointer; font-size: 0.9rem; color: var(--ink-soft); }
     } else if (t === "kanji") {
       wrap.append(field("正解の漢字", DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v.trim(); }));
       wrap.append(el("p", "help", "子どもはメモに書き、答えを見て自分で○×をつけます。"));
+    } else if (t === "recall") {
+      wrap.append(field("答え", DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v.trim(); }, { placeholder: "例：信濃川" }));
+      wrap.append(el("p", "help", "子どもは頭の中で答えてから「答えを見る」を押し、自分で○×をつけます（書庫の知識の棚の言葉の問題に）。"));
     } else {
       wrap.append(field("模範解答", DrillCore.asList(p.answer)[0] || "", function (v) { p.answer = v; }, { multiline: true, rows: 3 }));
       wrap.append(el("p", "help", "子どもは書いたあと模範解答と比べて、自分で○×をつけます。"));

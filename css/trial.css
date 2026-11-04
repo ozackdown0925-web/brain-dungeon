@@ -79,3 +79,26 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
   .ttab .tstate { font-size: 0.7rem; }
   .tprogress { margin: 2px 0; font-size: 12px; }
 }
+
+/* 書庫の知識の棚（2026-11-04）：試練と同じ問題の部品で、まわりは本棚の色。メモはなし（思い出して答える問題が中心のため） */
+.screen.shelf-screen {
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 120px, #3b2512 120px 132px),
+    repeating-linear-gradient(90deg, #5a3a1c 0 22px, #6b4522 22px 30px, #4e3218 30px 44px, #7a5028 44px 52px),
+    #4a2f16;
+}
+.shelf-screen .temple-head { border-bottom-color: #d8b56a; background: rgba(30,18,8,0.75); border-radius: 10px; }
+.shelf-screen .temple-head #shelfBack { position: absolute; left: 0; top: 4px; }
+.shelf-screen .tprogress { background: rgba(30,18,8,0.75); border-radius: 8px; padding: 2px 8px; display: table; margin: 6px auto; }
+.shelf-page { grid-template-areas: "q a"; }
+#shelfCard { grid-area: q; }
+#shelfAnswer { grid-area: a; position: -webkit-sticky; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; -webkit-overflow-scrolling: touch; scroll-padding-bottom: 330px; box-sizing: border-box; }
+#shelfAnswer:empty { display: none; }
+@media (max-width: 600px) {
+  .shelf-page { grid-template-areas: "q" "a"; }
+  #shelfAnswer { position: static; max-height: none; }
+}
+@media (max-height: 560px) {
+  .shelf-screen .temple-head #shelfBack { top: 0; }
+  #shelfAnswer { scroll-padding-bottom: 120px; }
+}

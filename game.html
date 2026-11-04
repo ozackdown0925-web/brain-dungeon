@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Brain Dungeon</title>
 <!-- 新しい版を出すときは、下の ?v= の数字をすべて1つ上げる（iPad が古いファイルを使い続けないように。GitHub Pages は10分ほどファイルを覚えさせる） -->
-<link rel="stylesheet" href="css/game.css?v=133">
-<link rel="stylesheet" href="css/drillcore.css?v=133">
-<link rel="stylesheet" href="css/trial.css?v=133">
+<link rel="stylesheet" href="css/game.css?v=135">
+<link rel="stylesheet" href="css/drillcore.css?v=135">
+<link rel="stylesheet" href="css/trial.css?v=135">
 </head>
 <body>
 <div id="stage">
@@ -143,6 +143,28 @@
           </aside>
         </main>
       </div>
+    </div>
+  </div>
+
+  <!-- 書庫の知識の棚（2026-11-04）：塾のプリントの一問一答を、覚えるまで間をあけて出す（js/game/shelf.js） -->
+  <div id="shelfScreen" class="screen temple shelf-screen" hidden data-s="japanese">
+    <div class="temple-wrap">
+      <header class="temple-head">
+        <button type="button" id="shelfBack" class="btn small-btn">← 書庫にもどる</button>
+        <h2>知識の棚</h2>
+        <p>本を1さつずつ読んで、答えを思い出そう。</p>
+      </header>
+      <div id="shelfNotice" class="notice" hidden></div>
+      <p id="shelfProgress" class="tprogress"></p>
+      <div id="shelfDone" class="tdone" hidden>
+        <h3>今日の分はおわり！</h3>
+        <p id="shelfDoneText"></p>
+        <button type="button" id="shelfDoneBack" class="dq-btn">書庫にもどる</button>
+      </div>
+      <main class="tpage shelf-page">
+        <article id="shelfCard" class="qcard" data-noruby aria-label="問い"></article>
+        <article id="shelfAnswer" class="qcard tanswer" data-noruby aria-live="polite" aria-label="答え"></article>
+      </main>
     </div>
   </div>
 
@@ -326,41 +348,42 @@
   </div>
 </div>
 
-<script src="config.js?v=133"></script>
-<script src="js/api.js?v=133"></script>
-<script src="js/game/furigana.js?v=133"></script>
-<script src="js/game/sync.js?v=133"></script>
-<script src="js/game/sound.js?v=133"></script>
-<script src="js/drillcore.js?v=133"></script>
-<script src="js/game/input.js?v=133"></script>
-<script src="js/game/render.js?v=133"></script>
-<script src="js/game/tiles.js?v=133"></script>
-<script src="js/game/world.js?v=133"></script>
-<script src="js/game/rooms.js?v=133"></script>
-<script src="js/game/dungeon.js?v=133"></script>
-<script src="js/game/loot.js?v=133"></script>
-<script src="js/game/data.js?v=133"></script>
-<script src="js/game/state.js?v=133"></script>
-<script src="js/game/faces.js?v=133"></script>
-<script src="js/game/battle.js?v=133"></script>
-<script src="js/game/enemies.js?v=133"></script>
-<script src="js/game/bosses.js?v=133"></script>
-<script src="js/game/sprites.js?v=133"></script>
-<script src="js/game/monsters.js?v=133"></script>
-<script src="js/game/props.js?v=133"></script>
-<script src="js/game/party.js?v=133"></script>
-<script src="js/game/skills.js?v=133"></script>
-<script src="js/game/town.js?v=133"></script>
-<script src="js/game/trial.js?v=133"></script>
-<script src="js/game/drillchart.js?v=133"></script>
-<script src="js/game/parent.js?v=133"></script>
-<script src="js/game/worldmap.js?v=133"></script>
-<script src="js/game/mapart.js?v=133"></script>
-<script src="js/game/dialog.js?v=133"></script>
-<script src="js/game/loading.js?v=133"></script>
-<script src="js/game/base.js?v=133"></script>
-<script src="js/game/titleart.js?v=133"></script>
-<script src="js/game/title.js?v=133"></script>
-<script src="js/game/core.js?v=133"></script>
+<script src="config.js?v=135"></script>
+<script src="js/api.js?v=135"></script>
+<script src="js/game/furigana.js?v=135"></script>
+<script src="js/game/sync.js?v=135"></script>
+<script src="js/game/sound.js?v=135"></script>
+<script src="js/drillcore.js?v=135"></script>
+<script src="js/game/input.js?v=135"></script>
+<script src="js/game/render.js?v=135"></script>
+<script src="js/game/tiles.js?v=135"></script>
+<script src="js/game/world.js?v=135"></script>
+<script src="js/game/rooms.js?v=135"></script>
+<script src="js/game/dungeon.js?v=135"></script>
+<script src="js/game/loot.js?v=135"></script>
+<script src="js/game/data.js?v=135"></script>
+<script src="js/game/state.js?v=135"></script>
+<script src="js/game/faces.js?v=135"></script>
+<script src="js/game/battle.js?v=135"></script>
+<script src="js/game/enemies.js?v=135"></script>
+<script src="js/game/bosses.js?v=135"></script>
+<script src="js/game/sprites.js?v=135"></script>
+<script src="js/game/monsters.js?v=135"></script>
+<script src="js/game/props.js?v=135"></script>
+<script src="js/game/party.js?v=135"></script>
+<script src="js/game/skills.js?v=135"></script>
+<script src="js/game/town.js?v=135"></script>
+<script src="js/game/trial.js?v=135"></script>
+<script src="js/game/shelf.js?v=135"></script>
+<script src="js/game/drillchart.js?v=135"></script>
+<script src="js/game/parent.js?v=135"></script>
+<script src="js/game/worldmap.js?v=135"></script>
+<script src="js/game/mapart.js?v=135"></script>
+<script src="js/game/dialog.js?v=135"></script>
+<script src="js/game/loading.js?v=135"></script>
+<script src="js/game/base.js?v=135"></script>
+<script src="js/game/titleart.js?v=135"></script>
+<script src="js/game/title.js?v=135"></script>
+<script src="js/game/core.js?v=135"></script>
 </body>
 </html>

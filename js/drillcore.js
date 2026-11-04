@@ -15,9 +15,11 @@
     { key: "multi", name: "記号をいくつか選ぶ" },
     { key: "order", name: "並べかえ" },
     { key: "kanji", name: "漢字の書き取り（自己採点）" },
-    { key: "free", name: "記述（自己採点）" }
+    { key: "free", name: "記述（自己採点）" },
+    // 書庫の知識の棚（2026-11-04）：頭の中で答えてから「答えを見る」を押し、自分で○×をつける（言葉の暗記。iPad で打たなくてすむ）
+    { key: "recall", name: "思い出して答える（自己採点）" }
   ];
-  var SELF = { kanji: true, free: true };
+  var SELF = { kanji: true, free: true, recall: true };
 
   function subjectName(k) { for (var i = 0; i < SUBJECTS.length; i++) if (SUBJECTS[i].key === k) return SUBJECTS[i].name; return k; }
   function asList(v) { if (v == null || v === "") return []; return Array.isArray(v) ? v : [v]; }
@@ -375,6 +377,10 @@
       ta.addEventListener("input", onChange);
       return { node: ta, get: function () { return ta.value.trim(); }, set: function (v) { ta.value = v || ""; }, lock: function () { ta.disabled = true; } };
     }
+    if (t === "recall") {
+      var rn = el("p", "dq-note", "答えを頭の中で思いうかべてから「答えを見る」を押して、自分で○×をつけよう。");
+      return { node: rn, get: function () { return "（思い出す）"; }, set: function () {}, lock: function () {} };
+    }
     // kanji
     var note = el("p", "dq-note", "メモに書いてから「答え合わせ」を押して、自分で○×をつけよう。");
     return { node: note, get: function () { return "（自己採点）"; }, set: function () {}, lock: function () {} };
@@ -425,7 +431,8 @@
 
     // 答え合わせのボタンは、答えを入れていなくても押せる（2026-10-23 保護者の希望：画面の不具合などで入れられないときに、先へ進めなくなるため）。
     // 入れていない欄があるときは、1回目に押すと知らせだけ出し、もう一度押すと答え合わせする（まちがえて押したときのため）。入れていない欄は×
-    var checkBtn = btn("dq-btn", "答え合わせ", check), armed = false;
+    var allRecall = parts.length > 0 && parts.every(function (p) { return p.type === "recall"; });
+    var checkBtn = btn("dq-btn", allRecall ? "答えを見る" : "答え合わせ", check), armed = false;
     var emptyNote = el("p", "dq-note dq-empty-note");
     function allFilled() { return parts.every(function (p, i) { return !isEmpty(p, ws[i].get()); }); }
     function update() {
@@ -490,17 +497,18 @@
         var mk = marks[i];
         mk.append(el("div", "dq-model", answerText(parts[i])));
         var row = el("div", "dq-row");
-        var ok = btn("dq-btn ok small", "○ できた", function () { grade(true); });
-        var ng = btn("dq-btn ng small", "× まちがえた", function () { grade(false); });
+        var rc = parts[i].type === "recall";
+        var ok = btn("dq-btn ok small", rc ? "○ 思い出せた" : "○ できた", function () { grade(true); });
+        var ng = btn("dq-btn ng small", rc ? "× 思い出せなかった" : "× まちがえた", function () { grade(false); });
         function grade(c) { r.correct = c; r.self = false; row.remove(); mk.querySelector(".dq-model").remove(); showPartResult(i, r, r.value); pending--; if (!pending) done(); }
-        row.append(el("span", "dq-note", "自分の答えと比べて："), ok, ng); mk.append(row);
+        row.append(el("span", "dq-note", rc ? "思いうかべた答えと比べて：" : "自分の答えと比べて："), ok, ng); mk.append(row);
       });
       function done() {
         var all = finish(results);
         var rec = {
           correct: all,
           input: parts.map(function (p, i) { return (p.label ? p.label + " " : "") + inputText(p, results[i].value); }).join(" / "),
-          parts: parts.map(function (p, i) { return { label: p.label || "", value: results[i].value, correct: !!results[i].correct, note: results[i].note || "" }; })
+          parts: parts.map(function (p, i) { var o = { label: p.label || "", value: results[i].value, correct: !!results[i].correct, note: results[i].note || "" }; if (SELF[p.type]) o.self = true; return o; })
         };
         var note = results.map(function (r) { return r.note; }).filter(Boolean)[0];
         if (note) rec.note = note;

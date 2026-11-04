@@ -3,10 +3,10 @@
 // ・解いた結果は「記録」シートに1問1行で保存する
 // ・GitHub Pages の画面からは fetch で呼ぶ（下の「fetch 用の窓口」）。
 //   POST は Content-Type: text/plain、中身は JSON 文字列 { key, action, ... }。GET ?action=…&key=… でも読める。
-//   プレイヤー用の鍵（PLAYER_KEYS、プレイヤーごとに1つ）：check・drillQuestions・image・history・saveAnswer
+//   プレイヤー用の鍵（PLAYER_KEYS、プレイヤーごとに1つ）：check・drillQuestions・image・history・saveAnswer・shelfQuestions・shelfHistory・saveShelfAnswer
 //     鍵からプレイヤー（child／parent）を決め、そのプレイヤーの記録だけを読み書きする。画面からは player を送らせない。
 //     例外：childHistory は、どちらの鍵でも子どもの記録を返す（保護者の iPad で子どもの正解率を見るため。2026-10-29）。
-//   管理用の鍵（EXPORT_KEY）：上のすべて＋ questions・saveQuestion・deleteQuestion・uploadImage・export
+//   管理用の鍵（EXPORT_KEY）：上のすべて＋ questions・saveQuestion・deleteQuestion・uploadImage・export・shelfExport
 // ・Claude 用：記録の書き出し（?action=export）、問題の書き出し（?action=questions）、問題の取りこみ（POST action=import）
 //   いずれも管理用の鍵が必要。成績管理フォルダの upload.py・mark_misses.py が使うので形を変えない。
 //   export は子ども（child）の記録だけを返す。&player=parent でそのプレイヤー、&player=all で全員分（各行に player が付く）。
@@ -16,12 +16,17 @@
 //   セーブは「セーブ」シートにプレイヤーごとに1行（大きいときは右の列へ分けて入れる）。区切りごとの控えは「セーブの控え」シートに最近の10回分。
 //   冒険の記録は「冒険の記録」シートに1回1行。保護者の暗証番号は固定で、スプレッドシートのメニューから1回入れる。
 //   スクリプトプロパティに、そのままではなく「ハッシュ」（元にもどせない形）で置く。番号はこのファイルには書かない（公開されるため）。
+// ・書庫の「知識の棚」（2026-11-04）：塾のプリント（確認テストなど）の一問一答を、覚えるまで間をあけて出す。
+//   問題は同じ「問題」シートに入れ、データの kind を 'shelf' にする。知恵の試練（drillQuestions）には出さず、shelfQuestions で渡す。
+//   答えは「書庫の記録」シートに1問1行（知恵の試練の「記録」シートとは分ける。試練の何回目かの数え方や、成績の書き出しを変えないため）。
 
 const RECORD_SHEET = '記録';
 const RECORD_HEADERS = ['日付', '教科', '問題ID', '単元', '答え', '正誤', '復習', '時刻', 'メモ', '詳細', 'プレイヤー'];
 const PLAYERS = ['child', 'parent'];   // 記録の「プレイヤー」列が空の行は child とみなす
 const DEFAULT_PLAYER = 'child';
 const QUESTION_SHEET = '問題';
+const SHELF_RECORD_SHEET = '書庫の記録';
+const SHELF_RECORD_HEADERS = ['日付', '教科', '問題ID', '答え', '正誤', '自分で○×', '時刻', 'プレイヤー', '詳細'];
 const QUESTION_HEADERS = ['ID', '有効', '教科', '単元', '出典', '更新日時', 'データ'];
 const SUBJECTS = ['math', 'japanese', 'science', 'social'];
 const IMAGE_FOLDER_NAME = '毎日4問ドリル 画像';
@@ -45,6 +50,7 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   getRecordSheet_();
   getQuestionSheet_();
+  getSheet_(SHELF_RECORD_SHEET, SHELF_RECORD_HEADERS);
   getSheet_(SAVE_SHEET, SAVE_HEADERS);
   getSheet_(CHECKPOINT_SHEET, CHECKPOINT_HEADERS);
   getSheet_(ADVENTURE_SHEET, ADVENTURE_HEADERS);
@@ -112,7 +118,11 @@ function doPost(e) {
 const READ_ACTIONS = ['check', 'drillQuestions', 'image', 'history'];   // GET でも使えるもの（セーブ・暗証番号は POST だけ）
 const PLAYER_ACTIONS = {
   check: function (p, role, player) { return { role: role, player: player }; },
-  drillQuestions: function () { return { questions: readQuestions_(true) }; },
+  drillQuestions: function () { return { questions: readQuestions_(true).filter(q => !isShelf_(q)) }; },
+  // 書庫の知識の棚（2026-11-04）：棚の問題と、そのプレイヤーの棚の記録
+  shelfQuestions: function () { return { questions: readQuestions_(true).filter(isShelf_) }; },
+  shelfHistory: function (p, role, player) { return { records: readShelfRecords_(player), player: player }; },
+  saveShelfAnswer: function (p, role, player) { saveShelfAnswer_(p.record, player); return {}; },
   image: function (p) { return { src: getImage_(String(p.id || '')) }; },
   history: function (p, role, player) { return { records: readRecords_(player), player: player }; },
   // 子どもの記録（保護者画面の正解率のグラフ用。2026-10-29）：子ども・保護者どちらの鍵でも、子どもの記録だけを返す
@@ -141,6 +151,7 @@ const ADMIN_ACTIONS = {
   deleteQuestion: function (p) { adminDeleteQuestion_(p.key, String(p.id || '')); return {}; },
   uploadImage: function (p) { return { id: adminUploadImage_(p.key, p.dataUrl, p.name) }; },
   export: function (p) { return { records: readRecords_(p.player || DEFAULT_PLAYER) }; },
+  shelfExport: function (p) { return { records: readShelfRecords_(p.player || DEFAULT_PLAYER) }; },
   sounds: function () { return { sounds: listSounds_() }; },
   uploadSound: function (p) { return uploadSound_(String(p.name || ''), p.dataUrl); },
   deleteSound: function (p) { deleteSound_(String(p.name || '')); return {}; },
@@ -194,6 +205,42 @@ function saveAnswer_(rec, player) {
   });
   return true;
 }
+
+// 書庫の知識の棚の答え：1問1行。rec：{ date, subject, qid, input, correct, self（自分で○×をつけた）, answeredAt, parts }
+function saveShelfAnswer_(rec, player) {
+  if (PLAYERS.indexOf(player) < 0) player = DEFAULT_PLAYER;
+  if (!rec || typeof rec !== 'object') throw new Error('bad record');
+  const date = String(rec.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('bad date');
+  if (SUBJECTS.indexOf(rec.subject) < 0) throw new Error('bad subject');
+  const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const row = [
+    date, rec.subject, clip(rec.qid, 40), clip(rec.input, 300), rec.correct ? '○' : '×', rec.self ? '○' : '',
+    clip(rec.answeredAt, 40), player, clip(JSON.stringify(rec.parts || []), 5000),
+  ];
+  withLock_(() => {
+    const sheet = getSheet_(SHELF_RECORD_SHEET, SHELF_RECORD_HEADERS);
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setValues([row]);
+  });
+  return true;
+}
+function readShelfRecords_(player) {
+  const sheet = getSheet_(SHELF_RECORD_SHEET, SHELF_RECORD_HEADERS);
+  const n = sheet.getLastRow() - 1;
+  if (n <= 0) return [];
+  const all = player === 'all';
+  return sheet.getRange(2, 1, n, SHELF_RECORD_HEADERS.length).getDisplayValues()
+    .filter(r => r[0] && r[1] && (all || r[7] === player))
+    .map(r => {
+      let parts = [];
+      try { parts = r[8] ? JSON.parse(r[8]) : []; } catch (err) { parts = []; }
+      const rec = { date: r[0], subject: r[1], qid: r[2], input: r[3], correct: r[4] === '○', self: r[5] === '○', answeredAt: r[6], parts: parts };
+      if (all) rec.player = r[7];
+      return rec;
+    });
+}
+// 書庫の知識の棚の問題か（データの kind が 'shelf'）
+function isShelf_(q) { return !!q && q.kind === 'shelf'; }
 
 // ---------- 問題の追加・修正・削除（窓口から呼ばれる。管理用の鍵が必要） ----------
 function adminSaveQuestion_(key, q) {
