@@ -136,7 +136,7 @@ var Shelf = (function () {
 
   // ---------- データ ----------
   var key = "", today = "", Q = [], byId = {}, R = [], loaded = false, loading = null, debug = false;
-  var queue = [], pos = 0, sessionDone = 0, sessionOk = 0;
+  var queue = [], pos = 0, sessionDone = 0, sessionOk = 0, sessionGot = [];
   var writeChain = Promise.resolve();
 
   function readPending() { try { var v = JSON.parse(localStorage.getItem(PENDING_STORE) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
@@ -198,6 +198,11 @@ var Shelf = (function () {
     });
   }
 
+  // ごほうび（state.js の shelfReward）。解いた数＝書庫の記録の数
+  function rewardText(r) { return r ? "ごほうび：鉱石 +" + r.iron + "　魔石 +" + r.stone + (r.gem ? "　宝玉 +" + r.gem : "") : ""; }
+  function payReward() { return window.GameState && GameState.shelfReward ? GameState.shelfReward(R.length) : null; }
+  function toNext() { return window.GameState && GameState.shelfToNext ? GameState.shelfToNext(R.length) : 0; }
+
   var imgCache = {};
   function loadImage(id) {
     if (!imgCache[id]) {
@@ -229,6 +234,9 @@ var Shelf = (function () {
     body.appendChild(el("p", "shelf-today", n ? "今日の分：" + n + " 問" + (nr ? "（そのうち、前にまちがえた問題 " + nr + " 問）" : "") + (p.doneToday ? "　今日はもう " + p.doneToday + " 問解いた" : "") :
       (p.doneToday ? "今日の分はおわり！ また明日。" : "今日解く問題はない。")));
     body.appendChild(el("p", "sub", p.caughtUp ? "棚の本は全部1回読んだ。これからは、間をあけてたしかめる。" : "まだ読んでいない本：あと " + p.left + " 問"));
+    var got = payReward();
+    if (got) body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got)));
+    body.appendChild(el("p", "sub", "解いた数 " + GameState.SHELF_STEP + " 問ごとに、鉱石と魔石。3回ごとに宝玉も。次のごほうびまで、あと " + toNext() + " 問。"));
     if (debug) body.appendChild(el("p", "sub", "（デバッグ用の枠：答えは送らない）"));
     if (n) {
       var b = el("button", "btn", "今日の問題を解く（" + n + " 問）"); b.type = "button";
@@ -262,7 +270,7 @@ var Shelf = (function () {
   function open(p) {
     Sound.bgm("trial");
     queue = p.list.slice();
-    pos = 0; sessionDone = 0; sessionOk = 0;
+    pos = 0; sessionDone = 0; sessionOk = 0; sessionGot = [];
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = $(id); if (e) e.hidden = true; });
     notice("");
@@ -281,7 +289,9 @@ var Shelf = (function () {
     if (pos >= queue.length) {
       card.hidden = true; ans.hidden = true; done.hidden = false;
       $("shelfProgress").textContent = "";
-      $("shelfDoneText").textContent = sessionDone ? sessionDone + " 問解いて、" + sessionOk + " 問正解。" + (sessionOk < sessionDone ? "まちがえた問題は、次の日にもう1回出てくる。" : "") : "";
+      $("shelfDoneText").textContent = sessionDone ? sessionDone + " 問解いて、" + sessionOk + " 問正解。" + (sessionOk < sessionDone ? "まちがえた問題は、次の日にもう1回出てくる。" : "") +
+        (sessionGot.length ? "　" + rewardText(sessionGot.reduce(function (a, b) { return { iron: a.iron + b.iron, stone: a.stone + b.stone, gem: a.gem + b.gem }; }, { iron: 0, stone: 0, gem: 0 })) + "。" : "") +
+        "　次のごほうびまで、あと " + toNext() + " 問。" : "";
       Sound.play("trialDone");
       return;
     }
@@ -300,6 +310,8 @@ var Shelf = (function () {
         saveAnswer(rec);
         sessionDone++; if (rec.correct) sessionOk++;
         Sound.play(rec.correct ? "correct" : "wrong");
+        var got = payReward();
+        if (got) { sessionGot.push(got); ans.appendChild(el("p", "shelf-reward", rewardText(got))); }
         var next = el("button", "dq-btn", pos + 1 < queue.length ? "次の問題へ" : "おわり");
         next.type = "button";
         next.addEventListener("click", function () { pos++; show(); });

@@ -102,3 +102,4 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
   .shelf-screen .temple-head #shelfBack { top: 0; }
   #shelfAnswer { scroll-padding-bottom: 120px; }
 }
+.shelf-reward { margin: 8px 0 4px; font-weight: 700; color: #b8860b; }
