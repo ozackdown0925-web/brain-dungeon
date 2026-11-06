@@ -563,7 +563,8 @@ var GameData = (function () {
     // 2026-11-03 保護者：Lv19（ゴーレムをたおしたところ）で普通に勝てた。斬が効きにくいゴーレムと、剣で戦うとほぼ同じだったので、
     //   坑道6階に来るころ（Lv24〜25くらい）に合わせて強くした：HP 3400→4800、物攻 30→36、物防 9→11
     name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 36, matk: 0, pdef: 11, mdef: 8,
-    res: { pierce: 1.5 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
+    // 2026-11-06 保護者：刺の弱点 ×1.5→×1.25（弓で、前の主のダークエルフより早くたおせてしまったため。子分は ×1.5 のまま）
+    res: { pierce: 1.25 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
     reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
     dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
     bombEvery: 10, bombEveryHalf: 7, bombCount: 1, bombCountHalf: 3, bombWindup: 0.5, bombWarn: 1.1, bombRadius: 26, bombMult: 1.8
