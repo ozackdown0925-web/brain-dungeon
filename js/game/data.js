@@ -592,10 +592,12 @@ var GameData = (function () {
   // 大技のダークアロー（2026-10-26 保護者の案で作りなおし）：動きながら、まわりに闇の玉を daCount 個（3〜4。HP が半分を切ると daCountHalf の5〜6）
   // 回して（あらわれるのに daWindup 秒、そのあと daOrbit 秒回る。回っている玉にさわると daTouch のダメージ）、プレイヤーをねらって1つずつ撃つ（間かく daGap 秒）。
   // 撃った玉は、飛ぶ向きに長い光の尾をひく。終わるとふらつく（すきあり）。
-  // HP が半分を切ると、弓が3本になる。光と刺が弱点（刺は 2026-10-26 に足した）、闇は効かない
+  // HP が半分を切ると、弓が3本になる。光が弱点（刺も 2026-10-26 に足したが、2026-11-06 に外した）、闇は効かない
   ENEMIES.elf_boss = {
-    name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 3200, patk: 24, matk: 30, pdef: 8, mdef: 12,
-    res: { light: 1.5, pierce: 1.5, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
+    // 2026-11-06 保護者：Lv24 のスナイパー（弓）でとても楽にたおせた（止まって安全に撃てて、刺の弱点で×1.5）。
+    //   刺の弱点を外し（弱点は光だけ）、HP 3200→3800
+    name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 3800, patk: 24, matk: 30, pdef: 8, mdef: 12,
+    res: { light: 1.5, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
     keepMin: 80, keepMax: 140, aimTime: 0.45, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
     orbEvery: 7, orbCount: 3, orbCountHalf: 5, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
     spinRange: 22, spinWarn: 0.45, spinRadius: 34, spinMult: 1.4, spinEvery: 2.5, flipTime: 0.45, flipSpeed: 190,
