@@ -525,7 +525,7 @@ var Town = (function () {
   // 武器の強さやスキルをためす部屋。まんなかにゴブリンの形の像（木・石・銅）、すみに回復の泉。
   // 像は攻撃してくるかを選べる。属性ごとの効き方（弱点・ふつう・半減・無効）も選べる。経験値やお金はもらえない。
   var STATUES = [["statue_wood", "木像", "ゴブリンの剣士の 1階くらい"], ["statue_stone", "石像", "8階くらい"], ["statue_bronze", "銅像", "15階くらい（瘴気の森 1階）"]];
-  var RES_STEPS = [[1.5, "弱点"], [1, "ふつう"], [0.5, "半減"], [0, "無効"]];
+  var RES_STEPS = [[1.3, "弱点"], [1, "ふつう"], [0.5, "半減"], [0, "無効"]];
   function trainCfg() {
     var c = null;
     try { c = JSON.parse(localStorage.getItem("bd-training") || "null"); } catch (e) { c = null; }
@@ -533,6 +533,7 @@ var Town = (function () {
     if (!GameData.ENEMIES[c.type] || !GameData.ENEMIES[c.type].training) c.type = "statue_wood";
     c.attack = !!c.attack;
     if (!c.res || typeof c.res !== "object") c.res = {};
+    Object.keys(c.res).forEach(function (k) { if (c.res[k] === 1.5) c.res[k] = 1.3; });   // 前の弱点の倍率（2026-11-06 に ×1.5→×1.3）
     return c;
   }
   function saveTrainCfg(c) { try { localStorage.setItem("bd-training", JSON.stringify(c)); } catch (e) { /* そのまま */ } }

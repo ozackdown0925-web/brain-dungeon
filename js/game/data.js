@@ -2,6 +2,8 @@
 // 段階3：基本職5つ・武器・防具・スキル35・森の敵4種。
 var GameData = (function () {
   // 属性の名前（表示用）
+  // 弱点の倍率は ×1.3（2026-11-06 保護者と決定。前は ×1.5。ダメージの式で防御がほとんど引かれず、ふつうの攻撃の属性は武器で決まるので、
+  //   弱点の合う武器だけでずっと1.5倍になり強すぎた）。「少し弱点」は ×1.25 のまま
   var ELEMENTS = { slash: "斬", pierce: "刺", strike: "打", fire: "火", water: "水", grass: "草", dark: "闇", light: "光", none: "なし" };   // 闇は 2026-10-19 に足した（黒魔道士）。光は 2026-10-20（聖騎士）。今は光が弱点の敵はいない
 
   // 武器（ノーマル・アイテムレベル1）。reach＝届く距離（ドット）、arc＝ふりの広さ（左右それぞれのラジアン）
@@ -340,36 +342,36 @@ var GameData = (function () {
   var ENEMIES = {
     goblin_sword: {
       name: "ゴブリンの剣士", kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2,
-      res: { strike: 1.5, pierce: 0.5 }, speed: 24, r: 6,
+      res: { strike: 1.3, pierce: 0.5 }, speed: 24, r: 6,
       reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#6f8f3e"   // 2026-10-18：休み1.6→1.1秒、構え0.45→0.35秒、一歩ふみこむ
     },
     goblin_spear: {
       name: "ゴブリンの槍兵", kind: "spear", hp: 32, patk: 9, pdef: 3, mdef: 2,
-      res: { slash: 1.5 }, speed: 28, r: 6,
+      res: { slash: 1.3 }, speed: 28, r: 6,
       reach: 30, keep: 20, windup: 0.5, cooldown: 1.4, lunge: 4, color: "#7d8f4a"   // 2026-10-18：休み1.9→1.4秒、構え0.6→0.5秒
     },
     goblin_archer: {
       name: "ゴブリンの弓兵", kind: "archer", hp: 36, patk: 7, pdef: 2, mdef: 2,
-      res: { pierce: 1.5 }, speed: 32, r: 6,
+      res: { pierce: 1.3 }, speed: 32, r: 6,
       keepMin: 64, keepMax: 120, windup: 0.5, cooldown: 2.3, arrowSpeed: 120, color: "#8a9a52"
     },
     vine: {
       name: "つる草の魔物", kind: "vine", hp: 36, patk: 7, pdef: 3, mdef: 4,
-      res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 7,
+      res: { fire: 1.3, water: 0.5, grass: 0 }, speed: 0, r: 7,
       reach: 34, windup: 0.6, cooldown: 2.0, color: "#3f8a3a",
       onHit: { type: "para", chance: 0.2, dur: 3 }
     },
     // キノコの魔物（2026-10-18 保護者が選んだ）：のろい。近づくと、まわりに胞子をまく（毒）。火に弱い。浅い階から出る
     mushroom: {
       name: "キノコの魔物", kind: "spore", hp: 34, patk: 7, pdef: 3, mdef: 3,
-      res: { fire: 1.5, strike: 0.5, grass: 0.5 }, speed: 14, r: 6,
+      res: { fire: 1.3, strike: 0.5, grass: 0.5 }, speed: 14, r: 6,
       reach: 24, windup: 0.8, cooldown: 2.6, color: "#a85a8a",
       onHit: { type: "poison", chance: 0.6, dur: 6 }
     },
     // 大きな蜂（2026-10-18 保護者が選んだ）：飛んで、じぐざぐに近づき、毒の針でさす。速いが HP は少ない。8階から出る
     bee: {
       name: "大きな蜂", kind: "bee", hp: 18, patk: 8, pdef: 1, mdef: 2,
-      res: { pierce: 1.5, fire: 1.5, strike: 0.75 }, speed: 46, r: 5,
+      res: { pierce: 1.3, fire: 1.3, strike: 0.75 }, speed: 46, r: 5,
       reach: 12, windup: 0.3, cooldown: 1.5, color: "#dad45e",
       onHit: { type: "poison", chance: 0.3, dur: 6 }
     },
@@ -377,13 +379,13 @@ var GameData = (function () {
     // 骸骨の剣士：ゴブリンの剣士と同じ近づいて斬る敵。少しかたい
     skeleton_sword: {
       name: "骸骨の剣士", kind: "melee", hp: 42, patk: 8, pdef: 5, mdef: 3,
-      res: { strike: 1.5, light: 1.5, pierce: 0.5, dark: 0 }, speed: 22, r: 6,
+      res: { strike: 1.3, light: 1.3, pierce: 0.5, dark: 0 }, speed: 22, r: 6,
       reach: 14, windup: 0.4, cooldown: 1.2, lunge: 6, color: "#c8ccd4"
     },
     // 骸骨の弓兵：離れて矢を撃つ。紫のフード
     skeleton_archer: {
       name: "骸骨の弓兵", kind: "archer", hp: 34, patk: 7, pdef: 3, mdef: 3,
-      res: { strike: 1.5, light: 1.5, pierce: 0.5, dark: 0 }, speed: 28, r: 6,
+      res: { strike: 1.3, light: 1.3, pierce: 0.5, dark: 0 }, speed: 28, r: 6,
       keepMin: 64, keepMax: 120, windup: 0.55, cooldown: 2.4, arrowSpeed: 120, color: "#6a3a98"
     },
     // 毒ガエル：はねて近づき（はねているあいだだけ動く）、少し離れたところから毒のつばを吐く（中距離）。水は半減
@@ -398,7 +400,7 @@ var GameData = (function () {
     // 影の魔導士：離れたところから、闇の玉を撃つ（ゆっくり飛ぶ。魔法のダメージ）。体は弱い。光が弱点
     shadow_mage: {
       name: "影の魔導士", kind: "caster", hp: 30, patk: 4, matk: 10, pdef: 2, mdef: 6,
-      res: { light: 1.5, dark: 0, strike: 1.25 }, speed: 24, r: 6,
+      res: { light: 1.3, dark: 0, strike: 1.25 }, speed: 24, r: 6,
       keepMin: 70, keepMax: 130, windup: 0.8, cooldown: 2.6, orbSpeed: 85, color: "#6a3a98"
     },
     // 瘴気の霊（6階から）：ふわふわ浮いて近づき、まわりに瘴気をはじけさせる（魔法のダメージ。毒になることがある）。
@@ -413,7 +415,7 @@ var GameData = (function () {
     // オオカミ：2〜3びきの群れで出る（1階から）。速い。まわりを回りながら、すきを見てとびこんでかみつく
     wolf: {
       name: "オオカミ", kind: "wolf", hp: 30, patk: 8, pdef: 2, mdef: 2,
-      res: { slash: 1.5, fire: 1.25 }, speed: 48, r: 5,
+      res: { slash: 1.3, fire: 1.25 }, speed: 48, r: 5,
       reach: 12, circle: 34, windup: 0.35, cooldown: 1.6, lunge: 8, color: "#464c62"
     },
     // ワイルドボア（5階から）：ゆっくり近づき、赤い線で予告してから突進する（よけられる大きめの技。線は走り出す0.3秒前まで向きを合わせ直す）。
@@ -440,50 +442,50 @@ var GameData = (function () {
     // 盗賊の剣士：短剣で近づいて斬る。すばやい
     thief_sword: {
       name: "盗賊の剣士", kind: "melee", hp: 34, patk: 8, pdef: 3, mdef: 2,
-      res: { pierce: 1.5 }, speed: 34, r: 6,
+      res: { pierce: 1.3 }, speed: 34, r: 6,
       reach: 13, windup: 0.3, cooldown: 1.0, lunge: 8, color: "#5a4a6a"
     },
     // 盗賊の弓使い：離れて矢を撃つ
     thief_archer: {
       name: "盗賊の弓使い", kind: "archer", hp: 30, patk: 7, pdef: 2, mdef: 2,
-      res: { pierce: 1.5 }, speed: 34, r: 6,
+      res: { pierce: 1.3 }, speed: 34, r: 6,
       keepMin: 64, keepMax: 120, windup: 0.5, cooldown: 2.1, arrowSpeed: 130, color: "#4a5a3a"
     },
     // 大コウモリ：飛んで（水や穴の上も通る）、じぐざぐに近づいてかみつく。速いが HP は少ない。刺が弱点、打は半減
     bat: {
       name: "大コウモリ", kind: "bee", fly: true, hp: 18, patk: 7, pdef: 1, mdef: 2,
-      res: { pierce: 1.5, strike: 0.5 }, speed: 54, r: 5,
+      res: { pierce: 1.3, strike: 0.5 }, speed: 54, r: 5,
       reach: 12, windup: 0.3, cooldown: 1.4, color: "#3a1a5a"
     },
     // 岩の虫：岩のからをかぶった虫。のろいが、かたくて HP が多い。打が弱点、斬と刺は半減
     rock_worm: {
       name: "岩の虫", kind: "melee", hp: 58, patk: 9, pdef: 7, mdef: 3,
-      res: { strike: 1.5, slash: 0.5, pierce: 0.5 }, speed: 14, r: 7,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5 }, speed: 14, r: 7,
       reach: 13, windup: 0.55, cooldown: 1.7, lunge: 4, color: "#757161"
     },
     // ドワーフの戦士：斧で斬る。かたい
     dwarf_axe: {
       name: "ドワーフの戦士", kind: "melee", hp: 58, patk: 10, pdef: 7, mdef: 3,
-      res: { pierce: 1.5, slash: 0.5 }, speed: 22, r: 6,
+      res: { pierce: 1.3, slash: 0.5 }, speed: 22, r: 6,
       reach: 14, windup: 0.45, cooldown: 1.4, lunge: 5, color: "#8a5428"
     },
     // ドワーフの鎚使い：ハンマーで重い一撃（当たるとしびれることがある）。構えが長い
     dwarf_hammer: {
       name: "ドワーフの鎚使い", kind: "melee", hp: 62, patk: 13, pdef: 7, mdef: 3,
-      res: { pierce: 1.5, slash: 0.5 }, speed: 18, r: 6,
+      res: { pierce: 1.3, slash: 0.5 }, speed: 18, r: 6,
       reach: 16, windup: 0.75, cooldown: 2.0, lunge: 4, color: "#6a6474",
       onHit: { type: "para", chance: 0.3, dur: 2 }
     },
     // 火トカゲ：少しはなれたところから、火の玉を吐く（とどく距離は短い）。水が弱点、火は効かない
     fire_lizard: {
       name: "火トカゲ", kind: "lizard", hp: 36, patk: 9, pdef: 3, mdef: 3,
-      res: { water: 1.5, fire: 0, slash: 1.25 }, speed: 26, r: 6,
+      res: { water: 1.3, fire: 0, slash: 1.25 }, speed: 26, r: 6,
       reach: 70, keep: 46, windup: 0.6, cooldown: 2.2, fireSpeed: 115, color: "#d04648"
     },
     // 水のスライム：はねて近づき、水のつぶを飛ばす。斬と刺は半減、草が弱点、水は効かない
     slime: {
       name: "水のスライム", kind: "frog", hp: 40, patk: 8, pdef: 3, mdef: 3,
-      res: { slash: 0.5, pierce: 0.5, grass: 1.5, water: 0 }, speed: 0, r: 6,
+      res: { slash: 0.5, pierce: 0.5, grass: 1.3, water: 0 }, speed: 0, r: 6,
       reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
       windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#597dce", water: true
     },
@@ -510,20 +512,20 @@ var GameData = (function () {
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
-      res: { slash: 1.5 }, speed: 44, r: 5,
+      res: { slash: 1.3 }, speed: 44, r: 5,
       reach: 12, windup: 0.35, cooldown: 1.3, color: "#8a8f9a"
     },
     // ボス（段階4-3）。HP はたたき台 docs/draft.md 2 のまま。物攻・物防・魔防は、たたき台にないので仮の数字（遊んでみて直す）
     // 2026-10-18 保護者と決定：攻撃を1.3倍に、ふつうの攻撃と大技の間かくを約2割短く（HP はそのまま）
     wolf_boss: {
       name: "大オオカミ", kind: "wolf_boss", boss: true, hp: 600, patk: 17, pdef: 6, mdef: 4,
-      res: { slash: 1.5, fire: 1.5 }, speed: 34, r: 12,
+      res: { slash: 1.3, fire: 1.3 }, speed: 34, r: 12,
       reach: 18, windup: 0.5, cooldown: 1.1, color: "#6e7280",
       chargeWarn: 0.9, chargeSpeed: 280, chargeMult: 3.5, chargeEvery: 5.5, howlEvery: 13
     },
     tree_boss: {
       name: "大木の魔物", kind: "tree_boss", boss: true, hp: 1500, patk: 23, pdef: 7, mdef: 5,
-      res: { fire: 1.5, water: 0.5, grass: 0 }, speed: 0, r: 18,
+      res: { fire: 1.3, water: 0.5, grass: 0 }, speed: 0, r: 18,
       reach: 40, windup: 0.6, cooldown: 1.25, color: "#5a3d22",
       rootWarn: 1.2, rootMult: 3.0, rootEvery: 8, rootEveryHalf: 5, pollenEvery: 10, pollenRadius: 80, seedSpeed: 110
     }
@@ -545,7 +547,7 @@ var GameData = (function () {
   // 瘴気の柱（大技。地面の紫の輪で予告）、瘴気の霊を呼ぶ。光が弱点、闇は効かない、斬はいまひとつ
   ENEMIES.witch_boss = {
     name: "沼の魔女", kind: "witch_boss", boss: true, hp: 2600, patk: 18, matk: 32, pdef: 7, mdef: 12,
-    res: { light: 1.5, dark: 0, strike: 1.25, slash: 0.6 }, speed: 20, r: 10,   // 斬はいまひとつ（2026-11-01 保護者の希望：剣で簡単にたおせたので）
+    res: { light: 1.3, dark: 0, strike: 1.25, slash: 0.6 }, speed: 20, r: 10,   // 斬はいまひとつ（2026-11-01 保護者の希望：剣で簡単にたおせたので）
     keepMin: 70, keepMax: 130, windup: 0.6, cooldown: 2.2, orbSpeed: 95, color: "#4a2e72",
     pillarEvery: 9, pillarEveryHalf: 6, pillarWarn: 1.2, pillarRadius: 22, pillarMult: 2.6,
     // 2026-10-22 保護者の感想（遠くから攻撃できないと当てられない）で、近くで戦えるようにした：
@@ -563,8 +565,7 @@ var GameData = (function () {
     // 2026-11-03 保護者：Lv19（ゴーレムをたおしたところ）で普通に勝てた。斬が効きにくいゴーレムと、剣で戦うとほぼ同じだったので、
     //   坑道6階に来るころ（Lv24〜25くらい）に合わせて強くした：HP 3400→4800、物攻 30→36、物防 9→11
     name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 36, matk: 0, pdef: 11, mdef: 8,
-    // 2026-11-06 保護者：刺の弱点 ×1.5→×1.25（弓で、前の主のダークエルフより早くたおせてしまったため。子分は ×1.5 のまま）
-    res: { pierce: 1.25 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
+        res: { pierce: 1.3 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
     reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
     dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
     bombEvery: 10, bombEveryHalf: 7, bombCount: 1, bombCountHalf: 3, bombWindup: 0.5, bombWarn: 1.1, bombRadius: 26, bombMult: 1.8
@@ -580,7 +581,7 @@ var GameData = (function () {
   // 近すぎるときは、投げる前にずしんと後ろへ下がる。HP が半分を切ると、岩が rockCountHalf 回で速くなり、間かくも短くなる。投げ終わると、ふらつく（すきあり）。打と水が弱点（2026-10-26 に火から水へ）、斬と刺はいまひとつ
   ENEMIES.golem_boss = {
     name: "ゴーレム", kind: "golem_boss", boss: true, hp: 2600, patk: 28, matk: 0, pdef: 12, mdef: 5,
-    res: { strike: 1.5, water: 1.5, slash: 0.75, pierce: 0.75 }, speed: 16, r: 16, cooldown: 1.6, color: "#6c665a",
+    res: { strike: 1.3, water: 1.3, slash: 0.75, pierce: 0.75 }, speed: 16, r: 16, cooldown: 1.6, color: "#6c665a",
     spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.6,
     comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
     rockEvery: 11, rockEveryHalf: 7, rockCount: 4, rockCountHalf: 7, rockWindup: 0.6, rockWindupHalf: 0.45,
@@ -595,10 +596,10 @@ var GameData = (function () {
   // 撃った玉は、飛ぶ向きに長い光の尾をひく。終わるとふらつく（すきあり）。
   // HP が半分を切ると、弓が3本になる。光が弱点（刺も 2026-10-26 に足したが、2026-11-06 に外した）、闇は効かない
   ENEMIES.elf_boss = {
-    // 2026-11-06 保護者：Lv24 のスナイパー（弓）でとても楽にたおせた（止まって安全に撃てて、刺の弱点で×1.5）。
+    // 2026-11-06 保護者：Lv24 のスナイパー（弓）でとても楽にたおせた（止まって安全に撃てて、刺の弱点で×1.5だった）。
     //   刺の弱点を外し（弱点は光だけ）、HP 3200→3800
     name: "ダークエルフ", kind: "elf_boss", boss: true, hp: 3800, patk: 24, matk: 30, pdef: 8, mdef: 12,
-    res: { light: 1.5, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
+    res: { light: 1.3, dark: 0 }, speed: 34, r: 10, color: "#3c3058",
     keepMin: 80, keepMax: 140, aimTime: 0.45, cooldown: 1.5, arrowSpeed: 210, arrowMult: 1.0, fanHalf: 3,
     orbEvery: 7, orbCount: 3, orbCountHalf: 5, orbWindup: 0.6, orbSpeed: 100, orbMult: 0.9,
     spinRange: 22, spinWarn: 0.45, spinRadius: 34, spinMult: 1.4, spinEvery: 2.5, flipTime: 0.45, flipSpeed: 190,
