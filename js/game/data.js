@@ -438,23 +438,24 @@ var GameData = (function () {
     },
     // ---- 黒鉄の坑道の敵（地方2の段階2、2026-10-27 保護者と決定）。数字は遊んでみてから直す ----
     // 前半（1〜5階）は盗賊の子分（人間。絵は保護者が描く）に魔物、後半（7〜11階）はドワーフ（絵は保護者が描く）に魔物。
-    // 盗賊とドワーフは刺が弱点（盗賊は軽い服、ドワーフはよろいのすき間を突く。ドワーフは斬が半減）
+    // 盗賊の剣士とドワーフの戦士は刺が弱点（盗賊は軽い服、ドワーフはよろいのすき間を突く。ドワーフは斬が半減）。
+    // 2026-11-06 保護者：刺が弱点の敵が多すぎて弓ばかり有利なので、弓使いは斬、大コウモリは火、鎚使いは打を弱点にした
     // 盗賊の剣士：短剣で近づいて斬る。すばやい
     thief_sword: {
       name: "盗賊の剣士", kind: "melee", hp: 34, patk: 8, pdef: 3, mdef: 2,
       res: { pierce: 1.3 }, speed: 34, r: 6,
       reach: 13, windup: 0.3, cooldown: 1.0, lunge: 8, color: "#5a4a6a"
     },
-    // 盗賊の弓使い：離れて矢を撃つ
+    // 盗賊の弓使い：離れて矢を撃つ。斬が弱点（近づいて斬る）
     thief_archer: {
       name: "盗賊の弓使い", kind: "archer", hp: 30, patk: 7, pdef: 2, mdef: 2,
-      res: { pierce: 1.3 }, speed: 34, r: 6,
+      res: { slash: 1.3 }, speed: 34, r: 6,
       keepMin: 64, keepMax: 120, windup: 0.5, cooldown: 2.1, arrowSpeed: 130, color: "#4a5a3a"
     },
-    // 大コウモリ：飛んで（水や穴の上も通る）、じぐざぐに近づいてかみつく。速いが HP は少ない。刺が弱点、打は半減
+    // 大コウモリ：飛んで（水や穴の上も通る）、じぐざぐに近づいてかみつく。速いが HP は少ない。火が弱点、打は半減
     bat: {
       name: "大コウモリ", kind: "bee", fly: true, hp: 18, patk: 7, pdef: 1, mdef: 2,
-      res: { pierce: 1.3, strike: 0.5 }, speed: 54, r: 5,
+      res: { fire: 1.3, strike: 0.5 }, speed: 54, r: 5,
       reach: 12, windup: 0.3, cooldown: 1.4, color: "#3a1a5a"
     },
     // 岩の虫：岩のからをかぶった虫。のろいが、かたくて HP が多い。打が弱点、斬と刺は半減
@@ -469,10 +470,10 @@ var GameData = (function () {
       res: { pierce: 1.3, slash: 0.5 }, speed: 22, r: 6,
       reach: 14, windup: 0.45, cooldown: 1.4, lunge: 5, color: "#8a5428"
     },
-    // ドワーフの鎚使い：ハンマーで重い一撃（当たるとしびれることがある）。構えが長い
+    // ドワーフの鎚使い：ハンマーで重い一撃（当たるとしびれることがある）。構えが長い。打が弱点（重いよろいをへこませる）、斬は半減
     dwarf_hammer: {
       name: "ドワーフの鎚使い", kind: "melee", hp: 62, patk: 13, pdef: 7, mdef: 3,
-      res: { pierce: 1.3, slash: 0.5 }, speed: 18, r: 6,
+      res: { strike: 1.3, slash: 0.5 }, speed: 18, r: 6,
       reach: 16, windup: 0.75, cooldown: 2.0, lunge: 4, color: "#6a6474",
       onHit: { type: "para", chance: 0.3, dur: 2 }
     },
