@@ -947,6 +947,24 @@ var GameState = (function () {
   }
   function setUnlimited(on) { try { if (on) localStorage.setItem("bd-test-unlimited", "1"); else localStorage.removeItem("bd-test-unlimited"); } catch (e) { /* そのまま */ } }
 
+  // ---------- 書庫の知識の棚のごほうび（2026-11-06） ----------
+  // 解いた数（正解の数ではない。自分で○×をつける問題で、うその○を押したくならないように）が SHELF_STEP 問ふえるごとに
+  // 鉱石・魔石、SHELF_GEM_EVERY 回ごとに宝玉。解いた数は「書庫の記録」の数（shelf.js が渡す）。もらった回数はセーブの shelfPaid。
+  var SHELF_STEP = 10, SHELF_MAT = 3, SHELF_GEM_EVERY = 3;
+  function shelfReward(solved) {
+    if (!game || sandbox) return null;
+    var paid = game.shelfPaid || 0, blocks = Math.floor((solved || 0) / SHELF_STEP);
+    if (blocks <= paid) return null;
+    var n = blocks - paid, gem = Math.floor(blocks / SHELF_GEM_EVERY) - Math.floor(paid / SHELF_GEM_EVERY);
+    game.mat.iron += n * SHELF_MAT; game.mat.stone += n * SHELF_MAT; game.mat.gem = (game.mat.gem || 0) + gem;
+    game.shelfPaid = blocks;
+    save();
+    pushHistory("知識の棚のごほうび");
+    return { iron: n * SHELF_MAT, stone: n * SHELF_MAT, gem: gem };
+  }
+  // 次のごほうびまで、あと何問か
+  function shelfToNext(solved) { return SHELF_STEP - ((solved || 0) % SHELF_STEP); }
+
   // ---------- セーブの復元（最近の10回分） ----------
   function readHistory() {
     try { var s = localStorage.getItem(HISTORY_KEY); return s ? JSON.parse(s) : []; } catch (e) { return []; }
@@ -1023,7 +1041,7 @@ var GameState = (function () {
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
-    history: history, restore: restore,
+    history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
     changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
