@@ -201,6 +201,13 @@ var Shelf = (function () {
   // ごほうび（state.js の shelfReward）。解いた数＝書庫の記録の数
   function rewardText(r) { return r ? "ごほうび：鉱石 +" + r.iron + "　魔石 +" + r.stone + (r.gem ? "　宝玉 +" + r.gem : "") : ""; }
   function payReward() { return window.GameState && GameState.shelfReward ? GameState.shelfReward(R.length) : null; }
+  // 「手に入れた！」の知らせ（宝箱の音つき）。OK で then()
+  function rewardPopup(r, head, then) {
+    var t = (head || "") + "鉱石を " + r.iron + " こ、魔石を " + r.stone + " こ 手に入れた！" + (r.gem ? "\n宝玉も " + r.gem + " こ 手に入れた！" : "") +
+      "\n次のごほうびまで、あと " + toNext() + " 問。";
+    try { Sound.play("chest"); } catch (e) { /* そのまま */ }
+    if (window.Dialog) Dialog.alert(t, then); else if (then) then();
+  }
   function toNext() { return window.GameState && GameState.shelfToNext ? GameState.shelfToNext(R.length) : 0; }
 
   var imgCache = {};
@@ -235,7 +242,7 @@ var Shelf = (function () {
       (p.doneToday ? "今日の分はおわり！ また明日。" : "今日解く問題はない。")));
     body.appendChild(el("p", "sub", p.caughtUp ? "棚の本は全部1回読んだ。これからは、間をあけてたしかめる。" : "まだ読んでいない本：あと " + p.left + " 問"));
     var got = payReward();
-    if (got) body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got)));
+    if (got) { body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got))); rewardPopup(got, "これまで解いた分のごほうび！\n"); }
     body.appendChild(el("p", "sub", "解いた数 " + GameState.SHELF_STEP + " 問ごとに、鉱石と魔石。3回ごとに宝玉も。次のごほうびまで、あと " + toNext() + " 問。"));
     if (debug) body.appendChild(el("p", "sub", "（デバッグ用の枠：答えは送らない）"));
     if (n) {
@@ -314,7 +321,10 @@ var Shelf = (function () {
         if (got) { sessionGot.push(got); ans.appendChild(el("p", "shelf-reward", rewardText(got))); }
         var next = el("button", "dq-btn", pos + 1 < queue.length ? "次の問題へ" : "おわり");
         next.type = "button";
-        next.addEventListener("click", function () { pos++; show(); });
+        next.addEventListener("click", function () {
+          if (got) rewardPopup(got, "知識の棚で解いた数が " + R.length + " 問になった！\n", function () { pos++; show(); });
+          else { pos++; show(); }
+        });
         ans.appendChild(next);
         try { next.scrollIntoView({ block: "nearest" }); } catch (e) { /* そのまま */ }
       }
