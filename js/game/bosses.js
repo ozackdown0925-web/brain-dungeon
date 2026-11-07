@@ -27,13 +27,16 @@ var Bosses = (function () {
     e.ai = { charge: d.chargeEvery ? 4 : 0, howl: d.howlEvery ? 8 : 0, roots: d.rootEvery ? 5 : 0, pollen: d.pollenEvery ? 9 : 0,
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
              rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
-             dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0 };
+             dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0,
+             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, jump: d.jumpEvery ? 12 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
-        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash") { e.state = "recover"; e.t = 0.4; }
+        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash" ||
+        e.state === "guard" || e.state === "slam" || e.state === "crouch") { e.state = "recover"; e.t = 0.4; }
+    e.guarding = false;
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
 
@@ -45,13 +48,14 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "jump"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -237,6 +241,155 @@ var Bosses = (function () {
     } else if (e.cd <= 0) {
       e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
     }
+  }
+
+  // ---------- ドワーフキング（黒鉄の坑道12階・主。2026-11-07） ----------
+  // ハンマーの一撃。盾がまえ（前からの攻撃を減らす。ゆっくり向きなおる → 盾でなぐる）。
+  // 大地たたき（まわり＋こちらへ走る地面の割れ目）。大ジャンプ（落ちる場所に輪で予告）。HP 半分から、ジャンプ → 大地たたきの連携・子分を呼ぶ
+  function dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.pose = Math.max(0, (e.pose || 0) - dt);   // ハンマーをたたきつけた絵を出す時間
+    e.swingT = Math.max(0, (e.swingT || 0) - dt);
+    if (e.state === "windup") {   // ハンマーを振り上げる → 前へふり下ろす
+      e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        var px = p.x - e.x, py = p.y - e.y, pd = Math.sqrt(px * px + py * py) || 1;
+        if (!p.down && pd - e.r - p.r <= d.reach + 4 && (px * e.aim.x + py * e.aim.y) / pd > 0.2) hurt(e, p.x, p.y - 8, { mult: d.swingMult });
+        addWave(e.x + e.aim.x * (e.r + 10), e.y + 6 + e.aim.y * (e.r + 10), 3, 16, 0.3, 0);
+        shake(1, 0.12); Sound.play("swing");
+        e.pose = 0.35; e.swingT = 0.22;
+        e.state = "recover"; e.t = 0.55; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "guard") {   // 盾がまえ：ゆっくりこちらへ向きなおる。前からの攻撃は減る（skills.js の hitEnemy）
+      e.t -= dt;
+      if (!p.down) turnToward(e, ux, uy, d.guardTurn * dt);
+      if (e.t <= 0) {
+        e.guarding = false;
+        var bx = p.x - e.x, by = p.y - e.y, bd = Math.sqrt(bx * bx + by * by) || 1;
+        if (!p.down && bd - e.r - p.r <= d.bashReach && (bx * e.face.x + by * e.face.y) / bd > 0.3) {   // 前にいれば、盾でなぐる
+          hurt(e, p.x, p.y - 8, { mult: d.bashMult });
+          e.swingT = 0.22; e.aim = { x: e.face.x, y: e.face.y }; shake(1, 0.12);
+        }
+        e.state = "recover"; e.t = 0.5; e.ai.guard = d.guardEvery;
+      }
+      return;
+    }
+    if (e.state === "slam") {   // 大地たたき：振り上げ（赤い輪）→ たたく
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && dist - p.r <= d.slamNear) hurt(e, p.x, p.y - 8, { mult: d.slamMult, big: true });
+        addWave(e.x, e.y + 8, 8, d.slamNear + 10, 0.45, 8);
+        for (var sd = 0; sd < 8; sd++) { var sa = sd * Math.PI / 4 + Math.random() * 0.4; addDust(e.x + Math.cos(sa) * 26, e.y + 8 + Math.sin(sa) * 16); }
+        shake(3, 0.35); Sound.play("hit");
+        e.pose = 0.7;
+        if (e.combo) { e.combo = false; tire(e); }
+        else { e.state = "recover"; e.t = 0.8; }
+        e.ai.slam = half ? d.slamEveryHalf : d.slamEvery;
+      }
+      return;
+    }
+    if (e.state === "crouch") {   // ジャンプの前に、しゃがむ
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.state = "air"; e.t = d.jumpTime; e.untouchable = true;
+        e.jumpFrom = { x: e.x, y: e.y };
+        hazards.push({ kind: "circle", look: "land", from: e, x: e.jumpTo.x, y: e.jumpTo.y, r: d.jumpRadius, t: 0, warn: d.jumpTime, erupt: 0.3, hit: false,
+                       opts: { mult: d.jumpMult, big: true } });
+      }
+      return;
+    }
+    if (e.state === "air") {   // とんで、輪のまんなかへ落ちてくる
+      e.t -= dt;
+      var k = 1 - Math.max(0, e.t) / d.jumpTime;
+      var tx = e.jumpFrom.x + (e.jumpTo.x - e.jumpFrom.x) * k, ty = e.jumpFrom.y + (e.jumpTo.y - e.jumpFrom.y) * k;
+      room.move(e, tx - e.x, ty - e.y);
+      e.hop = Math.sin(Math.min(1, k) * Math.PI) * 46;
+      if (e.t <= 0) {
+        e.hop = 0; e.untouchable = false;
+        addWave(e.x, e.y + 8, 6, d.jumpRadius + 8, 0.4, 6);
+        for (var ld = 0; ld < 6; ld++) { var la = ld * Math.PI / 3; addDust(e.x + Math.cos(la) * 22, e.y + 8 + Math.sin(la) * 12); }
+        shake(3, 0.3);
+        e.pose = 0.4;
+        if (half) {   // HP 半分から：着地して、すぐ大地たたき（連携）
+          e.state = "slam"; e.t = d.slamWarn * 0.8; e.combo = true; startQuake(e, room, p, half);
+          Battle.pop(e.x, e.y - 50, "大地たたき！", "#ef5b5b", 9);
+        } else { e.state = "recover"; e.t = 0.7; }
+        e.ai.jump = half ? d.jumpEveryHalf : d.jumpEvery;
+      }
+      return;
+    }
+    if (e.state === "call") {   // 子分を呼ぶ
+      e.t -= dt;
+      if (e.t <= 0) {
+        ["dwarf_axe", "dwarf_hammer"].forEach(function (t) {
+          var ang = Math.random() * Math.PI * 2, f = api.spawn(t, e.x + Math.cos(ang) * 36, e.y + Math.sin(ang) * 36, 50);
+          f.summoned = true;
+        });
+        e.state = "recover"; e.t = 0.5;
+      }
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (half && !e.called) {   // HP が半分：子分を呼ぶ（1回だけ）
+      e.called = true;
+      e.state = "call"; e.t = 0.6;
+      Battle.pop(e.x, e.y - 50, "者ども、かかれ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.jump <= 0) {
+      e.state = "crouch"; e.t = d.jumpCrouch; e.jumpTo = { x: p.x, y: p.y };
+      Battle.pop(e.x, e.y - 50, "大ジャンプ！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.slam <= 0) {
+      e.state = "slam"; e.t = d.slamWarn; e.combo = false; startQuake(e, room, p, half);
+      Battle.pop(e.x, e.y - 50, "大地たたき！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.guard <= 0) {
+      e.state = "guard"; e.t = d.guardTime; e.guarding = true;
+      Battle.pop(e.x, e.y - 50, "盾がまえ", "#c8d0dc", 8);
+      return;
+    }
+    if (gap > d.reach - 2) {
+      var sp = half ? d.speedHalf : d.speed;
+      if (!e.status.para) { room.move(e, ux * sp * dt, uy * sp * dt); e.walk = (e.walk || 0) + dt * 6; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 大地たたきの割れ目：こちらへ向けて扇に何本か。それぞれの道に、手前から順に輪で予告（壁で止まる）
+  function startQuake(e, room, p, half) {
+    var d = e.def, n = half ? d.slamLinesHalf : d.slamLines, a0 = Math.atan2(p.y - e.y, p.x - e.x);
+    for (var i = 0; i < n; i++) {
+      var a = a0 + (i - (n - 1) / 2) * d.slamSpread, cx = Math.cos(a), cy = Math.sin(a);
+      var len = Math.min(d.slamLen, rayLength(room, e.x, e.y, cx, cy, 4));
+      for (var s = d.slamNear, j = 0; s <= len; s += d.slamStep, j++) {
+        hazards.push({ kind: "circle", look: "quake", from: e, x: e.x + cx * s, y: e.y + 6 + cy * s, r: d.slamR, t: 0, warn: e.t + j * d.slamGap, erupt: 0.4, hit: false,
+                       opts: { mult: d.quakeMult, big: true } });
+      }
+    }
+  }
+  // 向き（face）を、(ux, uy) のほうへ、1回に最大 step（ラジアン）だけまわす
+  function turnToward(e, ux, uy, step) {
+    var a = Math.atan2(e.face.y, e.face.x), b = Math.atan2(uy, ux), diff = b - a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    a += Math.max(-step, Math.min(step, diff));
+    e.face = { x: Math.cos(a), y: Math.sin(a) };
+  }
+  // 盾がまえのとき、(ox, oy) から来た攻撃が前からか（skills.js の hitEnemy から呼ぶ）
+  function guardFront(e, ox, oy) {
+    if (!e.guarding || ox === undefined) return false;
+    var dx = ox - e.x, dy = oy - e.y, l = Math.sqrt(dx * dx + dy * dy);
+    if (l < 1) return false;
+    return (dx * e.face.x + dy * e.face.y) / l > 0.35;
   }
 
   function removeLines(e) {
@@ -799,6 +952,7 @@ var Bosses = (function () {
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
         if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
+        if (h.look === "quake") { rockBreak(h.x, h.y, false); shake(1, 0.08); }
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
@@ -875,7 +1029,7 @@ var Bosses = (function () {
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
+    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : h.look === "quake" || h.look === "land" ? [235, 120, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.t < h.warn) {
       ctx.fillStyle = c(0.10 + 0.25 * k + 0.05 * Math.sin(glow * 16));
@@ -909,6 +1063,19 @@ var Bosses = (function () {
       ctx.strokeStyle = "rgba(255,231,160," + (0.8 * fade).toFixed(2) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y - 4, orr * 1.05, 0, Math.PI * 2); ctx.stroke();
       for (var bs = 0; bs < 10; bs++) { var ab = bs / 10 * Math.PI * 2, db = orr * (0.8 + 0.6 * q); Combat.glowDot(ctx, x + Math.cos(ab) * db, y - 4 + Math.sin(ab) * db, 2.5, "#ffffff", "#ffb84a", fade); }
+      return;
+    }
+    if (h.look === "land") return;   // ドワーフキングの着地（衝撃の輪は addWave で出す）
+    if (h.look === "quake") {   // 大地たたきの割れ目：とがった岩がつき出て、引っこむ
+      var up = Math.sin(Math.min(1, q * 1.4) * Math.PI) * 14, sx0 = Math.round(x), sy0 = Math.round(y + 3);
+      ctx.fillStyle = "rgba(40,30,24," + (0.5 * fade).toFixed(2) + ")";
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 2, h.r, h.r * 0.5, 0, 0, Math.PI * 2); else ctx.arc(x, y + 2, h.r, 0, Math.PI * 2); ctx.fill();
+      [[-6, 0.7, "#6c665a"], [5, 0.8, "#857d6c"], [0, 1, "#a69d88"]].forEach(function (sp) {
+        var hgt = Math.round(up * sp[1]); if (hgt < 1) return;
+        ctx.fillStyle = sp[2];
+        ctx.beginPath(); ctx.moveTo(sx0 + sp[0] - 4, sy0); ctx.lineTo(sx0 + sp[0], sy0 - hgt); ctx.lineTo(sx0 + sp[0] + 4, sy0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#2a2724"; ctx.fillRect(sx0 + sp[0] - 4, sy0 - 1, 8, 1);
+      });
       return;
     }
     if (h.look === "pillar") {   // 紫の柱が立つ
@@ -1119,6 +1286,35 @@ var Bosses = (function () {
       Monsters.drawBoss(ctx, e, x, y + 14 + bob2, e.pose > 0 || e.state === "charge" ? "attack" : "stand");
       if (e.slashT > 0) Combat.drawSlash(ctx, x, y - 6, e.aim || e.face, 1.1, d.reach + 14, "#ffe7a0", 1 - e.slashT / 0.2, e.slashFlip);
       if (e.state === "windup" || e.state === "warn") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: e.state === "warn" ? "#ef5b5b" : "#ffd24a" });
+    } else if (d.kind === "dwarf_boss") {
+      // ドワーフキング（43×48、正面向き）：足もとは y＋14。たたいたあとは「攻撃」の絵。とんでいるあいだは上へ、かげは地面に
+      var hop2 = Math.round(e.hop || 0), crouch = e.state === "crouch" ? 2 : 0;
+      Render.rect(x - 16, y + 9, 32, 6, "rgba(0,0,0," + (hop2 > 10 ? 0.2 : 0.35) + ")");
+      if (e.state === "slam") {   // 大地たたきの構え：まわりの赤い輪が、だんだん濃くなる
+        var kq = 1 - Math.max(0, e.t) / d.slamWarn;
+        ctx.fillStyle = "rgba(239,91,91," + (0.08 + 0.22 * kq).toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(x, y + 6, d.slamNear, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * kq).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y + 6, d.slamNear, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (e.state === "windup" || e.state === "crouch") Combat.glowDot(ctx, x, y - 10, 22, "#ffffff", "#ef5b5b", 0.25 + 0.15 * Math.sin(glow * 20));
+      if (e.guarding) {   // 盾がまえ：向いている側に、銀の光の弧（ここからの攻撃は減る）
+        var ga0 = Math.atan2(e.face.y, e.face.x);
+        ctx.strokeStyle = "rgba(220,228,240," + (0.55 + 0.25 * Math.sin(glow * 12)).toFixed(2) + ")"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x, y - 6, e.r + 12, ga0 - 1.1, ga0 + 1.1); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y - 6, e.r + 14, ga0 - 0.8, ga0 + 0.8); ctx.stroke();
+      }
+      var dshake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
+      Monsters.drawBoss(ctx, e, x + dshake, y + 14 - hop2 + crouch, e.pose > 0 ? "attack" : "stand");
+      if (e.swingT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 6, e.aim, 0.9, d.reach + e.r, "#e6ecf4", 1 - e.swingT / 0.22, false);
+      if (e.state === "windup" || e.state === "slam" || e.state === "crouch") Render.text("！", x, y - 50 - hop2, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる
+        for (var ds = 0; ds < 3; ds++) {
+          var da2 = glow * 4 + ds * 2.1, dx2 = Math.round(x + Math.cos(da2) * 12), dy2 = Math.round(y - 44 + Math.sin(da2) * 3);
+          Render.rect(dx2, dy2 - 1, 1, 3, "#ffe066"); Render.rect(dx2 - 1, dy2, 3, 1, "#ffe066");
+        }
+      }
     } else if (d.kind === "elf_boss") {
       // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
       var hop = 0, rot = 0;
@@ -1210,5 +1406,5 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
+           rockBreak: rockBreak, guardFront: guardFront, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
 })();
