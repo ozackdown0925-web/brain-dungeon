@@ -381,7 +381,7 @@ var Enemies = (function () {
       if (zn.t <= 0) rivalZones.splice(z, 1);
     }
   }
-  var THIEF_WEAPON = { thief_sword: "sword", thief_archer: "bow" };
+  var THIEF_WEAPON = { thief_sword: "sword", thief_archer: "bow", dwarf_axe: "axe", dwarf_hammer: "hammer" };   // ドワーフ（2026-11-07）も同じく重ねる
   function remove(e) { var i = list.indexOf(e); if (i >= 0) list.splice(i, 1); }
   function drawRival(ctx, e, x, y) {
     var R = e.rival, moving = e.state === "chase";
@@ -951,7 +951,7 @@ var Enemies = (function () {
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
-      // 盗賊（2026-11-03）：武器は絵に入っていないので、仲間と同じ武器の絵を重ねる（剣士＝剣、弓使い＝弓）
+      // 盗賊（2026-11-03）・ドワーフ（2026-11-07）：武器は絵に入っていないので、仲間と同じ武器の絵を重ねる（剣士＝剣、弓使い＝弓、ドワーフの戦士＝斧、鎚使い＝ハンマー）
       var tw = THIEF_WEAPON[e.type], tMode = null, tBehind = false;
       if (tw && !e.dead) {
         tMode = e.state === "windup" || (e.state === "recover" && e.t > 0.15) ? "attack" : "hold";

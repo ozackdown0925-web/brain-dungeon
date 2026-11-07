@@ -779,7 +779,7 @@ var Sprites = (function () {
       if (i === len - 1) px(ctx, x, y, P[0]);
     }
   }
-  // weapon：sword・greatsword・axe・bow・fist・staff。face：向き。mode：hold（持つ）・attack（ふる）・back（背中にしまう）
+  // weapon：sword・greatsword・axe・bow・fist・staff・hammer（ドワーフだけ）。face：向き。mode：hold（持つ）・attack（ふる）・back（背中にしまう）
   // 手の場所：前は絵の右手（足もとから右へ5・上へ7）、後ろは絵の左手、横は体のうしろよりの手（足もとから後ろへ2・上へ7）。
   // 横で持つときは、刃や杖が顔にかぶらないように、体の後ろで少し後ろへたおして立てる
   function drawWeapon(ctx, weapon, face, x, y, mode, ext) {
@@ -802,6 +802,11 @@ var Sprites = (function () {
       bar(ctx, hx, hy, dx, dy, 11, 1, WCOL.wood);
       var ax = hx + dx * 8, ay = hy + dy * 8;
       for (var i = 0; i < 4; i++) bar(ctx, ax + dx * i, ay + dy * i, -dy * (sx || 1), dx * (sx || 1), 4 - Math.abs(i - 1.5) > 2 ? 4 : 3, 1, WCOL.blade);
+    }
+    if (weapon === "hammer") {   // ハンマー（ドワーフの鎚使い。2026-11-07）：短い木の柄と、四角い鉄の頭
+      bar(ctx, hx, hy, dx, dy, 9, 1, WCOL.wood);
+      var mx = hx + dx * 7, my = hy + dy * 7;
+      for (var j = 0; j < 4; j++) bar(ctx, mx + dx * j - dy * 2, my + dy * j + dx * 2, dy, -dx, 5, 1, WCOL.blade);
     }
     if (weapon === "spear") {   // 槍（2026-10-19）：長い木の柄と、銀の穂先
       bar(ctx, hx - dx * 4, hy - dy * 4, dx, dy, 15, 1, WCOL.wood);
