@@ -22,11 +22,179 @@ var Monsters = (function () {
   var THIEF_PAL = { A: "#140c1c",
     q: "#442a82", r: "#8269e5", o: "#7d7b18", f: "#ff8c39", s: "#ffc68c", h: "#5e3838", j: "#295c40", k: "#b54545", y: "#f3d27f",
     l: "#6a4228", m: "#b07448", z: "#283050", Z: "#46557e", n: "#2e6a3e", x: "#1c3e2a", p: "#3a2a22" };
-  var SMALL_PAL = { thief_sword: THIEF_PAL, thief_archer: THIEF_PAL };
+  // ドワーフ（2026-11-07）の色。鎚使いは王に合わせた赤いひげ・緑の服、戦士は茶色のひげ・えんじの服・鉄の角
+  var DWARF_BASE = { A: "#140c1c", g: "#8b9bb4", G: "#5a6988", s: "#e4a672", S: "#b86f50", y: "#c8a040", Y: "#8a6a2a", b: "#5a3a22", p: "#6a4228", P: "#3a2a22" };
+  function withBase(o) { var r = {}, k; for (k in DWARF_BASE) r[k] = DWARF_BASE[k]; for (k in o) r[k] = o[k]; return r; }
+  var DWARF_HAMMER_PAL = withBase({ w: "#e6d5a2", r: "#be4a2f", R: "#8a2a1e", n: "#3e8948", N: "#265c42" });
+  var DWARF_AXE_PAL = withBase({ w: "#8b9bb4", r: "#8a5a32", R: "#5e3a20", n: "#7a2a2a", N: "#4e1a1a" });
+  var SMALL_PAL = { thief_sword: THIEF_PAL, thief_archer: THIEF_PAL, dwarf_hammer: DWARF_HAMMER_PAL, dwarf_axe: DWARF_AXE_PAL };
   var WHITE = "#ffffff";
 
   // ふつうの敵（立っている絵。side は左向き）。vine は動かないので1方向だけ
   var SMALL = {
+    // ドワーフ（黒鉄の坑道の後半。2026-11-07 Claude が描き、保護者が決めた絵。16×24、前・後ろ・横（左向き））。
+    // 背が低く横に広い。鎚使いは王と同じ角かぶと・赤いひげ・緑の服、戦士は鉄の角・茶色のひげ・えんじの服（色は DWARF_PAL）。
+    // 斧・ハンマーは絵に入っていないので、盗賊と同じく enemies.js で上に重ねる
+    dwarf_hammer: {
+      down: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          ".A....AAAA....A.",
+          ".wA..AggggA..Aw.",
+          ".AwAAgggGggAAwA.",
+          "..AwAGGGGGGAwA..",
+          "...AAAAAAAAAA...",
+          "...AsAssssAsA...",
+          "..ArrsSssSsrrA..",
+          "..ArrrrrrrrrrA..",
+          ".AyArrrRRrrrAyA.",
+          "AyyArrrrrrrrAyyA",
+          "AsYAnArrrrAnAYsA",
+          "AsAAnnArrAnnAAsA",
+          ".AAbbbbYYbbbbAA.",
+          "..AnnnnNNnnnnA..",
+          "..ApppAAAApppA..",
+          "..APPpA..ApPPA..",
+          "..APPPA..APPPA..",
+          "...AAA....AAA...",
+          "................"
+        ],
+      up: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          ".A....AAAA....A.",
+          ".wA..AggggA..Aw.",
+          ".AwAAgggggGAAwA.",
+          "..AwAGgggGGAwA..",
+          "...AAGGGGGGAA...",
+          "...AGGGGGGGGA...",
+          "..ArAAAAAAAArA..",
+          "..AnnnnnnnnnnA..",
+          ".AyAnnnNNnnnAyA.",
+          "AyyAnnnnnnnnAyyA",
+          "AsYAnnnNNnnnAYsA",
+          "AsAAnnnnnnnnAAsA",
+          ".AAbbbbbbbbbbAA.",
+          "..AnnnnNNnnnnA..",
+          "..ApppAAAApppA..",
+          "..APPpA..ApPPA..",
+          "..APPPA..APPPA..",
+          "...AAA....AAA...",
+          "................"
+        ],
+      side: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          "..A...AAAA......",
+          "..wA.AggggA..A..",
+          "..AwAgggggGAAwA.",
+          "...AAGGGGGGAwA..",
+          "...AAAAAAAAGA...",
+          "..AssAsssAGGA...",
+          ".ASsssssSAGGA...",
+          ".ArrrrrsAAGA....",
+          ".ArrrrrrrAyyA...",
+          "..ArrrrrrAyyYA..",
+          "..ArrRrrAnnnYA..",
+          "..AsArrAnnnnA...",
+          "...AAbbbbbbbA...",
+          "...AnnnnNNnnA...",
+          "...ApppAApppA...",
+          "..APPpA.ApPPA...",
+          "..APPPA.APPPA...",
+          "...AAA...AAA....",
+          "................"
+        ]
+    },
+    dwarf_axe: {
+      down: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          ".A....AAAA....A.",
+          ".wA..AggggA..Aw.",
+          ".AwAAgggGggAAwA.",
+          "..AwAGGGGGGAwA..",
+          "...AAAAAAAAAA...",
+          "...AsAssssAsA...",
+          "..ArrsSssSsrrA..",
+          "..ArrrrrrrrrrA..",
+          ".AyArrrRRrrrAyA.",
+          "AyyArrrrrrrrAyyA",
+          "AsYAnArrrrAnAYsA",
+          "AsAAnnArrAnnAAsA",
+          ".AAbbbbYYbbbbAA.",
+          "..AnnnnNNnnnnA..",
+          "..ApppAAAApppA..",
+          "..APPpA..ApPPA..",
+          "..APPPA..APPPA..",
+          "...AAA....AAA...",
+          "................"
+        ],
+      up: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          ".A....AAAA....A.",
+          ".wA..AggggA..Aw.",
+          ".AwAAgggggGAAwA.",
+          "..AwAGgggGGAwA..",
+          "...AAGGGGGGAA...",
+          "...AGGGGGGGGA...",
+          "..ArAAAAAAAArA..",
+          "..AnnnnnnnnnnA..",
+          ".AyAnnnNNnnnAyA.",
+          "AyyAnnnnnnnnAyyA",
+          "AsYAnnnNNnnnAYsA",
+          "AsAAnnnnnnnnAAsA",
+          ".AAbbbbbbbbbbAA.",
+          "..AnnnnNNnnnnA..",
+          "..ApppAAAApppA..",
+          "..APPpA..ApPPA..",
+          "..APPPA..APPPA..",
+          "...AAA....AAA...",
+          "................"
+        ],
+      side: [
+          "................",
+          "................",
+          "................",
+          "................",
+          "................",
+          "..A...AAAA......",
+          "..wA.AggggA..A..",
+          "..AwAgggggGAAwA.",
+          "...AAGGGGGGAwA..",
+          "...AAAAAAAAGA...",
+          "..AssAsssAGGA...",
+          ".ASsssssSAGGA...",
+          ".ArrrrrsAAGA....",
+          ".ArrrrrrrAyyA...",
+          "..ArrrrrrAyyYA..",
+          "..ArrRrrAnnnYA..",
+          "..AsArrAnnnnA...",
+          "...AAbbbbbbbA...",
+          "...AnnnnNNnnA...",
+          "...ApppAApppA...",
+          "..APPpA.ApPPA...",
+          "..APPPA.APPPA...",
+          "...AAA...AAA....",
+          "................"
+        ]
+    },
     // 盗賊の弓使い（2026-11-03 保護者が描いた絵。16×24、前・後ろ・横（左向き）。弓は enemies.js で上に重ねる）
     thief_archer: {
       down: [
@@ -3078,11 +3246,9 @@ var Monsters = (function () {
       "................"
     ]
   };
-  // 盗賊とドワーフは、保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。絵が届いたら SMALL に足して、ここから消す）
-  var PLACEHOLDER = {
-    dwarf_axe:    { base: "goblin_sword",  swap: { Q: "E", R: "W", O: "C", C: "T", V: "U", D: "C", Y: "V" } },
-    dwarf_hammer: { base: "goblin_spear",  swap: { Q: "E", R: "W", O: "C", C: "T", V: "U", D: "C", Y: "V" } }
-  };
+  // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
+  // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
+  var PLACEHOLDER = {};
   var STATUE = {
     statue_wood:   { C: "u", V: "t", D: "v", Y: "w", R: "t", F: "t", Q: "u", O: "v", B: "w", K: "w", H: "t", U: "t", T: "u" },
     statue_stone:  { C: "X", V: "T", D: "Y", Y: "Y", R: "U", F: "T", Q: "T", O: "X", B: "Y", K: "Y", H: "U", U: "U", T: "T" },
