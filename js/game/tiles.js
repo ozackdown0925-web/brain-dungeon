@@ -264,8 +264,8 @@ var Tiles = (function () {
       var hb = hash(x, y, 41);
       if (hb < 0.035) c = GRASS[4]; else if (hb < 0.05) c = GRASS[0];
       if (hash(x, y - 1, 41) < 0.035) c = GRASS[1];
-      // 烈風の峰：大きなまだらに、うすく雪がのる
-      if (SNOW && noise(x / 30, y / 30, 9) * 0.8 + noise(x / 7, y / 7, 8) * 0.2 + (hash(x, y, 42) - 0.5) * 0.08 > 0.69) c = snowy(c);
+      // 烈風の峰：ところどころに小さく雪が残る（雪山「白銀の霊峰」は一面の雪にして、見分けがつくようにする）
+      if (SNOW && noise(x / 30, y / 30, 9) * 0.8 + noise(x / 7, y / 7, 8) * 0.2 + (hash(x, y, 42) - 0.5) * 0.08 > 0.80) c = snowy(c);
       // 道（土）
       var pa = doors.length && nearDoor(x, y) ? pathAmount(x, y) : 99;
       var lim = 22 + noise(x / 4, y / 4, 3) * 10;
