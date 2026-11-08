@@ -628,6 +628,33 @@ var GameData = (function () {
     axeEvery: 7, axeEveryHalf: 9, axeWindup: 0.6, axeSpeed: 170, axeMult: 1.4, axeCountHalf: 3, axeSpread: 0.3, tired: 1.6
   };
 
+  // ラフレシア（烈風の峰6階・中ボス。段階3、2026-11-08。数字は仮）：湯けむりの谷にさく、大きな毒の花。動かない（部屋のまんなかに根を張る）。
+  //   おかしら（つめる）・ドワーフキング（重い大技）・大木の魔物（根の大波）とちがい、毒で「立つ場所」をうばい、吸いこみで引きよせて押してくる。
+  //   ふつう：近くにいれば、つるのむちでまわりをなぎはらう（whipReach）。はなれていれば、毒の種を3つ吐く（当たると猛毒になることがある）のと、
+  //     つるの一撃（大木の魔物の根の大波を1本だけ。プレイヤーのいる場所を通る帯が vineWarn 秒光ってから、つるがつき出る。2026-11-08 保護者の案）をかわりばんこに。
+  //   毒はすべて猛毒（2026-11-08 保護者）。
+  //   毒の霧（fogEvery 秒ごと）：地面に紫の輪（fogWarn 秒）→ 毒の霧が fogTime 秒のこる。中にいると少しずつダメージと猛毒。1つはいつもプレイヤーの足もと。
+  //   吸いこみ（inhaleEvery 秒ごと）：大きく息を吸い、inhaleTime 秒のあいだ、仲間をまんなかへ引きよせる（歩けば逃げられる速さ）。
+  //     そのあと、まわり（breathRadius）に毒の息を吐く（大ダメージと猛毒。赤い輪で予告）。
+  //   つぼみ（budEvery 秒ごと。HP が 75% を切ってから）：まわりの地面に、つぼみ（raff_bud）を生やす。budTime 秒で咲いて、毒の霧をまく。先にこわせば咲かない。
+  //   HP が半分：花びらが大きく開き、毒の種が5つになり、霧と吸いこみの間かくが短くなる。つぼみは3つ。
+  //   斬が弱点（つるも花も切れる）。草は効かない、火は湯けむりでしめっているのでいまひとつ、水もいまひとつ
+  ENEMIES.raff_boss = {
+    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 38, matk: 0, pdef: 10, mdef: 10,
+    res: { slash: 1.3, grass: 0, fire: 0.75, water: 0.75 }, speed: 0, r: 20, color: "#c83a3a",
+    whipReach: 34, windup: 0.55, cooldown: 1.3, cooldownHalf: 1.0, whipMult: 1.2,
+    seedSpeed: 115, seeds: 3, seedsHalf: 5, seedSpread: 0.32, seedMult: 0.8,
+    vineW: 24, vineWarn: 1.0, vineMult: 1.6,
+    fogEvery: 9, fogEveryHalf: 7, fogWarn: 1.0, fogTime: 5, fogR: 26, fogCount: 2, fogCountHalf: 3, fogMult: 0.25,
+    inhaleEvery: 13, inhaleEveryHalf: 10, inhaleTime: 1.8, inhalePull: 34, breathWarn: 0.6, breathRadius: 62, breathMult: 2.0,
+    budEvery: 12, budTime: 6, buds: 2, budsHalf: 3
+  };
+  // ラフレシアのつぼみ：動かない。budTime 秒で咲いて、毒の霧をまいて消える（咲いて消えたときは、経験値やごほうびは出ない）。斬が弱点
+  ENEMIES.raff_bud = {
+    name: "ラフレシアのつぼみ", kind: "bud", hp: 40, patk: 0, pdef: 2, mdef: 2,
+    res: { slash: 1.3, grass: 0 }, speed: 0, r: 6, color: "#c83a3a"
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -799,7 +826,7 @@ var GameData = (function () {
       bosses: {
         // room・theme：ボスの部屋をかえる（2026-11-08 保護者：ラフレシアは崖の部屋でなく、ふつうの部屋。雪の中はおかしいので、
         //   地熱で雪がとけた、湯けむりの谷にした。dungeon.js の BOSS_ROOMS と tiles.js の peakwarm）
-        6: { enemy: "tree_boss", title: "峰の花をしずめし者", room: "warm", theme: "peakwarm",   // 仮（ラフレシアを作るまで、大木の魔物）。前後の文は Claude が書いた仮の文
+        6: { enemy: "raff_boss", title: "峰の花をしずめし者", room: "warm", theme: "peakwarm",   // ラフレシア（段階3、2026-11-08）。前後の文は Claude が書いた仮の文
              before: ["雪がとけた谷に、湯けむりが立ちのぼっている。", "そのまんなかに、大きな花がさいている。", "あまいにおいが、あたりにただよってきた……。"],
              after: ["大きな花は、しおれて岩の間に消えた。", "峰の上へ、道が続いている。"] },
         12: { enemy: "elf_boss", title: "烈風をきわめし者",       // 仮（大怪鳥を作るまで、ダークエルフ）。前後の文は Claude が書いた仮の文

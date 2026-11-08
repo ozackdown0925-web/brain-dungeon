@@ -14,7 +14,7 @@ var Enemies = (function () {
     var hp = Math.round(d.hp * (1 + 0.12 * k)), patk = Math.round(d.patk * (1 + 0.10 * k) * 10) / 10;
     var matk = Math.round((d.matk || 0) * (1 + 0.10 * k) * 10) / 10;   // 魔攻（魔法で攻撃する敵。2026-10-21）
     var e = {
-      type: type, def: d, x: x, y: y, r: d.r,
+      type: type, def: d, x: x, y: y, r: d.r, depth: depth || 1,
       hp: hp, maxHp: hp, patk: patk, matk: matk, pdef: d.pdef, mdef: d.mdef, res: d.res,
       state: "chase", t: 0, cd: 0.6 + Math.random() * 0.8,
       face: { x: -1, y: 0 }, aim: null, flash: 0, dead: false, fade: 0.4,
@@ -533,6 +533,15 @@ var Enemies = (function () {
       var gap = dist - e.r - P.r; // おたがいのふちの間の距離
       var d = e.def;
       e.cd = Math.max(0, e.cd - dt);
+      if (d.kind === "bud") {   // ラフレシアのつぼみ（2026-11-08）：動かない。時間が来ると咲いて毒の霧をまき、消える（ごほうびは出ない）
+        e.bloomT = (e.bloomT === undefined ? 6 : e.bloomT) - dt;
+        if (e.bloomT <= 0) {
+          if (e.owner && !e.owner.dead) Bosses.addFog(e.owner, e.x, e.y + 2, 0.3);
+          e.dead = true; e.fade = 0.4; e.bloomedOut = true;
+          Battle.pop(e.x, e.y - 20, "咲いた！", "#ff7aa0", 8);
+        }
+        return;
+      }
       var mx = 0, my = 0;
       if (e.rival && rivalSkill(e, dt, P, gap, ux, uy, hit)) return;              // 闘技場の相手のスキル（2026-10-30）
       if (d.kind === "boar" && boar(e, dt, room, P, hit, ux, uy, gap)) return;   // 突進の予告・突進・ふらつき
@@ -933,7 +942,7 @@ var Enemies = (function () {
       }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : e.type === "raff_bud" ? 20 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       if (d.kind === "boar" && !e.dead && (e.state === "warn" || e.state === "charge") && e.chargeLen) {
         // 突進の予告の線（大オオカミと同じ絵。走っているあいだは、うすく残る）
         Bosses.drawChargeLine(ctx, { from: e, x1: e.lineX, y1: e.lineY, x2: e.lineX + e.aim.x * e.chargeLen, y2: e.lineY + e.aim.y * e.chargeLen,
@@ -963,6 +972,12 @@ var Enemies = (function () {
         var tdd = Sprites.dirOf(e.face);
         tBehind = tMode === "hold" ? tdd.dir !== "down" : tdd.dir === "up";
         if (tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
+      }
+      if (d.kind === "bud" && !e.dead && e.bloomT < 2.5) {   // つぼみ：咲く前は、むらさきに光ってふるえる（早くこわせば霧は出ない）
+        var kb = 1 - Math.max(0, e.bloomT) / 2.5, pb = 0.5 + 0.5 * Math.sin(clock * (8 + kb * 14));
+        ctx.fillStyle = "rgba(180,106,216," + (0.15 + 0.35 * kb * pb).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y - 4, 9 + kb * 4, 7 + kb * 3, 0, 0, Math.PI * 2); ctx.fill();
+        x += Math.round(Math.sin(clock * 40) * kb * 1.2);
       }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
       if (tw && !e.dead && !tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
