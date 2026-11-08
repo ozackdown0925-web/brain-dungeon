@@ -83,6 +83,20 @@ var Tiles = (function () {
       VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
       WITHER: null,
       SNOW: pal(["#a8b4c4", "#c8d2de", "#e2e8f0", "#f6f8fc"])
+    },
+    // 烈風の峰6階の湯けむりの谷（ラフレシアの部屋。2026-11-08 保護者：ラフレシアが雪の中はおかしい）：地熱で雪がとけて、
+    // 苔と草が育つあたたかい谷。雪はなく、地面は少し緑がかった土、水は青緑のお湯、花は赤・桃色
+    peakwarm: {
+      GRASS: pal(["#262a1e", "#36402a", "#465434", "#58683e", "#74844e"]),
+      DIRT: pal(["#3a2e22", "#54422e", "#6c583e", "#86704e"]),
+      TALL: pal(["#18301c", "#22452a", "#2e5c34", "#3e7640", "#5a944e"]),
+      WATER: pal(["#0e3036", "#164a50", "#20666a", "#3a8e8a", "#bce8e0"]),
+      LEAF: pal(["#0a1612", "#12241c", "#1c3428", "#284836", "#3a5e46"]),
+      BARK: pal(["#1e1610", "#36281c", "#4e3a28", "#6a5036"]),
+      ROCK: pal(["#2a2626", "#423c3a", "#5c5550", "#7a726a", "#a09888"]),
+      FLOWER: pal(["#e05a6a", "#f0a0c0", "#f0d070"]),
+      VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
+      WITHER: null
     }
   };
   var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, THEME = "forest";
@@ -166,7 +180,7 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
-    var OUTER = THEME === "cave" || THEME === "peak" ? "rock" : "forest";
+    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];

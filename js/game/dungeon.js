@@ -66,6 +66,8 @@ var Dungeon = (function () {
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
   function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : ForestRooms; }
+  // ボスごとにかえる部屋（data.js の bosses の room）。warm＝烈風の峰6階の湯けむりの谷（ラフレシア。2026-11-08）
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom };
   function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
@@ -301,12 +303,12 @@ var Dungeon = (function () {
     var plan = [
       { x: 1, y: 1, kind: "start", tpl: ROOMS[0], doors: ["e"] },
       { x: 2, y: 1, kind: "room", tpl: ROOMS[mid], doors: ["w", "e"] },
-      { x: 3, y: 1, kind: "exit", tpl: bossRoomFor(theme), doors: ["w"] }
+      { x: 3, y: 1, kind: "exit", tpl: (info.room && BOSS_ROOMS[info.room]) || bossRoomFor(theme), doors: ["w"], theme: info.theme }
     ];
     plan.forEach(function (p) {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
       c.room = buildRoom(p.tpl, p.doors);
-      c.room.theme = theme;
+      c.room.theme = p.theme || theme;
       c.center = centerSpot(c.room);
       c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
       cells[key(p.x, p.y)] = c;
