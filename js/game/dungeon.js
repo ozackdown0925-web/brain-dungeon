@@ -61,7 +61,7 @@ var Dungeon = (function () {
   }
 
   // ---------- 部屋の型に道をあける ----------
-  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I"; }
+  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I" && ch !== "C"; }
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋

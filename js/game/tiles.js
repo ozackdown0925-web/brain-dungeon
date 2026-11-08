@@ -173,7 +173,11 @@ var Tiles = (function () {
     function kindRaw(tx, ty) {
       var t = tile(tx, ty);
       if (t === "#") {
-        if (tx < 0 || ty < 0 || tx >= w || ty >= h) return OUTER;
+        if (tx < 0 || ty < 0 || tx >= w || ty >= h) {
+          // 部屋の外：となりが崖の下の空なら、外も空（崖の外に岩の壁を描かない）
+          if (tile(Math.max(0, Math.min(w - 1, tx)), Math.max(0, Math.min(h - 1, ty))) === "C") return "sky";
+          return OUTER;
+        }
         return outer[tx + "," + ty] ? OUTER : "rock";
       }
       if (t === "T") return "tree";
@@ -185,6 +189,7 @@ var Tiles = (function () {
       if (t === "V") return "vine";
       if (t === "P") return "poison";
       if (t === "I") return "pillar";
+      if (t === "C") return "sky";
       return "ground";
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
@@ -291,6 +296,34 @@ var Tiles = (function () {
         } else if (r0 < 0.57) {            // 小石
           put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py + 1, ROCK[1]); put(px + 1, py + 1, ROCK[0]);
         }
+      }
+    }
+
+    // ---------- 1.5 崖の下の空（烈風の峰のボスの部屋。2026-11-08 保護者の案） ----------
+    // 部屋の上のほうが切り立った崖になっていて、その先は空。はるか下に雲が流れる。崖のふちは岩（ROCK）で、少しだけ欠けている。
+    var isSky = isK("sky");
+    var hasSky = false;
+    for (ty = 0; ty < h && !hasSky; ty++) for (tx = 0; tx < w; tx++) if (kind(tx, ty) === "sky") { hasSky = true; break; }
+    if (hasSky) {
+      var SKY = [hex("#5f86b4"), hex("#7ea2cc"), hex("#a3c2e2"), hex("#cfe0f2"), hex("#f4f8fc")];
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var inS = inside(x, y, isSky, 0.3, 91);
+        if (!inS) {
+          // 崖のふち：空のすぐ南の地面に、岩のふちを2点
+          if (inside(x, y - 1, isSky, 0.3, 91)) put(x, y, ROCK[4]);
+          else if (inside(x, y - 2, isSky, 0.3, 91)) put(x, y, ROCK[2]);
+          else if (inside(x, y - 3, isSky, 0.3, 91) && hash(x, y, 92) < 0.5) put(x, y, ROCK[1]);
+          continue;
+        }
+        // 空：崖に近いほど少し暗い（崖のかげ）。雲は大きなまだらで、ふちは市松もようでぼかす
+        var nearCliff = !inside(x, y + 3, isSky, 0.3, 91) || !inside(x, y + 6, isSky, 0.3, 91);
+        var sv = dither(0.35 + y / H * 0.5 + noise(x / 20, y / 9, 93) * 0.25, x, y);
+        var sc = sv < 0.45 ? SKY[0] : sv < 0.7 ? SKY[1] : SKY[2];
+        var cv2 = noise(x / 22, y / 8, 94) * 0.7 + noise(x / 7, y / 4, 95) * 0.3;
+        var cd = dither(cv2, x, y);
+        if (cd > 0.72) sc = SKY[4]; else if (cd > 0.62) sc = SKY[3];
+        if (nearCliff) sc = SKY[0];
+        put(x, y, sc);
       }
     }
 

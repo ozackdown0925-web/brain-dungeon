@@ -437,7 +437,7 @@
     for (var tries = 0; tries < 12 && !spot; tries++) {
       var a = Math.random() * Math.PI * 2, x = ne.x + Math.cos(a) * 22, y = ne.y + Math.sin(a) * 18;
       var ch = room.tile(Math.floor(x / T), Math.floor(y / T));
-      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
+      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
     }
     if (!spot) return;
     var type = nestPick();
