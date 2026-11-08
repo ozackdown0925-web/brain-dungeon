@@ -3247,6 +3247,338 @@ var Monsters = (function () {
       "................"
     ]
   };
+  // ---- 烈風の峰の魔物（地方2の山。段階2、2026-11-08）。Claude が描いた ----
+  // ハーピー（はばたく：B のついた絵と交互）・山ヤギ・岩の子ゴーレムは新しく描いた。雪オオカミはオオカミの絵、風の精は光の精の絵の色をかえる
+  // ハーピー
+  SMALL.harpy = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhHHhA.....",
+      "A...AhHHHHhA...A",
+      "wA..AhsssshA..Aw",
+      "wwA.AhesseAA.Aww",
+      "WwwAAhsSSshAAwwW",
+      "vWwwAAAssAAAwwWv",
+      ".vWwwAffffAwwWv.",
+      ".AvWwAfssfAwWvA.",
+      "..AvWAffffAWvA..",
+      "...AAvffffvAA...",
+      "....AvfvvfvA....",
+      ".....AyAAyA.....",
+      ".....AyA.AyA....",
+      "....AYA...AYA...",
+      "....AA.....AA...",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    downB: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhHHhA.....",
+      "....AhHHHHhA....",
+      "....AhsssshA....",
+      "....AhesseAA....",
+      "....AhsSSshA....",
+      "...AAAAssAAAA...",
+      "..AwwAffffAwwA..",
+      ".AwwWAfssfAWwwA.",
+      "AwwWvAffffAvWwwA",
+      "AwWvAvffffvAvWwA",
+      "AWvA.AfvvfA.AvWA",
+      "AvA..AyAAyA..AvA",
+      "AA...AyA.AyA..AA",
+      "....AYA...AYA...",
+      "....AA.....AA...",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhHHhA.....",
+      "A...AhHHHHhA...A",
+      "wA..AhhHHhhA..Aw",
+      "wwA.AhhhhhhA.Aww",
+      "WwwAAhhhhhhAAwwW",
+      "vWwwAAhhhhAAwwWv",
+      ".vWwwAffffAwwWv.",
+      ".AvWwAffffAwWvA.",
+      "..AvWAffffAWvA..",
+      "...AAvffffvAA...",
+      "....AvfvvfvA....",
+      ".....AyAAyA.....",
+      ".....AyA.AyA....",
+      "....AYA...AYA...",
+      "....AA.....AA...",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    upB: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhHHhA.....",
+      "....AhHHHHhA....",
+      "....AhhHHhhA....",
+      "....AhhhhhhA....",
+      "....AhhhhhhA....",
+      "...AAAhhhhAAA...",
+      "..AwwAffffAwwA..",
+      ".AwwWAffffAWwwA.",
+      "AwwWvAffffAvWwwA",
+      "AwWvAvffffvAvWwA",
+      "AWvA.AfvvfA.AvWA",
+      "AvA..AyAAyA..AvA",
+      "AA...AyA.AyA..AA",
+      "....AYA...AYA...",
+      "....AA.....AA...",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      ".....AAAA.......",
+      "....AHHHhA......",
+      "...AhHHHHhA.....",
+      "...AssshhhA.....",
+      "..AeesshhhA..AA.",
+      "..AsSsshhA..AwwA",
+      "...AAssAA..AwwWA",
+      "....AffAAAAwwWvA",
+      "...AfsffAwwWWvA.",
+      "...AffffAwWvvA..",
+      "...AfffffAvvA...",
+      "....AfffvvAA....",
+      ".....AyAyA......",
+      "....AyA.AyA.....",
+      "...AYA...AYA....",
+      "...AA.....AA....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ],
+    sideB: [
+      "................",
+      "................",
+      "................",
+      ".....AAAA.......",
+      "....AHHHhA......",
+      "...AhHHHHhA.....",
+      "...AssshhhA.....",
+      "..AeesshhhA.....",
+      "..AsSsshhA......",
+      "...AAssAA.......",
+      "....AffAAAAA....",
+      "...AfsffAwwwAA..",
+      "...AffffAwwWWwA.",
+      "...AfffffAWWvvwA",
+      "....AfffvvAvvAAA",
+      ".....AyAyA.AA...",
+      "....AyA.AyA.....",
+      "...AYA...AYA....",
+      "...AA.....AA....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+    ]
+  };
+  // 山ヤギ
+  SMALL.goat = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "..AA........AA..",
+      ".AhHA......AhHA.",
+      ".AhA.A....A.AhA.",
+      ".AHhAAAAAAAAhHA.",
+      "..AAwwwwwwwwAA..",
+      "..AWwwwwwwwwWA..",
+      "..AwAewwwwAewA..",
+      "..AwwwwwwwwwwA..",
+      "...AWwwppwwWA...",
+      "..AAwWwwwwWwAA..",
+      ".AwwAAWWWWAAwwA.",
+      ".AwwwwwwwwwwwwA.",
+      ".AWwwwwwwwwwwWA.",
+      ".AWwwwwwwwwwwWA.",
+      "..AWWWAAAAWWWA..",
+      "..AgWA....AWgA..",
+      "..AbbA....AbbA..",
+      "..AAAA....AAAA.."
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "..AA........AA..",
+      ".AhHA......AhHA.",
+      ".AhA.A....A.AhA.",
+      ".AHhAAAAAAAAhHA.",
+      "..AAwwwwwwwwAA..",
+      "..AWwwwwwwwwWA..",
+      "..AwwwwwwwwwwA..",
+      "..AWwwwwwwwwWA..",
+      "..AAWwwwwwwWAA..",
+      ".AwwAWWWWWWAwwA.",
+      ".AwwwwwwwwwwwwA.",
+      ".AWwwwwwwwwwwWA.",
+      ".AWwwwwwwwwwwWA.",
+      ".AWWwwwAAwwwWWA.",
+      "..AWWWAWWAWWWA..",
+      "..AgWA.AA.AWgA..",
+      "..AbbA....AbbA..",
+      "..AAAA....AAAA.."
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "..AAA...........",
+      ".AhHhA..........",
+      "AhAAhHA.........",
+      "AhA.AHA.........",
+      ".AA.AwwA........",
+      "...AwwwwAAAAAAA.",
+      "..AwAewwwwwwwwwA",
+      ".AwwwwwwwwwwwwwA",
+      "ApwwwwwwwwwwwwwA",
+      ".AAWwwwwwwwwwwWA",
+      "..AgAWwwwwwwwWWA",
+      "...AWAWWWWWWWWA.",
+      "...AgWAAAAAAWgA.",
+      "...AgWA....AgWA.",
+      "...AbbA....AbbA.",
+      "...AAAA....AAAA."
+    ]
+  };
+  // 岩の子ゴーレム
+  SMALL.golem_kid = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".....AAAAAA.....",
+      "....ArrrrRRA....",
+      "...ArrmmrrRqA...",
+      "...ArReRReRqA...",
+      "...ARRRRRRRqA...",
+      "..AAAqqqqqqAAA..",
+      ".ArrAAAAAAAArrA.",
+      "ArrRArrrrRRAqRqA",
+      "ArRqArReERRAqRqA",
+      "ARqqARRRRRqAqqQA",
+      "AqqAArRRRRqAAqQA",
+      ".AAArrRqqRRqAAA.",
+      "...ARRqAAqqqA...",
+      "...AqqA..AqqA...",
+      "..ArrRA..ArRqA..",
+      "..AAAAA..AAAAA.."
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".....AAAAAA.....",
+      "....ArrrrRRA....",
+      "...ArrrrrrRqA...",
+      "...ArRRRRRRqA...",
+      "...ARRmmRRRqA...",
+      "..AAAqqqqqqAAA..",
+      ".ArrAAAAAAAArrA.",
+      "ArrRArrrrRRAqRqA",
+      "ArRqArRRRRRAqRqA",
+      "ARqqARRmmRqAqqQA",
+      "AqqAArRRRRqAAqQA",
+      ".AAArrRqqRRqAAA.",
+      "...ARRqAAqqqA...",
+      "...AqqA..AqqA...",
+      "..ArrRA..ArRqA..",
+      "..AAAAA..AAAAA.."
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "....AAAAAA......",
+      "...ArrrmmRA.....",
+      "..ArrrrrRRqA....",
+      "..AeRRRRRRqA....",
+      "..ARRRRRRRqA....",
+      "...AqqqqqqA.....",
+      "..AArrrRRRAA....",
+      ".ArrArrrRRqrA...",
+      ".ArRArReRRqRA...",
+      ".ARqArRRRRqqA...",
+      ".AqqArRRRqqqA...",
+      "..AAArRqqRqA....",
+      "....ARRqqqqA....",
+      "....AqqAAqqA....",
+      "...ArrRA.ArRA...",
+      "...AAAAA.AAAA..."
+    ]
+  };
+  SMALL.snow_wolf = SMALL.wolf;
+  SMALL.wind_sprite = SMALL.light_sprite;
+  // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
+  function palWith(o) { var r = {}, k; for (k in PAL) r[k] = PAL[k]; for (k in o) r[k] = o[k]; return r; }
+  SMALL_PAL.harpy = { A: "#140c1c", h: "#3a3a8a", H: "#5a5ab8", s: "#f0c8a0", S: "#c8906a", e: "#140c1c", w: "#a8b8f0", W: "#6a7ac8", v: "#3e4a90", f: "#e8e0f8", y: "#f0c040", Y: "#a07820", k: "#d04648" };
+  SMALL_PAL.goat = { A: "#140c1c", w: "#f0ece0", W: "#d0c8b4", g: "#a89e88", G: "#78705e", h: "#c8a060", H: "#8a6430", k: "#140c1c", e: "#f0c040", p: "#e8a0a0", b: "#5a5048" };
+  SMALL_PAL.golem_kid = { A: "#140c1c", r: "#b0a898", R: "#8a8478", q: "#5e5a52", Q: "#3e3b36", m: "#5e8a46", M: "#3e6a34", e: "#7fd8ff", E: "#2a6aa0" };
+  SMALL_PAL.snow_wolf = palWith({ b: "#ffffff", c: "#dfe6ee", d: "#a9b4c4", e: "#6f7a90", K: "#597dce" });
+  SMALL_PAL.wind_sprite = palWith({ H: "#e8fff4", B: "#8ad8b0", W: "#3e8a6a" });
   // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
   // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
   var PLACEHOLDER = {};
@@ -3493,13 +3825,13 @@ var Monsters = (function () {
     if (cache[k]) return cache[k];
     var ph = !SMALL[type] && PLACEHOLDER[type];
     var m = SMALL[type] || (ph && SMALL[ph.base]) || SMALL.goblin_sword;
-    if (frame === "flap") { cache[k] = toCanvas(grid(m[dir + "B"] || m[dir] || m.down), false, white); return cache[k]; }
+    if (frame === "flap") { cache[k] = toCanvas(grid(m[dir + "B"] || m[dir] || m.down), false, white, SMALL_PAL[type]); return cache[k]; }
     var g = grid(m[dir] || m.down);
     var sw = STATUE[type] || (ph && ph.swap);
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
@@ -3512,7 +3844,7 @@ var Monsters = (function () {
     var d = dirOf(e.face), ph = Math.sin(e.walk || 0), moving = e.def.speed > 0 && (e.state === "chase" || e.state === "charge");
     var frame = !moving ? "stand" : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
     if (e.type === "vine") d = { dir: "down", flip: false };
-    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリは、いつもはばたく
+    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
     var img = small(e.type, d.dir, frame, e.flash > 0);
     ctx.save();
     if (d.flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -8, Math.round(y) - img.height); }

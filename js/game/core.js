@@ -169,6 +169,7 @@
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
     run.inPit = false;
     run.falls = [];   // 落ちてくる岩（落石の罠。部屋を出ると消える）
+    run.gust = null;  // 突風で押し流されているところ（烈風の峰）
     A.inv = 0.6; // 部屋に入った直後は少しだけ無敵
     // たおした敵はもどらない。まだいる敵は、もとの場所に HP 満タンでいる。
     var lv = 0;
@@ -729,6 +730,12 @@
         }
       }
     }
+    // 突風（烈風の峰、2026-11-08 保護者と決定）：押し流されているあいだは、決まった向きへ動かされる（岩や壁では止まる。落とし穴に入ることもある）
+    if (run.gust && run.gust.t > 0) {
+      run.gust.t -= dt;
+      var gk = Math.min(1, run.gust.t / 0.25);   // 終わりぎわは弱くなる
+      room.move(A, run.gust.dx * GUST_SPEED * gk * dt, run.gust.dy * GUST_SPEED * gk * dt);
+    }
     // 罠：立っているタイルで調べる
     var tx = Math.floor(A.x / T), ty = Math.floor(A.y / T), onPit = false;
     for (var i = 0; i < c.traps.length; i++) {
@@ -736,6 +743,15 @@
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
       if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); Sound.play("trap"); }
       var ch = Party.current();
+      if (t.type === "wind") {
+        if (!(t.wait > 0)) {
+          var gd = Dungeon.DIRS[t.dir] || { dx: 1, dy: 0 };
+          t.wait = 2;
+          run.gust = { dx: gd.dx, dy: gd.dy, t: GUST_TIME };
+          say("突風だ！ 風に押し流される！"); Sound.play("trap");
+        }
+        continue;
+      }
       if (t.type === "rock") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
@@ -781,6 +797,9 @@
     return false;
   }
 
+  // ---------- 突風（烈風の峰） ----------
+  var GUST_TIME = 0.7, GUST_SPEED = 130;   // 0.7秒、1秒あたり130点（およそ5マス流される）
+
   // ---------- 落石（黒鉄の坑道） ----------
   var FALL_TIME = 0.9, FALL_R = 13;
   function updateFalls(dt, c) {
@@ -804,6 +823,16 @@
       } else f.dust -= dt;
     });
     run.falls = run.falls.filter(function (f) { return f.t > 0 || f.dust > 0; });
+  }
+  // 突風で押し流されているあいだ：まわりに、流れる向きの白い風の線
+  function drawGust() {
+    if (!run.gust || !(run.gust.t > 0)) return;
+    var g = run.gust, x = A.x - cam.x, y = A.y - 8 - cam.y, k = Math.min(1, g.t / 0.25);
+    for (var i = 0; i < 6; i++) {
+      var ph = ((GUST_TIME - g.t) * 3 + i / 6) % 1, side = (i - 2.5) * 5;
+      var lx = x - g.dx * (16 - ph * 32) - g.dy * side, ly = y - g.dy * (16 - ph * 32) + g.dx * side;
+      Render.rect(Math.round(lx), Math.round(ly), g.dx ? 6 : 1, g.dy ? 6 : 1, "rgba(240,250,255," + (0.7 * k).toFixed(2) + ")");
+    }
   }
   // 影はだんだん濃く大きく、岩は上から落ちてくる。落ちたら砂けむり
   function drawFalls() {
@@ -852,6 +881,7 @@
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
     drawFalls();
+    drawGust();
     if (cine && cine.kind === "boss") drawBossCine();
     Combat.drawCastBack(cam, view);   // スキルを使ったとき：画面が少し暗くなり、使った仲間のまわりが光る
     drawActor();
@@ -883,6 +913,17 @@
       var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
       if (t.type === "pit") {
         ctx.drawImage(Props.get("pit"), x, y);
+      } else if (t.type === "wind") {   // 突風：うずを巻く風の線と、流される向きの矢印（白と水色）。ゆっくり動く
+        var gd2 = Dungeon.DIRS[t.dir] || { dx: 1, dy: 0 }, cx2 = x + 8, cy2 = y + 8, ph2 = (glow * 1.5 + i * 0.3) % 1;
+        for (var gw = 0; gw < 3; gw++) {
+          var gp = (ph2 + gw / 3) % 1, off = (gp - 0.5) * 10;
+          var lx = cx2 + gd2.dx * off - gd2.dy * (gw - 1) * 4, ly = cy2 + gd2.dy * off + gd2.dx * (gw - 1) * 4;
+          Render.rect(Math.round(lx - gd2.dx * 2), Math.round(ly - gd2.dy * 2), gd2.dx ? 4 : 1, gd2.dy ? 4 : 1, gp < 0.7 ? "rgba(232,248,255,0.8)" : "rgba(168,212,232,0.5)");
+        }
+        // 矢印の先
+        Render.rect(Math.round(cx2 + gd2.dx * 6) - 1, Math.round(cy2 + gd2.dy * 6) - 1, 2, 2, "#e8f8ff");
+        Render.rect(Math.round(cx2 + gd2.dx * 4 - gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 + gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
+        Render.rect(Math.round(cx2 + gd2.dx * 4 + gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 - gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
       } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
         Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");
