@@ -6,6 +6,7 @@
 // 部屋の色合い（room.theme）：forest（新緑の樹海）・swamp（瘴気の森。2026-10-21 保護者の案：同じ絵を青・紫の色にして、枯れた木をまぜる）
 //   wild（原生の秘境。2026-10-25 保護者と決定：樹海の絵を、少し深く暗い緑にして「奥地」らしく。水は深い青緑、岩は苔むした灰色）
 //   cave（黒鉄の坑道。2026-10-27：暗い岩の床。まわりの壁も岩のがけ）
+//   peak（烈風の峰。2026-11-08：茶色がかった岩の地面に、うすく雪がのる。がけの上は雪。木は暗い緑の針葉樹の色。まわりの壁も岩のがけ）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -67,13 +68,34 @@ var Tiles = (function () {
       FLOWER: pal(["#9fe0ff", "#c8a0ff", "#f0d070"]),
       VINE: pal(["#0c140e", "#18281a", "#244a26", "#3a6a36"]),
       WITHER: null
+    },
+    // 烈風の峰（地方2の山。段階1、2026-11-08）：茶色がかった灰色の岩の地面。ところどころ雪がのる（SNOW）。
+    // がけの上は雪。木は暗い緑（針葉樹の色）、草むらは枯れ色の高山の草、花は白・紫・黄色の高山の花。水は冷たい渓流
+    peak: {
+      GRASS: pal(["#2e2824", "#433a32", "#574c40", "#6b5e4e", "#8a7a64"]),
+      DIRT: pal(["#3a2e22", "#54422e", "#6c583e", "#86704e"]),
+      TALL: pal(["#2a3020", "#3c4628", "#525e32", "#6c7840", "#8c9656"]),
+      WATER: pal(["#0e2234", "#16344c", "#224c68", "#3a7090", "#a8d4e8"]),
+      LEAF: pal(["#0a1612", "#12241c", "#1c3428", "#284836", "#3a5e46"]),
+      BARK: pal(["#1e1610", "#36281c", "#4e3a28", "#6a5036"]),
+      ROCK: pal(["#2a2626", "#423c3a", "#5c5550", "#7a726a", "#a09888"]),
+      FLOWER: pal(["#f0f0e8", "#b090d8", "#f0d070"]),
+      VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
+      WITHER: null,
+      SNOW: pal(["#a8b4c4", "#c8d2de", "#e2e8f0", "#f6f8fc"])
     }
   };
-  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, THEME = "forest";
+  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, THEME = "forest";
   function useTheme(name) {
     var th = THEMES[name] || THEMES.forest;
     THEME = THEMES[name] ? name : "forest";
-    GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER;
+    GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER; SNOW = th.SNOW || null;
+  }
+  // 雪の色（烈風の峰）：草の地面の明るさ（GRASS の 1〜4）を、同じ明るさの雪の色にかえる
+  function snowy(c) {
+    if (!SNOW) return c;
+    for (var i = 1; i < 5; i++) if (c === GRASS[i]) return SNOW[i - 1];
+    return c;
   }
   useTheme("forest");
   var GOLD = pal(["#7a5a18", "#c8a040", "#f0d070"]);
@@ -144,7 +166,7 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
-    var OUTER = THEME === "cave" ? "rock" : "forest";
+    var OUTER = THEME === "cave" || THEME === "peak" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];
@@ -242,6 +264,8 @@ var Tiles = (function () {
       var hb = hash(x, y, 41);
       if (hb < 0.035) c = GRASS[4]; else if (hb < 0.05) c = GRASS[0];
       if (hash(x, y - 1, 41) < 0.035) c = GRASS[1];
+      // 烈風の峰：大きなまだらに、うすく雪がのる
+      if (SNOW && noise(x / 30, y / 30, 9) * 0.8 + noise(x / 7, y / 7, 8) * 0.2 + (hash(x, y, 42) - 0.5) * 0.08 > 0.69) c = snowy(c);
       // 道（土）
       var pa = doors.length && nearDoor(x, y) ? pathAmount(x, y) : 99;
       var lim = 22 + noise(x / 4, y / 4, 3) * 10;
@@ -494,7 +518,7 @@ var Tiles = (function () {
         if (ly3 - 3 < drip) c4 = ly3 - 3 === drip - 1 ? GRASS[1] : GRASS[2];
         else if (ly3 - 3 === Math.max(0, drip)) c4 = ROCK[0];   // 草の下の影
         if (ly3 === 3 && !left && !right) c4 = drip > 0 ? GRASS[2] : OUT;
-        put(x, y, c4); rockVis[y * W + x] = 1;
+        put(x, y, snowy(c4)); rockVis[y * W + x] = 1;   // 垂れる草は、烈風の峰では雪
         // 下のはしに小石
         if (y === fb && hash(x, faceTy, 65) < 0.12) { put(x, y + 1, ROCK[2]); put(x + 1, y + 1, ROCK[1]); put(x, y + 2, OUT); }
         continue;
@@ -510,7 +534,7 @@ var Tiles = (function () {
       else if (!plateau(x, y - 2) || !plateau(x - 2, y)) c4 = GRASS[4];        // 北と西のふちは明るい
       else if (!plateau(x + 2, y)) c4 = GRASS[1];                              // 東のふちは暗い
       else if (!plateau(x, y + 2)) c4 = GRASS[2];
-      put(x, y, c4); rockVis[y * W + x] = 1;
+      put(x, y, snowy(c4)); rockVis[y * W + x] = 1;   // 烈風の峰では、がけの上は雪
     }
     // 高台の影：高台の形を右下へずらした形で、地面を暗くする
     for (y = 0; y < H; y++) for (x = 0; x < W; x++) {

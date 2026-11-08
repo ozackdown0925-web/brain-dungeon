@@ -750,9 +750,27 @@ var GameData = (function () {
               before: ["坑道のいちばん奥に、岩をけずった玉座がある。", "かんむりをかぶったドワーフが、大きなハンマーを地面に立てた。", "「わが坑道をあらす者よ。このハンマーで、たたきなおしてくれる！」"],
               after: ["ドワーフキングは、ハンマーを置いて、大きく息をついた。", "「……見事だ。おぬしの力、みとめよう。奥のミスリルは、持っていくがよい」", "山へ続く道が見えてきた。"] }
       }
+    },
+    // 烈風の峰（地方2の山。段階1、2026-11-08）：12階（6階にラフレシア、12階に大怪鳥。どちらもまだ作っていないので、
+    // 今は大木の魔物とダークエルフを仮に使う）。ドワーフキング（黒鉄の坑道の主）をたおすと開く。深さは坑道の続き（51＋階）。
+    // 部屋は山の型（theme: peak）。装備の段はミスリル（3。2026-11-06 に決めた足し算の伸び ×3.16）。
+    // 説明は 2026-11-04 保護者が書いた山道の文。名前は仮（Claude の案）
+    yama: {
+      id: "yama", tagline: "雪山へと続く険しく冷たい一本道。", intro: ["雪山へと続く険しく冷たい一本道。", "頂上付近には「空の覇者である大怪鳥が巣食っている」と言い伝えられ、誰もが恐れて近寄らない。"],
+      region: "frostcrest", name: "烈風の峰", short: "峰", floors: 12, needs: "kodo", depthBase: 51, theme: "peak", tier: 3,
+      // 敵の強さの上のせ（仮。坑道と同じ。装備がミスリルの段になる分は、段階2で敵を作るときに合わせる）
+      foeHp: 1.9, foeAtk: 1.25,
+      bosses: {
+        6: { enemy: "tree_boss", title: "峰の花をしずめし者",   // 仮（ラフレシアを作るまで、大木の魔物）。前後の文は Claude が書いた仮の文
+             before: ["岩場のまんなかに、大きな花がさいている。", "あまいにおいが、あたりにただよってきた……。"],
+             after: ["大きな花は、しおれて岩の間に消えた。", "峰の上へ、道が続いている。"] },
+        12: { enemy: "elf_boss", title: "烈風をきわめし者",       // 仮（大怪鳥を作るまで、ダークエルフ）。前後の文は Claude が書いた仮の文
+              before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。"],
+              after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
@@ -763,9 +781,12 @@ var GameData = (function () {
          heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" },
     // 鋼の段（原生の秘境の段階6、2026-10-26）。弓・杖・服・ローブは、それらしい名前にした（保護者があとで直してよい）
     2: { sword: "鋼の剣", greatsword: "鋼の大剣", axe: "鋼の斧", bow: "風の長弓", spear: "鋼の槍", fist: "鋼のこて", staff: "水晶の杖",
-         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" }
+         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" },
+    // ミスリルの段（烈風の峰。2026-11-08。ドワーフキングをたおすと、宝箱とお店がミスリルになる）。名前は仮（保護者があとで直してよい）
+    3: { sword: "ミスリルの剣", greatsword: "ミスリルの大剣", axe: "ミスリルの斧", bow: "銀翼の弓", spear: "ミスリルの槍", fist: "ミスリルのこて", staff: "月光の杖",
+         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
