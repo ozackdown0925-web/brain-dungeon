@@ -99,7 +99,7 @@ var GameData = (function () {
   // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
   var TOP_JOBS = [
     { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
-      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングズブレード"] },
+      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングスブレード"] },
     { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
       skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
     { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
@@ -116,6 +116,8 @@ var GameData = (function () {
       skills: [null, null, null, "斬鉄剣", null, null, "ヴォルテックス"] },
     { name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
       skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
+    { name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
+      skills: [null, null, null, null, null, null, "クロノフォール"] },
     { name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
       skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
