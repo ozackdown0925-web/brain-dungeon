@@ -1057,6 +1057,11 @@ var Enemies = (function () {
         Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 9 * (a.opts.spin || 1));
         return;
       }
+      if (a.opts && a.opts.tomahawk) {   // ドワーフキングのトマホーク：地面にかげ、回りながら飛ぶ（2026-11-07）
+        Render.rect(Math.round(x) - 4, Math.round(y) + 14, 8, 2, "rgba(0,0,0,0.35)");
+        Bosses.drawTomahawk(ctx, x, y, (3 - a.life) * 16 * (a.opts.spin || 1));
+        return;
+      }
       if (a.opts && a.opts.darkArrow) { Bosses.drawDarkBolt(ctx, x, y, a.vx, a.vy, a.life); return; }   // ダークエルフのダークアロー（撃った闇の玉）
       if (a.opts && a.opts.elfArrow) {   // ダークエルフのふつうの矢：銀の矢に、紫に光る矢じり
         var el = Math.sqrt(a.vx * a.vx + a.vy * a.vy), eux = a.vx / el, euy = a.vy / el;

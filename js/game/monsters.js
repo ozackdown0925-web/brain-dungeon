@@ -1925,6 +1925,7 @@ var Monsters = (function () {
   //   沼の魔女＝やせた灰色の顔、くぼんで赤く光る目、長い白髪、ぼろぼろの黒い服、頭がい骨の杖
   // 色はボスごとの一覧（BOSS_PAL）を使う（ほかの敵と同じ文字でも、ちがう色）
   var BOSS_PAL = {
+    dwarf_boss: { A: "#140c1c", o: "#f0d070", O: "#c8a040", Q: "#8a6a2a", g: "#b8c0cc", G: "#7a8494", K: "#4a5060", s: "#e4a672", S: "#b86f50", r: "#d0502c", R: "#902a1c", c: "#a82a2a", C: "#5e1620", n: "#3e8948", N: "#265c42", b: "#8a5a32", B: "#5e3a20", e: "#3ad070", w: "#e6d5a2", W: "#a8905a" },   // ドワーフキング（2026-11-07）
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
     frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
     witch_boss: { A: "#0c0810", a: "#4a3862", b: "#2e2244", c: "#1a1428", n: "#6a1e44", y: "#c8a850", Y: "#7a6430", w: "#ece6d8", W: "#b4ac9a", X: "#76705f", e: "#b8c0ac", E: "#8e9886", D: "#606a5c", F: "#3a4236", K: "#ff3a2a", k: "#ffd0b0", Z: "#24141a", T: "#ddd4b2", m: "#1a0a10", Q: "#44345a", R: "#2c2240", S: "#1c1528", M: "#110b1a", V: "#7a5532", U: "#4e331b", u: "#2a1a0c", L: "#eee6ce", l: "#b6ae96", j: "#6e6654", g: "#d48aff", G: "#8a3ac8", p: "#86e8b0", P: "#2e7a52", B: "#3c2618" },
@@ -3254,6 +3255,109 @@ var Monsters = (function () {
     statue_stone:  { C: "X", V: "T", D: "Y", Y: "Y", R: "U", F: "T", Q: "T", O: "X", B: "Y", K: "Y", H: "U", U: "U", T: "T" },
     statue_bronze: { C: "6", V: "7", D: "5", Y: "5", R: "8", F: "7", Q: "7", O: "6", B: "9", K: "9", H: "8", U: "8", T: "7" }
   };
+  // ドワーフキング（黒鉄の坑道12階・主。2026-11-07 保護者の Gemini の絵をもとに Claude が描きなおした、43×48）。stand＝ふだん（ハンマーを地面に立てる）、attack＝正面の地面へハンマーをたたきつけた形。正面向きで、盾は絵の右側
+  var DWARFK = {
+    stand: [
+      "................A.....A....A...............",
+      "...............AoA.A.AoAA.AoA..............",
+      "..........AA...AOAAoAAOAoAAOA..AA..........",
+      ".........AWWA..AOAAOAAOAOAAOA.AWWA.........",
+      "........AWWA...AooooooooooooA..AWWA........",
+      "........AwwA...AOOcOOeeOOcOOA..AwwA........",
+      "........AwwA...AOOOOOOOOOOOOA..AwwA........",
+      ".........AwwA..AgwwgggggggggGAAwwA.........",
+      "..........AwwAAGggggggggggggGGwwA..........",
+      "...........AwwGGggggggggggggGwwA...........",
+      "............AwwGggggggggggggwwgA...........",
+      ".............AGGooooooooooooGGA............",
+      ".............AGGOOOOOOOOOOOOGGA............",
+      "..............AAgggggggggggggA.............",
+      "...............AsRgggggggggsA..............",
+      "..........A....AssAAssgsAAssA....A.........",
+      ".......AAAoAAAAAsssssSSsssssAAAAAoAAA......",
+      "......AoooooooccSSSSSSSSSSSSRcoooooooA.....",
+      ".....AooooooooORrrrrrrrrrrrrrRooooooooAAAA.",
+      ".....AooooooooRrrrrrrrrrROOOOOOOOOOOOOooooA",
+      "....AoQoooooooRrrrrrrrrrRObbbbbbbbbbbbbbbOA",
+      ".....AQOOOoOOORrrrrrrrrrRObbbbbbbbbbbbbbbOA",
+      ".....AQOOOOOOORrrrrrrrrrRObbbbbbbobbbbbbbOA",
+      ".....AQQOOOOORrrrrrrrrrrRObbbbbobbbobbbbbOA",
+      ".....AQQOOONNNRrrrrrrrrrRObbbbbooooobbbbbOA",
+      ".....AQQOOONNNRrrrrRrrrrRObbbbbbbbbbbbbbbOA",
+      ".....AQQOOONNNRrrrrRrrrrRObbbbbbbbbbbbbbbOA",
+      "....AAQQOOONNNRrrrrRrrrrRObbggggggggggbbbOA",
+      "...AooooooONNNnRrrrrrrrrRObbbgggggggggbbbOA",
+      "...AOOOOOOONNNnnRrrrrRRrRObbbbbGGGGGbbbbbOA",
+      "...AOOOOOOONNNnnnRrrrRRrRObbbbbbGGGbbbbbbOA",
+      "...AOOOOOOcNNNnnnnRrrrrrRObbbbbbGGGbbbbbbOA",
+      "...AQQBBQQcNNNnnnnnnRRrRnnObbbKKKKKKKbbbOA.",
+      "....AAbbCccBBBBBBBBBORROBBBObbbbbbbbbbbOA..",
+      ".....ABBCccBBBBBBBBBORROBBBBObbbbbbbbbOA...",
+      "....AbbCCccNNNnnnnnnnNNnnnnnnObbbbbbbOA....",
+      "....ABBCCccNNNnnnnnnnNNnnnnnnnObbbbbOA.....",
+      "....AbbCCCCNNNnnnnnnnNNnnnnnnnNObbbOCA.....",
+      "AAAABBACCCCccNNNnnnnnNNnnnnnNNNcObOCCA.....",
+      "wwwwwwwwCCCccNNNNNNNccccNNNNNNNccOCCCA.....",
+      "GgggggggCCCccNNNNNNNccccNNNNNNNccCCCCA.....",
+      "GgOggOggCCCccNNNNNNNccccNNNNNNNccCCCCA.....",
+      "GggOOgggCCCcBBbbbbbbbccBBbbbbbbbcCCCCA.....",
+      "GgOggOggCCCcBBbbbbbbbccBBbbbbbbbcCCCCA.....",
+      "GGGGGGGGAAAABBbbbbbbbAABBbbbbbbbAAAAA......",
+      "GGGGGGGGA..ABBbbbbbbbAABBbbbbbbbA..........",
+      "AAAAAAAA...ABBBBBBBBBAABBBBBBBBBA..........",
+      "............AAAAAAAAA..AAAAAAAAA..........."
+    ],
+    attack: [
+      "................A.....A....A...............",
+      "...............AoA.A.AoAA.AoA..............",
+      "..........AA...AOAAoAAOAoAAOA..AA..........",
+      ".........AWWA..AOAAOAAOAOAAOA.AWWA.........",
+      "........AWWA...AooooooooooooA..AWWA........",
+      "........AwwA...AOOcOOeeOOcOOA..AwwA........",
+      "........AwwA...AOOOOOOOOOOOOA..AwwA........",
+      ".........AwwA..AgwwgggggggggGAAwwA.........",
+      "..........AwwAAGggggggggggggGGwwA..........",
+      "...........AwwGGggggggggggggGwwA...........",
+      "............AwwGggggggggggggwwgA...........",
+      ".............AGGooooooooooooGGA............",
+      ".............AGGOOOOOOOOOOOOGGA............",
+      "..............AAgggggggggggggA.............",
+      "...............AsRgggggggggsA..............",
+      "..........A....AssAAssgsAAssA....A.........",
+      ".......AAAoAAAAAsssssSSsssssAAAAAoAAA......",
+      "......AoooooooccSSSSSSSSSSSSRcoooooooA.....",
+      ".....AooooooooORrrrrrrrrrrrrrRooooooooAAAA.",
+      ".....AooooooooRrrrrrrrrrROOOOOOOOOOOOOooooA",
+      "....AoQoooooooRrrrrrrrrrRObbbbbbbbbbbbbbbOA",
+      ".....AQOOOoOOORrrrrrrrrrRObbbbbbbbbbbbbbbOA",
+      ".....AQOOOOOOORrrrrrrrrrRObbbbbbbobbbbbbbOA",
+      ".....ACCcccOORrrrrrrrrrrRObbbbbobbbobbbbbOA",
+      ".....ACCcccNNNRrrrrrrrrrRObbbbbooooobbbbbOA",
+      ".....ACCcccNNNRrrrrRrrrrRObbbbbbbbbbbbbbbOA",
+      ".....ACCcccNNNRrrrrRrrrrRObbbbbbbbbbbbbbbOA",
+      ".....ACCcccNNNRrrrrRrrrrRObbggggggggggbbbOA",
+      ".....ACCcccNNNnRroooooooooobbgggggggggbbbOA",
+      ".....ACCcccNNNnnROOOOOOOOOObbbbGGGGGbbbbbOA",
+      ".....ACCcccNNNnnnOOOOOOOOOObbbbbGGGbbbbbbOA",
+      "......ACCccNNNnnnOOOOOOOOOObbbbbGGGbbbbbbOA",
+      "......ACCccNNNnnnQQQQQQQQQQbbbKKKKKKKbbbOA.",
+      "......ACCccBBBBBBBBBOBbOBBBObbbbbbbbbbbOA..",
+      "......ACCccBBBBBBBBBOBbOBBBBObbbbbbbbbOA...",
+      "......ACCccNNNnnnnnnnBbnnnnnnObbbbbbbOA....",
+      "......ACCccNNNnnnnnnnBbnnnnnnnObbbbbOA.....",
+      "......ACCCCNNNnnnnnnnBbnnnnnnnNObbbOCA.....",
+      "......ACCCCccNNNnnnnnBbnnnnnNNNcObOCCA.....",
+      "......ACCCCccNwwwwwwwwwwwwwwwwNccOCCCA.....",
+      "......ACCCCccNGggggggggggggggGNccCCCCA.....",
+      "......ACCCCccNGggggOggggOggggGNccCCCCA.....",
+      "......ACCCCcBBGgggggOggOgggggGbbcCCCCA.....",
+      "......ACCCCcBBGggggggOOggggggGbbcCCCCA.....",
+      ".......AAAAABBGgggggOggOgggggGbbAAAAA......",
+      "...........ABBGGGGGOGGGGOGGGGGbbA..........",
+      "...........ABBGGGGGGGGGGGGGGGGBBA..........",
+      "............AAAAAAAAAAAAAAAAAAAA..........."
+    ]
+  };
   // 盗賊のおかしら（黒鉄の坑道6階。2026-11-03 保護者が描いた絵、48×48）。stand＝ふだん、attack＝斬ったあと。絵は右向き
   var BANDIT = {
     stand: [
@@ -3419,7 +3523,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : TREE;
+    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -3427,7 +3531,8 @@ var Monsters = (function () {
   function drawBoss(ctx, e, x, y, frame) {
     var img = boss(e.def.kind, frame, e.flash > 0);
     var flip = ((e.def.kind === "wolf_boss" || e.def.kind === "elf_boss") && e.face.x > 0) ||   // ダークエルフの絵は、弓を左へ向けている
-               (e.def.kind === "bandit_boss" && e.face.x < 0);                                   // おかしらの絵は右向き
+               (e.def.kind === "bandit_boss" && e.face.x < 0) ||                                 // おかしらの絵は右向き
+               (e.def.kind === "dwarf_boss" && e.face.x < -0.2);                                 // ドワーフキングは正面向き。盾（絵の右）をこちらの側へ向ける
     ctx.save();
     if (flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -Math.round(img.width / 2), Math.round(y) - img.height); }
     else ctx.drawImage(img, Math.round(x) - Math.round(img.width / 2), Math.round(y) - img.height);
@@ -3435,6 +3540,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
