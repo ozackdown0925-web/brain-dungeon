@@ -373,6 +373,9 @@ var Combat = (function () {
         } else if (f.vis === "flame" || f.vis === "firestorm" || f.vis === "leaf") {
           // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず（2026-10-20）
           effects.push({ kind: "swirl", look: f.vis, x: a.x, y: a.y, r: f.radius, t: 0.8, max: 0.8, seed: Math.random() * 6 });
+        } else if (f.vis === "abyss") {   // アビスゲート（2026-11-08）：自分のまわりに球の形の暗黒の扉（黒い丸に紫のいなずま）
+          effects.push({ kind: "abyss", x: a.x, y: a.y, r: f.radius, t: 0.9, max: 0.9, seed: Math.random() * 100 });
+          Sound.play("hit");
         } else if (f.vis === "tidal") {
           effects.push({ kind: "tidal", x: a.x, y: a.y, r: f.radius, t: 0.7, max: 0.7, seed: Math.random() * 6 });
         } else {
@@ -404,6 +407,7 @@ var Combat = (function () {
         // hits：1回ごとにちがう斬り（エレメントブレイク）。step：1回ごとに前へ進む（迅雷斬。敵はすりぬけない）
         for (var r = 0; r < f.count; r++) later(r * f.interval, (function (r) { return function () {
           if (Party.current() !== c || c.down) return;
+          if (f.chase) chaseNearest(f.chase, (f.hit && (f.hit.reach || f.hit.radius)) || 18);   // 無双乱舞・魔炎連舞：敵を追いかけながら
           if (f.step) {   // 迅雷斬：一歩ふみこむ（残像を少し残す）
             var sx0 = a.x, sy0 = a.y;
             Enemies.moveBlocked(hooks.room, a, a.face.x * f.step, a.face.y * f.step);
@@ -413,6 +417,7 @@ var Combat = (function () {
         }; })(r));
         a.busy = f.count * f.interval;
         if (f.step) a.inv = Math.max(a.inv, f.count * f.interval);
+        if (f.chase) a.inv = Math.max(a.inv, f.count * f.interval * 0.5);
         break;
       case "rain":
         aimThen(c, AIM.bow, function () { rain(c, f); });
@@ -422,10 +427,20 @@ var Combat = (function () {
           zones.push({ c: c, f: f, x: a.x + a.face.x * f.dist, y: a.y + a.face.y * f.dist, t: f.dur, max: f.dur, tick: 0 });
         });
         break;
+      case "leap":      // ドラゴンダイブ
+        leap(c, f);
+        break;
+      case "pillar":    // セイクレッド
+        pillar(c, f);
+        break;
+      case "chrono":    // クロノフォール
+        chrono(c, f);
+        break;
       case "summon":    // 魔物使い：ダンジョンの主を呼ぶ（2026-10-26）
         summon(c, f);
         break;
       case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
+        if (f.beam) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ
         var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
         for (var st = 0; st < stepN; st++) {
           var bx = a.x, by = a.y;
@@ -437,8 +452,13 @@ var Combat = (function () {
             if (ddx * ddx + ddy * ddy <= (e.r + a.r + 4) * (e.r + a.r + 4)) { hitList.push(e); hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, px0, py0); }
           });
         }
-        a.inv = Math.max(a.inv, 0.5);
+        a.inv = Math.max(a.inv, f.beam ? 0.8 : 0.5);
         effects.push({ kind: "trail", x0: px0, y0: py0, x1: a.x, y1: a.y, t: 0.45, max: 0.45 });
+        if (f.beam) {   // ディバインエンド（2026-11-08）：通ったあとに太い光の帯が残る（グランドクロスの大きい版）
+          var bl = Math.sqrt((a.x - px0) * (a.x - px0) + (a.y - py0) * (a.y - py0));
+          effects.push({ kind: "beam", x: px0, y: py0 - 4, ang: Math.atan2(a.face.y, a.face.x), len: bl + 10, w: 20, t: 0.7, max: 0.7, color: f.color });
+          Sound.play("hit");
+        }
         effects.push({ kind: "lance", reach: 22, t: 0.25, max: 0.25 });
         break;
       case "mpheal":
@@ -527,6 +547,7 @@ var Combat = (function () {
     var tgt = nearestInFront(f.dist + 50, 0.8);
     var cx = tgt ? tgt.e.x : a.x + a.face.x * f.dist, cy = tgt ? tgt.e.y : a.y + a.face.y * f.dist;
     if (f.look === "meteor") { meteors(c, f, cx, cy); return; }
+    if (f.look === "astral") { astralRain(c, f, cx, cy); return; }
     effects.push({ kind: "ring", x: cx, y: cy, r: f.radius, t: 0.15 + f.count * 0.12 + 0.3, max: 0.15 + f.count * 0.12 + 0.3, color: "#e8d8b0" });
     for (var m = 0; m < f.count; m++) {
       later(0.05 + m * 0.12, function () {
@@ -534,6 +555,91 @@ var Combat = (function () {
         // 空から矢が落ちてきて、刺さったときに当たる（2026-10-19）
         effects.push({ kind: "arrowfall", x: px, y: py, t: 0.45, max: 0.45 });
         later(0.12, function () { hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0 }, px, py, 12); });
+      });
+    }
+  }
+
+  // アストラルレイン（2026-11-08）：空から光の矢（光のビーム）がななめに降りそそぐ。矢の雨より速く、数が多い
+  function astralRain(c, f, cx, cy) {
+    var gap = 0.06;
+    effects.push({ kind: "ring", x: cx, y: cy, r: f.radius, t: 0.2 + f.count * gap + 0.4, max: 0.2 + f.count * gap + 0.4, color: "#fff2a0" });
+    for (var m = 0; m < f.count; m++) {
+      later(0.05 + m * gap, function () {
+        var px = cx + (Math.random() - 0.5) * f.radius * 1.4, py = cy + (Math.random() - 0.5) * f.radius * 1.4;
+        effects.push({ kind: "lightfall", x: px, y: py, t: 0.4, max: 0.4 });
+        later(0.1, function () { hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0 }, px, py, f.hitRadius || 12); });
+      });
+    }
+  }
+  // 無双乱舞・魔炎連舞：近くの敵の方へ、届くところまで走ってから打つ（敵はすりぬけない）
+  function chaseNearest(maxGo, reach) {
+    var a = A(), t = autoTarget(120);
+    if (!t) return;
+    var dx = t.x - a.x, dy = t.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    a.face = { x: dx / d, y: dy / d };
+    var go = Math.min(maxGo, Math.max(0, d - t.r - a.r - reach * 0.5));
+    if (go <= 0) return;
+    var sx0 = a.x, sy0 = a.y;
+    Enemies.moveBlocked(hooks.room, a, a.face.x * go, a.face.y * go);
+    effects.push({ kind: "trail", x0: sx0, y0: sy0, x1: a.x, y1: a.y, t: 0.2, max: 0.2 });
+  }
+  // ドラゴンダイブ（2026-11-08）：高くとんで（空中は当たらない）、近くの敵にとびこむ。とびこんだ敵に1回、着地のまわりに1回
+  function leap(c, f) {
+    var a = A(), x0 = a.x, y0 = a.y, up = 0.35;
+    var tgt = autoTarget(f.range);
+    a.inv = Math.max(a.inv, up + 0.3); a.busy = Math.max(a.busy, up + 0.3);
+    effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
+    later(up, function () {
+      if (Party.current() !== c || c.down) return;
+      var tx, ty;
+      if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      a.face = { x: dx / d, y: dy / d };
+      var go = Math.max(0, d - (tgt ? tgt.r + a.r - 2 : 0)), n = Math.ceil(go / 3);
+      for (var i = 0; i < n; i++) {   // 空中なので敵の上をこえる（かべでは止まる）
+        var bx = a.x, by = a.y;
+        hooks.room.move(a, a.face.x * Math.min(3, go - i * 3), a.face.y * Math.min(3, go - i * 3));
+        if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.3) break;
+      }
+      effects.push({ kind: "dive", x: a.x, y: a.y, t: 0.35, max: 0.35, color: f.color });
+      if (tgt && !tgt.dead) hitEnemy(tgt, c, { stat: f.stat, mult: f.dive, elem: f.elem, push: 0, color: f.color }, a.x, a.y);
+      later(0.1, function () {
+        if (Party.current() !== c || c.down) return;
+        effects.push({ kind: "shock", x: a.x, y: a.y, r: f.radius, t: 0.55, max: 0.55, color: f.color });
+        effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(Math.random() * 6, f.radius, Math.PI), t: 0.7, max: 0.7 });
+        Sound.play("hit");
+        hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: f.color }, a.x, a.y, f.radius);
+      });
+    });
+  }
+  // セイクレッド（2026-11-08）：ねらった敵のまわりに大きい光の柱
+  function pillar(c, f) {
+    var a = A(), t = autoTarget(f.range);
+    if (t) faceNearest(f.range);
+    var px = t ? t.x : a.x + a.face.x * 60, py = t ? t.y : a.y + a.face.y * 60;
+    effects.push({ kind: "pillar", x: px, y: py, r: f.radius, t: 0.95, max: 0.95, color: f.color });
+    later(0.15, function () { Sound.play("hit"); hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0, color: f.color }, px, py, f.radius); });
+  }
+  // クロノフォール（2026-11-08）：時空をこえて、隕石が画面じゅうに降る。部屋の敵みんなに1つずつ当たり、ほかにも景色の隕石が降る
+  function chrono(c, f) {
+    var a = A();
+    effects.push({ kind: "clock", x: a.x, y: a.y, t: 1.6, max: 1.6 });
+    Enemies.hostile().slice().forEach(function (e, i) {
+      later(0.15 + i * 0.1, function () {
+        if (e.dead) return;
+        effects.push({ kind: "meteor", x: e.x, y: e.y, t: 0.75, max: 0.75 });
+        later(0.3, function () {
+          effects.push({ kind: "boom", x: e.x, y: e.y, r: 20, t: 0.45, max: 0.45 });
+          Sound.play("hit");
+          if (!e.dead) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, e.x, e.y - 20);
+        });
+      });
+    });
+    for (var k = 0; k < (f.extra || 0); k++) {
+      later(0.1 + k * 0.13, function () {
+        var mx = a.x + (Math.random() - 0.5) * 400, my = a.y + (Math.random() - 0.5) * 220;
+        effects.push({ kind: "meteor", x: mx, y: my, t: 0.75, max: 0.75 });
+        later(0.3, function () { effects.push({ kind: "boom", x: mx, y: my, r: 16, t: 0.4, max: 0.4 }); });
       });
     }
   }
@@ -1045,9 +1151,130 @@ var Combat = (function () {
     }
   }
 
+  // 最上級職の大技の見た目（2026-11-08）。描いたら true
+  function drawTopEffect(ctx, ef, a, cam, p, q) {
+    var x, y, i, an, R;
+    if (ef.kind === "abyss") {   // アビスゲート：黒い球の扉が開き、ふちに紫のいなずまが走る
+      x = ef.x - cam.x; y = ef.y - cam.y - 6;
+      R = ef.r * Math.min(1, q / 0.25) * (q > 0.75 ? 1 - (q - 0.75) / 0.25 * 0.3 : 1);
+      var al = q > 0.75 ? 1 - (q - 0.75) / 0.25 : 1;
+      var g = ctx.createRadialGradient(x, y, 0, x, y, R);
+      g.addColorStop(0, rgba("#000000", 0.9 * al)); g.addColorStop(0.7, rgba("#1a0a2a", 0.85 * al)); g.addColorStop(0.92, rgba("#6a2aa0", 0.7 * al)); g.addColorStop(1, rgba("#9a5ad0", 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rgba("#c9a8ff", 0.8 * al); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.97, 0, Math.PI * 2); ctx.stroke();
+      var fr = Math.floor(q * 18);   // いなずまは、こまめに形が変わる
+      ctx.lineWidth = 1.5; ctx.lineCap = "round";
+      for (i = 0; i < 7; i++) {
+        var sd = ef.seed + i * 13.7 + fr * 3.1;
+        an = (Math.sin(sd) * 0.5 + 0.5) * Math.PI * 2;
+        var r0 = R * 0.25, r1 = R * (0.85 + 0.15 * Math.sin(sd * 2.3));
+        ctx.strokeStyle = rgba(i % 2 ? "#e0c8ff" : "#b06aff", 0.9 * al);
+        ctx.beginPath();
+        for (var k = 0; k <= 5; k++) {
+          var rr = r0 + (r1 - r0) * k / 5, jit = (k === 0 || k === 5) ? 0 : Math.sin(sd * (k + 1) * 4.7) * 0.22;
+          var px = x + Math.cos(an + jit) * rr, py = y + Math.sin(an + jit) * rr;
+          if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.lineCap = "butt";
+      glowDot(ctx, x, y, R * 0.3, "#9a5ad0", "#2a1040", 0.5 * al);
+      return true;
+    }
+    if (ef.kind === "lightfall") {   // アストラルレイン：ななめ上から落ちる光の矢（光のビーム）
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var fall = Math.min(1, q / 0.3);
+      if (fall < 1) {
+        var hx = x + 30 * (1 - fall), hy = y - 70 * (1 - fall);
+        var tl = ctx.createLinearGradient(hx + 18, hy - 42, hx, hy);
+        tl.addColorStop(0, "rgba(255,255,255,0)"); tl.addColorStop(1, "rgba(255,242,160,0.9)");
+        ctx.strokeStyle = tl; ctx.lineWidth = 3; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(hx + 18, hy - 42); ctx.lineTo(hx, hy); ctx.stroke();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(hx + 6, hy - 14); ctx.lineTo(hx, hy); ctx.stroke();
+        ctx.lineCap = "butt";
+        glowDot(ctx, hx, hy, 6, "#ffffff", "#fff2a0", 0.9);
+      } else {
+        var st = (q - 0.3) / 0.7;
+        glowDot(ctx, x, y - 2, 4 + 8 * st, "#ffffff", "#fff2a0", 0.9 * (1 - st));
+        ctx.strokeStyle = rgba("#fff2a0", 0.8 * (1 - st)); ctx.lineWidth = 1;
+        ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, 4 + 10 * st, (4 + 10 * st) * 0.45, 0, 0, Math.PI * 2); else ctx.arc(x, y, 4 + 10 * st, 0, Math.PI * 2); ctx.stroke();
+      }
+      return true;
+    }
+    if (ef.kind === "pillar") {   // セイクレッド：ねらった敵のまわりに、空までのびる大きい光の柱
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var grow = Math.min(1, q / 0.15), W = ef.r * (q < 0.2 ? 1.1 : 0.4 + 0.7 * p), H = 150 * grow;
+      var lg = ctx.createLinearGradient(x - W, 0, x + W, 0);
+      lg.addColorStop(0, rgba(ef.color, 0)); lg.addColorStop(0.3, rgba(ef.color, 0.5 * p + 0.1)); lg.addColorStop(0.5, rgba("#ffffff", 0.95 * Math.min(1, p * 1.4)));
+      lg.addColorStop(0.7, rgba(ef.color, 0.5 * p + 0.1)); lg.addColorStop(1, rgba(ef.color, 0));
+      ctx.fillStyle = lg; ctx.fillRect(x - W, y - H, W * 2, H);
+      ctx.fillStyle = rgba(ef.color, 0.45 * p);
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, ef.r, ef.r * 0.45, 0, 0, Math.PI * 2); else ctx.arc(x, y, ef.r, 0, Math.PI * 2); ctx.fill();
+      for (i = 0; i < 10; i++) {   // のぼる光の粒
+        var ph = (q * 2 + i / 10) % 1;
+        glowDot(ctx, x + Math.sin(i * 7.3) * W * 0.7, y - ph * H, 3, "#ffffff", ef.color, 0.9 * p);
+      }
+      return true;
+    }
+    if (ef.kind === "jump") {   // ドラゴンダイブ：足もとのかげと、空へのぼる光の線
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      ctx.fillStyle = rgba("#000000", 0.35 * p);
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 10, 8 * p + 2, 3 * p + 1, 0, 0, Math.PI * 2); else ctx.arc(x, y + 10, 6, 0, Math.PI * 2); ctx.fill();
+      var top = y - 10 - 90 * q;
+      var jg = ctx.createLinearGradient(0, top, 0, y);
+      jg.addColorStop(0, rgba("#ffffff", 0.9)); jg.addColorStop(1, rgba(ef.color, 0));
+      ctx.fillStyle = jg; ctx.fillRect(x - 3, top, 6, y - top);
+      glowDot(ctx, x, top, 9, "#ffffff", ef.color, 0.9);
+      return true;
+    }
+    if (ef.kind === "dive") {   // ドラゴンダイブ：空から落ちてくる光
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var dg = ctx.createLinearGradient(0, y - 110, 0, y);
+      dg.addColorStop(0, rgba(ef.color, 0)); dg.addColorStop(1, rgba("#ffffff", 0.95 * p));
+      ctx.fillStyle = dg; ctx.fillRect(x - 5 * p - 1, y - 110, 10 * p + 2, 110);
+      glowDot(ctx, x, y - 4, 16, "#ffffff", ef.color, p);
+      return true;
+    }
+    if (ef.kind === "shock") {   // ドラゴンダイブの着地：広がる衝撃の輪
+      x = ef.x - cam.x; y = ef.y - cam.y; R = ef.r * (0.3 + 0.9 * Math.sqrt(q));
+      glowDot(ctx, x, y - 4, R * 0.8, "#ffffff", ef.color, 0.7 * p);
+      ctx.strokeStyle = rgba("#ffffff", 0.9 * p); ctx.lineWidth = 2.5;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R, R * 0.55, 0, 0, Math.PI * 2); else ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = rgba(ef.color, 0.8 * p); ctx.lineWidth = 1.5;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R * 1.2, R * 0.66, 0, 0, Math.PI * 2); else ctx.arc(x, y, R * 1.2, 0, Math.PI * 2); ctx.stroke();
+      return true;
+    }
+    if (ef.kind === "clock") {   // クロノフォール：時計の文字ばんが広がり、針が速く回る
+      x = a.x - cam.x; y = a.y - cam.y - 6; R = 20 + 60 * Math.min(1, q / 0.3);
+      var ca = q < 0.8 ? 1 : (1 - q) / 0.2;
+      ctx.strokeStyle = rgba("#9fe0ff", 0.7 * ca); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = rgba("#ffffff", 0.35 * ca); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, R * 0.82, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 12; i++) {
+        an = i / 12 * Math.PI * 2;
+        ctx.strokeStyle = rgba("#ffffff", 0.7 * ca); ctx.lineWidth = i % 3 ? 1 : 2;
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(an) * R * 0.86, y + Math.sin(an) * R * 0.86); ctx.lineTo(x + Math.cos(an) * R * 0.97, y + Math.sin(an) * R * 0.97); ctx.stroke();
+      }
+      ctx.lineCap = "round";
+      ctx.strokeStyle = rgba("#ffffff", 0.85 * ca); ctx.lineWidth = 2;
+      an = -Math.PI / 2 + q * Math.PI * 8;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * R * 0.75, y + Math.sin(an) * R * 0.75); ctx.stroke();
+      an = -Math.PI / 2 + q * Math.PI * 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * R * 0.5, y + Math.sin(an) * R * 0.5); ctx.stroke();
+      ctx.lineCap = "butt";
+      glowDot(ctx, x, y, R * 0.5, "#ffffff", "#5aa9ff", 0.25 * ca);
+      return true;
+    }
+    return false;
+  }
+
   function drawEffect(ctx, ef, a, cam) {
     if (ef.e) a = ef.e;   // ef.e：闘技場の相手（キャラのかわりに、その相手の場所・向きで描く。2026-11-01）
     var p = ef.t / ef.max, q = 1 - p;   // p：のこり、q：すすみぐあい
+    if (drawTopEffect(ctx, ef, a, cam, p, q)) return;
     if (ef.kind === "swirl") {   // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず
       var wx = ef.x - cam.x, wy = ef.y - cam.y - 3, wr = ef.r * (0.4 + 0.6 * Math.min(1, q * 2.2));
       var col = ef.look === "leaf" ? "#9be36a" : "#ff8a3d", col2 = ef.look === "leaf" ? "#e0ffb0" : "#fff3c4";

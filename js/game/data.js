@@ -346,7 +346,32 @@ var GameData = (function () {
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] }
+    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
+    // 最上級職の大技のお試し（2026-11-08 保護者の案と強さのたたき台）。最上級職はまだないので、もとの上級職のスキルとして置き、
+    // 「全開放の試し」のときだけ使える（preview：ふつうには覚えない）。見た目は今の上級職の絵のまま。数字は遊んでみて直す
+    { id: "x.kings",  job: "knight", star: 8, preview: "騎士王", name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ2人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { weapons: ["sword"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 5.0, elem: "light", length: 260, width: 32, color: "#ffd75a" }] },
+    { id: "x.abyss",  job: "blackmage", star: 8, preview: "大魔導師", name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。直径キャラ9人分の敵みんなに当たる（闇）。", short: "アビス", cond: { line: "blackmage" }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0" }] },
+    { id: "x.astral", job: "sniper", star: 8, preview: "グランドアーチャー", name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { weapons: ["bow"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.5, elem: "light", count: 16, dist: 70, radius: 40, hitRadius: 18 }] },
+    { id: "x.musou",  job: "monk", star: 8, preview: "武神", name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { weapons: ["fist"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.16, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
+    { id: "x.sacred", job: "whitemage", star: 8, preview: "大司教", name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { line: "whitemage" }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "pillar", stat: "m", mult: 4.5, elem: "light", radius: 30, range: 170, color: "#fff2a0" }] },
+    { id: "x.maen",   job: "magicknight", star: 8, preview: "魔剣聖", name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.3, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
+    { id: "x.dive",   job: "ninja", star: 8, preview: "竜騎士", name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところのまわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 34, range: 150, elem: "weapon", color: "#7fc8ff" }] },
+    { id: "x.vortex", job: "gladiator", star: 8, preview: "グラディエーター", name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { weapons: ["sword", "axe"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 },
+           { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.45 },
+           { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.45 },
+           { t: "rapid", count: 6, interval: 0.2, step: 10, hit: { t: "arc", stat: "p", mult: 0.5, elem: "weapon", color: "#fff3a0" } }] },
+    { id: "x.divine", job: "paladin", star: 8, preview: "パラディン", name: "ディバインエンド", desc: "1.2秒ためて、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, color: "#fff2a0" }] },
+    { id: "x.chrono", job: "sage", star: 8, preview: "時の賢者", name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { line: "sage" }, mp: 28, ct: 30,
+      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });

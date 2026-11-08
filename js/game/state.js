@@ -191,7 +191,7 @@ var GameState = (function () {
     var got = [], st = stars(h);
     GameData.SKILLS.forEach(function (sk) {
       if (sk.job !== h.job || sk.star > st + 1 || h.learned.indexOf(sk.id) >= 0) return;
-      if (sk.future || (sk.boss && !beatBoss(sk.boss))) return;   // 魔物使い：その主をたおしていないと覚えない。まだないスキルは覚えない
+      if (sk.future || sk.preview || (sk.boss && !beatBoss(sk.boss))) return;   // 魔物使い：その主をたおしていないと覚えない。まだないスキルは覚えない
       h.learned.push(sk.id); got.push(sk.name);
       // 覚えたスキルは、空いている枠に自動でセットする（アクティブはセットA、空きがなければセットB。パッシブはパッシブの枠）
       if (!GameData.canSet(sk, h.job, h.equip ? heroWeaponType(h) : starterWeapon(h.job))) return;
