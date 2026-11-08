@@ -61,12 +61,14 @@ var Dungeon = (function () {
   }
 
   // ---------- 部屋の型に道をあける ----------
-  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I"; }
+  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I" && ch !== "C"; }
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
-  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : ForestRooms; }
-  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : BossRoom; }
+  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : ForestRooms; }
+  // ボスごとにかえる部屋（data.js の bosses の room）。warm＝烈風の峰6階の湯けむりの谷（ラフレシア。2026-11-08）
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom };
+  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -168,7 +170,21 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
-    if (theme === "cave") {
+    if (theme === "peak") {
+      // 烈風の峰（地方2の山。段階2、2026-11-08 保護者と決定）：前半（1〜6階）はハーピーの群れに、山ヤギと岩の子ゴーレム。
+      // 4階から風の精。後半（7〜12階）は雪オオカミの群れに、ハーピー・風の精・岩の子ゴーレム・ときどき山ヤギ
+      if (floor <= 6) {
+        for (var pi = 0; pi < n; pi++) types.push("harpy");
+        if (rnd() < 0.6) types[0] = "goat";
+        if (n >= 4 && rnd() < 0.45) types[1] = "golem_kid";
+        if (floor >= 4 && rnd() < 0.4) types[types.length - 1] = "wind_sprite";
+      } else {
+        for (var pj = 0; pj < n; pj++) types.push("snow_wolf");
+        if (rnd() < 0.5) types[0] = "harpy";
+        if (rnd() < 0.45) types[types.length - 1] = "wind_sprite";
+        if (n >= 4 && rnd() < 0.4) types[1] = rnd() < 0.6 ? "golem_kid" : "goat";
+      }
+    } else if (theme === "cave") {
       // 黒鉄の坑道（地方2の段階2、2026-10-27 保護者と決定）：前半（1〜6階）は盗賊の部隊（剣士2・弓使い1のくり返し）に、
       // 大コウモリと岩の虫（2階から）。後半（7〜12階）はドワーフの部隊（戦士2・鎚使い1）に、火トカゲ・水のスライム・光の精（9階から）・ときどき大コウモリ
       if (floor <= 6) {
@@ -295,12 +311,12 @@ var Dungeon = (function () {
     var plan = [
       { x: 1, y: 1, kind: "start", tpl: ROOMS[0], doors: ["e"] },
       { x: 2, y: 1, kind: "room", tpl: ROOMS[mid], doors: ["w", "e"] },
-      { x: 3, y: 1, kind: "exit", tpl: bossRoomFor(theme), doors: ["w"] }
+      { x: 3, y: 1, kind: "exit", tpl: (info.room && BOSS_ROOMS[info.room]) || bossRoomFor(theme), doors: ["w"], theme: info.theme }
     ];
     plan.forEach(function (p) {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
       c.room = buildRoom(p.tpl, p.doors);
-      c.room.theme = theme;
+      c.room.theme = p.theme || theme;
       c.center = centerSpot(c.room);
       c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
       cells[key(p.x, p.y)] = c;
@@ -321,7 +337,7 @@ var Dungeon = (function () {
   // ---------- 鍵と扉・宝箱・罠（段階4-2） ----------
   // 部屋のつなぎ方と別の順の数を使う（4-1 と同じ seed なら、部屋のつなぎ方と敵は同じまま）
   function placeThings(dg, floor, seed, dungeon) {
-    var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave";
+    var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -433,21 +449,26 @@ var Dungeon = (function () {
     // 瘴気の森：部屋の型にも毒の沼があるうえに、罠も樹海より多い（毒の沼が多め。落とし穴は少なめ）
     // 原生の秘境（2026-10-25 保護者と決定）：罠は落とし穴と毒の沼だけ。樹海より2つ多く、落とし穴が多め
     // 黒鉄の坑道（2026-10-27、仮）：樹海より1つ多く、落とし穴が多め
-    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : cave ? 1 : 0);
+    // 烈風の峰（2026-11-08 保護者と決定）：坑道と同じ数。突風4割・落とし穴4割・毒の沼2割
+    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : cave || peak ? 1 : 0);
     var trapRooms = keys.filter(function (k) { return k !== dg.start && notNest(k); });
     var perRoom = {};
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
       var tk = pick(rnd, trapRooms);
       if ((perRoom[tk] || 0) >= 2) continue;
       // 黒鉄の坑道（2026-10-27 保護者の案）：落石（rock。1マス）を足す。落石4割・落とし穴4割・毒の沼2割
-      var rv = rnd(), rock = cave && rv < 0.4;
-      var pit = !rock && (cave ? rv < 0.8 : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
+      var rv = rnd(), rock = cave && rv < 0.4, wind = peak && rv < 0.4;
+      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
       // 落とし穴と落石はまわり1マスも通れるところだけ（せまい道をふさがないように）
-      var ts = pit || rock ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
+      var one = pit || rock || wind;
+      var ts = one ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
       var tp = pick(rnd, ts);
-      dg.cells[tk].traps.push({ type: rock ? "rock" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: pit || rock ? 1 : 2, h: pit || rock ? 1 : 2, hidden: rnd() < 0.35, found: false });
-      mark(tk, tp.x, tp.y, pit || rock ? 1 : 2, pit || rock ? 1 : 2, 1);
+      // 突風（烈風の峰）：ふむと、決まった向き（dir：上下左右）へ少しのあいだ押し流される。見つけた突風の罠は、向きの矢印で見える
+      var tr = { type: rock ? "rock" : wind ? "wind" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
+      if (wind) tr.dir = ["n", "s", "e", "w"][Math.floor(rnd() * 4)];
+      dg.cells[tk].traps.push(tr);
+      mark(tk, tp.x, tp.y, one ? 1 : 2, one ? 1 : 2, 1);
       perRoom[tk] = (perRoom[tk] || 0) + 1;
       t++;
     }
@@ -476,6 +497,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
+    if (th === "peak") return floor <= 6 ? ["harpy", "goat", "golem_kid"] : ["snow_wolf", "harpy", "wind_sprite"];   // 烈風の峰（今は巣を置かない）
     if (th === "cave") return floor <= 6 ? ["thief_sword", "thief_archer", "bat", "rock_worm"] : ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime"];   // 坑道（今は巣を置かない）
     if (th === "wild") {
       pool = ["goblin_sword", "goblin_spear", "skeleton_sword", "skeleton_archer", "vine", "frog", "bee", "shadow_mage", "wolf", "wolf"];

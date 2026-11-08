@@ -497,6 +497,40 @@ var GameData = (function () {
       res: { slash: 0.5, pierce: 0.5, strike: 0.5, dark: 1.75, light: 0 }, speed: 30, r: 6,
       reach: 18, windup: 0.6, cooldown: 2.0, color: "#f0d070", glow: true
     },
+    // ---- 烈風の峰の敵（地方2の山。段階2、2026-11-08 保護者と決定）。数字は遊んでみてから直す ----
+    // 弱点がかたよらないように、火（ハーピー・雪オオカミ）・斬（山ヤギ）・打（岩の子ゴーレム）・闇（風の精）に分けた。刺が弱点の敵はいない
+    // ハーピー：空を飛ぶ（水や崖の上も通る）。じぐざぐに近づいて、かぎづめで引っかく。火が弱点
+    harpy: {
+      name: "ハーピー", kind: "bee", fly: true, hp: 26, patk: 9, pdef: 2, mdef: 3,
+      res: { fire: 1.3, strike: 0.75 }, speed: 50, r: 6,
+      reach: 13, windup: 0.35, cooldown: 1.5, color: "#7a8ac0"
+    },
+    // 山ヤギ：ワイルドボアと同じく、赤い線で予告してから角で突進する。岩にぶつかるとふらつく。斬が弱点、打はいまひとつ
+    goat: {
+      name: "山ヤギ", kind: "boar", hp: 52, patk: 9, pdef: 4, mdef: 2,
+      res: { slash: 1.3, strike: 0.75 }, speed: 26, r: 7,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#d8d0c0",
+      chargeMin: 24, chargeRange: 160, chargeMax: 190, chargeWarn: 0.7, chargeSpeed: 240, chargeMult: 2.0, chargeEvery: 4, tired: 1.6
+    },
+    // 岩の子ゴーレム：岩の体。のろいが、かたくて HP が多い。こぶしで重い一撃。打が弱点、斬と刺は半減
+    golem_kid: {
+      name: "岩の子ゴーレム", kind: "melee", hp: 64, patk: 11, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5 }, speed: 14, r: 7,
+      reach: 14, windup: 0.7, cooldown: 1.9, lunge: 4, color: "#8a8478"
+    },
+    // 風の精（4階から）：ふわふわ浮いて、はなれたところから風の刃を飛ばす（魔法のダメージ）。
+    // 体のまわりの風が矢をそらすので、刺は半減。斬・打もいまひとつ。闇が弱点
+    wind_sprite: {
+      name: "風の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 11, pdef: 4, mdef: 5,
+      res: { pierce: 0.5, slash: 0.75, strike: 0.75, dark: 1.3 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 120, color: "#a8e0c8", wind: true
+    },
+    // 雪オオカミ（7階から）：オオカミと同じく群れで回りこみ、すきを見てかみつく。オオカミより少し強い。火が弱点
+    snow_wolf: {
+      name: "雪オオカミ", kind: "wolf", hp: 36, patk: 9, pdef: 3, mdef: 2,
+      res: { fire: 1.3, water: 0.75 }, speed: 50, r: 5,
+      reach: 12, circle: 34, windup: 0.35, cooldown: 1.5, lunge: 8, color: "#dfe6ee"
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -750,9 +784,31 @@ var GameData = (function () {
               before: ["坑道のいちばん奥に、岩をけずった玉座がある。", "かんむりをかぶったドワーフが、大きなハンマーを地面に立てた。", "「わが坑道をあらす者よ。このハンマーで、たたきなおしてくれる！」"],
               after: ["ドワーフキングは、ハンマーを置いて、大きく息をついた。", "「……見事だ。おぬしの力、みとめよう。奥のミスリルは、持っていくがよい」", "山へ続く道が見えてきた。"] }
       }
+    },
+    // 烈風の峰（地方2の山。段階1、2026-11-08）：12階（6階にラフレシア、12階に大怪鳥。どちらもまだ作っていないので、
+    // 今は大木の魔物とダークエルフを仮に使う）。ドワーフキング（黒鉄の坑道の主）をたおすと開く。深さは坑道の続き（51＋階）。
+    // 部屋は山の型（theme: peak）。装備の段はミスリル（3。2026-11-06 に決めた足し算の伸び ×3.16）。
+    // 説明は 2026-11-04 保護者が書いた山道の文。名前は仮（Claude の案）
+    yama: {
+      id: "yama", tagline: "雪山へと続く険しく冷たい一本道。", intro: ["雪山へと続く険しく冷たい一本道。", "頂上付近には「空の覇者である大怪鳥が巣食っている」と言い伝えられ、誰もが恐れて近寄らない。"],
+      region: "frostcrest", name: "烈風の峰", short: "峰", floors: 12, needs: "kodo", depthBase: 51, theme: "peak", tier: 3,
+      // 敵の強さの上のせ（段階2、2026-11-08。仮）：装備がミスリルの段（鋼の1.23倍）になる分だけ、坑道より上げた。
+      //   HP ×2.3・攻撃 ×1.1（坑道は ×1.9・×1.25。山の敵はもとの攻撃が少し高いので、上のせは小さく）。tools/balance.js で、坑道と同じくらいの「何振りで」「何回で」になるようにした
+      //   岩の子ゴーレムはもとの HP が高いので HP の上のせを小さく
+      foeHp: 2.3, foeAtk: 1.1, foeType: { golem_kid: { hp: 0.75 } },
+      bosses: {
+        // room・theme：ボスの部屋をかえる（2026-11-08 保護者：ラフレシアは崖の部屋でなく、ふつうの部屋。雪の中はおかしいので、
+        //   地熱で雪がとけた、湯けむりの谷にした。dungeon.js の BOSS_ROOMS と tiles.js の peakwarm）
+        6: { enemy: "tree_boss", title: "峰の花をしずめし者", room: "warm", theme: "peakwarm",   // 仮（ラフレシアを作るまで、大木の魔物）。前後の文は Claude が書いた仮の文
+             before: ["雪がとけた谷に、湯けむりが立ちのぼっている。", "そのまんなかに、大きな花がさいている。", "あまいにおいが、あたりにただよってきた……。"],
+             after: ["大きな花は、しおれて岩の間に消えた。", "峰の上へ、道が続いている。"] },
+        12: { enemy: "elf_boss", title: "烈風をきわめし者",       // 仮（大怪鳥を作るまで、ダークエルフ）。前後の文は Claude が書いた仮の文
+              before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。"],
+              after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
@@ -763,9 +819,12 @@ var GameData = (function () {
          heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" },
     // 鋼の段（原生の秘境の段階6、2026-10-26）。弓・杖・服・ローブは、それらしい名前にした（保護者があとで直してよい）
     2: { sword: "鋼の剣", greatsword: "鋼の大剣", axe: "鋼の斧", bow: "風の長弓", spear: "鋼の槍", fist: "鋼のこて", staff: "水晶の杖",
-         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" }
+         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" },
+    // ミスリルの段（烈風の峰。2026-11-08。ドワーフキングをたおすと、宝箱とお店がミスリルになる）。名前は仮（保護者があとで直してよい）
+    3: { sword: "ミスリルの剣", greatsword: "ミスリルの大剣", axe: "ミスリルの斧", bow: "銀翼の弓", spear: "ミスリルの槍", fist: "ミスリルのこて", staff: "月光の杖",
+         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }

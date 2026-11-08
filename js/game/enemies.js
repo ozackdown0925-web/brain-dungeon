@@ -830,6 +830,10 @@ var Enemies = (function () {
                     opts: { skillShot: true, spec: { stat: "m", elem: "none" }, color: "#c9a8ff", size: 2, magic: true } });
       return;
     }
+    if (d.wind) {   // 風の精の風の刃（烈風の峰、2026-11-08。魔法のダメージ）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 6 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 1.6, from: e, ally: !!e.charm, opts: { wind: true, magic: true } });
+      return;
+    }
     if (d.kind === "caster" || d.kind === "dwisp") {   // 闇の玉（魔法のダメージ。ダークウィスプも）
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { orb: true, magic: true } });
       return;
@@ -869,6 +873,7 @@ var Enemies = (function () {
     if (d.kind === "spear") e.thrust = 0.22;
     else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
     else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
+    else if (d.kind === "bee" && e.type === "harpy") fxs.push({ kind: "slash", col: "#e8f0ff", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // ハーピーはかぎづめで引っかく
     else if (d.kind === "bee" && e.type === "bat") fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
     else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
@@ -947,7 +952,7 @@ var Enemies = (function () {
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
-      if (d.kind === "wisp" || d.kind === "dwisp") {   // 瘴気の霊・ダークウィスプ：ふわふわ上下にゆれて、少しすけている
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind) {   // 瘴気の霊・ダークウィスプ・風の精：ふわふわ上下にゆれて、少しすけている
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
@@ -961,11 +966,18 @@ var Enemies = (function () {
       }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
       if (tw && !e.dead && !tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
-      if (d.kind === "wisp" || d.kind === "dwisp") ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind) ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if ((d.kind === "caster" || d.kind === "dwisp") && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
         var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
-        Combat.glowDot(ctx, ox2, oy2, 4 + kc * 7, "#e0c0ff", "#c890f0", 0.6 + 0.4 * kc);
-        Render.rect(Math.round(ox2) - 1 - Math.round(kc), Math.round(oy2) - 1 - Math.round(kc), 2 + Math.round(kc) * 2, 2 + Math.round(kc) * 2, "#2a1040");
+        if (d.wind) {   // 風の精：緑がかった白い風が、まわりをくるくる回って集まる
+          for (var wv = 0; wv < 6; wv++) {
+            var wa = clock * 9 + wv * 1.05, wr = 12 - kc * 7;
+            Render.rect(Math.round(ox2 + Math.cos(wa) * wr), Math.round(oy2 + Math.sin(wa) * wr * 0.7), 2, 1, wv % 2 ? "#f0fff8" : "#8ad8b0");
+          }
+        } else {
+          Combat.glowDot(ctx, ox2, oy2, 4 + kc * 7, "#e0c0ff", "#c890f0", 0.6 + 0.4 * kc);
+          Render.rect(Math.round(ox2) - 1 - Math.round(kc), Math.round(oy2) - 1 - Math.round(kc), 2 + Math.round(kc) * 2, 2 + Math.round(kc) * 2, "#2a1040");
+        }
       }
       if (d.kind === "wisp" && !e.dead) {
         var rr3 = d.reach + e.r;
@@ -1076,6 +1088,14 @@ var Enemies = (function () {
       }
       if (a.opts && a.opts.skillShot) {   // 闘技場の相手のスキルの玉（呼び出しなど）：スキルの色に光る
         Combat.glowDot(ctx, x, y, a.opts.size + 4, "#ffffff", a.opts.color, 0.9);
+        return;
+      }
+      if (a.opts && a.opts.wind) {   // 風の精の風の刃：進む向きに対して横に開いた、白と緑の三日月
+        var wl = Math.sqrt(a.vx * a.vx + a.vy * a.vy) || 1, wux = a.vx / wl, wuy = a.vy / wl, wang = Math.atan2(wuy, wux);
+        ctx.strokeStyle = "rgba(138,216,176,0.55)"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x - wux * 3, y - wuy * 3, 6, wang - 1.2, wang + 1.2); ctx.stroke();
+        ctx.strokeStyle = "#f0fff8"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x - wux * 2, y - wuy * 2, 6, wang - 1.0, wang + 1.0); ctx.stroke();
         return;
       }
       if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光
