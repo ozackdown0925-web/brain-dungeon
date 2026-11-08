@@ -630,10 +630,12 @@ var GameData = (function () {
 
   // ラフレシア（烈風の峰6階・中ボス。段階3、2026-11-08。数字は仮）：湯けむりの谷にさく、大きな毒の花。動かない（部屋のまんなかに根を張る）。
   //   おかしら（つめる）・ドワーフキング（重い大技）・大木の魔物（根の大波）とちがい、毒で「立つ場所」をうばい、吸いこみで引きよせて押してくる。
-  //   ふつう：近くにいれば、つるのむちでまわりをなぎはらう（whipReach）。はなれていれば、毒の種を3つ吐く（当たると毒になることがある）。
-  //   毒の霧（fogEvery 秒ごと）：地面に紫の輪（fogWarn 秒）→ 毒の霧が fogTime 秒のこる。中にいると少しずつダメージと毒。1つはいつもプレイヤーの足もと。
+  //   ふつう：近くにいれば、つるのむちでまわりをなぎはらう（whipReach）。はなれていれば、毒の種を3つ吐く（当たると猛毒になることがある）のと、
+  //     つるの一撃（大木の魔物の根の大波を1本だけ。プレイヤーのいる場所を通る帯が vineWarn 秒光ってから、つるがつき出る。2026-11-08 保護者の案）をかわりばんこに。
+  //   毒はすべて猛毒（2026-11-08 保護者）。
+  //   毒の霧（fogEvery 秒ごと）：地面に紫の輪（fogWarn 秒）→ 毒の霧が fogTime 秒のこる。中にいると少しずつダメージと猛毒。1つはいつもプレイヤーの足もと。
   //   吸いこみ（inhaleEvery 秒ごと）：大きく息を吸い、inhaleTime 秒のあいだ、仲間をまんなかへ引きよせる（歩けば逃げられる速さ）。
-  //     そのあと、まわり（breathRadius）に毒の息を吐く（大ダメージと毒。赤い輪で予告）。
+  //     そのあと、まわり（breathRadius）に毒の息を吐く（大ダメージと猛毒。赤い輪で予告）。
   //   つぼみ（budEvery 秒ごと。HP が 75% を切ってから）：まわりの地面に、つぼみ（raff_bud）を生やす。budTime 秒で咲いて、毒の霧をまく。先にこわせば咲かない。
   //   HP が半分：花びらが大きく開き、毒の種が5つになり、霧と吸いこみの間かくが短くなる。つぼみは3つ。
   //   斬が弱点（つるも花も切れる）。草は効かない、火は湯けむりでしめっているのでいまひとつ、水もいまひとつ
@@ -642,6 +644,7 @@ var GameData = (function () {
     res: { slash: 1.3, grass: 0, fire: 0.75, water: 0.75 }, speed: 0, r: 20, color: "#c83a3a",
     whipReach: 34, windup: 0.55, cooldown: 1.3, cooldownHalf: 1.0, whipMult: 1.2,
     seedSpeed: 115, seeds: 3, seedsHalf: 5, seedSpread: 0.32, seedMult: 0.8,
+    vineW: 24, vineWarn: 1.0, vineMult: 1.6,
     fogEvery: 9, fogEveryHalf: 7, fogWarn: 1.0, fogTime: 5, fogR: 26, fogCount: 2, fogCountHalf: 3, fogMult: 0.25,
     inhaleEvery: 13, inhaleEveryHalf: 10, inhaleTime: 1.8, inhalePull: 34, breathWarn: 0.6, breathRadius: 62, breathMult: 2.0,
     budEvery: 12, budTime: 6, buds: 2, budsHalf: 3

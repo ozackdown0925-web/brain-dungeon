@@ -415,7 +415,7 @@ var Bosses = (function () {
       e.t -= dt;
       if (e.t <= 0) {
         var a0 = Math.atan2(uy, ux), n = half ? d.seedsHalf : d.seeds;
-        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.seedSpread, d.seedSpeed, { spit: true, mult: d.seedMult, dy: -16, life: 2.4, status: { type: "poison", chance: 0.35, dur: 6 } });
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.seedSpread, d.seedSpeed, { spit: true, mult: d.seedMult, dy: -16, life: 2.4, status: { type: "venom", chance: 0.3, dur: 6 } });
         e.puffT = 0.25; Sound.play("swing");
         e.state = "recover"; e.t = 0.5; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.4;
       }
@@ -430,7 +430,7 @@ var Bosses = (function () {
     if (e.state === "breath") {   // 毒の息：まわりに大ダメージと毒（赤い輪で予告）
       e.t -= dt;
       if (e.t <= 0) {
-        if (!p.down && dist - p.r <= d.breathRadius) hurt(e, p.x, p.y - 8, { mult: d.breathMult, big: true, status: { type: "poison", chance: 1, dur: 8 } });
+        if (!p.down && dist - p.r <= d.breathRadius) hurt(e, p.x, p.y - 8, { mult: d.breathMult, big: true, status: { type: "venom", chance: 1, dur: 8 } });
         e.breathFx = 0.5; Sound.play("hit"); shake(2, 0.25);
         e.state = "recover"; e.t = 0.9;
       }
@@ -469,14 +469,22 @@ var Bosses = (function () {
       return;
     }
     if (e.cd > 0) return;
-    if (gap <= d.whipReach) { e.state = "windup"; e.t = d.windup; }
-    else { e.state = "seed"; e.t = 0.55; }
+    if (gap <= d.whipReach) { e.state = "windup"; e.t = d.windup; return; }
+    // はなれているとき：毒の種と、つるの一撃（大木の魔物の「根の大波」を1本だけ。2026-11-08 保護者の案）をかわりばんこに
+    e.vineNext = !e.vineNext;
+    if (!e.vineNext) { e.state = "seed"; e.t = 0.55; return; }
+    var W = d.vineW, vert = Math.abs(p.y - e.y) > Math.abs(p.x - e.x);   // プレイヤーのいる場所を通る帯。ボスから見て上下にいるなら縦、左右なら横
+    hazards.push(vert
+      ? { kind: "rect", from: e, x: p.x - W / 2, y: 0, w: W, h: room.pxH, t: 0, warn: d.vineWarn, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: { mult: d.vineMult, big: true } }
+      : { kind: "rect", from: e, x: 0, y: p.y - W / 2, w: room.pxW, h: W, t: 0, warn: d.vineWarn, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: { mult: d.vineMult, big: true } });
+    e.puffT = 0.25;
+    e.state = "recover"; e.t = 0.6; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.6;
   }
   // 毒の霧を置く（ラフレシアと、咲いたつぼみ）：予告の輪 warn 秒 → 霧が fogTime 秒のこる
   function addFog(boss, x, y, warn) {
     var d = boss.def;
     hazards.push({ kind: "circle", look: "fog", from: boss, x: x, y: y, r: d.fogR, t: 0, warn: warn, erupt: d.fogTime, hit: false, tick: 0,
-                   seed: Math.random() * 100, opts: { mult: d.fogMult, status: { type: "poison", chance: 0.5, dur: 5 } } });
+                   seed: Math.random() * 100, opts: { mult: d.fogMult, status: { type: "venom", chance: 0.4, dur: 5 } } });
   }
 
   // ---------- 大木の魔物（動かない） ----------
