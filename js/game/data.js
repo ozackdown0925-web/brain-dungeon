@@ -578,9 +578,10 @@ var GameData = (function () {
   //   盾がまえ（guardEvery 秒ごと、guardTime 秒）：盾を前に構えて、ゆっくりこちらへ向きなおる。前からの攻撃は guardCut 倍（横・後ろからはふつう）。
   //     終わりに、前にいれば盾でなぐる（bashMult）。弓や魔法で遠くから撃ち続けるだけでは勝ちにくく、まわりこむと楽になる
   //   大地たたき（slamEvery 秒ごと）：ハンマーを振り上げ（まわりに赤い輪で予告）→ 地面をたたく。まわり（slamNear）に当たり、
-  //     こちらへ向かって地面の割れ目が slamLines 本（HP 半分から slamLinesHalf 本）走る（走る道に輪で予告。横へよければかわせる）
-  //   大ジャンプ（jumpEvery 秒ごと）：とび上がって、こちらのいた場所に落ちてくる（落ちる場所に輪で予告。とんでいるあいだは当たらない）。
-  //     HP 半分からは、着地してすぐ大地たたき（連携）→ そのあとふらつく（すきあり）
+  //     こちらへ向かって slamLines 本（HP 半分から slamLinesHalf 本）の道に、光の柱が根もとから先へ順に立つ（立つ少し前に地面が光る。横へよければかわせる）
+  //   トマホーク（axeEvery 秒ごと。少しはなれているとき）：振りかぶって、回しながらまっすぐ投げる（つらぬいて壁まで飛ぶ）。
+  //     HP 半分からは扇に axeCountHalf 本投げて、すぐ大地たたき（連携）→ そのあとふらつく（すきあり）
+  //     （はじめは大ジャンプだったが、2026-11-07 保護者：ジャンプはもっと身軽なボスにとっておく）
   //   HP が半分になると、子分（ドワーフの斧使いと鎚使い）を1回だけ呼び、少し速くなる。水が弱点、火はいまひとつ（鍛冶の民なので）
   //   強さ（tools/balance.js の式で試算）：坑道12階（Lv31・鋼R＋5）で剣 44振り・弓 55本（盾がまえで前からは減る）。おかしら（6階）は剣 39振り・弓 37本
   ENEMIES.dwarf_boss = {
@@ -589,8 +590,8 @@ var GameData = (function () {
     reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, swingMult: 1.3,
     guardEvery: 9, guardTime: 2.6, guardCut: 0.25, guardTurn: 1.4, bashReach: 26, bashMult: 1.0,
     slamEvery: 11, slamEveryHalf: 8, slamWarn: 0.9, slamNear: 36, slamMult: 1.7, slamLines: 3, slamLinesHalf: 5, slamSpread: 0.38,
-    slamLen: 210, slamStep: 22, slamR: 13, slamGap: 0.06, quakeMult: 1.5,
-    jumpEvery: 14, jumpEveryHalf: 10, jumpCrouch: 0.4, jumpTime: 1.1, jumpRadius: 38, jumpMult: 1.8, tired: 1.6
+    slamLen: 210, slamStep: 22, slamR: 13, slamGap: 0.1, quakeMult: 1.5,
+    axeEvery: 7, axeEveryHalf: 9, axeWindup: 0.6, axeSpeed: 170, axeMult: 1.4, axeCountHalf: 3, axeSpread: 0.3, tired: 1.6
   };
 
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----

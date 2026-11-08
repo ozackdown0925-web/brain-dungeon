@@ -28,14 +28,14 @@ var Bosses = (function () {
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
              rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
              dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0,
-             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, jump: d.jumpEvery ? 12 : 0 };
+             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
         e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash" ||
-        e.state === "guard" || e.state === "slam" || e.state === "crouch") { e.state = "recover"; e.t = 0.4; }
+        e.state === "guard" || e.state === "slam" || e.state === "toss") { e.state = "recover"; e.t = 0.4; }
     e.guarding = false;
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
@@ -48,7 +48,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "jump"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -245,7 +245,7 @@ var Bosses = (function () {
 
   // ---------- ドワーフキング（黒鉄の坑道12階・主。2026-11-07） ----------
   // ハンマーの一撃。盾がまえ（前からの攻撃を減らす。ゆっくり向きなおる → 盾でなぐる）。
-  // 大地たたき（まわり＋こちらへ走る地面の割れ目）。大ジャンプ（落ちる場所に輪で予告）。HP 半分から、ジャンプ → 大地たたきの連携・子分を呼ぶ
+  // 大地たたき（まわり＋こちらへ向けて、光の柱が根もとから順に立つ）。トマホーク投げ（回りながらまっすぐ飛ぶ）。HP 半分から、トマホーク3本 → 大地たたきの連携・子分を呼ぶ
   function dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
     var d = e.def, half = e.hp <= e.maxHp / 2;
     e.pose = Math.max(0, (e.pose || 0) - dt);   // ハンマーをたたきつけた絵を出す時間
@@ -291,33 +291,18 @@ var Bosses = (function () {
       }
       return;
     }
-    if (e.state === "crouch") {   // ジャンプの前に、しゃがむ
+    if (e.state === "toss") {   // トマホークを振りかぶる → 回しながら、まっすぐ投げる（HP 半分から扇に3本 → すぐ大地たたき）
       e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
       if (e.t <= 0) {
-        e.state = "air"; e.t = d.jumpTime; e.untouchable = true;
-        e.jumpFrom = { x: e.x, y: e.y };
-        hazards.push({ kind: "circle", look: "land", from: e, x: e.jumpTo.x, y: e.jumpTo.y, r: d.jumpRadius, t: 0, warn: d.jumpTime, erupt: 0.3, hit: false,
-                       opts: { mult: d.jumpMult, big: true } });
-      }
-      return;
-    }
-    if (e.state === "air") {   // とんで、輪のまんなかへ落ちてくる
-      e.t -= dt;
-      var k = 1 - Math.max(0, e.t) / d.jumpTime;
-      var tx = e.jumpFrom.x + (e.jumpTo.x - e.jumpFrom.x) * k, ty = e.jumpFrom.y + (e.jumpTo.y - e.jumpFrom.y) * k;
-      room.move(e, tx - e.x, ty - e.y);
-      e.hop = Math.sin(Math.min(1, k) * Math.PI) * 46;
-      if (e.t <= 0) {
-        e.hop = 0; e.untouchable = false;
-        addWave(e.x, e.y + 8, 6, d.jumpRadius + 8, 0.4, 6);
-        for (var ld = 0; ld < 6; ld++) { var la = ld * Math.PI / 3; addDust(e.x + Math.cos(la) * 22, e.y + 8 + Math.sin(la) * 12); }
-        shake(3, 0.3);
-        e.pose = 0.4;
-        if (half) {   // HP 半分から：着地して、すぐ大地たたき（連携）
-          e.state = "slam"; e.t = d.slamWarn * 0.8; e.combo = true; startQuake(e, room, p, half);
+        var a0 = Math.atan2(e.aim.y, e.aim.x), n = half ? d.axeCountHalf : 1;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.axeSpread, d.axeSpeed, { tomahawk: true, big: true, pierce: true, mult: d.axeMult, rad: 5, dy: -14, life: 3, spin: e.aim.x >= 0 ? 1 : -1 });
+        Sound.play("swing");
+        e.thrown = 0.25; e.ai.toss = half ? d.axeEveryHalf : d.axeEvery;
+        if (half) {   // HP 半分から：投げてすぐ大地たたき（連携）
+          e.state = "slam"; e.t = d.slamWarn; e.combo = true; startQuake(e, room, p, half);
           Battle.pop(e.x, e.y - 50, "大地たたき！", "#ef5b5b", 9);
-        } else { e.state = "recover"; e.t = 0.7; }
-        e.ai.jump = half ? d.jumpEveryHalf : d.jumpEvery;
+        } else { e.state = "recover"; e.t = 0.6; }
       }
       return;
     }
@@ -342,9 +327,9 @@ var Bosses = (function () {
       Battle.pop(e.x, e.y - 50, "者ども、かかれ！", "#ffd24a", 9);
       return;
     }
-    if (e.ai.jump <= 0) {
-      e.state = "crouch"; e.t = d.jumpCrouch; e.jumpTo = { x: p.x, y: p.y };
-      Battle.pop(e.x, e.y - 50, "大ジャンプ！", "#ef5b5b", 9);
+    if (e.ai.toss <= 0 && gap > 30) {   // 少しはなれていると、トマホーク
+      e.state = "toss"; e.t = d.axeWindup; e.aim = { x: ux, y: uy };
+      Battle.pop(e.x, e.y - 50, "トマホーク！", "#ef5b5b", 9);
       return;
     }
     if (e.ai.slam <= 0) {
@@ -364,7 +349,8 @@ var Bosses = (function () {
       e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
     }
   }
-  // 大地たたきの割れ目：こちらへ向けて扇に何本か。それぞれの道に、手前から順に輪で予告（壁で止まる）
+  // 大地たたきの光の柱：こちらへ向けて扇に何本か。それぞれの道に、根もとから先へ順に立つ（壁で止まる）。
+  // 立つ少し前（0.35秒）に、その場所の地面が光る
   function startQuake(e, room, p, half) {
     var d = e.def, n = half ? d.slamLinesHalf : d.slamLines, a0 = Math.atan2(p.y - e.y, p.x - e.x);
     for (var i = 0; i < n; i++) {
@@ -952,7 +938,7 @@ var Bosses = (function () {
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
         if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
-        if (h.look === "quake") { rockBreak(h.x, h.y, false); shake(1, 0.08); }
+        if (h.look === "quake") shake(1, 0.06);
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
@@ -1029,8 +1015,9 @@ var Bosses = (function () {
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : h.look === "quake" || h.look === "land" ? [235, 120, 60] : locked ? [255, 60, 50] : [240, 150, 90];
+    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
+    if (h.look === "quake") { drawQuake(ctx, h, x, y, glow); return; }
     if (h.t < h.warn) {
       ctx.fillStyle = c(0.10 + 0.25 * k + 0.05 * Math.sin(glow * 16));
       ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.7, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.fill();
@@ -1065,19 +1052,6 @@ var Bosses = (function () {
       for (var bs = 0; bs < 10; bs++) { var ab = bs / 10 * Math.PI * 2, db = orr * (0.8 + 0.6 * q); Combat.glowDot(ctx, x + Math.cos(ab) * db, y - 4 + Math.sin(ab) * db, 2.5, "#ffffff", "#ffb84a", fade); }
       return;
     }
-    if (h.look === "land") return;   // ドワーフキングの着地（衝撃の輪は addWave で出す）
-    if (h.look === "quake") {   // 大地たたきの割れ目：とがった岩がつき出て、引っこむ
-      var up = Math.sin(Math.min(1, q * 1.4) * Math.PI) * 14, sx0 = Math.round(x), sy0 = Math.round(y + 3);
-      ctx.fillStyle = "rgba(40,30,24," + (0.5 * fade).toFixed(2) + ")";
-      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 2, h.r, h.r * 0.5, 0, 0, Math.PI * 2); else ctx.arc(x, y + 2, h.r, 0, Math.PI * 2); ctx.fill();
-      [[-6, 0.7, "#6c665a"], [5, 0.8, "#857d6c"], [0, 1, "#a69d88"]].forEach(function (sp) {
-        var hgt = Math.round(up * sp[1]); if (hgt < 1) return;
-        ctx.fillStyle = sp[2];
-        ctx.beginPath(); ctx.moveTo(sx0 + sp[0] - 4, sy0); ctx.lineTo(sx0 + sp[0], sy0 - hgt); ctx.lineTo(sx0 + sp[0] + 4, sy0); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#2a2724"; ctx.fillRect(sx0 + sp[0] - 4, sy0 - 1, 8, 1);
-      });
-      return;
-    }
     if (h.look === "pillar") {   // 紫の柱が立つ
       var hh = 70 * Math.min(1, q * 4);
       var g = ctx.createLinearGradient(0, y - hh, 0, y);
@@ -1093,6 +1067,45 @@ var Bosses = (function () {
         ctx.fillRect(Math.round(x + Math.cos(a) * R) - 1, Math.round(y + Math.sin(a) * R * 0.7 - Math.sin(q * Math.PI) * 6) - 1, 3, 3);
       }
     }
+  }
+
+  // ドワーフキングの大地たたき（2026-11-07 保護者の案）：その場所が立つ 0.35 秒前から地面が光り、光の柱が立って消える。
+  // 柱は根もとから先へ順に立つので、光が走ってくるように見える
+  function drawQuake(ctx, h, x, y, glow) {
+    var left = h.warn - h.t;
+    if (left > 0) {
+      if (left > 0.35) return;
+      var k = 1 - left / 0.35;
+      ctx.fillStyle = "rgba(255,200,90," + (0.15 + 0.35 * k).toFixed(2) + ")";
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r * (0.5 + 0.5 * k), h.r * 0.6 * (0.5 + 0.5 * k), 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r * k, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,150,60," + (0.5 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.stroke();
+      return;
+    }
+    var q = Math.min(1, (h.t - h.warn) / h.erupt), fade = 1 - q;
+    var hh = 64 * Math.min(1, q * 5), w = h.r * (1.3 - 0.5 * q);
+    var g = ctx.createLinearGradient(0, y - hh, 0, y);
+    g.addColorStop(0, "rgba(255,170,60,0)");
+    g.addColorStop(0.35, "rgba(255,190,90," + (0.6 * fade).toFixed(2) + ")");
+    g.addColorStop(1, "rgba(255,245,200," + (0.95 * fade).toFixed(2) + ")");
+    ctx.fillStyle = g; ctx.fillRect(x - w / 2, y - hh, w, hh);
+    ctx.fillStyle = "rgba(255,255,235," + (0.9 * fade).toFixed(2) + ")"; ctx.fillRect(x - w / 6, y - hh * 0.8, w / 3, hh * 0.8);   // まんなかの白い芯
+    ctx.fillStyle = "rgba(255,140,50," + (0.45 * fade).toFixed(2) + ")";
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 4; i++) {   // 立ちのぼる光のつぶ
+      var py = y - ((q * 1.5 + i * 0.25) % 1) * hh;
+      Render.rect(Math.round(x + Math.sin(i * 2.3 + h.x) * w * 0.6), Math.round(py), 1, 2, "rgba(255,240,180," + fade.toFixed(2) + ")");
+    }
+  }
+  // トマホーク（回る斧）：柄（木）と、刃（鋼）。rot は回る角度
+  function drawTomahawk(ctx, x, y, rot) {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(rot); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = "#140c1c"; ctx.fillRect(-7, -2, 14, 4); ctx.fillRect(2, -7, 7, 10);
+    ctx.fillStyle = "#8a5a32"; ctx.fillRect(-6, -1, 12, 2);
+    ctx.fillStyle = "#b8c0cc"; ctx.fillRect(3, -6, 5, 8);
+    ctx.fillStyle = "#e6ecf4"; ctx.fillRect(7, -6, 1, 8);
+    ctx.fillStyle = "#7a8494"; ctx.fillRect(3, 1, 5, 1);
+    ctx.restore();
   }
 
   // 大突進の予告：走る方向へ、赤い矢じるしの光が流れる。時間がたつほど強くなる
@@ -1287,9 +1300,8 @@ var Bosses = (function () {
       if (e.slashT > 0) Combat.drawSlash(ctx, x, y - 6, e.aim || e.face, 1.1, d.reach + 14, "#ffe7a0", 1 - e.slashT / 0.2, e.slashFlip);
       if (e.state === "windup" || e.state === "warn") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: e.state === "warn" ? "#ef5b5b" : "#ffd24a" });
     } else if (d.kind === "dwarf_boss") {
-      // ドワーフキング（43×48、正面向き）：足もとは y＋14。たたいたあとは「攻撃」の絵。とんでいるあいだは上へ、かげは地面に
-      var hop2 = Math.round(e.hop || 0), crouch = e.state === "crouch" ? 2 : 0;
-      Render.rect(x - 16, y + 9, 32, 6, "rgba(0,0,0," + (hop2 > 10 ? 0.2 : 0.35) + ")");
+      // ドワーフキング（43×48、正面向き）：足もとは y＋14。たたいたあとは「攻撃」の絵
+      Render.rect(x - 16, y + 9, 32, 6, "rgba(0,0,0,0.35)");
       if (e.state === "slam") {   // 大地たたきの構え：まわりの赤い輪が、だんだん濃くなる
         var kq = 1 - Math.max(0, e.t) / d.slamWarn;
         ctx.fillStyle = "rgba(239,91,91," + (0.08 + 0.22 * kq).toFixed(2) + ")";
@@ -1297,7 +1309,7 @@ var Bosses = (function () {
         ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * kq).toFixed(2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.arc(x, y + 6, d.slamNear, 0, Math.PI * 2); ctx.stroke();
       }
-      if (e.state === "windup" || e.state === "crouch") Combat.glowDot(ctx, x, y - 10, 22, "#ffffff", "#ef5b5b", 0.25 + 0.15 * Math.sin(glow * 20));
+      if (e.state === "windup" || e.state === "toss") Combat.glowDot(ctx, x, y - 10, 22, "#ffffff", "#ef5b5b", 0.25 + 0.15 * Math.sin(glow * 20));
       if (e.guarding) {   // 盾がまえ：向いている側に、銀の光の弧（ここからの攻撃は減る）
         var ga0 = Math.atan2(e.face.y, e.face.x);
         ctx.strokeStyle = "rgba(220,228,240," + (0.55 + 0.25 * Math.sin(glow * 12)).toFixed(2) + ")"; ctx.lineWidth = 3;
@@ -1306,9 +1318,10 @@ var Bosses = (function () {
         ctx.beginPath(); ctx.arc(x, y - 6, e.r + 14, ga0 - 0.8, ga0 + 0.8); ctx.stroke();
       }
       var dshake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
-      Monsters.drawBoss(ctx, e, x + dshake, y + 14 - hop2 + crouch, e.pose > 0 ? "attack" : "stand");
+      Monsters.drawBoss(ctx, e, x + dshake, y + 14, e.pose > 0 ? "attack" : "stand");
       if (e.swingT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 6, e.aim, 0.9, d.reach + e.r, "#e6ecf4", 1 - e.swingT / 0.22, false);
-      if (e.state === "windup" || e.state === "slam" || e.state === "crouch") Render.text("！", x, y - 50 - hop2, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+      if (e.state === "toss") drawTomahawk(ctx, x + (e.face.x < -0.2 ? 14 : -14), y - 40, -0.6 + (1 - e.t / d.axeWindup) * 0.8 * (e.face.x < -0.2 ? -1 : 1));   // 振りかぶったトマホーク
+      if (e.state === "windup" || e.state === "slam" || e.state === "toss") Render.text("！", x, y - 50, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
       if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる
         for (var ds = 0; ds < 3; ds++) {
           var da2 = glow * 4 + ds * 2.1, dx2 = Math.round(x + Math.cos(da2) * 12), dy2 = Math.round(y - 44 + Math.sin(da2) * 3);
@@ -1406,5 +1419,5 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
+           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
 })();
