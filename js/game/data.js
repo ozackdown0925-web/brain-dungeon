@@ -99,7 +99,7 @@ var GameData = (function () {
   // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
   var TOP_JOBS = [
     { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
-      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "ギガスラッシュ"] },
+      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングズブレード"] },
     { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
       skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
     { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
