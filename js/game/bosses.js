@@ -28,14 +28,15 @@ var Bosses = (function () {
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
              rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
              dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0,
-             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0 };
+             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0,
+             fog: d.fogEvery ? 4 : 0, inhale: d.inhaleEvery ? 9 : 0, bud: d.budEvery ? 6 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
         e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash" ||
-        e.state === "guard" || e.state === "slam" || e.state === "toss") { e.state = "recover"; e.t = 0.4; }
+        e.state === "guard" || e.state === "slam" || e.state === "toss" || e.state === "inhale" || e.state === "breath") { e.state = "recover"; e.t = 0.4; }
     e.guarding = false;
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
@@ -48,7 +49,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -56,6 +57,7 @@ var Bosses = (function () {
     else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -387,6 +389,94 @@ var Bosses = (function () {
       if (room.hitsWall(x + ux * s - r, y + uy * s - r, r * 2, r * 2)) return Math.max(0, s - 4);
     }
     return 400;
+  }
+
+  // ---------- ラフレシア（烈風の峰6階。段階3、2026-11-08）。動かない。毒の霧で立つ場所をうばい、吸いこみで引きよせる ----------
+  function raff(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.face = { x: ux, y: uy };
+    e.whipT = Math.max(0, (e.whipT || 0) - dt);
+    e.puffT = Math.max(0, (e.puffT || 0) - dt);
+    if (half && !e.bloomed) {   // HP が半分：花びらが大きく開く（1回だけ。少しのあいだ止まって、まわりの霧を吹きとばす見た目）
+      e.bloomed = true; e.state = "recover"; e.t = 0.8; e.puffT = 0.6;
+      Battle.pop(e.x, e.y - 50, "花びらが大きく開いた！", "#ff7aa0", 9);
+      return;
+    }
+    if (e.state === "windup") {   // つるのむち：まわりをなぎはらう
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.whipReach + 2) hurt(e, p.x, p.y - 8, { mult: d.whipMult });
+        e.whipT = 0.3; Sound.play("swing");
+        e.state = "recover"; e.t = 0.5; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "seed") {   // 毒の種を吐く（扇に3つ。HP 半分から5つ）
+      e.t -= dt;
+      if (e.t <= 0) {
+        var a0 = Math.atan2(uy, ux), n = half ? d.seedsHalf : d.seeds;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.seedSpread, d.seedSpeed, { spit: true, mult: d.seedMult, dy: -16, life: 2.4, status: { type: "poison", chance: 0.35, dur: 6 } });
+        e.puffT = 0.25; Sound.play("swing");
+        e.state = "recover"; e.t = 0.5; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.4;
+      }
+      return;
+    }
+    if (e.state === "inhale") {   // 吸いこみ：まんなかへ引きよせる（歩けば逃げられる）
+      e.t -= dt;
+      if (!p.down && dist > e.r + p.r + 4) room.move(p, -ux * d.inhalePull * dt, -uy * d.inhalePull * dt);
+      if (e.t <= 0) { e.state = "breath"; e.t = d.breathWarn; Battle.pop(e.x, e.y - 50, "毒の息！", "#ef5b5b", 9); }
+      return;
+    }
+    if (e.state === "breath") {   // 毒の息：まわりに大ダメージと毒（赤い輪で予告）
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && dist - p.r <= d.breathRadius) hurt(e, p.x, p.y - 8, { mult: d.breathMult, big: true, status: { type: "poison", chance: 1, dur: 8 } });
+        e.breathFx = 0.5; Sound.play("hit"); shake(2, 0.25);
+        e.state = "recover"; e.t = 0.9;
+      }
+      return;
+    }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    if (e.ai.inhale <= 0) {
+      e.state = "inhale"; e.t = d.inhaleTime; e.ai.inhale = half ? d.inhaleEveryHalf : d.inhaleEvery;
+      Battle.pop(e.x, e.y - 50, "吸いこみ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.fog <= 0) {   // 毒の霧：1つはプレイヤーの足もと、ほかはまわりのどこか
+      var nf = half ? d.fogCountHalf : d.fogCount;
+      for (var f = 0; f < nf; f++) {
+        var fx = p.x, fy = p.y;
+        if (f > 0) { var fa = Math.random() * Math.PI * 2, fr = 40 + Math.random() * 70; fx = e.x + Math.cos(fa) * fr; fy = e.y + Math.sin(fa) * fr * 0.8; }
+        addFog(e, fx, fy, d.fogWarn);
+      }
+      e.ai.fog = half ? d.fogEveryHalf : d.fogEvery; e.puffT = 0.3;
+      Battle.pop(e.x, e.y - 50, "毒の霧", "#b46ad8", 8);
+      e.state = "recover"; e.t = 0.4;
+      return;
+    }
+    if (e.ai.bud <= 0 && e.hp <= e.maxHp * 0.75) {   // つぼみを生やす（HP が 75% を切ってから）
+      var nb = half ? d.budsHalf : d.buds;
+      for (var b = 0; b < nb; b++) {
+        var ba = Math.random() * Math.PI * 2, br = 56 + Math.random() * 40, bx = e.x + Math.cos(ba) * br, by = e.y + Math.sin(ba) * br * 0.8;
+        if (room.hitsWall(bx - 6, by - 6, 12, 12)) { bx = e.x + Math.cos(ba) * 46; by = e.y + Math.sin(ba) * 36; }
+        var bud = api.spawn("raff_bud", bx, by, e.depth || 1);
+        bud.summoned = true; bud.owner = e; bud.bloomT = d.budTime; bud.birth = 0.4;
+      }
+      e.ai.bud = d.budEvery;
+      Battle.pop(e.x, e.y - 50, "つぼみが生えた！", "#ff7aa0", 8);
+      e.state = "recover"; e.t = 0.5;
+      return;
+    }
+    if (e.cd > 0) return;
+    if (gap <= d.whipReach) { e.state = "windup"; e.t = d.windup; }
+    else { e.state = "seed"; e.t = 0.55; }
+  }
+  // 毒の霧を置く（ラフレシアと、咲いたつぼみ）：予告の輪 warn 秒 → 霧が fogTime 秒のこる
+  function addFog(boss, x, y, warn) {
+    var d = boss.def;
+    hazards.push({ kind: "circle", look: "fog", from: boss, x: x, y: y, r: d.fogR, t: 0, warn: warn, erupt: d.fogTime, hit: false, tick: 0,
+                   seed: Math.random() * 100, opts: { mult: d.fogMult, status: { type: "poison", chance: 0.5, dur: 5 } } });
   }
 
   // ---------- 大木の魔物（動かない） ----------
@@ -934,6 +1024,13 @@ var Bosses = (function () {
       var h = hazards[i];
       h.t += dt;
       if (h.kind === "line") continue; // 大突進の線は、ボスが走り終わると消える
+      if (h.look === "fog" && h.t >= h.warn) {   // 毒の霧：のこっているあいだ、中にいると 0.7 秒ごとに少しダメージと毒
+        h.hit = true; h.tick -= dt;
+        var fin = (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r * 0.5) * (h.r + p.r * 0.5);
+        if (fin && h.tick <= 0 && !p.down && !h.from.dead) { hurt(h.from, p.x, p.y - 8, h.opts); h.tick = 0.7; }
+        if (h.t >= h.warn + h.erupt) hazards.splice(i, 1);
+        continue;
+      }
       if (h.track && h.t < h.warn && !h.track.dead) { h.x = h.track.x; h.y = h.track.y; }   // 魔物使いの瘴気の柱：予告のあいだ、ねらった敵についていく（track。大ガマの follow とは別。2026-10-26 名前がぶつかって大ガマが消えたので分けた）
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
@@ -1015,7 +1112,8 @@ var Bosses = (function () {
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
+    if (h.look === "fog" && h.t >= h.warn) { drawFog(ctx, h, x, y, glow); return; }
+    var col = h.look === "fog" ? [170, 90, 220] : h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.look === "quake") { drawQuake(ctx, h, x, y, glow); return; }
     if (h.t < h.warn) {
@@ -1066,6 +1164,23 @@ var Bosses = (function () {
         ctx.fillStyle = h.look === "dive" ? "rgba(170,210,130," + fade.toFixed(2) + ")" : "rgba(170,110,220," + fade.toFixed(2) + ")";
         ctx.fillRect(Math.round(x + Math.cos(a) * R) - 1, Math.round(y + Math.sin(a) * R * 0.7 - Math.sin(q * Math.PI) * 6) - 1, 3, 3);
       }
+    }
+  }
+
+  // ラフレシアの毒の霧：紫のもやが、ゆっくりうずを巻いてのこる。はじめはふわっと広がり、終わりぎわはうすくなる
+  function drawFog(ctx, h, x, y, glow) {
+    var q = (h.t - h.warn) / h.erupt, grow = Math.min(1, (h.t - h.warn) / 0.3), fade = q > 0.85 ? (1 - q) / 0.15 : 1, a = grow * fade;
+    ctx.fillStyle = "rgba(110,50,150," + (0.28 * a).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * grow, h.r * 0.7 * grow, 0, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 7; i++) {   // もやのかたまり：まわりをゆっくり回る
+      var an = glow * 0.6 + i * 0.9 + h.seed, rr = h.r * (0.25 + 0.5 * rnd(h.seed + i)) * grow;
+      var bx = x + Math.cos(an) * rr, by = y + Math.sin(an) * rr * 0.7 - 3;
+      ctx.fillStyle = "rgba(180,110,230," + (0.22 * a).toFixed(2) + ")";
+      ctx.beginPath(); ctx.ellipse(bx, by, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    for (var j = 0; j < 6; j++) {   // のぼっていく泡（1点ずつ）
+      var ph = (glow * 0.8 + j / 6 + h.seed) % 1, px = x + (rnd(h.seed * 3 + j) - 0.5) * h.r * 1.4, py = y + (rnd(h.seed * 5 + j) - 0.5) * h.r * 0.8 - ph * 10;
+      Render.rect(Math.round(px), Math.round(py), 2, 2, "rgba(220,170,255," + ((1 - ph) * a).toFixed(2) + ")");
     }
   }
 
@@ -1328,6 +1443,45 @@ var Bosses = (function () {
           Render.rect(dx2, dy2 - 1, 1, 3, "#ffe066"); Render.rect(dx2 - 1, dy2, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "raff_boss") {
+      // ラフレシア（56×44、正面）：足もとは y＋16。吸いこみ・毒の息・種を吐くときは、まんなかが開いた「攻撃」の絵
+      Render.rect(x - 24, y + 10, 48, 7, "rgba(0,0,0,0.35)");
+      if (e.state === "breath") {   // 毒の息の予告：まわりの赤い輪が、だんだん濃くなる
+        var kb2 = 1 - Math.max(0, e.t) / d.breathWarn;
+        ctx.fillStyle = "rgba(239,91,91," + (0.1 + 0.25 * kb2).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius, d.breathRadius * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.5 + 0.4 * kb2).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius, d.breathRadius * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (e.state === "windup") {   // つるのむちの構え：とどく範囲が黄色く
+        var kwh = 1 - Math.max(0, e.t) / d.windup;
+        ctx.strokeStyle = "rgba(255,210,74," + (0.3 + 0.5 * kwh).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.whipReach + e.r, (d.whipReach + e.r) * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      var open = e.state === "inhale" || e.state === "breath" || e.state === "seed" || e.puffT > 0 || e.breathFx > 0;
+      var sway = e.state === "inhale" ? Math.round(Math.sin(glow * 30)) : 0;
+      Monsters.drawBoss(ctx, e, x + sway, y + 16, (e.bloomed ? "big" : "") + (open ? "open" : "stand"));
+      if (e.state === "inhale") {   // 吸いこみ：まわりから、まんなかへ流れこむ風の線
+        for (var iw = 0; iw < 12; iw++) {
+          var ia = iw / 12 * Math.PI * 2 + glow, ip = (glow * 1.6 + iw * 0.37) % 1, ir = 90 * (1 - ip) + 14;
+          Render.rect(Math.round(x + Math.cos(ia) * ir), Math.round(y - 6 + Math.sin(ia) * ir * 0.7), 3, 1, "rgba(240,250,255," + (0.3 + 0.6 * ip).toFixed(2) + ")");
+        }
+      }
+      if (e.breathFx > 0) {   // 毒の息：紫の輪が広がる
+        e.breathFx -= 1 / 60;
+        var kbf = 1 - e.breathFx / 0.5;
+        ctx.fillStyle = "rgba(150,70,200," + (0.4 * (1 - kbf)).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius * (0.4 + 0.6 * kbf), d.breathRadius * 0.75 * (0.4 + 0.6 * kbf), 0, 0, Math.PI * 2); ctx.fill();
+        for (var bp = 0; bp < 16; bp++) { var bpa = bp / 16 * Math.PI * 2, bpr = d.breathRadius * kbf; Render.rect(Math.round(x + Math.cos(bpa) * bpr), Math.round(y + 4 + Math.sin(bpa) * bpr * 0.75), 3, 3, "rgba(200,140,240," + (1 - kbf).toFixed(2) + ")"); }
+      }
+      if (e.whipT > 0) {   // つるのむち：まわりを回る緑の弧
+        var kwp = 1 - e.whipT / 0.3, wr = d.whipReach + e.r;
+        ctx.strokeStyle = "rgba(94,168,74," + (1 - kwp).toFixed(2) + ")"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(x, y + 2, wr, wr * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
+        ctx.strokeStyle = "rgba(200,240,140," + (1 - kwp).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 2, wr - 2, (wr - 2) * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
+      }
+      if (e.state === "windup" || e.state === "breath") Render.text("！", x, y - 40, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
     } else if (d.kind === "elf_boss") {
       // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
       var hop = 0, rot = 0;
@@ -1419,5 +1573,5 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
+           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog };
 })();
