@@ -96,18 +96,30 @@ var GameData = (function () {
     { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" },
     { id: "tamer", name: "魔物使い",   need: [["hunter", 5], ["mage", 5]],     arms: "弓・杖／軽装備",   note: "たおしたダンジョンの主を呼んで、大技を使わせる。魔術師の魔法も使える" }
   ];
+  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
   var TOP_JOBS = [
-    { name: "聖剣士",     from: "騎士",       note: "光の剣でたたかう" },
-    { name: "大魔導師",   from: "黒魔道士",   note: "画面全体に火の魔法" },
-    { name: "天弓",       from: "スナイパー", note: "画面のすべての敵に矢" },
-    { name: "武神",       from: "修行僧",     note: "攻撃がとても速くなる" },
-    { name: "大司教",     from: "白魔道士",   note: "全員を守る聖なる場所" },
-    { name: "魔剣聖",     from: "魔法剣士",   note: "火と水と光の3連撃" },
-    { name: "竜騎士",     from: "忍者",       note: "ジャンプと、敵を通りぬける突進" },
-    { name: "剣闘王",     from: "剣闘士",     note: "まわりを何度も斬る大旋風" },
-    { name: "聖騎士長",   from: "聖騎士",     note: "全員の受けるダメージを大きく減らす" },
-    { name: "召喚士",     from: "魔物使い",   note: "幻獣の祠でたおした幻獣を呼ぶ" }
+    { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
+      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "ギガスラッシュ"] },
+    { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
+      skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
+    { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
+      skills: [null, null, "ストームアロー", null, "ラピッドショット", null, "アストラルレイン"] },
+    { name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
+      skills: [null, "岩石投げ", null, null, "メテオストライク", null, "無双乱舞"] },
+    { name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
+      skills: [null, null, null, "リザレクション", null, "アストラルオーラ", "セイクレッド"] },
+    { name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
+      skills: [null, null, null, null, null, null, "魔炎連舞"] },
+    { name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
+      skills: [null, null, null, null, null, null, "ドラゴンダイブ"] },
+    { name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
+      skills: [null, null, null, "斬鉄剣", null, null, "ヴォルテックス"] },
+    { name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
+      skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
+    { name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
+      skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
+
   // 系統：その職と、その職からつながる上級職・最上級職
   // 組み合わせの上級職（2026-10-20）：魔法剣士は魔術師の系統、聖騎士は僧侶の系統、賢者は両方の系統にも入る
   var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage", "tamer"], hunter: ["hunter", "sniper", "tamer"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
