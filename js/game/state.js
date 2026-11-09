@@ -131,7 +131,7 @@ var GameState = (function () {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
-      items: { potion: 0, hipotion: 0, xpotion: 0, zpotion: 0, ether: 0, hiether: 0, xether: 0, zether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
+      items: { potion: 0, hipotion: 0, xpotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [], dungeons: {} },
       masteryV2: true,   // 上級職の熟練度は、はじめから新しい数（75）で数える
       titles: [],
@@ -316,21 +316,19 @@ var GameState = (function () {
   var STORAGE_MAX = 200;
   var TOOLS = {
     // 回復薬（2026-10-22 保護者と決定）：前は HP・MP の40%を回復して30G・40Gだったが、レベルが上がるほどお得になり、ゴールドがあまったので、
-    // 回復する量を数で決め、強い薬ほど高くした（強い薬ほど、1回復あたりの値段も上がる）。tier：お店に並ぶ段（装備と同じ。1＝瘴気の森が開いたら、2＝原生の秘境が開いたら、3＝烈風の峰が開いたら）
+    // 回復する量を数で決め、強い薬ほど高くした（強い薬ほど、1回復あたりの値段も上がる）。tier：お店に並ぶ段（装備と同じ。1＝瘴気の森が開いたら、2＝原生の秘境が開いたら）
     potion:   { name: "回復薬", price: 60, hp: 60, tier: 0, note: "HP を 60 回復" },
     hipotion: { name: "上回復薬", price: 300, hp: 150, tier: 1, note: "HP を 150 回復" },
     xpotion:  { name: "特上回復薬", price: 1000, hp: 350, tier: 2, note: "HP を 350 回復" },
-    zpotion:  { name: "極上回復薬", price: 2400, hp: 650, tier: 3, note: "HP を 650 回復" },   // 3＝烈風の峰が開いたら（ミスリルの段。2026-11-09）
     ether:    { name: "MP回復薬", price: 80, mp: 20, tier: 0, note: "MP を 20 回復" },   // MP は自然に回復しない（2026-10-18 決定）
     hiether:  { name: "上MP回復薬", price: 400, mp: 50, tier: 1, note: "MP を 50 回復" },
     xether:   { name: "特上MP回復薬", price: 1200, mp: 100, tier: 2, note: "MP を 100 回復" },
-    zether:   { name: "極上MP回復薬", price: 3200, mp: 200, tier: 3, note: "MP を 200 回復" },
     revive:   { name: "復活薬", price: 1000, note: "たおれた仲間を HP30% で復活" },   // 2026-10-18 に 150G から変更
     antidote: { name: "毒消し", price: 20, note: "毒・猛毒を治す", cures: "poison" },
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
-  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "zpotion", "ether", "hiether", "xether", "zether", "revive", "antidote", "paraheal", "wake"];
+  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
   // お店に並ぶ道具：強い回復薬は、ダンジョンが開くと並ぶ
   function shopTools() { var t = shopTier(); return TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) <= t; }); }
   var TOOL_MAX = 99;
