@@ -531,6 +531,43 @@ var GameData = (function () {
       res: { fire: 1.3, water: 0.75 }, speed: 50, r: 5,
       reach: 12, circle: 34, windup: 0.35, cooldown: 1.5, lunge: 8, color: "#dfe6ee"
     },
+    // ---- 白銀の霊峰の敵（地方2の雪山。段階2、2026-11-09 保護者と決定）。数字は遊んでみてから直す ----
+    // 弱点：火（雪男・氷のスライム）・打（氷の精）・刺（ペンギンの兵隊。刺が弱点の敵がいなかったので1種類だけ）
+    // 雪男：のしのし近づいて、こぶしでなぐる。はなれていると、雪玉を投げる（throw*）。火が弱点、打はいまひとつ（分厚い毛皮）
+    yeti: {
+      name: "雪男", kind: "melee", hp: 60, patk: 11, pdef: 5, mdef: 2,
+      res: { fire: 1.3, strike: 0.75 }, speed: 18, r: 7,
+      reach: 14, windup: 0.55, cooldown: 1.8, lunge: 4, color: "#f4f8fc",
+      throwRange: 110, throwEvery: 3.5, throwWindup: 0.7, ballSpeed: 110
+    },
+    // 氷の精：ふわふわ浮いて、はなれたところから氷のつぶてを撃つ（魔法のダメージ）。たたけばくだけるので打が弱点、刺は半減、水は効きにくい
+    ice_sprite: {
+      name: "氷の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 4, mdef: 5,
+      res: { strike: 1.3, pierce: 0.5, water: 0.5 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 130, color: "#7ac8f0", ice: true
+    },
+    // 氷のスライム：はねて動き、氷のつぶを吐く。たおすと、小さい2つに分かれる（split。小さいほうは経験値や物を落とさない）。
+    // 火が弱点、斬・刺はいまひとつ、水は効かない
+    ice_slime: {
+      name: "氷のスライム", kind: "frog", hp: 44, patk: 9, pdef: 3, mdef: 3,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#bfe6f8", ice: true, split: "ice_slime_mini"
+    },
+    ice_slime_mini: {
+      name: "氷のスライムの子", kind: "frog", hp: 16, patk: 6, pdef: 2, mdef: 2,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 4,
+      reach: 50, keep: 30, hopSpeed: 90, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.6, spitSpeed: 100, color: "#bfe6f8", ice: true
+    },
+    // ペンギンの兵隊：かぶとをかぶったペンギン。山ヤギと同じく、赤い線で予告してから腹ばいですべって突っこむ。
+    // 岩にぶつかるとふらつく。刺が弱点（槍や弓が活きる）、水は効きにくい
+    penguin: {
+      name: "ペンギンの兵隊", kind: "boar", hp: 46, patk: 9, pdef: 4, mdef: 2,
+      res: { pierce: 1.3, water: 0.5 }, speed: 22, r: 6,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#2a3248",
+      chargeMin: 24, chargeRange: 170, chargeMax: 200, chargeWarn: 0.7, chargeSpeed: 260, chargeMult: 1.8, chargeEvery: 3.5, tired: 1.6, chargeWord: "すべりこみの構え！"
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -863,8 +900,9 @@ var GameData = (function () {
     yuki: {
       id: "yuki", tagline: "魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", intro: ["魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", "吹雪の向こう側では、巨大な雪の獣がうごめいているという。"],
       region: "frostcrest", name: "白銀の霊峰", short: "霊峰", floors: 12, needs: "yama", depthBase: 63, theme: "snow", tier: 3,
-      // 敵の強さの上のせ：今は仮に烈風の峰と同じ（敵を作る段階2で決める）
-      foeHp: 2.3, foeAtk: 1.1, foeType: { golem_kid: { hp: 0.75 } },
+      // 敵の強さの上のせ（段階2、2026-11-09。仮）：HP ×1.9・攻撃 ×1.1。雪山の敵はもとの HP が高め（ペンギン46・雪男60）なので、峰（×2.3）より小さく。
+      //   tools/balance.js で、ペンギンの兵隊が剣で約4振り・受けて約22回（峰の雪オオカミ・岩の子ゴーレムのあいだくらい）。雪男は HP・攻撃を少し小さく（約4.5振り・約20回）
+      foeHp: 1.9, foeAtk: 1.1, foeType: { yeti: { hp: 0.85, atk: 0.85 } },
       bosses: {
         6: { enemy: "golem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3で作る。ゴーレムがもと。今は仮にゴーレム）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
              before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],

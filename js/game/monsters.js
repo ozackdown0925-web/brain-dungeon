@@ -3574,6 +3574,252 @@ var Monsters = (function () {
   };
   SMALL.snow_wolf = SMALL.wolf;
   SMALL.wind_sprite = SMALL.light_sprite;
+  // ---- 白銀の霊峰の敵（地方2の雪山。段階2、2026-11-09）。絵は Claude が描いた ----
+  // 雪男：白い毛のかたまり。顔は青みがかった灰色
+  SMALL.yeti = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      "....AAwwwwAA....",
+      "...AwwwwwwwWA...",
+      "...AwffffffWA...",
+      "..AwfeFffeFfWA..",
+      "..AwfFFFFFFfWA..",
+      "..AwwfFmmFfwWA..",
+      ".AAwwwffffwwWAA.",
+      "AwwAwwwwwwwwAWwA",
+      "AwwAwwwwwwwWAWgA",
+      "AwwAwwwwwwwWAWgA",
+      "AwwAwwwwwwWWAgWA",
+      "AffAwwwwwwWWAffA",
+      ".AAAwwwwwWWgAAA.",
+      "...AwwwWWWggA...",
+      "...AwwgAAgWgA...",
+      "...AwwgA.AwgA...",
+      "..AwwWgA.AwWgA..",
+      "..AffffA.AfffA..",
+      "..AAAAAA.AAAAA..",
+      "................"
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      "....AAwwwwAA....",
+      "...AwwwwwwwWA...",
+      "...AwwwwwwwWA...",
+      "..AwwwwwwwwwWA..",
+      "..AwwwwwwwwwWA..",
+      "..AwwwwwwwwWWA..",
+      ".AAwwwwwwwwWWAA.",
+      "AwwAwwwwwwwWAWwA",
+      "AwwAwwwwwwwWAWgA",
+      "AwwAwwwwwwwWAWgA",
+      "AwwAwwwwwwWWAgWA",
+      "AffAwwwwwWWWAffA",
+      ".AAAwwwwwWWgAAA.",
+      "...AwwwWWWggA...",
+      "...AwwgAAgWgA...",
+      "...AwwgA.AwgA...",
+      "..AwwWgA.AwWgA..",
+      "..AffffA.AfffA..",
+      "..AAAAAA.AAAAA..",
+      "................"
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      ".....AAAA.......",
+      "...AAwwwwAA.....",
+      "..AffwwwwwWA....",
+      ".AfeFfwwwwWA....",
+      ".AfFFfwwwwwWA...",
+      ".AmFffwwwwwWA...",
+      "..AffwwwwwWWA...",
+      "..AAwwwwwwWWA...",
+      ".AwwAwwwwwwWWA..",
+      ".AwwAwwwwwwWgA..",
+      ".AwgAwwwwwWWgA..",
+      ".AffAwwwwwWWgA..",
+      "..AAAwwwwWWggA..",
+      "....AwwwWWWgA...",
+      "....AwwWWggA....",
+      "....AwwgAWgA....",
+      "....AwwgAWgA....",
+      "...AwwWgAwWgA...",
+      "...AffffAfffA...",
+      "...AAAAAAAAAA...",
+      "................"
+    ]
+  };
+  // ペンギンの兵隊：鉄のかぶとをかぶったペンギン。腹ばいですべって突っこむ
+  SMALL.penguin = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhhhhA.....",
+      "....AhhhhhhA....",
+      "....AkwekewkA...",
+      "....AkwwwwwkA...",
+      "....AkkyyykkA...",
+      "...AkkwwwwwkkA..",
+      "..AkkAwwwwwAkkA.",
+      "..AkkAwwwwwAkkA.",
+      "..AkAwwwwwwwAkA.",
+      "...AAwwwwwwwAA..",
+      "....AwwwwwwwA...",
+      "....AkwwwwwkA...",
+      ".....AkkkkkA....",
+      "....AyyA.AyyA...",
+      "....AAAA.AAAA...",
+      "................",
+      "................"
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AhhhhA.....",
+      "....AhhhhhhA....",
+      "....AkkkkkkkA...",
+      "....AkkkkkkkA...",
+      "....AkkkkkkkA...",
+      "...AkkkkkkkkkA..",
+      "..AkkAkkkkkAkkA.",
+      "..AkkAkkkkkAkkA.",
+      "..AkAkkkkkkkAkA.",
+      "...AAkkkkkkkAA..",
+      "....AkkkkkkkA...",
+      "....AkkkkkkkA...",
+      ".....AkkkkkA....",
+      "....AyyA.AyyA...",
+      "....AAAA.AAAA...",
+      "................",
+      "................"
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".....AAAA.......",
+      "....AhhhhA......",
+      "...AhwehhhA.....",
+      "..AyykwkkkkA....",
+      "...AAkwkkkkA....",
+      "....AkwwkkkA....",
+      "...AwwwwkkkkA...",
+      "...AwwwwAkkkA...",
+      "...AwwwwAkkkA...",
+      "...AwwwwAkkkA...",
+      "...AwwwwwAkkA...",
+      "...AwwwwwkkkA...",
+      "....AwwwkkkAA...",
+      ".....AkkkkA.....",
+      "....AyyyAA......",
+      "....AAAAA.......",
+      "................",
+      "................"
+    ]
+  };
+  // 氷のスライムの子：たおした氷のスライムが分かれた小さいスライム
+  SMALL.ice_slime_mini = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".......AA.......",
+      ".....AAHIA......",
+      "....AIHIIIA.....",
+      "....AIAIJAIA....",
+      "....AJIIIIJA....",
+      ".....AAAAAA....."
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".......AA.......",
+      ".....AAHIA......",
+      "....AIHIIIA.....",
+      "....AIAIJAIA....",
+      "....AJIIIIJA....",
+      ".....AAAAAA....."
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".......AA.......",
+      ".....AAHIA......",
+      "....AIHIIIA.....",
+      "....AIAIJAIA....",
+      "....AJIIIIJA....",
+      ".....AAAAAA....."
+    ]
+  };
+  SMALL.ice_slime = SMALL.slime;
+  SMALL.ice_sprite = SMALL.light_sprite;
   // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
   function palWith(o) { var r = {}, k; for (k in PAL) r[k] = PAL[k]; for (k in o) r[k] = o[k]; return r; }
   SMALL_PAL.harpy = { A: "#140c1c", h: "#3a3a8a", H: "#5a5ab8", s: "#f0c8a0", S: "#c8906a", e: "#140c1c", w: "#a8b8f0", W: "#6a7ac8", v: "#3e4a90", f: "#e8e0f8", y: "#f0c040", Y: "#a07820", k: "#d04648" };
@@ -3609,6 +3855,11 @@ var Monsters = (function () {
   SMALL_PAL.golem_kid = { A: "#140c1c", r: "#b0a898", R: "#8a8478", q: "#5e5a52", Q: "#3e3b36", m: "#5e8a46", M: "#3e6a34", e: "#7fd8ff", E: "#2a6aa0" };
   SMALL_PAL.snow_wolf = palWith({ b: "#ffffff", c: "#dfe6ee", d: "#a9b4c4", e: "#6f7a90", K: "#597dce" });
   SMALL_PAL.wind_sprite = palWith({ H: "#e8fff4", B: "#8ad8b0", W: "#3e8a6a" });
+  SMALL_PAL.yeti = { A: "#140c1c", w: "#f4f8fc", W: "#c8d4e4", g: "#8a9ab4", f: "#7a8ca8", F: "#4e5e7a", e: "#140c1c", m: "#3a2030" };
+  SMALL_PAL.penguin = { A: "#140c1c", k: "#2a3248", w: "#f4f8fc", y: "#f0b030", e: "#140c1c", h: "#8a96a8" };
+  SMALL_PAL.ice_slime = palWith({ H: "#ffffff", I: "#8ccbf0", J: "#3a7ab8" });   // 雪の上でも見えるように、少し濃い水色
+  SMALL_PAL.ice_slime_mini = SMALL_PAL.ice_slime;
+  SMALL_PAL.ice_sprite = palWith({ H: "#d8f0ff", B: "#4aa0e0", W: "#1e4a8a" });
   // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
   // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
   var PLACEHOLDER = {};
@@ -4213,7 +4464,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }

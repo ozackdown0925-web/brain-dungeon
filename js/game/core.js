@@ -453,6 +453,18 @@
     n.made++;
     run.roomAlive = Enemies.alive().length;
   }
+  // 氷のスライム（白銀の霊峰、2026-11-09）：たおすと、左右に小さいスライムが2つ出る。小さいほうは経験値や物を落とさない（summoned）
+  function splitFoe(e) {
+    for (var i = 0; i < 2; i++) {
+      var sx = e.x + (i ? 7 : -7), sy = e.y + (i ? 3 : -3);
+      if (room.hitsWall(sx - 4, sy - 4, 8, 8)) { sx = e.x; sy = e.y; }
+      var m = Enemies.spawn(e.def.split, sx, sy, run.depth || dg.power);
+      toughen(m);
+      m.summoned = true; m.cd = 0.9 + i * 0.4; m.face = { x: i ? 1 : -1, y: 0 };
+    }
+    Battle.pop(e.x, e.y - 30, "分かれた！", "#bfe6f8", 8);
+    run.roomAlive = Enemies.alive().length;
+  }
   // 巣をこわした：経験値は敵3体分。ゴールドや素材は落とさない（宝箱があるので）
   function nestBroken(e) {
     var c = dg.cells[curKey];
@@ -487,6 +499,7 @@
       });
     }
     if (e.def.boss) { startBossCine(e); return; }
+    if (e.def.split) splitFoe(e);   // 氷のスライム：小さい2つに分かれる
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
     var drop = Loot.enemyDrop(e.type, dg.power, settings.correct);
@@ -753,13 +766,25 @@
         }
         continue;
       }
-      if (t.type === "rock") {
+      if (t.type === "ice") {
+        // すべる氷（白銀の霊峰、2026-11-09 保護者と決定）：ふむと、向いている向きへ少しのあいだすべっていく（突風と同じ動き。岩や壁で止まる）
+        if (!(t.wait > 0)) {
+          var fl = Math.sqrt(A.face.x * A.face.x + A.face.y * A.face.y) || 1;
+          t.wait = 1.5;
+          run.gust = { dx: A.face.x / fl, dy: A.face.y / fl, t: SLIDE_TIME, slide: true };
+          say("つるっ！ 氷ですべった！"); Sound.play("trap");
+        }
+        continue;
+      }
+      if (t.type === "rock" || t.type === "icicle") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
         if (!(t.wait > 0)) {
           t.wait = 2.5;
-          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME });
-          say("頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+          // つらら（白銀の霊峰、2026-11-09）：落石と同じ。上から氷のつららが落ちてくる
+          var icy = t.type === "icicle";
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy });
+          say(icy ? "頭の上で、つららがきしむ音がした！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
         }
         continue;
       }
@@ -799,7 +824,8 @@
   }
 
   // ---------- 突風（烈風の峰） ----------
-  var GUST_TIME = 0.7, GUST_SPEED = 130;   // 0.7秒、1秒あたり130点（およそ5マス流される）
+  var GUST_TIME = 0.7, GUST_SPEED = 130;
+  var SLIDE_TIME = 0.6;   // すべる氷（白銀の霊峰）：0.6秒すべる（およそ4〜5マス）   // 0.7秒、1秒あたり130点（およそ5マス流される）
 
   // ---------- 落石（黒鉄の坑道） ----------
   var FALL_TIME = 0.9, FALL_R = 13;
@@ -818,7 +844,7 @@
             ch.hp = Math.max(1, ch.hp - dmg);
             A.hurtT = 0.3;
             Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
-            say("落石に当たった！");
+            say(f.ice ? "つららに当たった！" : "落石に当たった！");
           }
         }
       } else f.dust -= dt;
@@ -843,6 +869,13 @@
   // 突風で押し流されているあいだ：まわりに、流れる向きの白い風の線
   function drawGust() {
     if (!run.gust || !(run.gust.t > 0)) return;
+    if (run.gust.slide) {   // すべる氷：足もとに、白い氷のかけらが後ろへ飛ぶ
+      for (var si = 0; si < 4; si++) {
+        var sp2 = ((SLIDE_TIME - run.gust.t) * 4 + si / 4) % 1;
+        Render.rect(Math.round(A.x - cam.x - run.gust.dx * (4 + sp2 * 12) + (si - 1.5) * 3), Math.round(A.y + 4 - cam.y - run.gust.dy * (4 + sp2 * 12)), 2, 1, "rgba(232,248,255," + (0.9 - sp2 * 0.7).toFixed(2) + ")");
+      }
+      return;
+    }
     var g = run.gust, x = A.x - cam.x, y = A.y - 8 - cam.y, k = Math.min(1, g.t / 0.25);
     for (var i = 0; i < 6; i++) {
       var ph = ((GUST_TIME - g.t) * 3 + i / 6) % 1, side = (i - 2.5) * 5;
@@ -861,7 +894,12 @@
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R * (0.5 + 0.5 * k), FALL_R * (0.5 + 0.5 * k) * 0.55, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(255,90,64," + (0.3 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R, FALL_R * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-        if (k > 0.35) {   // 岩：上から落ちてくる
+        if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
+          var iy = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
+          Render.rect(x - 3, iy - 10, 7, 4, "#140c1c"); Render.rect(x - 2, iy - 6, 5, 4, "#140c1c"); Render.rect(x - 1, iy - 2, 3, 3, "#140c1c"); Render.rect(x, iy + 1, 1, 2, "#140c1c");
+          Render.rect(x - 2, iy - 9, 5, 3, "#b8dcf0"); Render.rect(x - 1, iy - 6, 3, 4, "#94c4e0"); Render.rect(x, iy - 2, 1, 3, "#6ea4c8");
+          Render.rect(x - 1, iy - 9, 1, 5, "#f0faff");
+        } else if (k > 0.35) {   // 岩：上から落ちてくる
           var ry = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 5, ry - 4, 10, 8, "#140c1c");
           Render.rect(x - 4, ry - 3, 8, 6, "#544f5a");
@@ -872,7 +910,8 @@
         var kd = 1 - f.dust / 0.35;
         for (var i = 0; i < 8; i++) {
           var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
-          Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
+          if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
+          else Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
         }
       }
     });
@@ -950,6 +989,13 @@
         Render.rect(Math.round(cx2 + gd2.dx * 6) - 1, Math.round(cy2 + gd2.dy * 6) - 1, 2, 2, "#e8f8ff");
         Render.rect(Math.round(cx2 + gd2.dx * 4 - gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 + gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
         Render.rect(Math.round(cx2 + gd2.dx * 4 + gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 - gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
+      } else if (t.type === "ice") {   // すべる氷：つるつるの氷の板（うす青に白い光）
+        Render.rect(x + 1, y + 2, 14, 12, "#3a6a90"); Render.rect(x + 2, y + 3, 12, 10, "#94c4e0");
+        Render.rect(x + 3, y + 4, 4, 1, "#f0faff"); Render.rect(x + 3, y + 5, 2, 1, "#f0faff"); Render.rect(x + 9, y + 9, 3, 1, "#e8f6ff");
+        if ((glow * 0.8 + i * 0.37) % 1 < 0.15) Render.rect(x + 10, y + 5, 2, 2, "#ffffff");   // ときどき光る
+      } else if (t.type === "icicle") {   // つらら：落ちてわれた氷のかけらと、床のひび
+        Render.rect(x + 3, y + 5, 3, 2, "#b8dcf0"); Render.rect(x + 10, y + 9, 2, 2, "#94c4e0"); Render.rect(x + 6, y + 12, 3, 1, "#e8f6ff");
+        Render.rect(x + 4, y + 8, 1, 1, "#525c70"); Render.rect(x + 5, y + 9, 1, 1, "#525c70"); Render.rect(x + 6, y + 10, 2, 1, "#525c70"); Render.rect(x + 10, y + 5, 1, 2, "#525c70");
       } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
         Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");

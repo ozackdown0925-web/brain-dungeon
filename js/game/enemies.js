@@ -533,6 +533,7 @@ var Enemies = (function () {
       var gap = dist - e.r - P.r; // おたがいのふちの間の距離
       var d = e.def;
       e.cd = Math.max(0, e.cd - dt);
+      if (d.throwRange) e.throwCd = (e.throwCd === undefined ? 1 + Math.random() * 2 : e.throwCd) - dt;   // 雪男の雪玉（白銀の霊峰）
       if (d.kind === "bud") {   // ラフレシアのつぼみ（2026-11-08）：動かない。時間が来ると咲いて毒の霧をまき、消える（ごほうびは出ない）
         e.bloomT = (e.bloomT === undefined ? 6 : e.bloomT) - dt;
         if (e.bloomT <= 0) {
@@ -558,7 +559,10 @@ var Enemies = (function () {
       } else if (d.kind === "melee") {
         // 届くところまで来たら構える（2026-10-18：前は届くところより少し手前まで近づいてから）
         if (gap <= d.reach && e.cd <= 0) startWindup(e, ux, uy);
-        else if (gap > d.reach - 2) { mx = ux; my = uy; }
+        else if (d.throwRange && e.throwCd <= 0 && e.cd <= 0 && gap > d.reach + 16 && gap <= d.throwRange) {
+          // 雪男（白銀の霊峰、2026-11-09）：はなれていると、雪玉を頭の上にかかげて（throwWindup 秒）投げる
+          startWindup(e, ux, uy); e.t = d.throwWindup; e.throwing = true; e.throwCd = d.throwEvery + Math.random();
+        } else if (gap > d.reach - 2) { mx = ux; my = uy; }
       } else if (d.kind === "spear") {
         if (gap > d.keep + 8) { mx = ux; my = uy; }
         else if (gap < d.keep - 6) { mx = -ux; my = -uy; }
@@ -800,7 +804,7 @@ var Enemies = (function () {
       if (len < 40) { e.chargeCd = 0.8; return false; }   // 前がふさがっているときは、あとで
       e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; e.chargeLen = len;
       e.state = "warn"; e.t = d.chargeWarn; e.chargeCd = d.chargeEvery + Math.random() * 1.5;
-      Battle.pop(e.x, e.y - 26, "突進の構え！", "#ef5b5b", 8);
+      Battle.pop(e.x, e.y - 26, d.chargeWord || "突進の構え！", "#ef5b5b", 8);
       return true;
     }
     return false;
@@ -830,6 +834,11 @@ var Enemies = (function () {
   function attack(e, p, gap, hurt) {
     var d = e.def;
     e.state = "recover"; e.t = 0.35; e.cd = d.cooldown;
+    if (e.throwing) {   // 雪男の雪玉（物理のダメージ。まっすぐ飛んで、壁や岩でくだける）
+      e.throwing = false; e.cd = 0.8;
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 10 + e.aim.y * 6, vx: e.aim.x * d.ballSpeed, vy: e.aim.y * d.ballSpeed, life: 1.4, from: e, ally: !!e.charm, opts: { snowball: true } });
+      return;
+    }
     if (d.kind === "archer") {
       arrows.push({ x: e.x + e.aim.x * 6, y: e.y + e.aim.y * 6, vx: e.aim.x * d.arrowSpeed, vy: e.aim.y * d.arrowSpeed, life: 2.2, from: e, ally: !!e.charm });
       return;
@@ -837,6 +846,10 @@ var Enemies = (function () {
     if (e.rival && d.kind === "caster") {   // 闘技場の相手の魔法の玉：仲間のふつうの魔法と同じ見た目（2026-11-01。前は敵の闇の玉だった）
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e,
                     opts: { skillShot: true, spec: { stat: "m", elem: "none" }, color: "#c9a8ff", size: 2, magic: true } });
+      return;
+    }
+    if (d.ice && d.kind === "caster") {   // 氷の精の氷のつぶて（白銀の霊峰、2026-11-09。魔法のダメージ）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 6 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 1.6, from: e, ally: !!e.charm, opts: { shard: true, magic: true } });
       return;
     }
     if (d.wind) {   // 風の精の風の刃（烈風の峰、2026-11-08。魔法のダメージ）
@@ -853,7 +866,7 @@ var Enemies = (function () {
       return;
     }
     if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）。水のスライムは水のつぶ
-      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: d.water ? { drop: true } : { spit: true } });
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: d.ice ? { shard: true } : d.water ? { drop: true } : { spit: true } });
       return;
     }
     if (d.kind === "lizard") {   // 火トカゲの火の玉（とどく距離は短い）
@@ -961,7 +974,7 @@ var Enemies = (function () {
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
-      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind) {   // 瘴気の霊・ダークウィスプ・風の精：ふわふわ上下にゆれて、少しすけている
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || (d.ice && d.fly)) {   // 瘴気の霊・ダークウィスプ・風の精・氷の精：ふわふわ上下にゆれて、少しすけている
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
@@ -980,11 +993,18 @@ var Enemies = (function () {
         x += Math.round(Math.sin(clock * 40) * kb * 1.2);
       }
       Monsters.drawSmall(ctx, e, x, y + 6 - lift);
+      if (e.throwing && e.state === "windup" && !e.dead) {   // 雪男：片手で雪玉をふりかぶる（だんだん持ち上がる）
+        var kt = 1 - e.t / d.throwWindup, bx4 = Math.round(x + (e.face.x >= 0 ? 8 : -8)), by4 = Math.round(y - 10 - kt * 8 - lift);
+        Render.rect(bx4 - 3, by4 - 2, 6, 4, "#140c1c"); Render.rect(bx4 - 2, by4 - 3, 4, 6, "#140c1c");
+        Render.rect(bx4 - 2, by4 - 2, 4, 4, "#f4f8fc"); Render.rect(bx4 + 1, by4, 1, 2, "#a8b8cc");
+      }
       if (tw && !e.dead && !tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
-      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind) ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || (d.ice && d.fly)) ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if ((d.kind === "caster" || d.kind === "dwisp") && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
         var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
-        if (d.wind) {   // 風の精：緑がかった白い風が、まわりをくるくる回って集まる
+        if (d.ice) {   // 氷の精：手の先に、水色の氷の粒が集まる
+          Combat.glowDot(ctx, ox2, oy2, 3 + kc * 5, "#f0faff", "#7ac8f0", 0.5 + 0.5 * kc);
+        } else if (d.wind) {   // 風の精：緑がかった白い風が、まわりをくるくる回って集まる
           for (var wv = 0; wv < 6; wv++) {
             var wa = clock * 9 + wv * 1.05, wr = 12 - kc * 7;
             Render.rect(Math.round(ox2 + Math.cos(wa) * wr), Math.round(oy2 + Math.sin(wa) * wr * 0.7), 2, 1, wv % 2 ? "#f0fff8" : "#8ad8b0");
@@ -1111,6 +1131,18 @@ var Enemies = (function () {
         ctx.beginPath(); ctx.arc(x - wux * 3, y - wuy * 3, 6, wang - 1.2, wang + 1.2); ctx.stroke();
         ctx.strokeStyle = "#f0fff8"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.arc(x - wux * 2, y - wuy * 2, 6, wang - 1.0, wang + 1.0); ctx.stroke();
+        return;
+      }
+      if (a.opts && a.opts.snowball) {   // 雪男の雪玉：地面にかげ、白い玉
+        Render.rect(Math.round(x) - 3, Math.round(y) + 9, 6, 2, "rgba(0,0,0,0.3)");
+        Render.rect(Math.round(x) - 3, Math.round(y) - 2, 6, 4, "#140c1c"); Render.rect(Math.round(x) - 2, Math.round(y) - 3, 4, 6, "#140c1c");
+        Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#f4f8fc"); Render.rect(Math.round(x) + 1, Math.round(y), 1, 2, "#a8b8cc");
+        return;
+      }
+      if (a.opts && a.opts.shard) {   // 氷のつぶて（氷の精・氷のスライム）：進む向きにとがった、水色の氷のかけら
+        var sl = Math.sqrt(a.vx * a.vx + a.vy * a.vy) || 1, sux = a.vx / sl, suy = a.vy / sl;
+        ctx.strokeStyle = "rgba(122,200,240,0.5)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - sux * 6, y - suy * 6); ctx.lineTo(x, y); ctx.stroke();
+        ctx.strokeStyle = "#e8f8ff"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - sux * 5, y - suy * 5); ctx.lineTo(x + sux * 2, y + suy * 2); ctx.stroke();
         return;
       }
       if (a.opts && a.opts.orb) {   // 闇の玉：黒い芯と紫の光

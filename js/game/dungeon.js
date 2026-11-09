@@ -172,10 +172,18 @@ var Dungeon = (function () {
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
     if (theme === "snow") {
-      // 白銀の霊峰（段階1、2026-11-09）：雪山の敵は段階2で作る。今は仮に、烈風の峰の後半の敵（雪オオカミの群れに、風の精・岩の子ゴーレム）
-      for (var si = 0; si < n; si++) types.push("snow_wolf");
-      if (rnd() < 0.5) types[types.length - 1] = "wind_sprite";
-      if (n >= 4 && rnd() < 0.45) types[1] = "golem_kid";
+      // 白銀の霊峰（段階2、2026-11-09 保護者と決定）：前半（1〜6階）は氷のスライムとペンギンの兵隊がかわりばんこの群れに、雪男（4階から氷の精）。
+      // 後半（7〜12階）はペンギンの兵隊の群れに、雪男・氷の精・ときどき氷のスライム
+      if (floor <= 6) {
+        for (var si = 0; si < n; si++) types.push(si % 2 ? "penguin" : "ice_slime");   // スライムは分かれるので、ペンギンとかわりばんこ
+        if (rnd() < 0.6) types[0] = "yeti";
+        if (floor >= 4 && rnd() < 0.4) types[types.length - 1] = "ice_sprite";
+      } else {
+        for (var sj = 0; sj < n; sj++) types.push("penguin");
+        if (rnd() < 0.7) types[0] = "yeti";
+        if (rnd() < 0.45) types[types.length - 1] = "ice_sprite";
+        if (n >= 4 && rnd() < 0.5) types[1] = rnd() < 0.5 ? "ice_slime" : "yeti";
+      }
     } else if (theme === "peak") {
       // 烈風の峰（地方2の山。段階2、2026-11-08 保護者と決定）：前半（1〜6階）はハーピーの群れに、山ヤギと岩の子ゴーレム。
       // 4階から風の精。後半（7〜12階）は雪オオカミの群れに、ハーピー・風の精・岩の子ゴーレム・ときどき山ヤギ
@@ -344,7 +352,7 @@ var Dungeon = (function () {
   // 部屋のつなぎ方と別の順の数を使う（4-1 と同じ seed なら、部屋のつなぎ方と敵は同じまま）
   function placeThings(dg, floor, seed, dungeon) {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
-    var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰（罠は段階2で決める。今は坑道と同じ数で、落とし穴と毒の沼）
+    var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -464,15 +472,16 @@ var Dungeon = (function () {
       var tk = pick(rnd, trapRooms);
       if ((perRoom[tk] || 0) >= 2) continue;
       // 黒鉄の坑道（2026-10-27 保護者の案）：落石（rock。1マス）を足す。落石4割・落とし穴4割・毒の沼2割
-      var rv = rnd(), rock = cave && rv < 0.4, wind = peak && rv < 0.4;
-      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow ? rv < 0.6 : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
+      // 白銀の霊峰（2026-11-09 保護者と決定）：つらら（icicle。落石と同じく影が出てから落ちる）3.5割・すべる氷（ice）3.5割・落とし穴3割。毒の沼はなし
+      var rv = rnd(), rock = (cave && rv < 0.4) || (snow && rv < 0.35), wind = peak && rv < 0.4, ice = snow && rv >= 0.35 && rv < 0.7;
+      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow ? !ice : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
       // 落とし穴と落石はまわり1マスも通れるところだけ（せまい道をふさがないように）
-      var one = pit || rock || wind;
+      var one = pit || rock || wind || ice;
       var ts = one ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
       var tp = pick(rnd, ts);
       // 突風（烈風の峰）：ふむと、決まった向き（dir：上下左右）へ少しのあいだ押し流される。見つけた突風の罠は、向きの矢印で見える
-      var tr = { type: rock ? "rock" : wind ? "wind" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
+      var tr = { type: rock ? (snow ? "icicle" : "rock") : wind ? "wind" : ice ? "ice" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
       if (wind) tr.dir = ["n", "s", "e", "w"][Math.floor(rnd() * 4)];
       dg.cells[tk].traps.push(tr);
       mark(tk, tp.x, tp.y, one ? 1 : 2, one ? 1 : 2, 1);
@@ -504,7 +513,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
-    if (th === "snow") return ["snow_wolf", "wind_sprite", "golem_kid"];   // 白銀の霊峰（仮。今は巣を置かない）
+    if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
     if (th === "peak") return floor <= 6 ? ["harpy", "goat", "golem_kid"] : ["snow_wolf", "harpy", "wind_sprite"];   // 烈風の峰（今は巣を置かない）
     if (th === "cave") return floor <= 6 ? ["thief_sword", "thief_archer", "bat", "rock_worm"] : ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime"];   // 坑道（今は巣を置かない）
     if (th === "wild") {
