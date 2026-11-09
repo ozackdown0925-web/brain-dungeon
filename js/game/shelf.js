@@ -6,7 +6,7 @@
 //   → ③1周目が終わったあとの、間をあけたたしかめ。教科はまぜて回す（子どもに選ばせない）。同じ図・表・指示の小問（group）はまとめて続けて出し、教科ごとの小問の数がそろうように回す。
 //   はじめて見て正解した問題は「知っている」（14日たったら1回たしかめ、正解なら「覚えた」）。
 //   2回目もまちがえた問題は「苦手」（1周目のあいだは追わない。そのあとは 3日後→1週間後→2週間後 と正解を続けたら「覚えた」。まちがえたら翌日）。
-//   新しい問題は、新しいプリントから先に（プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
+//   新しい問題は、塾でいちばん最近習った回のプリントから先に（2026-11-09。プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
 // ・日本地図の棚（2026-11-09）：47都道府県の名前と県庁所在地（js/game/chizu.js。問題はこのリポジトリで作る）。
 //   出し方は知識の棚と同じだが、1日 MAP_DAILY 問の別の枠にする（1,500問をこえる知識の棚にうもれないように）。記録は同じ「書庫の記録」（qid が "map-"）。
 // ・保護者のデバッグ用の枠では、答えを GAS に送らない（この画面を開いているあいだだけ覚える）。
@@ -97,6 +97,12 @@ var Shelf = (function () {
   }
   // プリント名（出典の最初の空白まで）と、そのプリントを取りこんだ日時（同じプリントの問題でいちばん早い書きこみ日時）
   function sheetOf(q) { return String(q.source || "").split(" ")[0]; }
+  // プリント名の「上第N回」「下第N回」から、習った順の数（大きいほど新しい）。読めなければ -1。
+  function lessonRank(sheet) {
+    var m = /(上|下)第?(\d+)回/.exec(String(sheet || "").replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }));
+    if (!m) return -1;
+    return (m[1] === "下" ? 1000 : 0) + Number(m[2]);
+  }
   // その日の分：{ list: [{ q, why（"retry"・"new"・"check"） }], doneToday, left（1周目の残り）, caughtUp（1周目が終わった） }
   function plan(questions, records, today, daily) {
     var st = states((records || []).filter(function (r) { return r.date < today; }));
@@ -108,11 +114,15 @@ var Shelf = (function () {
     // ①前にまちがえて、まだ2回目を解いていない問題
     var retry = Q.filter(function (q) { var s = st[q.id]; return s && s.kind === "retry"; });
     retry.sort(function (a, b) { return st[a.id].last < st[b.id].last ? -1 : st[a.id].last > st[b.id].last ? 1 : (a.id < b.id ? -1 : 1); });
-    // ②まだ解いていない問題（新しいプリントが先）
+    // ②まだ解いていない問題（最近習った回のプリントが先）
     var sheetAt = {};
     (questions || []).forEach(function (q) { if (!q) return; var k = q.subject + "|" + sheetOf(q), at = String(q.updatedAt || ""); if (!sheetAt[k] || (at && at < sheetAt[k])) sheetAt[k] = at; });
     var fresh = Q.filter(function (q) { return !st[q.id]; });
+    // 2026-11-09 保護者の希望：取りこんだ順ではなく、塾でいちばん最近習った回（下第10回 → 下第9回 → … → 上第1回）を先に。
+    // 回が読めないプリントは、回のあるプリントのあと（その中は取りこんだのが新しい順）。
     fresh.sort(function (a, b) {
+      var ra = lessonRank(sheetOf(a)), rb = lessonRank(sheetOf(b));
+      if (ra !== rb) return rb - ra;
       var x = sheetAt[a.subject + "|" + sheetOf(a)] || "", y = sheetAt[b.subject + "|" + sheetOf(b)] || "";
       return (x < y ? 1 : x > y ? -1 : 0) || (sheetOf(a) < sheetOf(b) ? -1 : sheetOf(a) > sheetOf(b) ? 1 : 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     });
