@@ -171,8 +171,15 @@ var Shelf = (function () {
   }
   var debugRecs = [];   // デバッグ用の枠で解いた答え（送らない）
 
+  // 闘技場の挑戦権（2026-11-09）：今日の書庫（知識の棚と日本地図の棚）で解いた数と、今日の分が全部おわったかを知らせる
+  function passArena() {
+    if (!window.GameState || !GameState.setArenaPass) return;
+    var a = plan(Q, R.filter(notMap), today), b = MQ.length ? plan(MQ, R.filter(isMap), today, MAP_DAILY) : { list: [], doneToday: 0 };
+    GameState.setArenaPass(a.doneToday + b.doneToday, !a.list.length && !b.list.length);
+  }
   function saveAnswer(rec) {
     R.push(rec);
+    passArena();
     if (debug) { debugRecs.push(rec); return; }
     var body = {}; Object.keys(rec).forEach(function (k) { body[k] = rec[k]; });
     body._k = key;
@@ -243,6 +250,7 @@ var Shelf = (function () {
   }
   function fillPanel(body) {
     body.textContent = "";
+    passArena();
     var got = payReward();
     if (got) { body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got))); rewardPopup(got, "これまで解いた分のごほうび！\n"); }
     fillMap(body);

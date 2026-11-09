@@ -3617,6 +3617,11 @@ var Monsters = (function () {
     statue_stone:  { C: "X", V: "T", D: "Y", Y: "Y", R: "U", F: "T", Q: "T", O: "X", B: "Y", K: "Y", H: "U", U: "U", T: "T" },
     statue_bronze: { C: "6", V: "7", D: "5", Y: "5", R: "8", F: "7", Q: "7", O: "6", B: "9", K: "9", H: "8", U: "8", T: "7" }
   };
+  // 2026-11-09 足した像（鉄・鋼・ミスリル）：銅像と同じ入れかえで、5〜9 の色だけ像ごとに変える（暗い→明るい、9 は目と飾り）
+  STATUE.statue_iron = STATUE.statue_steel = STATUE.statue_mithril = STATUE.statue_bronze;
+  SMALL_PAL.statue_iron    = palWith({ "5": "#24262e", "6": "#454a56", "7": "#6e7482", "8": "#a4aab4", "9": "#9a5a32" });   // 鉄：黒っぽい灰色と赤さび
+  SMALL_PAL.statue_steel   = palWith({ "5": "#2e3a4c", "6": "#536580", "7": "#8ea4bc", "8": "#dae6f2", "9": "#4a7ad0" });   // 鋼：青みのある銀
+  SMALL_PAL.statue_mithril = palWith({ "5": "#2e5260", "6": "#5a96a6", "7": "#98d8e2", "8": "#effdff", "9": "#b49aff" });   // ミスリル：水色に光る銀
   // 大怪鳥（烈風の峰12階・主。2026-11-09、72×50、正面）。up＝つばさを上げた形、down＝つばさを下げた形（かわりばんこで羽ばたく）、dive＝つばさをたたんで急降下
   var ROC = {
     up: [
