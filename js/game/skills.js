@@ -41,6 +41,14 @@ var Combat = (function () {
       // ドワーフキングの盾がまえ（2026-11-07）：前からの攻撃は減る。横・後ろからはふつう
       var guarded = Bosses.guardFront(e, ox, oy);
       if (guarded) { res.amount = Math.max(1, Math.round(res.amount * e.def.guardCut)); res.crit = false; }
+      // 氷牙獣の氷のよろい（2026-11-09）：受けるダメージ半分。火の攻撃を当てるととける（その1回はふつうに当たる）
+      if (e.armor > 0) {
+        if (elem === "fire") Bosses.meltArmor(e, true);
+        else {
+          res.amount = Math.max(1, Math.round(res.amount * Bosses.armorMult(e))); res.crit = false;
+          if (!(e.guardPop > Date.now())) { e.guardPop = Date.now() + 900; Battle.pop(e.x, e.y - 52, "かたい！", "#9ff4ff", 8); }
+        }
+      }
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;

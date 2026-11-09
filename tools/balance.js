@@ -51,7 +51,7 @@ function row(label, depth, tier, D, type) {
 }
 var head = ["場所", "Lv", "物攻", "1振り", "敵", "敵HP", "敵物防", "何振りで", "受ける", "HP", "何回で", "守りで減る"];
 var rows = [];
-var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword", yama: "harpy" };
+var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword", yama: "harpy", yuki: "penguin" };
 G.DUNGEON_ORDER.forEach(function (id) {
   var D = G.DUNGEONS[id];
   [1, D.floors].forEach(function (f) {

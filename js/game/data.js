@@ -531,6 +531,43 @@ var GameData = (function () {
       res: { fire: 1.3, water: 0.75 }, speed: 50, r: 5,
       reach: 12, circle: 34, windup: 0.35, cooldown: 1.5, lunge: 8, color: "#dfe6ee"
     },
+    // ---- 白銀の霊峰の敵（地方2の雪山。段階2、2026-11-09 保護者と決定）。数字は遊んでみてから直す ----
+    // 弱点：火（雪男・氷のスライム）・打（氷の精）・刺（ペンギンの兵隊。刺が弱点の敵がいなかったので1種類だけ）
+    // 雪男：のしのし近づいて、こぶしでなぐる。はなれていると、雪玉を投げる（throw*）。火が弱点、打はいまひとつ（分厚い毛皮）
+    yeti: {
+      name: "雪男", kind: "melee", hp: 60, patk: 11, pdef: 5, mdef: 2,
+      res: { fire: 1.3, strike: 0.75 }, speed: 18, r: 7,
+      reach: 14, windup: 0.55, cooldown: 1.8, lunge: 4, color: "#f4f8fc",
+      throwRange: 110, throwEvery: 3.5, throwWindup: 0.7, ballSpeed: 110
+    },
+    // 氷の精：ふわふわ浮いて、はなれたところから氷のつぶてを撃つ（魔法のダメージ）。たたけばくだけるので打が弱点、刺は半減、水は効きにくい
+    ice_sprite: {
+      name: "氷の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 4, mdef: 5,
+      res: { strike: 1.3, pierce: 0.5, water: 0.5 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 130, color: "#7ac8f0", ice: true
+    },
+    // 氷のスライム：はねて動き、氷のつぶを吐く。たおすと、小さい2つに分かれる（split。小さいほうは経験値や物を落とさない）。
+    // 火が弱点、斬・刺はいまひとつ、水は効かない
+    ice_slime: {
+      name: "氷のスライム", kind: "frog", hp: 44, patk: 9, pdef: 3, mdef: 3,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#bfe6f8", ice: true, split: "ice_slime_mini"
+    },
+    ice_slime_mini: {
+      name: "氷のスライムの子", kind: "frog", hp: 16, patk: 6, pdef: 2, mdef: 2,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 4,
+      reach: 50, keep: 30, hopSpeed: 90, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.6, spitSpeed: 100, color: "#bfe6f8", ice: true
+    },
+    // ペンギンの兵隊：かぶとをかぶったペンギン。山ヤギと同じく、赤い線で予告してから腹ばいですべって突っこむ。
+    // 岩にぶつかるとふらつく。刺が弱点（槍や弓が活きる）、水は効きにくい
+    penguin: {
+      name: "ペンギンの兵隊", kind: "boar", hp: 46, patk: 9, pdef: 4, mdef: 2,
+      res: { pierce: 1.3, water: 0.5 }, speed: 22, r: 6,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#2a3248",
+      chargeMin: 24, chargeRange: 170, chargeMax: 200, chargeWarn: 0.7, chargeSpeed: 260, chargeMult: 1.8, chargeEvery: 3.5, tired: 1.6, chargeWord: "すべりこみの構え！"
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -695,6 +732,51 @@ var GameData = (function () {
     backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
   };
 
+  // スノーゴーレム（白銀の霊峰6階・中ボス。段階3、2026-11-09 保護者と決定。数字は仮）：ゴーレムがもと（動きは bosses.js の golem と snowGolem）。
+  //   ぶん回し・3回攻撃はゴーレムと同じ。岩石投げのかわりに「雪玉ころがし」（大きな雪玉を地面に転がす。壁で3回まではね返る）。
+  //   吹雪：画面が白くなり、まわりしか見えなくなる。HP 半分で1回だけ、くずれて雪だるまを3体出す（雪の山には攻撃が当たらない）。
+  //   雪だるまを全部たおすと、もとにもどってふらつく。のこっていると、splitPile 秒で合体して回復する。
+  //   火と打が弱点（雪がとける・くだける）、刺はいまひとつ、水は効きにくい。斬はふつう（ゴーレムとちがって、岩ではないので）。
+  //   強さ：剣で約47回（Lv41・ミスリル R＋5で1振り約190）＋雪だるま。大怪鳥（約48回＋空の時間）より楽にならないように
+  ENEMIES.snowgolem_boss = {
+    name: "スノーゴーレム", kind: "snowgolem_boss", boss: true, snow: true, hp: 9000, patk: 44, matk: 0, pdef: 12, mdef: 6,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 18, r: 16, cooldown: 1.5, color: "#dfe8f4",
+    spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.5,
+    comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
+    rockEvery: 10, rockEveryHalf: 8, rockCount: 2, rockCountHalf: 3, rockWindup: 0.7, rockWindupHalf: 0.55, tired: 2.0,
+    ballSpeed: 120, ballSpeedHalf: 150, ballR: 12, ballMult: 1.6, ballBounce: 3, ballLife: 7,
+    backGap: 50, backTime: 0.5, backSpeed: 150,
+    blizzardEvery: 16, blizzardEveryHalf: 13, blizzardTime: 6,
+    splitCount: 3, splitPile: 14, splitHeal: 0.05, reformTired: 3.0
+  };
+  // 雪だるま（スノーゴーレムがくずれたときに出る）：ちょこちょこ近づいて、体当たり。火と打が弱点
+  ENEMIES.snowman = {
+    name: "雪だるま", kind: "melee", hp: 420, patk: 30, pdef: 6, mdef: 4,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 34, r: 6,
+    reach: 14, windup: 0.5, cooldown: 1.4, lunge: 6, color: "#f4f8fc"
+  };
+  // 氷牙獣（白銀の霊峰12階・主。段階4、2026-11-09。数字は仮）：大オオカミがもと（動きは bosses.js の iceFang）。
+  //   かみつき・大突進（赤い線で予告）は大オオカミと同じ。遠ぼえで雪オオカミを2匹呼ぶ（強さは pupHp・pupAtk）。
+  //   大技「大遠ぼえ」（2026-11-09 保護者の案：遠ぼえでつららが降ってくる）：空を向いてほえると、部屋じゅうにつららが次々に降る。
+  //     落ちる場所に影（輪）が出て、少しあとに落ちる。1本目はプレイヤーの足もと。HP 半分から本数が増える。いちばん大きなダメージ
+  //   大ジャンプ：高くとび上がり、落ちる場所に影（輪）が出る → 着地でダメージ、まわりに氷のトゲが生える（少しおくれて）。
+  //   こおりの息：扇の形に予告 → 吐く。当たるとダメージ、扇の床が frostLife 秒「すべる氷」になる。
+  //   HP 半分から：氷のよろい（受けるダメージ armorCut 倍。火の攻撃を当てるか armorTime 秒でとける。armorEvery 秒ごとにまた着る）。大ジャンプが3回続けて。
+  //   火が弱点（よろいもとける）、水は効きにくい。
+  //   強さ：剣で約55回（Lv45・ミスリル R＋5で1振り約210）＋よろい。中ボスのスノーゴーレム（約47回）より楽にならないように
+  ENEMIES.icefang_boss = {
+    name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 46, matk: 0, pdef: 12, mdef: 8,
+    res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
+    reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
+    chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 3.0,
+    howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 22,
+    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
+    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
+    breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
+    armorCut: 0.5, armorTime: 8, armorEvery: 20
+  };
+
   // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
   // ときどき闇の玉を扇に3つ（ダーク・魔法）。近づかれると回転斬り（まわり）→ 後ろへ宙返りして距離をとる（宙返りのあいだは当たらない）。
   // 大技のダークアロー（2026-10-26 保護者の案で作りなおし）：動きながら、まわりに闇の玉を daCount 個（3〜4。HP が半分を切ると daCountHalf の5〜6）
@@ -855,9 +937,28 @@ var GameData = (function () {
               before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。", "空から、大きな影がおりてきた！"],
               after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
       }
+    },
+    // 白銀の霊峰（地方2の雪山。段階1、2026-11-09）：12階（6階にスノーゴーレム、12階に氷牙獣。どちらもまだ作っていないので、
+    // 12階はまだ作っていないので、ドワーフキングを仮に使う）。大怪鳥（烈風の峰の主）をたおすと開く。深さは峰の続き（63＋階）。
+    // 部屋は雪山の型（theme: snow。一面の雪と凍った湖）。装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。敵の上のせで強さを合わせる）。
+    // 説明は 2026-11-04 保護者が書いた雪山の文。名前は仮（Claude の案）
+    yuki: {
+      id: "yuki", tagline: "魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", intro: ["魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", "吹雪の向こう側では、巨大な雪の獣がうごめいているという。"],
+      region: "frostcrest", name: "白銀の霊峰", short: "霊峰", floors: 12, needs: "yama", depthBase: 63, theme: "snow", tier: 3,
+      // 敵の強さの上のせ（段階2、2026-11-09。仮）：HP ×1.9・攻撃 ×1.1。雪山の敵はもとの HP が高め（ペンギン46・雪男60）なので、峰（×2.3）より小さく。
+      //   tools/balance.js で、ペンギンの兵隊が剣で約4振り・受けて約22回（峰の雪オオカミ・岩の子ゴーレムのあいだくらい）。雪男は HP・攻撃を少し小さく（約4.5振り・約20回）
+      foeHp: 1.9, foeAtk: 1.1, foeType: { yeti: { hp: 0.85, atk: 0.85 } },
+      bosses: {
+        6: { enemy: "snowgolem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3、2026-11-09。ゴーレムがもと）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
+             before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],
+             after: ["雪の巨人は、くずれて雪の山にもどった。", "霊峰の上へ、道が続いている。"] },
+        12: { enemy: "icefang_boss", title: "白銀をきわめし者",   // 氷牙獣（段階4、2026-11-09。大オオカミがもと）。前後の文は Claude が書いた仮の文
+              before: ["霊峰のいただきは、一面の氷だ。", "吹雪の向こうで、二つの青い目が光った。", "大きな獣のうなり声が、ひびいてくる……。"],
+              after: ["獣は雪の上にたおれ、吹雪がやんだ。", "峰の向こうに、まだ見ぬ土地が広がっている。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
