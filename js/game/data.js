@@ -544,6 +544,10 @@ var GameData = (function () {
     statue_wood:   { name: "木像", training: true, trainDepth: 1,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a87a4a" },
     statue_stone:  { name: "石像", training: true, trainDepth: 8,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#8595a1" },
     statue_bronze: { name: "銅像", training: true, trainDepth: 15, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#c08440" },
+    // 2026-11-09 足した像：各ダンジョンの1階くらい（装備の段の名前にそろえる）
+    statue_iron:    { name: "鉄像", training: true, trainDepth: 25, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#6e7482" },
+    statue_steel:   { name: "鋼像", training: true, trainDepth: 40, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#8ea4bc" },
+    statue_mithril: { name: "ミスリル像", training: true, trainDepth: 52, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a0e0e8" },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
