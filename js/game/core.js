@@ -157,6 +157,7 @@
 
   function enterRoom(k, fromDir) {
     curKey = k;
+    skyLift = 0;
     var c = dg.cells[k];
     c.visited = true;
     room = c.room;
@@ -863,11 +864,20 @@
   }
 
   // 部屋が画面より大きいときは、キャラについていく。小さいときは、部屋を画面のまんなかに置く。
+  var skyLift = 0;   // 空のボスを見るために画面を上へずらす割合（0〜1）
   function updateCamera() {
     if (room.pxW <= view.w) cam.x = -Math.round((view.w - room.pxW) / 2);
     else cam.x = Math.round(clamp(A.x - view.w / 2, 0, room.pxW - view.w));
     if (room.pxH <= view.h) cam.y = -Math.round((view.h - room.pxH) / 2);
-    else cam.y = Math.round(clamp(A.y - view.h / 2, 0, room.pxH - view.h));
+    else {
+      // 大怪鳥が崖の外の空にいるあいだは、画面を少し上へずらして、空のボスも見えるようにする（2026-11-09）
+      var cy0 = clamp(A.y - view.h / 2, 0, room.pxH - view.h);
+      var up = boss && !boss.dead && boss.overSky;
+      skyLift += ((up ? 1 : 0) - skyLift) * 0.06;
+      if (skyLift < 0.01 && !up) skyLift = 0;
+      var cy1 = boss ? clamp(Math.min(A.y - view.h / 2, Math.max(boss.y - 90, A.y - view.h + 40)), 0, room.pxH - view.h) : cy0;
+      cam.y = Math.round(cy0 + (cy1 - cy0) * skyLift);
+    }
     var q = Bosses.shakeOffset();   // ゴーレムの大きな攻撃で、画面がゆれる
     cam.x += q.x; cam.y += q.y;
   }

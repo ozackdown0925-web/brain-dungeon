@@ -654,6 +654,24 @@ var GameData = (function () {
     name: "ラフレシアのつぼみ", kind: "bud", hp: 40, patk: 0, pdef: 2, mdef: 2,
     res: { slash: 1.3, grass: 0 }, speed: 0, r: 6, color: "#c83a3a"
   };
+  // 大怪鳥（烈風の峰12階・主。段階4、2026-11-09。数字は仮）：峰のいただきに巣をつくる、空の覇者。空を飛ぶ（崖の外の空の上も通る）。
+  //   ふつうの技（2026-11-09 保護者：急降下などはふつうの技、大技は竜巻）：
+  //     かぎづめ：近くにいると、ひっかく（clawReach）。
+  //     羽ばたき：はなれていると、風の刃を扇に飛ばす（風の精と同じ絵。HP 半分から5つ）。
+  //     急降下（diveEvery 秒ごと）：高く舞い上がり、プレイヤーへ赤い線で予告（diveWarn 秒）→ 線にそって一気に突っこむ。
+  //   大技「竜巻」（stormEvery 秒ごと）：崖の外の空へ飛んでいき、竜巻を起こす（2つ。HP 半分から3つ）。
+  //     竜巻は部屋の中をうろうろ動き、ふれるとダメージと、外へはじき飛ばされる。stormTime 秒で消える。
+  //     空にいるあいだは剣などは届かず、矢・魔法だけが当たる（崖の外まで歩けないので）。空からも風の刃を撃ってくる。
+  //   火が弱点（つばさが燃える）。草はいまひとつ
+  ENEMIES.roc_boss = {
+    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 42, matk: 0, pdef: 10, mdef: 9,
+    res: { fire: 1.3, grass: 0.75 }, speed: 46, r: 16, color: "#8a6a3a",
+    clawReach: 22, windup: 0.5, cooldown: 1.3, cooldownHalf: 1.0, clawMult: 1.2, keep: 64,
+    bladeSpeed: 150, blades: 3, bladesHalf: 5, bladeSpread: 0.3, bladeMult: 0.8,
+    diveEvery: 7, diveEveryHalf: 5.5, diveWarn: 0.8, diveSpeed: 340, diveMult: 1.8, diveMax: 280,
+    stormEvery: 18, stormEveryHalf: 15, stormTime: 8, stormCount: 2, stormCountHalf: 3, stormWarn: 0.9,
+    tornadoR: 13, tornadoSpeed: 42, tornadoMult: 1.0, tornadoPush: 70, skyShot: 1.6
+  };
 
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
@@ -829,8 +847,8 @@ var GameData = (function () {
         6: { enemy: "raff_boss", title: "峰の花をしずめし者", room: "warm", theme: "peakwarm",   // ラフレシア（段階3、2026-11-08）。前後の文は Claude が書いた仮の文
              before: ["雪がとけた谷に、湯けむりが立ちのぼっている。", "そのまんなかに、大きな花がさいている。", "あまいにおいが、あたりにただよってきた……。"],
              after: ["大きな花は、しおれて岩の間に消えた。", "峰の上へ、道が続いている。"] },
-        12: { enemy: "elf_boss", title: "烈風をきわめし者",       // 仮（大怪鳥を作るまで、ダークエルフ）。前後の文は Claude が書いた仮の文
-              before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。"],
+        12: { enemy: "roc_boss", title: "烈風をきわめし者",       // 大怪鳥（段階4、2026-11-09）。前後の文は Claude が書いた仮の文
+              before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。", "空から、大きな影がおりてきた！"],
               after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
       }
     }

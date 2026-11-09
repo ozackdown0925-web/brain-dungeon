@@ -29,14 +29,15 @@ var Bosses = (function () {
              rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
              dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0,
              guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0,
-             fog: d.fogEvery ? 4 : 0, inhale: d.inhaleEvery ? 9 : 0, bud: d.budEvery ? 6 : 0 };
+             fog: d.fogEvery ? 4 : 0, inhale: d.inhaleEvery ? 9 : 0, bud: d.budEvery ? 6 : 0, storm: d.stormEvery ? 12 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
         e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash" ||
-        e.state === "guard" || e.state === "slam" || e.state === "toss" || e.state === "inhale" || e.state === "breath") { e.state = "recover"; e.t = 0.4; }
+        e.state === "guard" || e.state === "slam" || e.state === "toss" || e.state === "inhale" || e.state === "breath" ||
+        e.state === "rise" || e.state === "swoop" || e.state === "flap") { e.state = "recover"; e.t = 0.4; }
     e.guarding = false;
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
@@ -49,7 +50,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -58,6 +59,7 @@ var Bosses = (function () {
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -479,6 +481,136 @@ var Bosses = (function () {
       : { kind: "rect", from: e, x: 0, y: p.y - W / 2, w: room.pxW, h: W, t: 0, warn: d.vineWarn, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: { mult: d.vineMult, big: true } });
     e.puffT = 0.25;
     e.state = "recover"; e.t = 0.6; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.6;
+  }
+
+  // ---------- 大怪鳥（烈風の峰12階・主。段階4、2026-11-09）。飛ぶ。急降下・かぎづめ・羽ばたきがふつうの技、大技は空へ飛んで竜巻 ----------
+  // 竜巻を起こすときに飛んでいく空の場所（峰のいただきの上側は崖の外の空。rooms.js の PeakBossRoom）。
+  // いちばん近い床から 60 ドットほどはなれる（剣・槍のふつうの攻撃は届かない）
+  var SKY_X = 352, SKY_Y = 88;
+  function roc(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.slashT = Math.max(0, (e.slashT || 0) - dt);
+    var tx = Math.floor(e.x / World.TILE), ty = Math.floor(e.y / World.TILE);
+    e.overSky = room.tile(tx, ty) === "C";   // 崖の外の空の上（影を描かない）
+    // 高さ（絵だけ）：ふだんは少し浮く。急降下の前は高く、突っこむときは低く
+    var altTo = e.state === "rise" ? 26 : e.state === "swoop" ? 3 : e.state === "sky" ? 4 : e.state === "takeoff" || e.state === "land" ? 14 : 10;
+    e.alt = (e.alt === undefined ? 10 : e.alt) + (altTo - (e.alt === undefined ? 10 : e.alt)) * Math.min(1, dt * 6);
+    if (e.state === "windup") {   // かぎづめ
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.clawReach + 2) hurt(e, p.x, p.y - 8, { mult: d.clawMult });
+        e.slashT = 0.25; Sound.play("swing");
+        e.state = "recover"; e.t = 0.45; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "flap") {   // 羽ばたき：風の刃を扇に
+      e.face = { x: ux, y: uy };
+      e.t -= dt;
+      if (e.t <= 0) { rocBlades(e, api, ux, uy, half ? d.bladesHalf : d.blades); e.state = "recover"; e.t = 0.5; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.6; }
+      return;
+    }
+    if (e.state === "rise") {   // 急降下の構え：高く舞い上がり、赤い線でねらう（0.3 秒前まで向きを合わせ直す）
+      e.t -= dt;
+      if (e.t > 0.3 && !p.down && e.chargeLine) {
+        e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+        e.chargeLen = Math.min(d.diveMax, Math.max(dist + 40, 120));
+        e.chargeLine.x2 = e.x + ux * e.chargeLen; e.chargeLine.y2 = e.y + uy * e.chargeLen;
+      }
+      if (e.t <= 0) { e.state = "swoop"; e.travel = 0; e.hitDone = false; Sound.play("swing"); }
+      return;
+    }
+    if (e.state === "swoop") {   // 急降下：線にそって一気に突っこむ（壁で止まる）
+      var step = d.diveSpeed * dt, bx = e.x, by = e.y;
+      room.move(e, e.aim.x * step, e.aim.y * step);
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step;
+      var px = p.x - e.x, py = p.y - e.y;
+      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 4) * (e.r + p.r + 4)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.diveMult, big: true }); }
+      if (moved < step * 0.4 || e.travel >= e.chargeLen) {
+        e.state = "recover"; e.t = 0.9; addDust(e.x, e.y + 6); shake(1, 0.15);
+        removeLines(e);
+      }
+      return;
+    }
+    if (e.state === "takeoff" || e.state === "land") {   // 空へ飛んでいく・もどってくる（壁は気にせず、まっすぐ）
+      var gx = e.goal.x - e.x, gy = e.goal.y - e.y, gl = Math.sqrt(gx * gx + gy * gy);
+      var sp = 150 * dt;
+      if (gl <= sp) {
+        e.x = e.goal.x; e.y = e.goal.y;
+        if (e.state === "takeoff") {
+          e.state = "sky"; e.t = d.stormTime; e.skyShot = 1.2;
+          var n = half ? d.stormCountHalf : d.stormCount;
+          for (var k = 0; k < n; k++) addTornado(e, room, p, k);
+          Battle.pop(e.x, e.y - 40, "竜巻！", "#ef5b5b", 10); shake(1, 0.3);
+        } else { e.state = "recover"; e.t = 0.6; e.cd = 0.8; }
+      } else { e.x += gx / gl * sp; e.y += gy / gl * sp; e.face = { x: gx / gl, y: gy / gl }; }
+      return;
+    }
+    if (e.state === "sky") {   // 崖の外の空：竜巻が動いているあいだ、空から風の刃を撃つ（剣などは届かない）
+      e.face = { x: ux, y: uy };
+      e.t -= dt; e.skyShot -= dt;
+      if (e.skyShot <= 0 && !p.down) { rocBlades(e, api, ux, uy, 3); e.skyShot = d.skyShot; }
+      if (e.t <= 0) {
+        e.state = "land";
+        e.goal = { x: Math.max(80, Math.min(room.pxW - 80, p.x + (Math.random() < 0.5 ? -50 : 50))), y: Math.max(170, Math.min(room.pxH - 70, p.y - 40)) };
+      }
+      return;
+    }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    if (e.ai.storm <= 0) {   // 大技：空へ
+      e.ai.storm = half ? d.stormEveryHalf : d.stormEvery;
+      e.state = "takeoff"; e.goal = { x: SKY_X, y: SKY_Y };
+      Battle.pop(e.x, e.y - 40, "空へ舞い上がった！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.dive <= 0) {   // 急降下
+      e.ai.dive = (half ? d.diveEveryHalf : d.diveEvery) + Math.random() * 1.5;
+      e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+      e.chargeLen = Math.min(d.diveMax, Math.max(dist + 40, 120));
+      e.chargeLine = { kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 2, t: 0, warn: d.diveWarn };
+      hazards.push(e.chargeLine);
+      e.state = "rise"; e.t = d.diveWarn;
+      Battle.pop(e.x, e.y - 40, "急降下！", "#ef5b5b", 9);
+      return;
+    }
+    e.face = { x: ux, y: uy };
+    if (e.cd <= 0 && gap <= d.clawReach) { e.state = "windup"; e.t = d.windup; return; }
+    if (e.cd <= 0 && gap > 44) { e.state = "flap"; e.t = 0.45; return; }
+    if (gap > d.clawReach - 4 && !e.status.para) room.move(e, ux * d.speed * dt, uy * d.speed * dt);
+  }
+  function rocBlades(e, api, ux, uy, n) {
+    var d = e.def, a0 = Math.atan2(uy, ux);
+    for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.bladeSpread, d.bladeSpeed, { wind: true, mult: d.bladeMult, dy: -8, life: 3 });
+    e.flapFx = 0.3;
+  }
+  // 竜巻：1つめはプレイヤーの近く、ほかは部屋のどこか（床の上）
+  function addTornado(boss, room, p, k) {
+    var d = boss.def, x = p.x, y = p.y;
+    for (var tries = 0; tries < 20; tries++) {
+      if (k === 0) { var a = Math.random() * Math.PI * 2; x = p.x + Math.cos(a) * 60; y = p.y + Math.sin(a) * 40; }
+      else { x = 40 + Math.random() * (room.pxW - 80); y = 150 + Math.random() * (room.pxH - 200); }
+      if (!room.hitsWall(x - 8, y - 8, 16, 16)) break;
+    }
+    hazards.push({ kind: "tornado", from: boss, x: x, y: y, r: d.tornadoR, t: 0, warn: d.stormWarn, life: d.stormTime - 0.5, tick: 0, seed: Math.random() * 100, push: 0 });
+  }
+  function updateTornado(h, dt, p, hurt, room) {
+    var d = h.from.def;
+    if (h.push > 0 && room) { h.push -= dt; room.move(p, h.px * d.tornadoPush / 0.3 * dt, h.py * d.tornadoPush / 0.3 * dt); }
+    if (h.t < h.warn) return;
+    // プレイヤーのほうへ、ふらふらと寄っていく
+    var a = Math.atan2(p.y - h.y, p.x - h.x) + Math.sin(h.t * 1.3 + h.seed) * 1.3;
+    var nx = h.x + Math.cos(a) * d.tornadoSpeed * dt, ny = h.y + Math.sin(a) * d.tornadoSpeed * dt;
+    if (room && room.hitsWall(nx - 6, ny - 6, 12, 12)) { h.seed += 1.7; }
+    else { h.x = nx; h.y = ny; }
+    h.tick -= dt;
+    var dx = p.x - h.x, dy = p.y - h.y, dd = Math.sqrt(dx * dx + dy * dy) || 0.001;
+    if (h.tick <= 0 && !p.down && !h.from.dead && dd < h.r + p.r) {
+      hurt(h.from, p.x, p.y - 8, { mult: d.tornadoMult });
+      h.tick = 1.0; h.push = 0.3; h.px = dx / dd; h.py = dy / dd;   // 外へはじき飛ばす
+      Battle.pop(p.x, p.y - 30, "巻きこまれた！", "#cfe8ff", 8);
+    }
   }
   // 毒の霧を置く（ラフレシアと、咲いたつぼみ）：予告の輪 warn 秒 → 霧が fogTime 秒のこる
   function addFog(boss, x, y, warn) {
@@ -1019,7 +1151,7 @@ var Bosses = (function () {
   }
 
   // ---------- 予告と大技（地面） ----------
-  function updateHazards(dt, p, hurt) {
+  function updateHazards(dt, p, hurt, room) {
     for (var di = dust.length - 1; di >= 0; di--) { dust[di].t += dt; if (dust[di].t >= dust[di].max) dust.splice(di, 1); }
     for (var ci = chips.length - 1; ci >= 0; ci--) {   // かけら：はねて落ちる
       var c = chips[ci]; c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vz -= 260 * dt; c.z += c.vz * dt;
@@ -1032,6 +1164,11 @@ var Bosses = (function () {
       var h = hazards[i];
       h.t += dt;
       if (h.kind === "line") continue; // 大突進の線は、ボスが走り終わると消える
+      if (h.kind === "tornado") {   // 大怪鳥の竜巻
+        updateTornado(h, dt, p, hurt, room);
+        if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
       if (h.look === "fog" && h.t >= h.warn) {   // 毒の霧：のこっているあいだ、中にいると 0.7 秒ごとに少しダメージと毒
         h.hit = true; h.tick -= dt;
         var fin = (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r * 0.5) * (h.r + p.r * 0.5);
@@ -1063,12 +1200,39 @@ var Bosses = (function () {
   // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光。本番は、根の大波が太いつる、大突進のあとは土けむり（ドット）
   function rnd(n) { var v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); }
 
+  // 大怪鳥の竜巻：予告は地面の風の輪。本番は、白い風が何段にも回る、上ほど太いうず
+  function drawTornado(ctx, h, cam, glow) {
+    var x = Math.round(h.x - cam.x), y = Math.round(h.y - cam.y);
+    if (h.t < h.warn) {
+      var kw = h.t / h.warn;
+      for (var i = 0; i < 10; i++) {
+        var a = glow * 6 + i / 10 * Math.PI * 2, r = 4 + kw * h.r;
+        Render.rect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r * 0.5), 2, 1, "rgba(230,245,255," + (0.3 + 0.6 * kw).toFixed(2) + ")");
+      }
+      return;
+    }
+    var end = h.warn + h.life, fade = Math.min(1, (end - h.t) / 0.5, (h.t - h.warn) / 0.3);
+    ctx.fillStyle = "rgba(0,0,0," + (0.25 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y + 2, h.r, h.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    var H = 46;
+    for (var j = 0; j < 9; j++) {   // 下から上へ：輪が太くなり、左右にゆれる
+      var k = j / 8, ry = y - k * H, rr = 3 + k * (h.r + 4), sx = Math.sin(glow * 5 + j * 0.7 + h.seed) * 3 * k;
+      ctx.strokeStyle = "rgba(" + (j % 2 ? "236,246,255" : "176,196,214") + "," + ((0.55 + 0.3 * (1 - k)) * fade).toFixed(2) + ")";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x + sx, ry, rr, rr * 0.32, 0, glow * 9 + j, glow * 9 + j + Math.PI * 1.4); ctx.stroke();
+    }
+    for (var q = 0; q < 8; q++) {   // 巻き上げられた小石と葉
+      var qa = glow * 7 + q * 0.8 + h.seed, qk = ((glow * 0.9 + q * 0.13) % 1), qr = 4 + qk * (h.r + 2);
+      Render.rect(Math.round(x + Math.cos(qa) * qr), Math.round(y - qk * H + Math.sin(qa) * qr * 0.3), 2, 2, q % 3 ? "rgba(120,110,96," + fade.toFixed(2) + ")" : "rgba(110,160,90," + fade.toFixed(2) + ")");
+    }
+  }
   function drawHazards(cam, glow) {
     var ctx = Render.ctx;
     waves.forEach(function (w) { drawWave(ctx, w, cam); });
     hazards.forEach(function (h) {
       if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       if (h.kind === "circle") { drawCircle(ctx, h, cam, glow); return; }
+      if (h.kind === "tornado") { drawTornado(ctx, h, cam, glow); return; }
       var x = h.x - cam.x, y = h.y - cam.y;
       if (h.t < h.warn) drawRootWarn(ctx, h, x, y, glow);
       else drawRootErupt(ctx, h, x, y);
@@ -1490,6 +1654,30 @@ var Bosses = (function () {
         ctx.beginPath(); ctx.ellipse(x, y + 2, wr - 2, (wr - 2) * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
       }
       if (e.state === "windup" || e.state === "breath") Render.text("！", x, y - 40, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+    } else if (d.kind === "roc_boss") {
+      // 大怪鳥（飛ぶ）：絵は e.alt だけ上に描く。地面の影は、崖の外の空の上では描かない
+      var alt = Math.round(e.alt || 10) + Math.round(Math.sin(glow * 4) * 2);
+      if (!e.overSky) { var sw2 = e.state === "rise" ? 18 : 26; Render.rect(x - sw2 / 2, y + 6, sw2, 5, "rgba(0,0,0,0.3)"); }
+      if (e.state === "windup") {   // かぎづめの構え：とどく範囲が黄色く
+        var kc2 = 1 - Math.max(0, e.t) / d.windup;
+        ctx.strokeStyle = "rgba(255,210,74," + (0.3 + 0.5 * kc2).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.clawReach + e.r, (d.clawReach + e.r) * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      var fr = e.state === "swoop" ? "dive" : (e.state === "rise" || e.state === "flap" || e.flapFx > 0 || Math.floor(glow * (e.state === "sky" || e.state === "takeoff" ? 8 : 5)) % 2) ? "down" : "up";
+      if (e.flapFx > 0) e.flapFx -= 1 / 60;
+      Monsters.drawBoss(ctx, e, x, y + 12 - alt, fr);
+      if (e.state === "sky" || e.state === "takeoff" || e.state === "land") {   // 空を飛ぶあいだは、まわりに風の線
+        for (var sw = 0; sw < 6; sw++) {
+          var swk = (glow * 1.4 + sw * 0.17) % 1;
+          Render.rect(Math.round(x - 40 + swk * 80), Math.round(y - alt - 20 + sw * 7), 6, 1, "rgba(240,250,255," + (0.5 * (1 - Math.abs(swk - 0.5) * 2)).toFixed(2) + ")");
+        }
+      }
+      if (e.slashT > 0) {   // かぎづめ：3本の白い線
+        var ks = 1 - e.slashT / 0.25, fx3 = x + e.face.x * 18, fy3 = y - 4 + e.face.y * 12;
+        ctx.strokeStyle = "rgba(255,255,255," + (1 - ks).toFixed(2) + ")"; ctx.lineWidth = 1;
+        for (var cl = -1; cl <= 1; cl++) { ctx.beginPath(); ctx.moveTo(fx3 - 7 + cl * 3, fy3 - 7); ctx.lineTo(fx3 + 7 + cl * 3, fy3 + 7); ctx.stroke(); }
+      }
+      if (e.state === "windup" || e.state === "rise") Render.text("！", x, y - alt - 34, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
     } else if (d.kind === "elf_boss") {
       // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
       var hop = 0, rot = 0;
