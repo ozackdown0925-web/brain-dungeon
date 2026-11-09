@@ -1484,6 +1484,14 @@ var Bosses = (function () {
         h.hit = true;
         if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
         if (h.look === "quake") shake(1, 0.06);
+        if (h.look === "icicle") {   // つららがささる：ずしん。大きな氷のかけらが飛びちる
+          shake(2, 0.12);
+          for (var ic = 0; ic < 12; ic++) {
+            var ia = Math.random() * Math.PI * 2, isp = 30 + Math.random() * 60;
+            chips.push({ x: h.x, y: h.y, z: 8 + Math.random() * 20, vx: Math.cos(ia) * isp, vy: Math.sin(ia) * isp * 0.6, vz: 70 + Math.random() * 80, t: 0, max: 0.7 + Math.random() * 0.4,
+                         c: ic % 3 === 0 ? "#ffffff" : ic % 3 === 1 ? "#c8eaf8" : "#8cc4e4", s: ic % 4 === 0 ? 4 : 2 + (ic % 2) });
+          }
+        }
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
@@ -1858,36 +1866,78 @@ var Bosses = (function () {
   }
   // 大遠ぼえのつらら：予告は地面の影（だんだん濃く）と、上から落ちてくるつらら。本番は、くだけて氷のかけらが飛びちる
   function drawIcicleDrop(ctx, h, x, y, glow) {
+    var img = icicleImg();
     if (h.t < h.warn) {
       var k = Math.min(1, h.t / h.warn), last = h.warn - h.t < 0.35;
       ctx.fillStyle = "rgba(20,40,70," + (0.12 + 0.3 * k).toFixed(2) + ")";
       ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.5 + 0.5 * k), h.r * 0.6 * (0.5 + 0.5 * k), 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = last ? "rgba(255,90,70,0.85)" : "rgba(159,244,255," + (0.4 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
-      if (last) {   // 最後の 0.35 秒：上から大きなつららが落ちてくる
-        var fy = y - (h.warn - h.t) / 0.35 * 170;
-        drawBigIcicle(ctx, Math.round(x), Math.round(fy), 1);
+      if (last) {   // 最後の 0.35 秒：上から大きなつららが落ちてくる（うしろに光のすじ）
+        var fy = Math.round(y - (h.warn - h.t) / 0.35 * 170), ix = Math.round(x);
+        for (var sl = 0; sl < 3; sl++) {
+          var sx = ix + (sl - 1) * 6, sy = fy - img.height - 6;
+          var g = ctx.createLinearGradient(0, sy - 40, 0, sy + 16);
+          g.addColorStop(0, "rgba(220,245,255,0)"); g.addColorStop(1, "rgba(220,245,255,0.6)");
+          ctx.fillStyle = g; ctx.fillRect(sx, sy - 40 + (sl % 2) * 8, 1, 56);
+        }
+        ctx.drawImage(img, ix - Math.floor(img.width / 2), fy - img.height + 2);
       }
       return;
     }
     var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
-    ctx.fillStyle = "rgba(190,230,250," + (0.5 * fade).toFixed(2) + ")";
-    ctx.beginPath(); ctx.ellipse(x, y, h.r * (1 + q * 0.3), h.r * 0.6 * (1 + q * 0.3), 0, 0, Math.PI * 2); ctx.fill();
-    if (q < 0.35) drawBigIcicle(ctx, Math.round(x), Math.round(y) + 4, 1 - q / 0.35);   // つきささって、くだける
-    for (var i = 0; i < 16; i++) {   // 大きな氷のかけらが飛びちる
-      var a = i / 16 * Math.PI * 2 + h.seed, R = h.r * (0.3 + q * 1.3), sz = i % 3 ? 3 : 5;
-      Render.rect(Math.round(x + Math.cos(a) * R), Math.round(y + Math.sin(a) * R * 0.6 - Math.sin(q * Math.PI) * 14), sz, sz, (i % 2 ? "rgba(255,255,255," : "rgba(159,244,255,") + fade.toFixed(2) + ")");
+    if (q < 0.5) {   // つきささったつららが、下から上へくだけていく
+      var keep = Math.max(0, Math.round(img.height * (1 - q / 0.5) * 0.75));
+      if (keep > 0) ctx.drawImage(img, 0, 0, img.width, keep, Math.round(x) - Math.floor(img.width / 2), Math.round(y) + 6 - keep, img.width, keep);
+    }
+    ctx.strokeStyle = "rgba(230,250,255," + (0.8 * fade).toFixed(2) + ")"; ctx.lineWidth = 2;   // 冷たい衝撃の輪
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.6 + q * 0.8), h.r * 0.6 * (0.6 + q * 0.8), 0, 0, Math.PI * 2); ctx.stroke();
+    for (var i = 0; i < 6; i++) {   // きらきら光る氷の粉
+      var a = i / 6 * Math.PI * 2 + h.seed, R = h.r * (0.4 + q * 1.1);
+      if (Math.sin(glow * 20 + i) > 0) Render.rect(Math.round(x + Math.cos(a) * R), Math.round(y + Math.sin(a) * R * 0.6 - q * 10), 1, 1, "rgba(255,255,255," + fade.toFixed(2) + ")");
     }
   }
-  // 大きなつらら（先が (x, tip)。はば20・長さ60）。k は大きさ（くだけるときに小さくなる）
-  function drawBigIcicle(ctx, x, tip, k) {
-    var w = 10 * k, L = 60 * k;
-    if (L < 2) return;
-    ctx.fillStyle = "#2e5a86"; ctx.beginPath(); ctx.moveTo(x - w - 2, tip - L - 2); ctx.lineTo(x + w + 2, tip - L - 2); ctx.lineTo(x, tip + 1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#9cc8e4"; ctx.beginPath(); ctx.moveTo(x - w, tip - L); ctx.lineTo(x + w, tip - L); ctx.lineTo(x, tip - 1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#d8f0fc"; ctx.beginPath(); ctx.moveTo(x - w + 2, tip - L); ctx.lineTo(x + 1, tip - L); ctx.lineTo(x - 1, tip - 6 * k); ctx.closePath(); ctx.fill();
-    Render.rect(x - Math.round(w * 0.5), Math.round(tip - L + 3), 2, Math.round(L * 0.6), "#ffffff");   // 光るすじ
-    Render.rect(x - Math.round(w) , Math.round(tip - L - 3), Math.round(w * 2), 3, "#eef8ff");          // 上の雪
+  // 大遠ぼえのつららの絵（はば23・長さ70のドット絵。はじめの1回だけ作る）：上に雪のかたまり、左から光が当たって4段のかげ、
+  // まんなかに白い光のすじ、中のひび、ところどころに小さなつららの枝。先はとがって、うすい水色
+  var icicleCache = null;
+  function icicleImg() {
+    if (icicleCache) return icicleCache;
+    var W = 23, H = 70, C = 11, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    var c = cv.getContext("2d");
+    function px(x, y, col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+    var OUT = "#1c3656", T = ["#f4fcff", "#c8eaf8", "#8cc4e4", "#5a94c4", "#3a6a9c"];
+    function halfAt(y) {   // なめらかな太さ（ところどころ少しふくらむ）
+      var f = (y - 7) / (H - 7);
+      return Math.max(0, Math.round((C - 2) * Math.pow(1 - f, 0.9) + 1.2 * Math.sin(f * 10) * (1 - f)));
+    }
+    for (var y = 7; y < H; y++) {   // 本体
+      var f = (y - 7) / (H - 7), half = halfAt(y);
+      for (var x = C - half - 1; x <= C + half + 1; x++) {
+        if (x === C - half - 1 || x === C + half + 1) { px(x, y, OUT); continue; }
+        var t = half ? (x - (C - half)) / (2 * half) : 0.5;
+        var col = t < 0.2 ? T[0] : t < 0.42 ? T[1] : t < 0.64 ? T[2] : t < 0.86 ? T[3] : T[4];
+        if (f > 0.82) col = t < 0.5 ? "#e8f8ff" : "#b0e0f6";   // 先はうすい水色
+        px(x, y, col);
+      }
+      if (f < 0.78 && half > 1) px(C - Math.round(half * 0.5), y, "#ffffff");   // 光のすじ
+      if (f > 0.15 && f < 0.6 && half > 3 && y % 9 < 3) px(C + Math.round(half * 0.35), y, "rgba(255,255,255,0.55)");   // 奥の光
+    }
+    px(C, H - 1, OUT);
+    for (var cr = 0; cr < 3; cr++) {   // 中のひび
+      var cy = 16 + cr * 12, cx = C + (cr % 2 ? 2 : -1);
+      for (var j = 0; j < 4; j++) px((cx + (cr % 2 ? -j : j) * 0.6) | 0, cy + j, "rgba(255,255,255,0.7)");
+    }
+    [[2, 5], [20, 4]].forEach(function (b) {   // 雪のふちからぶら下がる、小さなつらら
+      for (var k = 0; k < b[1]; k++) {
+        px(b[0], 9 + k, k === b[1] - 1 ? OUT : T[1]); px(b[0] - 1, 9 + k, OUT); px(b[0] + 1, 9 + k, k < b[1] - 2 ? T[3] : OUT);
+      }
+    });
+    for (var sx = 0; sx < W; sx++) {   // 上の雪のかたまり（まるい山の形。下のふちは少しでこぼこ）
+      var dd = (sx - C) / (C + 0.5), top = 1 + Math.round(4 * dd * dd), bot = 8 + (rnd(sx * 2.1) > 0.6 ? 1 : 0);
+      for (var sy = top; sy <= bot; sy++) px(sx, sy, sy === top || sy === bot ? OUT : sy === top + 1 ? "#ffffff" : sy >= bot - 1 ? "#a8bcd0" : sy >= bot - 2 ? "#d0deec" : "#eef6fc");
+    }
+    icicleCache = cv;
+    return cv;
   }
   // 氷牙獣：大オオカミの絵（52×40）を氷の色にして、1.3倍で描く。空にいるときは高く、よろいを着ているときは白い光と氷のかけら
   var FANG_SCALE = 1.3;
@@ -2229,5 +2279,5 @@ var Bosses = (function () {
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
            rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
-           frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult };
+           frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();

@@ -739,7 +739,7 @@ var GameData = (function () {
   //   火と打が弱点（雪がとける・くだける）、刺はいまひとつ、水は効きにくい。斬はふつう（ゴーレムとちがって、岩ではないので）。
   //   強さ：剣で約47回（Lv41・ミスリル R＋5で1振り約190）＋雪だるま。大怪鳥（約48回＋空の時間）より楽にならないように
   ENEMIES.snowgolem_boss = {
-    name: "スノーゴーレム", kind: "snowgolem_boss", boss: true, snow: true, hp: 9000, patk: 44, matk: 0, pdef: 12, mdef: 6,
+    name: "スノーゴーレム", kind: "snowgolem_boss", boss: true, snow: true, hp: 9000, patk: 70, matk: 0, pdef: 12, mdef: 6,
     res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 18, r: 16, cooldown: 1.5, color: "#dfe8f4",
     spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.5,
     comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
@@ -751,7 +751,7 @@ var GameData = (function () {
   };
   // 雪だるま（スノーゴーレムがくずれたときに出る）：ちょこちょこ近づいて、体当たり。火と打が弱点
   ENEMIES.snowman = {
-    name: "雪だるま", kind: "melee", hp: 420, patk: 30, pdef: 6, mdef: 4,
+    name: "雪だるま", kind: "melee", hp: 420, patk: 65, pdef: 6, mdef: 4,
     res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 34, r: 6,
     reach: 14, windup: 0.5, cooldown: 1.4, lunge: 6, color: "#f4f8fc"
   };
@@ -764,13 +764,16 @@ var GameData = (function () {
   //   HP 半分から：氷のよろい（受けるダメージ armorCut 倍。火の攻撃を当てるか armorTime 秒でとける。armorEvery 秒ごとにまた着る）。大ジャンプが3回続けて。
   //   火が弱点（よろいもとける）、水は効きにくい。
   //   強さ：剣で約55回（Lv45・ミスリル R＋5で1振り約210）＋よろい。中ボスのスノーゴーレム（約47回）より楽にならないように
+  //   2026-11-09 保護者（Lv27 で遊んで）：スノーゴーレムの攻撃がペンギンより弱かった。ボスの物攻は深さで上がらない決まった数字なのに、
+  //     ふつうの敵は深さで上がる（霊峰では約7.8倍）ため。ボスと呼ばれる敵の物攻を上げ、ふつうの攻撃がペンギンの体当たりくらい、
+  //     大技がすべりこみくらい（Lv45 で約90。つららは約145）になるようにした：スノーゴーレム 44→70、雪だるま 30→65、氷牙獣 46→90、雪オオカミ 22→75、つらら ×3.0→×2.2
   ENEMIES.icefang_boss = {
-    name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 46, matk: 0, pdef: 12, mdef: 8,
+    name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 90, matk: 0, pdef: 12, mdef: 8,
     res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
     reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
     chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
-    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 3.0,
-    howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 22,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 2.2,
+    howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 75,
     leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
     spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
     breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
