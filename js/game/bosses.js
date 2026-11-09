@@ -1864,21 +1864,30 @@ var Bosses = (function () {
       ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.5 + 0.5 * k), h.r * 0.6 * (0.5 + 0.5 * k), 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = last ? "rgba(255,90,70,0.85)" : "rgba(159,244,255," + (0.4 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
-      if (last) {   // 最後の 0.35 秒：上から落ちてくる
-        var fy = y - (h.warn - h.t) / 0.35 * 110, ix = Math.round(x);
-        ctx.fillStyle = "#3a6a96"; ctx.beginPath(); ctx.moveTo(ix - 5, fy - 22); ctx.lineTo(ix + 5, fy - 22); ctx.lineTo(ix, fy); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#bfe6f8"; ctx.beginPath(); ctx.moveTo(ix - 4, fy - 21); ctx.lineTo(ix + 3, fy - 21); ctx.lineTo(ix, fy - 2); ctx.closePath(); ctx.fill();
-        Render.rect(ix - 2, Math.round(fy) - 19, 1, 12, "#ffffff");
+      if (last) {   // 最後の 0.35 秒：上から大きなつららが落ちてくる
+        var fy = y - (h.warn - h.t) / 0.35 * 170;
+        drawBigIcicle(ctx, Math.round(x), Math.round(fy), 1);
       }
       return;
     }
     var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
     ctx.fillStyle = "rgba(190,230,250," + (0.5 * fade).toFixed(2) + ")";
-    ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    for (var i = 0; i < 10; i++) {
-      var a = i / 10 * Math.PI * 2 + h.seed, R = h.r * (0.3 + q * 1.1);
-      Render.rect(Math.round(x + Math.cos(a) * R), Math.round(y + Math.sin(a) * R * 0.6 - Math.sin(q * Math.PI) * 8), 2, 2, (i % 2 ? "rgba(255,255,255," : "rgba(159,244,255,") + fade.toFixed(2) + ")");
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * (1 + q * 0.3), h.r * 0.6 * (1 + q * 0.3), 0, 0, Math.PI * 2); ctx.fill();
+    if (q < 0.35) drawBigIcicle(ctx, Math.round(x), Math.round(y) + 4, 1 - q / 0.35);   // つきささって、くだける
+    for (var i = 0; i < 16; i++) {   // 大きな氷のかけらが飛びちる
+      var a = i / 16 * Math.PI * 2 + h.seed, R = h.r * (0.3 + q * 1.3), sz = i % 3 ? 3 : 5;
+      Render.rect(Math.round(x + Math.cos(a) * R), Math.round(y + Math.sin(a) * R * 0.6 - Math.sin(q * Math.PI) * 14), sz, sz, (i % 2 ? "rgba(255,255,255," : "rgba(159,244,255,") + fade.toFixed(2) + ")");
     }
+  }
+  // 大きなつらら（先が (x, tip)。はば20・長さ60）。k は大きさ（くだけるときに小さくなる）
+  function drawBigIcicle(ctx, x, tip, k) {
+    var w = 10 * k, L = 60 * k;
+    if (L < 2) return;
+    ctx.fillStyle = "#2e5a86"; ctx.beginPath(); ctx.moveTo(x - w - 2, tip - L - 2); ctx.lineTo(x + w + 2, tip - L - 2); ctx.lineTo(x, tip + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#9cc8e4"; ctx.beginPath(); ctx.moveTo(x - w, tip - L); ctx.lineTo(x + w, tip - L); ctx.lineTo(x, tip - 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#d8f0fc"; ctx.beginPath(); ctx.moveTo(x - w + 2, tip - L); ctx.lineTo(x + 1, tip - L); ctx.lineTo(x - 1, tip - 6 * k); ctx.closePath(); ctx.fill();
+    Render.rect(x - Math.round(w * 0.5), Math.round(tip - L + 3), 2, Math.round(L * 0.6), "#ffffff");   // 光るすじ
+    Render.rect(x - Math.round(w) , Math.round(tip - L - 3), Math.round(w * 2), 3, "#eef8ff");          // 上の雪
   }
   // 氷牙獣：大オオカミの絵（52×40）を氷の色にして、1.3倍で描く。空にいるときは高く、よろいを着ているときは白い光と氷のかけら
   var FANG_SCALE = 1.3;

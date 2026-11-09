@@ -769,7 +769,7 @@ var GameData = (function () {
     res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
     reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
     chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
-    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 14, rainMult: 3.0,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 3.0,
     howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 22,
     leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
     spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
