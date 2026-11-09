@@ -367,15 +367,13 @@ var Combat = (function () {
         hitArc(c, f, rch, f.arc || w.arc || 1);
         break;
       case "around":
+        if (f.vis === "abyss") { abyss(c, f); break; }
         if (f.vis === "spin" || f.vis === "sweep") {
           effects.push({ kind: "spin", low: f.vis === "sweep", r: f.radius, flip: (a.swingFlip = !a.swingFlip), t: 0.3, max: 0.3,
             color: f.color || (f.vis === "sweep" ? "#ffcf8a" : "#ffe7a0") });
         } else if (f.vis === "flame" || f.vis === "firestorm" || f.vis === "leaf") {
           // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず（2026-10-20）
           effects.push({ kind: "swirl", look: f.vis, x: a.x, y: a.y, r: f.radius, t: 0.8, max: 0.8, seed: Math.random() * 6 });
-        } else if (f.vis === "abyss") {   // アビスゲート（2026-11-08）：自分のまわりに球の形の暗黒の扉（黒い丸に紫のいなずま）
-          effects.push({ kind: "abyss", x: a.x, y: a.y, r: f.radius, t: 0.9, max: 0.9, seed: Math.random() * 100 });
-          Sound.play("hit");
         } else if (f.vis === "tidal") {
           effects.push({ kind: "tidal", x: a.x, y: a.y, r: f.radius, t: 0.7, max: 0.7, seed: Math.random() * 6 });
         } else {
@@ -432,6 +430,10 @@ var Combat = (function () {
         break;
       case "pillar":    // セイクレッド
         pillar(c, f);
+        break;
+      case "lightring": // ディバインエンド：自分のまわりに広がる光の輪（2026-11-09）
+        effects.push({ kind: "lightring", x: a.x, y: a.y, r: f.radius, t: f.time, max: f.time, color: f.color });
+        Sound.play("skill");
         break;
       case "chrono":    // クロノフォール
         chrono(c, f);
@@ -583,13 +585,16 @@ var Combat = (function () {
     Enemies.moveBlocked(hooks.room, a, a.face.x * go, a.face.y * go);
     effects.push({ kind: "trail", x0: sx0, y0: sy0, x1: a.x, y1: a.y, t: 0.2, max: 0.2 });
   }
-  // ドラゴンダイブ（2026-11-08）：高くとんで（空中は当たらない）、近くの敵にとびこむ。とびこんだ敵に1回、着地のまわりに1回
+  // ドラゴンダイブ（2026-11-08。2026-11-09 保護者の希望で、空にいる時間を長く・着地に火柱）：
+  // 高くとび（空中は当たらない）、いちばん高いところで敵の上へ動き、落ちてとびこむ。とびこんだ敵に1回、着地のまわりに1回
+  var LEAP = { up: 0.5, down: 0.4, height: 80 };
   function leap(c, f) {
-    var a = A(), x0 = a.x, y0 = a.y, up = 0.35;
+    var a = A(), x0 = a.x, y0 = a.y, air = LEAP.up + LEAP.down;
     var tgt = autoTarget(f.range);
-    a.inv = Math.max(a.inv, up + 0.3); a.busy = Math.max(a.busy, up + 0.3);
-    effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
-    later(up, function () {
+    a.airT = air; a.airMax = air; a.airUp = LEAP.up / air; a.airH = LEAP.height;
+    a.inv = Math.max(a.inv, air + 0.1); a.busy = Math.max(a.busy, air + 0.25);
+    effects.push({ kind: "jump", x: x0, y: y0, t: LEAP.up, max: LEAP.up, color: f.color });
+    later(LEAP.up, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
       var tx, ty;
       if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
@@ -601,14 +606,47 @@ var Combat = (function () {
         hooks.room.move(a, a.face.x * Math.min(3, go - i * 3), a.face.y * Math.min(3, go - i * 3));
         if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.3) break;
       }
-      effects.push({ kind: "dive", x: a.x, y: a.y, t: 0.35, max: 0.35, color: f.color });
+      effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: LEAP.down + 0.1, max: LEAP.down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
+    });
+    later(air, function () {   // 着地
+      if (Party.current() !== c || c.down) return;
+      effects.push({ kind: "dive", x: a.x, y: a.y, t: 0.3, max: 0.3, color: f.color });
       if (tgt && !tgt.dead) hitEnemy(tgt, c, { stat: f.stat, mult: f.dive, elem: f.elem, push: 0, color: f.color }, a.x, a.y);
-      later(0.1, function () {
+      later(0.08, function () {
         if (Party.current() !== c || c.down) return;
-        effects.push({ kind: "shock", x: a.x, y: a.y, r: f.radius, t: 0.55, max: 0.55, color: f.color });
-        effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(Math.random() * 6, f.radius, Math.PI), t: 0.7, max: 0.7 });
+        effects.push({ kind: "pillar", fire: true, x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, color: "#ff8a3d" });   // 火柱
+        effects.push({ kind: "shock", x: a.x, y: a.y, r: f.radius, t: 0.55, max: 0.55, color: "#ffb84a" });
+        effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(Math.random() * 6, f.radius, Math.PI), t: 0.8, max: 0.8 });
         Sound.play("hit");
-        hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: f.color }, a.x, a.y, f.radius);
+        hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: "#ff8a3d" }, a.x, a.y, f.radius);
+      });
+    });
+  }
+  // 空にいるあいだの高さ（core.js がキャラを上にずらして描く）
+  function airLift(a) {
+    if (!(a.airT > 0)) return 0;
+    var q = 1 - a.airT / a.airMax, u = a.airUp || 0.5;
+    if (q < u) return a.airH * Math.sin(q / u * Math.PI / 2);
+    var k = (q - u) / (1 - u);
+    return a.airH * (1 - k * k);
+  }
+  // アビスゲート（2026-11-08。2026-11-09 保護者の希望で、吸いこみを足し、開いている時間を長く）：
+  // 自分のまわりに暗黒の扉が開き、まわりの敵を吸いよせながら、何回かに分けて当たる（ボスとモンスターの巣は吸いよせない）
+  function abyss(c, f) {
+    var a = A(), ax = a.x, ay = a.y, dur = f.dur || 2.0, ticks = f.ticks || 5;
+    effects.push({ kind: "abyss", x: ax, y: ay, r: f.radius, t: dur + 0.4, max: dur + 0.4, seed: Math.random() * 100 });
+    Sound.play("hit");
+    for (var k = 0; k < ticks; k++) later(0.2 + k * dur / ticks, function () {
+      hitAround(c, { stat: f.stat, mult: f.mult / ticks, elem: f.elem, push: 0, color: f.color }, ax, ay, f.radius);
+    });
+    var step = 0.05;
+    for (var j = 0; j * step < dur; j++) later(j * step, function () {
+      Enemies.hostile().forEach(function (e) {
+        if (e.def && (e.def.boss || e.def.fixed)) return;
+        var dx = ax - e.x, dy = ay - e.y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d > f.radius + e.r || d < 10) return;
+        var go = Math.min(d - 10, (f.pull || 40) * step);
+        hooks.room.move(e, dx / d * go, dy / d * go);
       });
     });
   }
@@ -617,7 +655,7 @@ var Combat = (function () {
     var a = A(), t = autoTarget(f.range);
     if (t) faceNearest(f.range);
     var px = t ? t.x : a.x + a.face.x * 60, py = t ? t.y : a.y + a.face.y * 60;
-    effects.push({ kind: "pillar", x: px, y: py, r: f.radius, t: 0.95, max: 0.95, color: f.color });
+    effects.push({ kind: "pillar", x: px, y: py, r: f.radius, t: f.dur || 0.95, max: f.dur || 0.95, color: f.color });
     later(0.15, function () { Sound.play("hit"); hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 0, color: f.color }, px, py, f.radius); });
   }
   // クロノフォール（2026-11-08）：時空をこえて、隕石が画面じゅうに降る。部屋の敵みんなに1つずつ当たり、ほかにも景色の隕石が降る
@@ -829,6 +867,7 @@ var Combat = (function () {
     var room = hooks.room;
     clock += dt;
     if (cast) { cast.t -= dt; if (cast.t <= 0) cast = null; }
+    if (A() && A().airT > 0) A().airT = Math.max(0, A().airT - dt);   // ドラゴンダイブで空にいる時間
     for (var q = queue.length - 1; q >= 0; q--) {
       queue[q].t -= dt;
       if (queue[q].t <= 0) { var fn = queue[q].fn; queue.splice(q, 1); fn(); }
@@ -1163,7 +1202,11 @@ var Combat = (function () {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = rgba("#c9a8ff", 0.8 * al); ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(x, y, R * 0.97, 0, Math.PI * 2); ctx.stroke();
-      var fr = Math.floor(q * 18);   // いなずまは、こまめに形が変わる
+      var fr = Math.floor((ef.max - ef.t) * 14);   // いなずまは、こまめに形が変わる
+      for (i = 0; i < 16; i++) {   // 吸いこまれていく光の粒
+        var ph2 = ((ef.max - ef.t) * 0.9 + i / 16) % 1, an2 = ef.seed + i * 2.4 + ph2 * 2.2, rr2 = R * 1.35 * (1 - ph2);
+        glowDot(ctx, x + Math.cos(an2) * rr2, y + Math.sin(an2) * rr2 * 0.8, 3, "#e0c8ff", "#9a5ad0", 0.8 * al * ph2);
+      }
       ctx.lineWidth = 1.5; ctx.lineCap = "round";
       for (i = 0; i < 7; i++) {
         var sd = ef.seed + i * 13.7 + fr * 3.1;
@@ -1203,19 +1246,31 @@ var Combat = (function () {
       }
       return true;
     }
-    if (ef.kind === "pillar") {   // セイクレッド：ねらった敵のまわりに、空までのびる大きい光の柱
+    if (ef.kind === "pillar") {   // セイクレッド：ねらった敵のまわりに、空までのびる大きい光の柱（ドラゴンダイブの火柱も）
       x = ef.x - cam.x; y = ef.y - cam.y;
-      var grow = Math.min(1, q / 0.15), W = ef.r * (q < 0.2 ? 1.1 : 0.4 + 0.7 * p), H = 150 * grow;
+      var grow = Math.min(1, q / 0.12), W = ef.r * (q < 0.2 ? 1.1 : 0.3 + 0.8 * p * p), H = (ef.fire ? 110 : 150) * grow;
       var lg = ctx.createLinearGradient(x - W, 0, x + W, 0);
       lg.addColorStop(0, rgba(ef.color, 0)); lg.addColorStop(0.3, rgba(ef.color, 0.5 * p + 0.1)); lg.addColorStop(0.5, rgba("#ffffff", 0.95 * Math.min(1, p * 1.4)));
       lg.addColorStop(0.7, rgba(ef.color, 0.5 * p + 0.1)); lg.addColorStop(1, rgba(ef.color, 0));
       ctx.fillStyle = lg; ctx.fillRect(x - W, y - H, W * 2, H);
       ctx.fillStyle = rgba(ef.color, 0.45 * p);
       ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, ef.r, ef.r * 0.45, 0, 0, Math.PI * 2); else ctx.arc(x, y, ef.r, 0, Math.PI * 2); ctx.fill();
-      for (i = 0; i < 10; i++) {   // のぼる光の粒
-        var ph = (q * 2 + i / 10) % 1;
-        glowDot(ctx, x + Math.sin(i * 7.3) * W * 0.7, y - ph * H, 3, "#ffffff", ef.color, 0.9 * p);
+      var el = ef.max - ef.t;
+      for (i = 0; i < (ef.fire ? 18 : 14); i++) {   // のぼる光の粒（火柱はゆらめく炎）
+        var ph = (el * 1.2 + i / (ef.fire ? 18 : 14)) % 1;
+        if (ef.fire) glowDot(ctx, x + Math.sin(i * 7.3 + el * 9) * W * 0.6, y - ph * H, 6 * (1 - ph) + 2, "#fff3c4", i % 2 ? "#ff5a1f" : "#ffb84a", 0.95 * Math.min(1, p * 1.5));
+        else glowDot(ctx, x + Math.sin(i * 7.3) * ef.r * 0.7, y - ph * H, 3, "#ffffff", ef.color, Math.min(1, p * 1.6));
       }
+      return true;
+    }
+    if (ef.kind === "lightring") {   // ディバインエンド：自分のまわりに広がる光の輪
+      x = ef.x - cam.x; y = ef.y - cam.y; R = ef.r * Math.sqrt(q);
+      glowDot(ctx, x, y - 6, 18 + 10 * q, "#ffffff", ef.color, 0.8 * p);
+      ctx.strokeStyle = rgba("#ffffff", 0.95 * p); ctx.lineWidth = 3;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R, R * 0.55, 0, 0, Math.PI * 2); else ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = rgba(ef.color, 0.8 * p); ctx.lineWidth = 6;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R * 0.92, R * 0.5, 0, 0, Math.PI * 2); else ctx.arc(x, y, R * 0.92, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 12; i++) { an = i / 12 * Math.PI * 2; glowDot(ctx, x + Math.cos(an) * R, y + Math.sin(an) * R * 0.55, 4, "#ffffff", ef.color, p); }
       return true;
     }
     if (ef.kind === "jump") {   // ドラゴンダイブ：足もとのかげと、空へのぼる光の線
@@ -1538,6 +1593,6 @@ var Combat = (function () {
     ctx.lineCap = "butt";
   }
 
-  return { hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack,
+  return { airLift: airLift, hooks: hooks, targetFor: targetFor, normalAttack: normalAttack, useSkill: useSkill, update: update, draw: draw, clear: clear, drawSlash: drawSlash, drawElemHit: drawElemHit, glowDot: glowDot, mpCost: mpCost, drawCastBack: drawCastBack,
            drawShot: drawShot, drawZone: drawZone, addEffect: addEffect, crackLines: crackLines, showSummon: showSummon, SUMMON: SUMMON };
 })();
