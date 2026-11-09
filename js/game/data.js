@@ -811,7 +811,7 @@ var GameData = (function () {
     var c = skill.cond;
     if (!c) return "条件なし";
     var t = c.weapons ? c.weapons.map(function (w) { return WEAPONS[w].name; }).join("・") + "を装備" : c.line ? JOBS[c.line].name + "の系統" : "";
-    if (c.only) t = JOBS[c.only].name + "専用" + (c.weapons ? "・" + t : "");
+    if (c.only) t = JOBS[c.only].name + "だけ" + (c.weapons ? "・" + t : "");
     return t;
   }
 
