@@ -10,7 +10,7 @@ var KANJI = require("./kanji-sho4.js");
 var Furi = require(path.join(root, "js/game/furigana.js"));
 
 // ふりがなをつけない画面のファイル（保護者画面・つなぎ先の画面）
-var SKIP_FILES = ["parent.js", "sync.js"];
+var SKIP_FILES = ["parent.js", "sync.js", "chizu.js", "japanmap.js"];  // chizu.js は日本地図の棚の問題（問題の文にはふりがなをつけない）
 
 var known = {};
 for (var i = 0; i < KANJI.length; i++) known[KANJI.charAt(i)] = true;

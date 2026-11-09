@@ -7,10 +7,13 @@
 //   はじめて見て正解した問題は「知っている」（14日たったら1回たしかめ、正解なら「覚えた」）。
 //   2回目もまちがえた問題は「苦手」（1周目のあいだは追わない。そのあとは 3日後→1週間後→2週間後 と正解を続けたら「覚えた」。まちがえたら翌日）。
 //   新しい問題は、新しいプリントから先に（プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
+// ・日本地図の棚（2026-11-09）：47都道府県の名前と県庁所在地（js/game/chizu.js。問題はこのリポジトリで作る）。
+//   出し方は知識の棚と同じだが、1日 MAP_DAILY 問の別の枠にする（1,500問をこえる知識の棚にうもれないように）。記録は同じ「書庫の記録」（qid が "map-"）。
 // ・保護者のデバッグ用の枠では、答えを GAS に送らない（この画面を開いているあいだだけ覚える）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Shelf = (function () {
   var DAILY = 30;            // 1日に解く問題の数（数字は遊んでみてから直す）
+  var MAP_DAILY = 10;        // 日本地図の棚の1日の数（1つの都道府県で2問。1周目は約10日）
   var KNOWN_CHECK = 14;      // 「知っている」問題を、たしかめるまでの日数
   var LADDER = [3, 7, 14];   // 「苦手」問題：正解が続いた回数ごとの、次に出すまでの日数。全部続けたら「覚えた」
   var ORDER = ["japanese", "science", "social", "math"];
@@ -135,6 +138,9 @@ var Shelf = (function () {
   }
 
   // ---------- データ ----------
+  var MQ = window.Chizu ? Chizu.questions() : [];   // 日本地図の棚の問題
+  function isMap(r) { return !!(r && window.Chizu && Chizu.isMapId(r.qid)); }
+  function notMap(r) { return !isMap(r); }
   var key = "", today = "", Q = [], byId = {}, R = [], loaded = false, loading = null, debug = false;
   var queue = [], pos = 0, sessionDone = 0, sessionOk = 0, sessionGot = [];
   var writeChain = Promise.resolve();
@@ -212,6 +218,8 @@ var Shelf = (function () {
 
   var imgCache = {};
   function loadImage(id) {
+    var drawn = window.Chizu ? Chizu.image(id) : null;   // 日本地図の棚の地図は、ここで描く
+    if (drawn) return Promise.resolve(drawn);
     if (!imgCache[id]) {
       imgCache[id] = BDApi.call("image", { id: id }, key).then(function (r) { return r.src; });
       imgCache[id].catch(function () { delete imgCache[id]; });
@@ -235,14 +243,16 @@ var Shelf = (function () {
   }
   function fillPanel(body) {
     body.textContent = "";
+    var got = payReward();
+    if (got) { body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got))); rewardPopup(got, "これまで解いた分のごほうび！\n"); }
+    fillMap(body);
+    body.appendChild(el("h4", "shelf-sub", "プリントの棚"));
     if (!Q.length) { body.appendChild(el("p", "sub", "まだ棚に本がない。塾のプリントの問題が入ると、ここで覚えられるようになる。")); return; }
-    var p = plan(Q, R, today), n = p.list.length;
+    var p = plan(Q, R.filter(notMap), today), n = p.list.length;
     var nr = p.list.filter(function (x) { return x.why === "retry"; }).length;
     body.appendChild(el("p", "shelf-today", n ? "今日の分：" + n + " 問" + (nr ? "（そのうち、前にまちがえた問題 " + nr + " 問）" : "") + (p.doneToday ? "　今日はもう " + p.doneToday + " 問解いた" : "") :
       (p.doneToday ? "今日の分はおわり！ また明日。" : "今日解く問題はない。")));
     body.appendChild(el("p", "sub", p.caughtUp ? "棚の本は全部1回読んだ。これからは、間をあけてたしかめる。" : "まだ読んでいない本：あと " + p.left + " 問"));
-    var got = payReward();
-    if (got) { body.appendChild(el("p", "shelf-today", "これまで解いた分の" + rewardText(got))); rewardPopup(got, "これまで解いた分のごほうび！\n"); }
     body.appendChild(el("p", "sub", "解いた数 " + GameState.SHELF_STEP + " 問ごとに、鉱石と魔石。3回ごとに宝玉も。次のごほうびまで、あと " + toNext() + " 問。"));
     if (debug) body.appendChild(el("p", "sub", "（デバッグ用の枠：答えは送らない）"));
     if (n) {
@@ -269,6 +279,37 @@ var Shelf = (function () {
     });
     body.appendChild(shelves);
     body.appendChild(el("p", "sub", "1日 " + DAILY + " 問。まちがえた問題は、次の日にもう1回出る。はじめて見て正解できた本は「知っている」（金のふち）、2週間たっても正解できたら「覚えた」（金）。"));
+  }
+
+  // 日本地図の棚：今日の分と、都道府県の本棚（47冊。名前と県庁所在地の2問とも覚えたら金）
+  function fillMap(body) {
+    if (!MQ.length) return;
+    body.appendChild(el("h4", "shelf-sub", "日本地図の棚（都道府県と県庁所在地）"));
+    var p = plan(MQ, R.filter(isMap), today, MAP_DAILY), n = p.list.length;
+    body.appendChild(el("p", "shelf-today", n ? "今日の分：" + n + " 問" + (p.doneToday ? "　今日はもう " + p.doneToday + " 問解いた" : "") :
+      (p.doneToday ? "今日の地図はおわり！ また明日。" : "今日の地図の問題はない。")));
+    if (n) {
+      var b = el("button", "btn", "今日の地図を解く（" + n + " 問）"); b.type = "button";
+      b.addEventListener("click", function () { open(p); });
+      body.appendChild(b);
+    }
+    var st = states(R.filter(isMap)), row = el("div", "shelf-row"), bar = el("span", "shelf-books map-books"), good = 0;
+    row.dataset.s = "social";
+    row.appendChild(el("span", "shelf-name", "47"));
+    Chizu.PREFS.forEach(function (x) {
+      var a = st["map-" + x[0] + "-1"], c = st["map-" + x[0] + "-2"];
+      function lv(s) { return !s ? 0 : s.kind === "mastered" ? 3 : s.kind === "known" ? 2 : 1; }
+      var m = Math.min(lv(a), lv(c));
+      if (m >= 2) good++;
+      var bk = el("i", "book" + (m === 3 ? " got" : m === 2 ? " known" : m === 1 || lv(a) || lv(c) ? " learn" : ""));
+      bk.title = x[1];
+      bar.appendChild(bk);
+    });
+    row.appendChild(bar);
+    row.appendChild(el("span", "shelf-count", "覚えた・知っている " + good + " / 47"));
+    var rows = el("div", "shelf-rows"); rows.appendChild(row); body.appendChild(rows);
+    body.appendChild(el("p", "sub", p.caughtUp ? "47都道府県を全部1回見た。これからは、間をあけてたしかめる。" :
+      "1日 " + MAP_DAILY + " 問（5つの都道府県）。まだ見ていない問題：あと " + p.left + " 問"));
   }
 
   // ---------- 問題を解く画面 ----------
