@@ -655,7 +655,7 @@ var Enemies = (function () {
       }
     });
 
-    Bosses.updateHazards(dt, p, hurt);
+    Bosses.updateHazards(dt, p, hurt, room);
 
     // 敵どうし・プレイヤーと重ならないように押し合う（ボスは押されない。沼にもぐった・消えたボスは押さない）
     var live = alive().filter(function (o) { return !o.untouchable; });
