@@ -50,6 +50,12 @@ var Sync = (function () {
     var first = m.dirty && GameState.get() ? save("", "") : Promise.resolve();
     return first.then(function () { return BDApi.call("moveSaveToDebug", {}, key()); }).then(function () { return switchSlot("debug"); });
   }
+  // 今のセーブをデバッグ用にコピーし、デバッグ用に切りかえる（2026-11-09）。from："main"（対戦用）か "child"（子ども）。コピーもとは変わらない
+  function copyToDebug(from) {
+    var m = meta();
+    var first = m.dirty && GameState.get() ? save("", "") : Promise.resolve();
+    return first.then(function () { return BDApi.call("copySaveToDebug", { from: from }, key()); }).then(function () { return switchSlot("debug"); });
+  }
   // GameState.save() のたびに呼ぶ：まだ GAS に送っていない変更がある
   function markDirty() {
     if (GameState.inSandbox && GameState.inSandbox()) return; var m = meta(); if (!m.dirty) { m.dirty = true; setMeta(m); } }
@@ -247,7 +253,7 @@ var Sync = (function () {
 
   return {
     connected: connected, player: player, playerLabel: playerLabel,
-    isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, rivalParty: rivalParty, switchSlot: switchSlot, moveToDebug: moveToDebug, url: url, markDirty: markDirty,
+    isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, rivalParty: rivalParty, switchSlot: switchSlot, moveToDebug: moveToDebug, copyToDebug: copyToDebug, url: url, markDirty: markDirty,
     start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, drillQuestions: drillQuestions, image: image,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };
