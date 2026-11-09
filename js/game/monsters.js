@@ -1932,6 +1932,8 @@ var Monsters = (function () {
     frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
     witch_boss: { A: "#0c0810", a: "#4a3862", b: "#2e2244", c: "#1a1428", n: "#6a1e44", y: "#c8a850", Y: "#7a6430", w: "#ece6d8", W: "#b4ac9a", X: "#76705f", e: "#b8c0ac", E: "#8e9886", D: "#606a5c", F: "#3a4236", K: "#ff3a2a", k: "#ffd0b0", Z: "#24141a", T: "#ddd4b2", m: "#1a0a10", Q: "#44345a", R: "#2c2240", S: "#1c1528", M: "#110b1a", V: "#7a5532", U: "#4e331b", u: "#2a1a0c", L: "#eee6ce", l: "#b6ae96", j: "#6e6654", g: "#d48aff", G: "#8a3ac8", p: "#86e8b0", P: "#2e7a52", B: "#3c2618" },
     snowgolem_boss: { A: "#141018", a: "#f4f8fc", b: "#d6e0ec", c: "#a8b8cc", d: "#6e7e96", g: "#bfe6f8", h: "#7ab8dc", e: "#9ff4ff", f: "#2e9ab8", k: "#3a4458" },   // スノーゴーレム（2026-11-09）：ゴーレムの絵を雪の色に。苔のところは氷
+    // 氷牙獣（2026-11-09）：大オオカミの絵を、白い毛・青い影・水色に光る目に（大オオカミの色は PAL の a〜e・K・F・H）
+    icefang_boss: { A: "#0e1424", a: "#ffffff", b: "#e4f2fa", c: "#a8cce4", d: "#6e94b8", e: "#3e5a80", K: "#5ff0ff", F: "#bff8ff", H: "#ffffff" },
     golem_boss: { A: "#141018", a: "#968f7e", b: "#6c665a", c: "#4a463e", d: "#2a2724", g: "#6a8e42", h: "#3e5a2a", e: "#9ff4ff", f: "#2e9ab8", k: "#24201c" },
     elf_boss: { A: "#120c18", h: "#d8a072", s: "#b8825a", S: "#8a5a3a", t: "#5e3a26", L: "#7a3440", w: "#f6f4fa", W: "#c8c4d8", x: "#8a86a0", o: "#6a5896", O: "#3e3260", P: "#231b36", c: "#6e2c88", C: "#3a164e", q: "#9a48b8", m: "#e2e6f0", M: "#9298ae", n: "#5c6278", r: "#ff3a50", R: "#a01828", v: "#f4e8ec", g: "#c890ff", G: "#7032b8", B: "#4a2e22", b: "#6e4630", f: "#ece4d4" }
   };
@@ -4571,14 +4573,14 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
   // 足もと（x, y）を基準に描く。face.x が正なら右向き（大オオカミの地図は左向き）
   function drawBoss(ctx, e, x, y, frame) {
     var img = boss(e.def.kind, frame, e.flash > 0);
-    var flip = ((e.def.kind === "wolf_boss" || e.def.kind === "elf_boss") && e.face.x > 0) ||   // ダークエルフの絵は、弓を左へ向けている
+    var flip = ((e.def.kind === "wolf_boss" || e.def.kind === "icefang_boss" || e.def.kind === "elf_boss") && e.face.x > 0) ||   // ダークエルフの絵は、弓を左へ向けている
                (e.def.kind === "bandit_boss" && e.face.x < 0) ||                                 // おかしらの絵は右向き
                (e.def.kind === "dwarf_boss" && e.face.x < -0.2);                                 // ドワーフキングは正面向き。盾（絵の右）をこちらの側へ向ける
     ctx.save();
@@ -4588,6 +4590,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();

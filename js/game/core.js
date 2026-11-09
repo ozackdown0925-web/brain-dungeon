@@ -752,8 +752,9 @@
     }
     // 罠：立っているタイルで調べる
     var tx = Math.floor(A.x / T), ty = Math.floor(A.y / T), onPit = false;
-    for (var i = 0; i < c.traps.length; i++) {
-      var t = c.traps[i];
+    var traps = Bosses.frost().length ? c.traps.concat(Bosses.frost()) : c.traps;   // 氷牙獣のこおりの息で凍った床も、すべる氷として調べる
+    for (var i = 0; i < traps.length; i++) {
+      var t = traps[i];
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
       if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); Sound.play("trap"); }
       var ch = Party.current();

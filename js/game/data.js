@@ -755,6 +755,27 @@ var GameData = (function () {
     res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 34, r: 6,
     reach: 14, windup: 0.5, cooldown: 1.4, lunge: 6, color: "#f4f8fc"
   };
+  // 氷牙獣（白銀の霊峰12階・主。段階4、2026-11-09。数字は仮）：大オオカミがもと（動きは bosses.js の iceFang）。
+  //   かみつき・大突進（赤い線で予告）は大オオカミと同じ。遠ぼえで雪オオカミを2匹呼ぶ（強さは pupHp・pupAtk）。
+  //   大技「大遠ぼえ」（2026-11-09 保護者の案：遠ぼえでつららが降ってくる）：空を向いてほえると、部屋じゅうにつららが次々に降る。
+  //     落ちる場所に影（輪）が出て、少しあとに落ちる。1本目はプレイヤーの足もと。HP 半分から本数が増える。いちばん大きなダメージ
+  //   大ジャンプ：高くとび上がり、落ちる場所に影（輪）が出る → 着地でダメージ、まわりに氷のトゲが生える（少しおくれて）。
+  //   こおりの息：扇の形に予告 → 吐く。当たるとダメージ、扇の床が frostLife 秒「すべる氷」になる。
+  //   HP 半分から：氷のよろい（受けるダメージ armorCut 倍。火の攻撃を当てるか armorTime 秒でとける。armorEvery 秒ごとにまた着る）。大ジャンプが3回続けて。
+  //   火が弱点（よろいもとける）、水は効きにくい。
+  //   強さ：剣で約55回（Lv45・ミスリル R＋5で1振り約210）＋よろい。中ボスのスノーゴーレム（約47回）より楽にならないように
+  ENEMIES.icefang_boss = {
+    name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 46, matk: 0, pdef: 12, mdef: 8,
+    res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
+    reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
+    chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 14, rainMult: 3.0,
+    howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 22,
+    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
+    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
+    breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
+    armorCut: 0.5, armorTime: 8, armorEvery: 20
+  };
 
   // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
   // ときどき闇の玉を扇に3つ（ダーク・魔法）。近づかれると回転斬り（まわり）→ 後ろへ宙返りして距離をとる（宙返りのあいだは当たらない）。
@@ -931,7 +952,7 @@ var GameData = (function () {
         6: { enemy: "snowgolem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3、2026-11-09。ゴーレムがもと）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
              before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],
              after: ["雪の巨人は、くずれて雪の山にもどった。", "霊峰の上へ、道が続いている。"] },
-        12: { enemy: "dwarf_boss", title: "白銀をきわめし者",     // 氷牙獣（段階4で作る。大オオカミがもと。今は仮にドワーフキング）。前後の文は Claude が書いた仮の文
+        12: { enemy: "icefang_boss", title: "白銀をきわめし者",   // 氷牙獣（段階4、2026-11-09。大オオカミがもと）。前後の文は Claude が書いた仮の文
               before: ["霊峰のいただきは、一面の氷だ。", "吹雪の向こうで、二つの青い目が光った。", "大きな獣のうなり声が、ひびいてくる……。"],
               after: ["獣は雪の上にたおれ、吹雪がやんだ。", "峰の向こうに、まだ見ぬ土地が広がっている。"] }
       }
