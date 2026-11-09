@@ -13,7 +13,7 @@
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Shelf = (function () {
   var DAILY = 30;            // 1日に解く問題の数（数字は遊んでみてから直す）
-  var MAP_DAILY = 10;        // 日本地図の棚の1日の数（1つの都道府県で2問。1周目は約10日）
+  var MAP_DAILY = 15;        // 日本地図の棚の1日の数（名前・県庁所在地・場所のタップなど、全部で159問。1周目は約11日）
   var KNOWN_CHECK = 14;      // 「知っている」問題を、たしかめるまでの日数
   var LADDER = [3, 7, 14];   // 「苦手」問題：正解が続いた回数ごとの、次に出すまでの日数。全部続けたら「覚えた」
   var ORDER = ["japanese", "science", "social", "math"];
@@ -281,7 +281,7 @@ var Shelf = (function () {
     body.appendChild(el("p", "sub", "1日 " + DAILY + " 問。まちがえた問題は、次の日にもう1回出る。はじめて見て正解できた本は「知っている」（金のふち）、2週間たっても正解できたら「覚えた」（金）。"));
   }
 
-  // 日本地図の棚：今日の分と、都道府県の本棚（47冊。名前と県庁所在地の2問とも覚えたら金）
+  // 日本地図の棚：今日の分と、都道府県の本棚（47冊。その都道府県の問題が全部「覚えた」なら金）
   function fillMap(body) {
     if (!MQ.length) return;
     body.appendChild(el("h4", "shelf-sub", "日本地図の棚（都道府県と県庁所在地）"));
@@ -297,11 +297,13 @@ var Shelf = (function () {
     row.dataset.s = "social";
     row.appendChild(el("span", "shelf-name", "47"));
     Chizu.PREFS.forEach(function (x) {
-      var a = st["map-" + x[0] + "-1"], c = st["map-" + x[0] + "-2"];
+      // その都道府県の問題（名前・県庁所在地・場所のタップ・県庁所在地のタップ）が全部「覚えた」なら金
+      var mine = MQ.filter(function (q) { return q.group === "map-" + x[0] || q.tap === x[0] || q.tapCap === x[0]; });
       function lv(s) { return !s ? 0 : s.kind === "mastered" ? 3 : s.kind === "known" ? 2 : 1; }
-      var m = Math.min(lv(a), lv(c));
+      var lvs = mine.map(function (q) { return lv(st[q.id]); });
+      var m = Math.min.apply(null, lvs), any = Math.max.apply(null, lvs);
       if (m >= 2) good++;
-      var bk = el("i", "book" + (m === 3 ? " got" : m === 2 ? " known" : m === 1 || lv(a) || lv(c) ? " learn" : ""));
+      var bk = el("i", "book" + (m === 3 ? " got" : m === 2 ? " known" : m === 1 || any ? " learn" : ""));
       bk.title = x[1];
       bar.appendChild(bk);
     });
@@ -309,7 +311,7 @@ var Shelf = (function () {
     row.appendChild(el("span", "shelf-count", "覚えた・知っている " + good + " / 47"));
     var rows = el("div", "shelf-rows"); rows.appendChild(row); body.appendChild(rows);
     body.appendChild(el("p", "sub", p.caughtUp ? "47都道府県を全部1回見た。これからは、間をあけてたしかめる。" :
-      "1日 " + MAP_DAILY + " 問（5つの都道府県）。まだ見ていない問題：あと " + p.left + " 問"));
+      "1日 " + MAP_DAILY + " 問。名前・県庁所在地を思い出す問題と、地図をタップする問題。まだ見ていない問題：あと " + p.left + " 問"));
   }
 
   // ---------- 問題を解く画面 ----------
@@ -349,7 +351,9 @@ var Shelf = (function () {
     $("shelfProgress").textContent = "今日の分 " + (pos + 1) + " / " + queue.length + WHY[it.why];
     screen.dataset.s = q.subject; card.dataset.s = q.subject; ans.dataset.s = q.subject;
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
-    DrillCore.renderQuestion(holder, q, {
+    // 日本地図の棚の「タップして答える」問題は chizu.js で出す（自動で○×）
+    var render = (q.tap || q.tapCap) && window.Chizu ? function (h, qq, o) { Chizu.renderTap(h, ans, qq, o); } : DrillCore.renderQuestion;
+    render(holder, q, {
       answerRoot: ans, keypad: true, imageLoader: loadImage,
       review: it.why === "retry",
       onFinish: function (res) {

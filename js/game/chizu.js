@@ -3,7 +3,9 @@
 //   その回の地方だけの確認テストとは別に、全国をくり返す。
 // ・問題は塾の教材ではなく、このリポジトリで作る（地図は Natural Earth・パブリックドメイン。js/game/japanmap.js）。
 //   GAS の「問題」シートには入れない。答えは知識の棚と同じ「書庫の記録」シートに入る（qid が "map-" で始まる）。
-// ・1つの都道府県で2問：①赤い所の都道府県の名前 ②その県庁所在地（地図の●）。group でまとめて続けて出す。
+// ・1つの都道府県で3問：①赤い所の都道府県の名前 ②その県庁所在地（地図の●）。この2つは group でまとめて続けて出す。
+//   ③「〇〇県はどこ？」地図をタップして答える（2026-11-09 追加。自動で○×）。①の答えを見たすぐあとだと意味がないので、
+//   TAP_LAG 番あとの都道府県といっしょの日に出す（id の番号を TAP_LAG だけずらす。北海道のタップは8番の茨城県のあと、など）。
 // ・問題の文にはふりがなをつけない（知識の棚と同じ。tools/check-furigana.js でもこのファイルは見ない）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Chizu = (function () {
@@ -64,6 +66,9 @@ var Chizu = (function () {
   var OKI_DX = 150, OKI_DY = -1850;
   var FULL = [90, 15, 1460, 1640];   // 全国の地図の範囲 [左, 上, 幅, 高さ]
 
+  var TAP_LAG = 7, CAP_LAG = 12;   // タップの問題を、何番あとの都道府県といっしょに出すか（1日5つなので、約2日後）
+  // タップの問題の地図の範囲（地方ごと。北海道は東北といっしょ、中国と四国もいっしょ）
+  var TAP_VIEW = { "北海道地方": "n", "東北地方": "n", "関東地方": "k", "中部地方": "c", "近畿地方": "w", "中国地方": "s", "四国地方": "s", "九州地方": "q" };
   var byCode = {};
   PREFS.forEach(function (p) {
     byCode[p[0]] = { code: p[0], name: p[1], capital: p[2], region: p[3], cap: proj(p[4], p[5]) };
@@ -103,6 +108,31 @@ var Chizu = (function () {
           p.code === "13" ? "東京都の都庁は新宿区にある。" : ""
       });
     });
+    // ③タップの問題（id は「map-出す順の番号-t都道府県の番号」）
+    PREFS.forEach(function (row) {
+      var p = byCode[row[0]], at = ("0" + (Number(p.code) + TAP_LAG)).slice(-2);
+      out.push({
+        id: "map-" + at + "-t" + p.code, kind: "shelf", subject: "social", unit: "日本地図（場所）", source: "日本地図 " + at,
+        group: "map-t" + p.code, enabled: true, tap: p.code,
+        text: p.name + "はどこですか。地図の上でタップしよう。",
+        parts: [],
+        explanation: p.region + "の" + p.name + "。"
+      });
+    });
+    // ④県庁所在地の●をタップ（名前がちがう18県だけ。同じ名前の所は県をタップするのとほぼ同じなので。2026-11-09 保護者と決定）
+    PREFS.forEach(function (row) {
+      var p = byCode[row[0]];
+      if (!differs(p)) return;
+      var at = ("0" + (Number(p.code) + CAP_LAG)).slice(-2);
+      out.push({
+        id: "map-" + at + "-u" + p.code, kind: "shelf", subject: "social", unit: "日本地図（県庁所在地の場所）", source: "日本地図 " + at,
+        group: "map-u" + p.code, enabled: true, tapCap: p.code,
+        text: p.capital + "はどこですか。地図の●をタップしよう。",
+        parts: [],
+        explanation: p.capital + "は" + p.name + "の県庁所在地。"
+      });
+    });
+    out.sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
     return out;
   }
   function isMapId(qid) { return String(qid || "").indexOf("map-") === 0; }
@@ -160,6 +190,88 @@ var Chizu = (function () {
   // 番号の位置（まん中だと重なる小さな県だけ、ずらす。1 = 約1km）
   var LABEL = {};
 
+  // ---------- タップの問題（知識の棚の画面から呼ぶ） ----------
+  // 地方の地図を出し、子どもが都道府県をタップ →「これで答える」で自動で○×。opts.onFinish({ correct, input, parts })
+  function viewBox(code) {
+    var key = TAP_VIEW[byCode[code].region], M = JAPAN_MAP.prefs, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    PREFS.forEach(function (r) {
+      if (TAP_VIEW[r[3]] !== key) return;
+      var b = M[r[0]].box; x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]);
+    });
+    var w = (x1 - x0) * 1.15, h = (y1 - y0) * 1.15, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    if (w < h * 4 / 3) w = h * 4 / 3; else h = w * 3 / 4;
+    return [cx - w / 2, cy - h / 2, w, h];
+  }
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) { var e = document.createElementNS(NS, tag); Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); }); return e; }
+  function renderTap(card, ans, q, opts) {
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+    var cap = !!q.tapCap, code = q.tap || q.tapCap, vb = viewBox(code), sw = (vb[2] / 450).toFixed(2), picked = null, done = false;
+    var wrap = el("div", "dq"); card.textContent = ""; card.appendChild(wrap);
+    var meta = el("div", "dq-meta");
+    meta.appendChild(el("span", "dq-chip", "社会・" + q.unit));
+    if (opts.review) { meta.appendChild(el("span", "dq-chip review", "復習")); meta.appendChild(el("span", null, "前にまちがえた問題です")); }
+    wrap.appendChild(meta);
+    wrap.appendChild(el("p", "dq-text", q.text));
+    var svg = svgEl("svg", { viewBox: vb.map(function (v) { return Math.round(v); }).join(" "), "class": "chizu-tap" });
+    svg.appendChild(svgEl("rect", { x: Math.round(vb[0] - vb[2]), y: Math.round(vb[1] - vb[3]), width: Math.round(vb[2] * 3), height: Math.round(vb[3] * 3), fill: "#cfe6f2" }));
+    var shapes = {};
+    Object.keys(JAPAN_MAP.prefs).sort().forEach(function (c) {
+      var path = svgEl("path", { d: JAPAN_MAP.prefs[c].d, fill: "#f6f0de", stroke: "#7a705c", "stroke-width": sw, "stroke-linejoin": "round" });
+      if (!cap) path.addEventListener("click", function () { pick(c); });
+      shapes[c] = path; svg.appendChild(path);
+    });
+    // 県庁所在地のタップ：●を全部出し、タップした所にいちばん近い●をえらぶ（●が小さくてもえらべるように）
+    var dots = {}, R = vb[2] / 85;
+    if (cap) {
+      PREFS.forEach(function (row) {
+        var c = row[0], pt = byCode[c].cap;
+        dots[c] = svgEl("circle", { cx: pt[0].toFixed(1), cy: pt[1].toFixed(1), r: R.toFixed(1), fill: "#1e1e1e", stroke: "#fff", "stroke-width": (R / 3).toFixed(2) });
+        svg.appendChild(dots[c]);
+      });
+      svg.addEventListener("click", function (ev) {
+        var m = svg.getScreenCTM(); if (!m) return;
+        var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; pt = pt.matrixTransform(m.inverse());
+        var best = null, bd = 1e9;
+        PREFS.forEach(function (row) { var c = byCode[row[0]].cap, d = Math.hypot(c[0] - pt.x, c[1] - pt.y); if (d < bd) { bd = d; best = row[0]; } });
+        if (best && bd < vb[2] / 12) pick(best);
+      });
+    }
+    var figure = el("div", "chizu-tap-box"); figure.appendChild(svg); wrap.appendChild(figure);
+
+    ans.textContent = ""; var box = el("div", "dq"); ans.appendChild(box);
+    var say = el("p", "dq-note", cap ? "地図の●をタップしてから、「これで答える」を押そう。" : "地図の都道府県をタップしてから、「これで答える」を押そう。");
+    var go = el("button", "dq-btn", "これで答える"); go.type = "button"; go.disabled = true;
+    box.appendChild(say); box.appendChild(go);
+    function paint(c, color) {
+      if (cap) { dots[c].setAttribute("fill", color); dots[c].setAttribute("r", (R * 1.5).toFixed(1)); svg.appendChild(dots[c]); return; }
+      shapes[c].setAttribute("fill", color); svg.appendChild(shapes[c]);   // 上に重ねて、さかいの線を見せる
+    }
+    function pick(c) {
+      if (done) return;
+      if (picked) { if (cap) { dots[picked].setAttribute("fill", "#1e1e1e"); dots[picked].setAttribute("r", R.toFixed(1)); } else shapes[picked].setAttribute("fill", "#f6f0de"); }
+      picked = c; paint(c, "#5b8def");
+      say.textContent = "この場所でいい？　よければ「これで答える」。";
+      go.disabled = false;
+    }
+    go.addEventListener("click", function () {
+      if (done || !picked) return;
+      done = true; go.remove(); say.remove();
+      var ok = picked === code;
+      if (!ok) paint(picked, "#9aa6b8");
+      paint(code, ok ? "#3aa35b" : "#e2493b");
+      var r = el("div", "dq-result " + (ok ? "ok" : "ng"));
+      r.appendChild(el("div", "dq-verdict", ok ? "○ 正解！" : "× ざんねん"));
+      if (!ok) r.appendChild(el("p", "dq-ex", cap ? "えらんだのは " + byCode[picked].capital + "（" + byCode[picked].name + "）。" + byCode[code].capital + "は赤い●。" :
+        "えらんだのは " + byCode[picked].name + "。" + byCode[code].name + "は赤い所。"));
+      if (cap) { shapes[code].setAttribute("fill", "#f7d7c4"); svg.appendChild(shapes[code]); Object.keys(dots).forEach(function (c) { svg.appendChild(dots[c]); }); svg.appendChild(dots[code]); if (!ok) svg.appendChild(dots[picked]); }
+      if (q.explanation) r.appendChild(el("p", "dq-ex", q.explanation));
+      box.appendChild(r);
+      var name = byCode[picked] ? (cap ? byCode[picked].capital : byCode[picked].name) : picked;
+      if (opts.onFinish) opts.onFinish({ correct: ok, input: name, parts: [{ label: "", value: name, correct: ok, note: "" }] });
+    });
+  }
+
   function dataUrl(svg) { return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); }
   // 問題の図の id（"map:03" か "map:03:c"）から絵を作る。ちがう id なら null
   function image(id) {
@@ -168,6 +280,6 @@ var Chizu = (function () {
     return dataUrl(focusSvg(m[1], !!m[2]));
   }
 
-  return { PREFS: PREFS, byCode: byCode, questions: questions, isMapId: isMapId, image: image, focusSvg: focusSvg, fullSvg: fullSvg, differs: differs, LABEL: LABEL };
+  return { PREFS: PREFS, byCode: byCode, questions: questions, isMapId: isMapId, image: image, renderTap: renderTap, focusSvg: focusSvg, fullSvg: fullSvg, differs: differs, LABEL: LABEL };
 })();
 if (typeof module !== "undefined") module.exports = Chizu;
