@@ -1338,7 +1338,8 @@
   // 画面の右に、1秒あたりのダメージ（最近10秒）・合計ダメージ・使った MP・こわした回数とかかった時間を出す。
   var training = null;
   function startTraining(cfg) {
-    training = { type: cfg.type, attack: !!cfg.attack, res: cfg.res || {}, statue: null, respawn: 0, clock: 0 };
+    if (GameState.trainingLeft() <= 0) { Town.openTraining(); return; }   // 今日の10分は使いきった（宿屋の画面でも入れないようにしている）
+    training = { type: cfg.type, attack: !!cfg.attack, res: cfg.res || {}, statue: null, respawn: 0, clock: 0, unsaved: 0, ending: false };
     resetTrainStats();
     trial = { correct: 0, subjects: [], test: true, training: true };
     settings.correct = 0; settings.dungeon = "forest1";
@@ -1378,6 +1379,12 @@
   }
   function trainUpdate(dt) {
     training.clock += dt;
+    // 1日10分まで（2026-11-09）。iPad の中には30秒ごとに覚えさせ、出るときに GAS へ送る
+    if (!training.ending && GameState.trainingLeft() !== Infinity) {
+      GameState.addTraining(dt); training.unsaved += dt;
+      if (training.unsaved >= 30) { training.unsaved = 0; GameState.save(); }
+      if (GameState.trainingLeft() <= 0) { trainTimeUp(); return; }
+    }
     var st = training.statue;
     // 像に入ったダメージ（毒などもふくむ）
     if (st && st.hp < training.lastHp) {
@@ -1399,6 +1406,11 @@
       if (training.respawn <= 0) { spawnStatue(dg.cells[curKey].enemies[0]); run.roomAlive = 1; }
     }
     while (training.log.length && training.clock - training.log[0][0] > 10) training.log.shift();
+  }
+  function trainTimeUp() {
+    training.ending = true;
+    paused = true; Input.releaseAll();   // 知らせを読んでいるあいだは止めておく（メニューは出さない）
+    Dialog.alert("今日は 10分 きたえた！\n今日の訓練は これまでにしよう。\n（また明日、訓練場に入れる）", function () { leaveTraining(); });
   }
   function trainRevive() {
     Party.members().forEach(function (m) { m.down = false; m.hp = m.stats.hp; m.mp = m.stats.mp; m.status = {}; });
@@ -1422,11 +1434,15 @@
       ["こわした回数 " + training.kills + (training.lastKill !== null ? "　前回 " + training.lastKill.toFixed(1) + "秒" : ""), "#ece7da"],
       ["像の HP " + Math.max(0, Math.ceil(st && !st.dead ? st.hp : 0)) + "/" + (st ? st.maxHp : 0), "#ef9a9a"]
     ];
+    // 今日の訓練ののこり時間（1日10分まで。2026-11-09）
+    var left = GameState.trainingLeft(), sec = Math.ceil(left);
+    if (left !== Infinity) lines.push(["今日の訓練 のこり " + Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2), left < 60 ? "#ffd24a" : "#a3c88a"]);
     Render.rect(x - 150, y - 3, 153, lines.length * 10 + 5, "rgba(10,12,18,0.72)");
     lines.forEach(function (l, i) { Render.text(l[0], x, y + i * 10, { size: 7, align: "right", color: l[1] }); });
   }
   function leaveTraining() {
     setPaused(false);
+    if (GameState.trainingLeft() !== Infinity) { GameState.save(); if (window.Sync) Sync.save("", ""); }   // 使った時間を残す
     active = false; dg = null; training = null;
     Enemies.clear(); Combat.clear(); Battle.clear();
     Sound.bgm("town");
@@ -1583,7 +1599,7 @@
       finish("quit");
     }, null, { yes: "やめて拠点にもどる", no: "冒険を続ける" });
   });
-  window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape")) setPaused(false); });
+  window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape") && !(training && training.ending)) setPaused(false); });
 
   function setPaused(on) {
     paused = on;

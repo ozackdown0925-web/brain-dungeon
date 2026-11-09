@@ -854,6 +854,16 @@ var GameState = (function () {
     save();
     if (window.Sync) Sync.save("闘技場で" + (win ? "勝った" : "負けた"), summary());
   }
+  // ---------- 訓練場の時間（2026-11-09 保護者の希望）：1日10分まで。10分きたえたら、その日の訓練はおしまい ----------
+  // game.training：{ date（最後に訓練した日）, sec（その日に訓練した秒数） }。保護者のデバッグ用の枠・テスト用の端末・全開放の試しは制限なし
+  var TRAIN_SEC_PER_DAY = 600;
+  function trainingUsed() { var t = game && game.training; return t && t.date === todayStr() ? (t.sec || 0) : 0; }
+  function trainingFree() { return unlimited() || sandbox; }
+  function trainingLeft() { return trainingFree() ? Infinity : Math.max(0, TRAIN_SEC_PER_DAY - trainingUsed()); }
+  function addTraining(sec) {
+    if (!game || trainingFree()) return;
+    game.training = { date: todayStr(), sec: trainingUsed() + sec };
+  }
   function todayStr() {
     var d = new Date();
     return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
@@ -1037,6 +1047,7 @@ var GameState = (function () {
 
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
+    trainingLeft: trainingLeft, addTraining: addTraining, TRAIN_SEC_PER_DAY: TRAIN_SEC_PER_DAY,
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,

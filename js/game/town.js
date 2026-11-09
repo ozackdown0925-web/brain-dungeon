@@ -572,10 +572,18 @@ var Town = (function () {
     });
     box.appendChild(button("ぜんぶ「ふつう」にもどす", function () { set(function (c) { c.res = {}; }); }));
 
+    // 1日10分まで（2026-11-09 保護者の希望）
+    var left = GameState.trainingLeft();
+    if (left !== Infinity) {
+      var mm = Math.ceil(left / 60);
+      box.appendChild(el("p", left > 0 ? "" : "note", left > 0 ? "訓練は1日" + Math.round(GameState.TRAIN_SEC_PER_DAY / 60) + "分まで。今日あと 約" + mm + "分" : "今日はもう" + Math.round(GameState.TRAIN_SEC_PER_DAY / 60) + "分きたえた。今日の訓練はこれまで。また明日！"));
+    }
     var go = button("訓練場に入る", function () {
+      if (GameState.trainingLeft() <= 0) return;
       townEl.hidden = true;
       Adventure.startTraining(trainCfg());
     }, "big");
+    go.disabled = left <= 0;
     go.style.marginTop = "12px";
     box.appendChild(el("div", "", "")).appendChild(go);
     bodyEl.appendChild(box);
