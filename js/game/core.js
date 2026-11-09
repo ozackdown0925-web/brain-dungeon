@@ -1547,7 +1547,7 @@
     var beat = arena.rivals.filter(function (r) { return r.down; }).length;
     var lines = win
       ? [arena.who + "のパーティに勝った！", "たおれた仲間：" + downs + "人　かかった時間：" + Math.round(arena.clock) + "秒"]
-      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　" + (GameState.arenaLeft() > 1 ? "もう一度、挑戦してみよう！" : "また明日、挑戦しよう！")];
+      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　" + (GameState.arenaLeft() > 1 ? "もう一度、挑戦してみよう！" : GameState.arenaPassCount() < GameState.ARENA_PER_DAY ? "書庫で問題を解くと、また挑戦できる！" : "また明日、挑戦しよう！")];
     Sound.play(win ? "levelup" : "down");
     showStory(win ? "勝った！" : "負けた…", lines, "闘技場にもどる", function () { leaveArena(win); });
   }

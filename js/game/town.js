@@ -595,11 +595,16 @@ var Town = (function () {
   function renderArena(g) {
     var me = Sync.player(), who = me === "parent" ? "子ども" : "保護者";
     var box = el("div", "arena");
-    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。1日" + GameState.ARENA_PER_DAY + "回まで。"));
+    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。"));
     var a = GameState.arena(), today = GameState.arenaToday(), left = GameState.arenaLeft();
     var free = Sync.isDebug() || GameState.unlimited();
     box.appendChild(el("p", "", "これまで：" + (a.wins || 0) + "勝 " + (a.losses || 0) + "敗" + (today ? "　今日：" + today.tw + "勝 " + today.tl + "敗" : "")));
-    if (!free) box.appendChild(el("p", "", "今日あと " + left + " 回 対戦できる"));
+    // 挑戦権は書庫の問題のごほうび（2026-11-09）
+    var pass = GameState.arenaPass(), passN = GameState.arenaPassCount(), PS = GameState.ARENA_PASS_STEPS;
+    if (!free) {
+      box.appendChild(el("p", "note", "挑戦権は書庫でもらえる：今日 " + PS[0] + "問 解いたら1回、" + PS[1] + "問で2回、今日の分を全部解いたら3回。"));
+      box.appendChild(el("p", "", "今日書庫で解いた数 " + (pass.done || 0) + " 問 → 挑戦権 " + passN + " 回。今日あと " + left + " 回 対戦できる"));
+    }
     var foes = el("div", "arena-foes");
     foes.appendChild(el("p", "note", "相手を読みこんでいます…"));
     box.appendChild(foes);
@@ -610,13 +615,13 @@ var Town = (function () {
         GameState.recordArena(win);
         open("arena");
         var rest = GameState.arenaLeft();
-        say(win ? "勝った！ おめでとう！" : rest > 0 ? "負けてしまった… もう一度挑戦してみよう" : "負けてしまった… また明日、挑戦しよう");
+        say(win ? "勝った！ おめでとう！" : rest > 0 ? "負けてしまった… もう一度挑戦してみよう" : GameState.arenaPassCount() < GameState.ARENA_PER_DAY ? "負けてしまった… 書庫で問題を解くと、また挑戦できる" : "負けてしまった… また明日、挑戦しよう");
       } });
     }, "big");
     go.disabled = true;
     go.style.marginTop = "10px";
     box.appendChild(go);
-    if (left <= 0 && !free) box.appendChild(el("p", "note", "今日の対戦は終わり。また明日！"));
+    if (left <= 0 && !free) box.appendChild(el("p", "note", passN < GameState.ARENA_PER_DAY ? "挑戦権がない。書庫で問題を解くと、挑戦権がもらえる。" : "今日の対戦は終わり。また明日！"));
     bodyEl.appendChild(box);
     Sync.rivalParty().then(function (r) {
       rivalCache = r;

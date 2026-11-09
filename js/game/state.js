@@ -845,7 +845,21 @@ var GameState = (function () {
     var n = a.n || 1;
     return { n: n, tw: a.tw !== undefined ? a.tw : (a.win ? 1 : 0), tl: a.tl !== undefined ? a.tl : (a.win ? 0 : 1), win: !!a.win };
   }
-  function arenaLeft() { var t = arenaToday(); return Math.max(0, ARENA_PER_DAY - (t ? t.n : 0)); }
+  // 挑戦権（2026-11-09 保護者の希望）：闘技場は書庫の問題のごほうび。今日の書庫（知識の棚と日本地図の棚をあわせて）で
+  //   10問解いたら1回・20問で2回・今日の分を全部解いたら3回。shelf.js が、解くたび・書庫を開くたびに setArenaPass で知らせる。
+  //   game.arenaPass：{ date, n（今日の挑戦権）, done（今日解いた数） }。保護者のデバッグ用の枠・回数の制限をはずした端末は、いつも3回
+  var ARENA_PASS_STEPS = [10, 20];
+  function arenaPass() { var p = game && game.arenaPass; return p && p.date === todayStr() ? p : { date: todayStr(), n: 0, done: 0 }; }
+  function setArenaPass(done, allDone) {
+    if (!game || sandbox) return;
+    var n = allDone && done > 0 ? ARENA_PER_DAY : done >= ARENA_PASS_STEPS[1] ? 2 : done >= ARENA_PASS_STEPS[0] ? 1 : 0;
+    var p = arenaPass();
+    if (n <= p.n && done <= p.done) return;
+    game.arenaPass = { date: todayStr(), n: Math.max(n, p.n), done: Math.max(done, p.done) };
+    save();
+  }
+  function arenaPassCount() { return unlimited() ? ARENA_PER_DAY : Math.min(ARENA_PER_DAY, arenaPass().n || 0); }
+  function arenaLeft() { var t = arenaToday(); return Math.max(0, arenaPassCount() - (t ? t.n : 0)); }
   function recordArena(win) {
     if (!game || sandbox) return;
     var a = arena(), t = arenaToday() || { n: 0, tw: 0, tl: 0 };
@@ -1048,7 +1062,7 @@ var GameState = (function () {
   return {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     trainingLeft: trainingLeft, addTraining: addTraining, TRAIN_SEC_PER_DAY: TRAIN_SEC_PER_DAY,
-    arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
+    arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, arenaPass: arenaPass, arenaPassCount: arenaPassCount, setArenaPass: setArenaPass, ARENA_PASS_STEPS: ARENA_PASS_STEPS, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
