@@ -11,7 +11,7 @@ var Bosses = (function () {
   var waves = [];   // 地面を走る衝撃の輪とひび（ゴーレム）：{ x, y, t, max, r0, r1, cracks }
   var quake = { t: 0, amp: 0 };   // 画面のゆれ（ゴーレムの大きな攻撃）
 
-  function clear() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; quake.t = 0; }
+  function clear() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; quake.t = 0; if (typeof blizz !== "undefined") blizz.t = 0; }
   // 画面をゆらす。amp はゆれのはば（ドット）、t は長さ（秒）
   function shake(amp, t) { if (amp >= quake.amp || quake.t <= 0) { quake.amp = amp; quake.t = t; } }
   function shakeOffset() {
@@ -54,7 +54,7 @@ var Bosses = (function () {
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
-    else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "golem_boss" || d.kind === "snowgolem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // スノーゴーレムはゴーレムがもと（d.snow）
     else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -829,6 +829,7 @@ var Bosses = (function () {
   // ぶん回し（近く・まわりの広い範囲）、ふみこみながらの3回攻撃、大技の岩石投げ（飛んでくる岩。投げ終わるとふらつく）
   function golem(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
     var d = e.def, half = e.hp <= e.maxHp / 2;
+    if (d.snow && snowGolem(e, dt, room, p, api, half)) return;   // スノーゴーレム：吹雪・雪だるまに分かれる
     if (e.state === "spin") {   // うでを広げて構える → ぶん回し（まわりにとどけば当たる）
       e.t -= dt;
       if (e.t <= 0) {
@@ -859,7 +860,12 @@ var Bosses = (function () {
     if (e.state === "lift") {   // 岩を持ち上げる → まっすぐ投げる（何回か続けて）。投げ終わるとふらつく
       e.t -= dt;
       if (!p.down) e.face = { x: ux, y: uy };
-      if (e.t <= 0) {
+      if (e.t <= 0 && d.snow) {   // スノーゴーレム：大きな雪玉を地面に転がす（壁ではね返る）
+        rollBall(e, ux, uy, half);
+        e.thrown = 0.2; e.rocks--;
+        if (e.rocks > 0) e.t = half ? d.rockWindupHalf : d.rockWindup;
+        else tire(e);
+      } else if (e.t <= 0) {
         var sy = e.y - 24, ang = Math.atan2(p.y - sy, p.x - e.x);   // 頭の上から投げる
         api.addArrow(e, ang, half ? d.rockSpeedHalf : d.rockSpeed, { rock: true, big: true, mult: d.rockMult, rad: d.rockR, dy: -24, life: 3, split: half ? d.chipMult : 0, spin: Math.random() < 0.5 ? 1 : -1 });
         e.thrown = 0.2; e.rocks--;
@@ -1082,7 +1088,103 @@ var Bosses = (function () {
     e.state = "lift"; e.rocks = half ? d.rockCountHalf : d.rockCount + (Math.random() < 0.5 ? 1 : 0);
     e.ai.rock = half ? d.rockEveryHalf : d.rockEvery;   // 次の岩石投げまでの時間は、始めたときから数える（止められても、すぐにはくり返さない）
     e.t = (half ? d.rockWindupHalf : d.rockWindup) + 0.3;
-    Battle.pop(e.x, e.y - 50, "岩石投げ！", "#ef5b5b", 9);
+    Battle.pop(e.x, e.y - 50, d.snow ? "雪玉ころがし！" : "岩石投げ！", "#ef5b5b", 9);
+  }
+
+  // ---------- スノーゴーレム（白銀の霊峰6階・中ボス。段階3、2026-11-09 保護者と決定）。ゴーレムがもと ----------
+  // ぶん回し・3回攻撃はゴーレムと同じ。岩石投げのかわりに「雪玉ころがし」：大きな雪玉を地面に転がす（壁で ballBounce 回はね返る）。
+  // 吹雪（blizzardEvery 秒ごと、blizzardTime 秒）：画面が白くなり、まわりしか見えない（core.js の drawSnowfall。Bosses.blizzard() で強さ）。
+  // HP が半分を切ると、1回だけ、くずれて雪の山になり、雪だるまを splitCount 体出す（雪の山には攻撃が当たらない）。
+  //   雪だるまを全部たおすと、雪が集まってもとにもどり、しばらくふらつく（すきあり）。
+  //   splitPile 秒たってものこっていたら、のこった雪だるまを吸いこんで合体し、1体につき最大HPの splitHeal だけ回復する。
+  // この関数が動きを受け持ったフレームは true を返す
+  var blizz = { t: 0, max: 1 };
+  function blizzard() { return blizz.t > 0 ? Math.min(1, blizz.t / 0.6, (blizz.max - blizz.t) / 0.6 + 0.001) : 0; }
+  function snowGolem(e, dt, room, p, api, half) {
+    var d = e.def;
+    if (blizz.t > 0) blizz.t = Math.max(0, blizz.t - dt);
+    e.blizzCd = (e.blizzCd === undefined ? 7 : e.blizzCd) - dt;
+    if (e.state === "pile") {
+      e.t -= dt;
+      var mates = api.alive().filter(function (o) { return o.owner === e; });
+      e.face = { x: 0, y: 1 };
+      if (!mates.length) {   // 全部たおした：雪が集まってもとにもどり、ふらつく
+        e.untouchable = false; e.state = "tired"; e.t = d.reformTired;
+        addWave(e.x, e.y + 8, 6, 40, 0.45, 0);
+        Battle.pop(e.x, e.y - 50, "体がもどった！ ふらついている！", "#ffe066", 9);
+        return true;
+      }
+      if (e.t <= 0) {   // 時間切れ：のこった雪だるまを吸いこんで合体し、回復する
+        mates.forEach(function (m) { m.dead = true; m.fade = 0.4; m.absorbed = true; });
+        var heal = Math.round(e.maxHp * d.splitHeal * mates.length);
+        e.hp = Math.min(e.maxHp, e.hp + heal);
+        e.untouchable = false; e.state = "recover"; e.t = 0.8;
+        addWave(e.x, e.y + 8, 40, 6, 0.45, 0);
+        Battle.pop(e.x, e.y - 50, "合体した！ HP が " + heal + " もどった", "#ef5b5b", 9);
+        return true;
+      }
+      return true;
+    }
+    if (half && !e.splitDone && (e.state === "chase" || e.state === "recover")) {   // くずれて、雪だるまに分かれる
+      e.splitDone = true; e.state = "pile"; e.t = d.splitPile; e.untouchable = true;
+      for (var i = 0; i < d.splitCount; i++) {
+        var a = -Math.PI / 2 + i / d.splitCount * Math.PI * 2, sx = e.x + Math.cos(a) * 30, sy = e.y + Math.sin(a) * 22;
+        if (room.hitsWall(sx - 6, sy - 6, 12, 12)) { sx = e.x; sy = e.y + 20; }
+        var m = api.spawn("snowman", sx, sy, 1);
+        m.summoned = true; m.owner = e; m.cd = 0.8 + i * 0.3;
+      }
+      for (var k = 0; k < 10; k++) { var ka = Math.random() * Math.PI * 2; addDust(e.x + Math.cos(ka) * 20, e.y + 8 + Math.sin(ka) * 12); }
+      shake(2, 0.3);
+      Battle.pop(e.x, e.y - 50, "くずれて、雪だるまに分かれた！", "#ef5b5b", 9);
+      return true;
+    }
+    if (e.blizzCd <= 0 && e.state === "chase" && !p.down) {   // 吹雪（動きは止めない。見えにくくなるだけ）
+      e.blizzCd = (half ? d.blizzardEveryHalf : d.blizzardEvery) + d.blizzardTime;
+      blizz.t = blizz.max = d.blizzardTime;
+      Battle.pop(e.x, e.y - 50, "吹雪だ！", "#ef5b5b", 9);
+    }
+    return false;
+  }
+  // 雪玉：ゴーレムの前に出して、プレイヤーのほうへ転がす。壁や岩にぶつかると、はね返る（ballBounce 回まで。そのあとはくだける）
+  function rollBall(e, ux, uy, half) {
+    var d = e.def, sp = half ? d.ballSpeedHalf : d.ballSpeed;
+    var a = Math.atan2(uy, ux) + (Math.random() - 0.5) * 0.25;
+    hazards.push({ kind: "ball", from: e, x: e.x + Math.cos(a) * (e.r + 4), y: e.y + 6 + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                   r: d.ballR, t: 0, life: d.ballLife, bounce: d.ballBounce, hitCd: 0, roll: 0, opts: { mult: d.ballMult, big: true } });
+    Sound.play("swing");
+  }
+  function updateBall(h, dt, p, hurt, room) {
+    h.hitCd = Math.max(0, h.hitCd - dt);
+    var nx = h.x + h.vx * dt, ny = h.y + h.vy * dt, r = h.r * 0.8;
+    if (room.hitsWall(nx - r, h.y - r, r * 2, r * 2)) { h.vx = -h.vx; h.bounce--; nx = h.x; shake(1, 0.08); }
+    if (room.hitsWall(h.x - r, ny - r, r * 2, r * 2)) { h.vy = -h.vy; h.bounce--; ny = h.y; shake(1, 0.08); }
+    h.x = nx; h.y = ny; h.roll += Math.sqrt(h.vx * h.vx + h.vy * h.vy) * dt;
+    var dx = p.x - h.x, dy = p.y - h.y;
+    if (!p.down && h.hitCd <= 0 && dx * dx + dy * dy < (h.r + p.r) * (h.r + p.r) && !h.from.dead) {
+      hurt(h.from, p.x, p.y - 8, h.opts);
+      h.bounce = -1;   // 当たると、くだける
+    }
+    if (h.bounce < 0 || h.t >= h.life) { snowBreak(h.x, h.y); return true; }
+    return false;
+  }
+  // 雪玉がくだけた：白いかけら
+  function snowBreak(x, y) {
+    for (var i = 0; i < 9; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 50;
+      chips.push({ x: x, y: y, z: 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: 50 + Math.random() * 60, t: 0, max: 0.7 + Math.random() * 0.4,
+                   c: ["#ffffff", "#e2e8f0", "#c8d2de", "#a8b4c4"][i % 4], s: i % 3 === 0 ? 3 : 2 });
+    }
+  }
+  // 雪玉の絵：白い玉に、転がる向きに回るもよう（青いかげ）
+  function drawSnowball(ctx, x, y, r, roll) {
+    x = Math.round(x); y = Math.round(y);
+    ctx.fillStyle = "#140c1c"; ctx.beginPath(); ctx.arc(x, y, r + 1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#c8d2de"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f4f8fc"; ctx.beginPath(); ctx.arc(x - 2, y - 2, r - 2, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 4; i++) {   // 転がるもよう
+      var a = roll / r + i * Math.PI / 2, px = x + Math.cos(a) * (r - 4), py = y + Math.sin(a) * (r - 4) * 0.8;
+      Render.rect(Math.round(px) - 1, Math.round(py) - 1, 2, 2, "#a8b4c4");
+    }
   }
   // 投げられた岩（ゴーレム）：ドット絵（24×21）。2026-10-26 保護者が送ってくれた絵の形をそのまま使い、色はゴーレムに合わせた灰色にした。
   // 1〜5 が明るい順、5 はふちどり。投げた岩は 90度ずつ向きを変えて、回っているように見せる（ドットがにじまないように）
@@ -1164,6 +1266,10 @@ var Bosses = (function () {
       var h = hazards[i];
       h.t += dt;
       if (h.kind === "line") continue; // 大突進の線は、ボスが走り終わると消える
+      if (h.kind === "ball") {   // スノーゴーレムの雪玉
+        if (updateBall(h, dt, p, hurt, room) || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
       if (h.kind === "tornado") {   // 大怪鳥の竜巻
         updateTornado(h, dt, p, hurt, room);
         if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
@@ -1194,7 +1300,7 @@ var Bosses = (function () {
   // ボスが倒れたら、地面の予告も消す
   // 魔物使いが呼んだ主の大技を置く（2026-10-26）。h.ally(h) が、予告がおわったときに敵に当てる
   function addAlly(h) { h.t = 0; h.hit = false; h.from = null; if (h.seed === undefined) h.seed = Math.random() * 100; hazards.push(h); }
-  function bossDown() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; }
+  function bossDown() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; blizz.t = 0; }
 
   // ---------- 描画 ----------
   // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光。本番は、根の大波が太いつる、大突進のあとは土けむり（ドット）
@@ -1233,6 +1339,11 @@ var Bosses = (function () {
       if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       if (h.kind === "circle") { drawCircle(ctx, h, cam, glow); return; }
       if (h.kind === "tornado") { drawTornado(ctx, h, cam, glow); return; }
+      if (h.kind === "ball") {   // 雪玉：地面にかげ
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(Math.round(h.x - cam.x), Math.round(h.y - cam.y) + h.r - 2, h.r, h.r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+        drawSnowball(ctx, h.x - cam.x, h.y - cam.y - 2, h.r, h.roll);
+        return;
+      }
       var x = h.x - cam.x, y = h.y - cam.y;
       if (h.t < h.warn) drawRootWarn(ctx, h, x, y, glow);
       else drawRootErupt(ctx, h, x, y);
@@ -1541,8 +1652,9 @@ var Bosses = (function () {
       if (e.state === "vanish" || e.state === "appear") {   // 紫のけむり
         for (var sm = 0; sm < 8; sm++) { var sa = sm * 0.785 + glow; Render.rect(Math.round(x + Math.cos(sa) * 14), Math.round(y - 10 + Math.sin(sa) * 10), 3, 3, "rgba(150,90,200,0.6)"); }
       }
-    } else if (d.kind === "golem_boss") {
-      // ゴーレム（48×52）：足もとは y＋16
+    } else if (d.kind === "golem_boss" || d.kind === "snowgolem_boss") {
+      // ゴーレム（48×52）：足もとは y＋16。スノーゴーレムは同じ絵の雪の色（monsters.js の BOSS_PAL.snowgolem_boss）
+      if (e.state === "pile") { drawSnowPile(ctx, e, x, y, glow); return; }
       Render.rect(x - 20, y + 12, 40, 6, "rgba(0,0,0,0.35)");
       if (e.state === "spin") {   // ぶん回しのとどく範囲：赤い輪が、だんだん濃くなる
         var ks = 1 - e.t / d.spinWarn;
@@ -1558,7 +1670,10 @@ var Bosses = (function () {
       if (e.state === "combo" && !(e.punch > 0)) gf = e.hits % 2 ? "punchR" : "punchL";
       var shake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
       Monsters.drawBoss(ctx, e, x + shake, y + 16, gf);
-      if (e.state === "lift" && !(e.thrown > 0)) drawRock(ctx, x, y - 44, d.rockR, 0);   // 頭の上に持ち上げた岩
+      if (e.state === "lift" && !(e.thrown > 0)) {
+        if (d.snow) drawSnowball(ctx, x, y - 44, d.ballR, 0);   // 頭の上に持ち上げた雪玉
+        else drawRock(ctx, x, y - 44, d.rockR, 0);              // 頭の上に持ち上げた岩
+      }
       if (e.sweep > 0) {   // ぶん回しの風
         var kw = 1 - e.sweep / 0.35;
         ctx.strokeStyle = "rgba(216,208,184," + (1 - kw).toFixed(2) + ")"; ctx.lineWidth = 3;
@@ -1764,10 +1879,23 @@ var Bosses = (function () {
     if (marks.length) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 16, { size: 7, align: "center", color: GameData.STATUS[marks[0]].color });
   }
 
+  // スノーゴーレムがくずれた雪の山：白い山がゆっくり上下し、雪だるまがのこっている時間を、まわりの輪で見せる
+  function drawSnowPile(ctx, e, x, y, glow) {
+    var d = e.def, k = Math.max(0, e.t / d.splitPile), bob = Math.round(Math.sin(glow * 3) * 1);
+    x = Math.round(x); y = Math.round(y);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(x, y + 14, 24, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#140c1c"; ctx.beginPath(); ctx.ellipse(x, y + 8 + bob, 23, 13, 0, Math.PI, 0); ctx.lineTo(x + 23, y + 14); ctx.lineTo(x - 23, y + 14); ctx.fill();
+    ctx.fillStyle = "#c8d2de"; ctx.beginPath(); ctx.ellipse(x, y + 9 + bob, 21, 11, 0, Math.PI, 0); ctx.lineTo(x + 21, y + 13); ctx.lineTo(x - 21, y + 13); ctx.fill();
+    ctx.fillStyle = "#f4f8fc"; ctx.beginPath(); ctx.ellipse(x - 4, y + 7 + bob, 14, 8, 0, Math.PI, 0); ctx.fill();
+    Render.rect(x - 7, y + 2 + bob, 3, 2, "#2e9ab8"); Render.rect(x + 4, y + 2 + bob, 3, 2, "#2e9ab8");   // 雪の中で光る目
+    ctx.strokeStyle = "rgba(122,200,240,0.7)"; ctx.lineWidth = 2;   // のこり時間の輪
+    ctx.beginPath(); ctx.arc(x, y - 18, 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+  }
+
   // ふつうの敵（ワイルドボア。原生の秘境の段階2）も使う：壁までの長さ・予告の線の絵・土けむり
   function addDust(x, y) { dust.push({ x: x, y: y, t: 0, max: 0.6, s: Math.random() }); }
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog };
+           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard };
 })();

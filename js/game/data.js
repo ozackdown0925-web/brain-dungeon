@@ -732,6 +732,30 @@ var GameData = (function () {
     backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
   };
 
+  // スノーゴーレム（白銀の霊峰6階・中ボス。段階3、2026-11-09 保護者と決定。数字は仮）：ゴーレムがもと（動きは bosses.js の golem と snowGolem）。
+  //   ぶん回し・3回攻撃はゴーレムと同じ。岩石投げのかわりに「雪玉ころがし」（大きな雪玉を地面に転がす。壁で3回まではね返る）。
+  //   吹雪：画面が白くなり、まわりしか見えなくなる。HP 半分で1回だけ、くずれて雪だるまを3体出す（雪の山には攻撃が当たらない）。
+  //   雪だるまを全部たおすと、もとにもどってふらつく。のこっていると、splitPile 秒で合体して回復する。
+  //   火と打が弱点（雪がとける・くだける）、刺はいまひとつ、水は効きにくい。斬はふつう（ゴーレムとちがって、岩ではないので）。
+  //   強さ：剣で約47回（Lv41・ミスリル R＋5で1振り約190）＋雪だるま。大怪鳥（約48回＋空の時間）より楽にならないように
+  ENEMIES.snowgolem_boss = {
+    name: "スノーゴーレム", kind: "snowgolem_boss", boss: true, snow: true, hp: 9000, patk: 44, matk: 0, pdef: 12, mdef: 6,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 18, r: 16, cooldown: 1.5, color: "#dfe8f4",
+    spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.5,
+    comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
+    rockEvery: 10, rockEveryHalf: 8, rockCount: 2, rockCountHalf: 3, rockWindup: 0.7, rockWindupHalf: 0.55, tired: 2.0,
+    ballSpeed: 120, ballSpeedHalf: 150, ballR: 12, ballMult: 1.6, ballBounce: 3, ballLife: 7,
+    backGap: 50, backTime: 0.5, backSpeed: 150,
+    blizzardEvery: 16, blizzardEveryHalf: 13, blizzardTime: 6,
+    splitCount: 3, splitPile: 14, splitHeal: 0.05, reformTired: 3.0
+  };
+  // 雪だるま（スノーゴーレムがくずれたときに出る）：ちょこちょこ近づいて、体当たり。火と打が弱点
+  ENEMIES.snowman = {
+    name: "雪だるま", kind: "melee", hp: 420, patk: 30, pdef: 6, mdef: 4,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 34, r: 6,
+    reach: 14, windup: 0.5, cooldown: 1.4, lunge: 6, color: "#f4f8fc"
+  };
+
   // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
   // ときどき闇の玉を扇に3つ（ダーク・魔法）。近づかれると回転斬り（まわり）→ 後ろへ宙返りして距離をとる（宙返りのあいだは当たらない）。
   // 大技のダークアロー（2026-10-26 保護者の案で作りなおし）：動きながら、まわりに闇の玉を daCount 個（3〜4。HP が半分を切ると daCountHalf の5〜6）
@@ -894,7 +918,7 @@ var GameData = (function () {
       }
     },
     // 白銀の霊峰（地方2の雪山。段階1、2026-11-09）：12階（6階にスノーゴーレム、12階に氷牙獣。どちらもまだ作っていないので、
-    // 今はゴーレムとドワーフキングを仮に使う）。大怪鳥（烈風の峰の主）をたおすと開く。深さは峰の続き（63＋階）。
+    // 12階はまだ作っていないので、ドワーフキングを仮に使う）。大怪鳥（烈風の峰の主）をたおすと開く。深さは峰の続き（63＋階）。
     // 部屋は雪山の型（theme: snow。一面の雪と凍った湖）。装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。敵の上のせで強さを合わせる）。
     // 説明は 2026-11-04 保護者が書いた雪山の文。名前は仮（Claude の案）
     yuki: {
@@ -904,7 +928,7 @@ var GameData = (function () {
       //   tools/balance.js で、ペンギンの兵隊が剣で約4振り・受けて約22回（峰の雪オオカミ・岩の子ゴーレムのあいだくらい）。雪男は HP・攻撃を少し小さく（約4.5振り・約20回）
       foeHp: 1.9, foeAtk: 1.1, foeType: { yeti: { hp: 0.85, atk: 0.85 } },
       bosses: {
-        6: { enemy: "golem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3で作る。ゴーレムがもと。今は仮にゴーレム）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
+        6: { enemy: "snowgolem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3、2026-11-09。ゴーレムがもと）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
              before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],
              after: ["雪の巨人は、くずれて雪の山にもどった。", "霊峰の上へ、道が続いている。"] },
         12: { enemy: "dwarf_boss", title: "白銀をきわめし者",     // 氷牙獣（段階4で作る。大オオカミがもと。今は仮にドワーフキング）。前後の文は Claude が書いた仮の文

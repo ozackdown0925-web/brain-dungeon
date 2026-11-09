@@ -855,9 +855,22 @@
   // 雪山の部屋では、画面に雪がちらちら降る（絵だけ。遊び方は変わらない）。粒は手前（大きく速い）と奥（小さくおそい）の2種類。
   // 部屋といっしょに少し流れる（カメラの動きを半分だけ足す）ので、歩くと雪の中を進んでいるように見える
   var SNOW_N = 70;
+  // 吹雪（スノーゴーレムの技。Bosses.blizzard() が 0〜1）：画面が白くなり、まわり（半径 BLIZ_R）だけ見える。雪の粒も多く速く、横へ流れる
+  var BLIZ_R = 46;
   function drawSnowfall() {
     if (!room || room.theme !== "snow") return;
-    var t = glow, vw = view.w, vh = view.h;
+    var t = glow, vw = view.w, vh = view.h, bz = Bosses.blizzard ? Bosses.blizzard() : 0;
+    if (bz > 0) {
+      var ctx = Render.ctx, px = A.x - cam.x, py = A.y - 8 - cam.y;
+      var gr = ctx.createRadialGradient(px, py, BLIZ_R * 0.6, px, py, BLIZ_R * 1.8);
+      gr.addColorStop(0, "rgba(232,240,250,0)");
+      gr.addColorStop(1, "rgba(232,240,250," + (0.93 * bz).toFixed(2) + ")");
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, vw, vh);
+      for (var b = 0; b < 90 * bz; b++) {
+        var bxx = ((b * 53.1 + t * (160 + (b % 5) * 30)) % (vw + 40) + vw + 40) % (vw + 40) - 20, byy = ((b * 37.7 + t * 40 + Math.sin(t * 2 + b) * 8) % (vh + 20) + vh + 20) % (vh + 20) - 10;
+        Render.rect(Math.round(bxx), Math.round(byy), b % 3 ? 2 : 3, 1, "rgba(255,255,255,0.8)");
+      }
+    }
     for (var i = 0; i < SNOW_N; i++) {
       var near = i % 3 === 0, sp = near ? 34 : 18, sz = near ? 2 : 1;
       var bx = (i * 97.3) % 1, by = (i * 61.7) % 1;

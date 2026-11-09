@@ -1931,6 +1931,7 @@ var Monsters = (function () {
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
     frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
     witch_boss: { A: "#0c0810", a: "#4a3862", b: "#2e2244", c: "#1a1428", n: "#6a1e44", y: "#c8a850", Y: "#7a6430", w: "#ece6d8", W: "#b4ac9a", X: "#76705f", e: "#b8c0ac", E: "#8e9886", D: "#606a5c", F: "#3a4236", K: "#ff3a2a", k: "#ffd0b0", Z: "#24141a", T: "#ddd4b2", m: "#1a0a10", Q: "#44345a", R: "#2c2240", S: "#1c1528", M: "#110b1a", V: "#7a5532", U: "#4e331b", u: "#2a1a0c", L: "#eee6ce", l: "#b6ae96", j: "#6e6654", g: "#d48aff", G: "#8a3ac8", p: "#86e8b0", P: "#2e7a52", B: "#3c2618" },
+    snowgolem_boss: { A: "#141018", a: "#f4f8fc", b: "#d6e0ec", c: "#a8b8cc", d: "#6e7e96", g: "#bfe6f8", h: "#7ab8dc", e: "#9ff4ff", f: "#2e9ab8", k: "#3a4458" },   // スノーゴーレム（2026-11-09）：ゴーレムの絵を雪の色に。苔のところは氷
     golem_boss: { A: "#141018", a: "#968f7e", b: "#6c665a", c: "#4a463e", d: "#2a2724", g: "#6a8e42", h: "#3e5a2a", e: "#9ff4ff", f: "#2e9ab8", k: "#24201c" },
     elf_boss: { A: "#120c18", h: "#d8a072", s: "#b8825a", S: "#8a5a3a", t: "#5e3a26", L: "#7a3440", w: "#f6f4fa", W: "#c8c4d8", x: "#8a86a0", o: "#6a5896", O: "#3e3260", P: "#231b36", c: "#6e2c88", C: "#3a164e", q: "#9a48b8", m: "#e2e6f0", M: "#9298ae", n: "#5c6278", r: "#ff3a50", R: "#a01828", v: "#f4e8ec", g: "#c890ff", G: "#7032b8", B: "#4a2e22", b: "#6e4630", f: "#ece4d4" }
   };
@@ -3818,6 +3819,87 @@ var Monsters = (function () {
       ".....AAAAAA....."
     ]
   };
+  // 雪だるま（スノーゴーレムがくずれたときに出る）：白い2段の体に、木の枝のうで・炭の目・にんじんの鼻・赤いマフラー
+  SMALL.snowman = {
+    down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AwwwwA.....",
+      "....AwewwewA....",
+      "....AwwooowA....",
+      "....AWwwwwWA....",
+      ".....AkkkkA.....",
+      "...AAwwwwwwAA...",
+      "..AwwwwbwwwwWA..",
+      "..AwwwwwwwwwWA..",
+      ".AAwwwwbwwwWWAA.",
+      "t.AwwwwwwwwWWA.t",
+      ".tAWwwwbwwwWWAt.",
+      "..AWWwwwwwWWgA..",
+      "...AAWWWWWggA...",
+      "....AAAAAAAA....",
+      "................",
+      "................",
+      "................"
+    ],
+    up: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AwwwwA.....",
+      "....AwwwwwwA....",
+      "....AwwwwwwA....",
+      "....AWwwwwWA....",
+      ".....AkkkkA.....",
+      "...AAwwwwwwAA...",
+      "..AwwwwwwwwwWA..",
+      "..AwwwwwwwwwWA..",
+      ".AAwwwwwwwwWWAA.",
+      "t.AwwwwwwwwWWA.t",
+      ".tAWwwwwwwwWWAt.",
+      "..AWWwwwwwWWgA..",
+      "...AAWWWWWggA...",
+      "....AAAAAAAA....",
+      "................",
+      "................",
+      "................"
+    ],
+    side: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "......AAAA......",
+      ".....AwwwwA.....",
+      "....AwewwewA....",
+      "....AwwooowA....",
+      "....AWwwwwWA....",
+      ".....AkkkkA.....",
+      "...AAwwwwwwAA...",
+      "..AwwwwbwwwwWA..",
+      "..AwwwwwwwwwWA..",
+      ".AAwwwwbwwwWWAA.",
+      "t.AwwwwwwwwWWA.t",
+      ".tAWwwwbwwwWWAt.",
+      "..AWWwwwwwWWgA..",
+      "...AAWWWWWggA...",
+      "....AAAAAAAA....",
+      "................",
+      "................",
+      "................"
+    ]
+  };
   SMALL.ice_slime = SMALL.slime;
   SMALL.ice_sprite = SMALL.light_sprite;
   // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
@@ -3859,6 +3941,7 @@ var Monsters = (function () {
   SMALL_PAL.penguin = { A: "#140c1c", k: "#2a3248", w: "#f4f8fc", y: "#f0b030", e: "#140c1c", h: "#8a96a8" };
   SMALL_PAL.ice_slime = palWith({ H: "#ffffff", I: "#8ccbf0", J: "#3a7ab8" });   // 雪の上でも見えるように、少し濃い水色
   SMALL_PAL.ice_slime_mini = SMALL_PAL.ice_slime;
+  SMALL_PAL.snowman = { A: "#140c1c", w: "#f4f8fc", W: "#c8d4e4", g: "#8a9ab4", e: "#140c1c", o: "#f08030", k: "#d04648", b: "#2a2a34", t: "#6a4a2a" };
   SMALL_PAL.ice_sprite = palWith({ H: "#d8f0ff", B: "#4aa0e0", W: "#1e4a8a" });
   // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
   // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
@@ -4464,7 +4547,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "snowman" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
@@ -4488,7 +4571,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -4505,6 +4588,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
