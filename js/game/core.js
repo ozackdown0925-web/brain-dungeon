@@ -825,6 +825,21 @@
     });
     run.falls = run.falls.filter(function (f) { return f.t > 0 || f.dust > 0; });
   }
+  // ---------- 雪（白銀の霊峰。2026-11-09） ----------
+  // 雪山の部屋では、画面に雪がちらちら降る（絵だけ。遊び方は変わらない）。粒は手前（大きく速い）と奥（小さくおそい）の2種類。
+  // 部屋といっしょに少し流れる（カメラの動きを半分だけ足す）ので、歩くと雪の中を進んでいるように見える
+  var SNOW_N = 70;
+  function drawSnowfall() {
+    if (!room || room.theme !== "snow") return;
+    var t = glow, vw = view.w, vh = view.h;
+    for (var i = 0; i < SNOW_N; i++) {
+      var near = i % 3 === 0, sp = near ? 34 : 18, sz = near ? 2 : 1;
+      var bx = (i * 97.3) % 1, by = (i * 61.7) % 1;
+      var y = ((by * (vh + 20) + t * sp - cam.y * (near ? 0.5 : 0.3)) % (vh + 20) + vh + 20) % (vh + 20) - 10;
+      var x = ((bx * (vw + 20) + Math.sin(t * 0.9 + i) * 6 + t * (near ? 8 : 4) - cam.x * (near ? 0.5 : 0.3)) % (vw + 20) + vw + 20) % (vw + 20) - 10;
+      Render.rect(Math.round(x), Math.round(y), sz, sz, near ? "rgba(255,255,255,0.85)" : "rgba(230,240,252,0.6)");
+    }
+  }
   // 突風で押し流されているあいだ：まわりに、流れる向きの白い風の線
   function drawGust() {
     if (!run.gust || !(run.gust.t > 0)) return;
@@ -898,6 +913,7 @@
     room.drawCrowns(cam, view, A.y + 6, true);    // キャラより奥（北）の行の木の葉は、キャラの前
     Combat.draw(cam);
     Battle.draw(cam);
+    drawSnowfall();
     drawHud();
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
     if (cine && cine.kind === "exit") drawExitCine();
@@ -960,7 +976,7 @@
     }
     if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
       for (var sp = 0; sp < 5; sp++) {
         var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
         if (ph > 0.85) continue;

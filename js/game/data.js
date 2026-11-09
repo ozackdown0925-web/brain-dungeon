@@ -855,9 +855,27 @@ var GameData = (function () {
               before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。", "空から、大きな影がおりてきた！"],
               after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
       }
+    },
+    // 白銀の霊峰（地方2の雪山。段階1、2026-11-09）：12階（6階にスノーゴーレム、12階に氷牙獣。どちらもまだ作っていないので、
+    // 今はゴーレムとドワーフキングを仮に使う）。大怪鳥（烈風の峰の主）をたおすと開く。深さは峰の続き（63＋階）。
+    // 部屋は雪山の型（theme: snow。一面の雪と凍った湖）。装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。敵の上のせで強さを合わせる）。
+    // 説明は 2026-11-04 保護者が書いた雪山の文。名前は仮（Claude の案）
+    yuki: {
+      id: "yuki", tagline: "魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", intro: ["魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", "吹雪の向こう側では、巨大な雪の獣がうごめいているという。"],
+      region: "frostcrest", name: "白銀の霊峰", short: "霊峰", floors: 12, needs: "yama", depthBase: 63, theme: "snow", tier: 3,
+      // 敵の強さの上のせ：今は仮に烈風の峰と同じ（敵を作る段階2で決める）
+      foeHp: 2.3, foeAtk: 1.1, foeType: { golem_kid: { hp: 0.75 } },
+      bosses: {
+        6: { enemy: "golem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3で作る。ゴーレムがもと。今は仮にゴーレム）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
+             before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],
+             after: ["雪の巨人は、くずれて雪の山にもどった。", "霊峰の上へ、道が続いている。"] },
+        12: { enemy: "dwarf_boss", title: "白銀をきわめし者",     // 氷牙獣（段階4で作る。大オオカミがもと。今は仮にドワーフキング）。前後の文は Claude が書いた仮の文
+              before: ["霊峰のいただきは、一面の氷だ。", "吹雪の向こうで、二つの青い目が光った。", "大きな獣のうなり声が、ひびいてくる……。"],
+              after: ["獣は雪の上にたおれ、吹雪がやんだ。", "峰の向こうに、まだ見ぬ土地が広がっている。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }

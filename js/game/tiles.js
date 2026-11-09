@@ -97,13 +97,30 @@ var Tiles = (function () {
       FLOWER: pal(["#e05a6a", "#f0a0c0", "#f0d070"]),
       VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
       WITHER: null
+    },
+    // 白銀の霊峰（地方2の雪山。段階1、2026-11-09）：一面の雪（GRASS が雪の色）。道はふみ固めた雪（少し灰色）。
+    // 木は雪をかぶった針葉樹（明るい面が白い）、草むらは雪をかぶった低木。水は黒っぽい冷たい水、岩は青みがかった灰色。
+    // 凍った湖（F。歩ける）は ICE の色
+    snow: {
+      GRASS: pal(["#7a8aa2", "#b8c6d8", "#ccd8e6", "#dee6f0", "#f4f8fc"]),
+      DIRT: pal(["#6e7c90", "#8e9cb0", "#a6b2c4", "#bcc6d4"]),
+      TALL: pal(["#1c2e30", "#28403e", "#36524c", "#c4d2de", "#eef4fa"]),
+      WATER: pal(["#0a1626", "#12243a", "#1c3450", "#30506e", "#a8c8e0"]),
+      LEAF: pal(["#0a1a1a", "#12302a", "#1e443a", "#4a6c66", "#eef4fa"]),
+      BARK: pal(["#1e1814", "#36281e", "#4e3c2c", "#6a5440"]),
+      ROCK: pal(["#262c3a", "#3a4254", "#525c70", "#727c90", "#98a2b4"]),
+      FLOWER: pal(["#ffffff", "#d8ecff", "#a8d4f0"]),
+      VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
+      WITHER: null,
+      ICE: pal(["#3a6a90", "#6ea4c8", "#94c4e0", "#b8dcf0", "#e8f6ff"])
     }
   };
-  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, THEME = "forest";
+  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, ICE, THEME = "forest";
+  var ICE0 = pal(["#3a6a90", "#6ea4c8", "#94c4e0", "#b8dcf0", "#e8f6ff"]);   // 凍った湖（テーマに ICE がないとき）
   function useTheme(name) {
     var th = THEMES[name] || THEMES.forest;
     THEME = THEMES[name] ? name : "forest";
-    GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER; SNOW = th.SNOW || null;
+    GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER; SNOW = th.SNOW || null; ICE = th.ICE || ICE0;
   }
   // 雪の色（烈風の峰）：草の地面の明るさ（GRASS の 1〜4）を、同じ明るさの雪の色にかえる
   function snowy(c) {
@@ -180,7 +197,7 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
-    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" ? "rock" : "forest";
+    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" || THEME === "snow" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];
@@ -204,6 +221,7 @@ var Tiles = (function () {
       if (t === "P") return "poison";
       if (t === "I") return "pillar";
       if (t === "C") return "sky";
+      if (t === "F") return "ice";
       return "ground";
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
@@ -302,6 +320,12 @@ var Tiles = (function () {
       for (var s = 0; s < 3; s++) {
         var r0 = hash(tx, ty, 10 + s), px = tx * T + Math.floor(hash(tx, ty, 20 + s) * 13) + 1, py = ty * T + Math.floor(hash(tx, ty, 30 + s) * 12) + 2;
         var onDirt = nearDoor(px, py) && pathAmount(px, py) < 22;
+        if (THEME === "snow") {            // 雪山：草や花のかわりに、雪のきらめき（白い点）と小さなくぼみ（雪の影）
+          if (r0 < 0.3 && !onDirt) put(px, py, GRASS[4]);
+          else if (r0 < 0.42 && !onDirt) { put(px, py, GRASS[1]); put(px + 1, py, GRASS[2]); put(px, py - 1, GRASS[4]); }
+          else if (r0 < 0.47) { put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py - 1, GRASS[4]); put(px + 1, py - 1, GRASS[4]); }   // 雪から頭を出した小石
+          continue;
+        }
         if (r0 < 0.45 && !onDirt) {        // 草の葉（V の形）
           put(px, py, GRASS[4]); put(px + 2, py, GRASS[4]); put(px + 1, py + 1, GRASS[3]); put(px, py + 1, GRASS[0]); put(px + 2, py + 1, GRASS[0]);
         } else if (r0 < 0.53 && !onDirt) { // 花
@@ -405,6 +429,33 @@ var Tiles = (function () {
       if (edgeOf(x, y, isPoison, 0.35, 51)) pc = dark(pc, 0.55);
       else if (hash(x, y, 52) < 0.01) pc = [200, 154, 224];        // 小さな泡
       put(x, y, pc);
+    }
+
+    // ---------- 2c. 凍った湖（F。白銀の霊峰、2026-11-09）：歩ける氷。うす青の面に、ななめの光の筋と白いひび。ふちは雪が少しのる ----------
+    var isIce = isK("ice");
+    var hasIce = false;
+    for (ty = 0; ty < h && !hasIce; ty++) for (tx = 0; tx < w; tx++) if (kind(tx, ty) === "ice") { hasIce = true; break; }
+    if (hasIce) {
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        if (!inside(x, y, isIce, 0.35, 101)) continue;
+        var ic;
+        if (edgeOf(x, y, isIce, 0.35, 101)) ic = ICE[0];
+        else if (!inside(x, y - 1, isIce, 0.35, 101) || !inside(x, y - 2, isIce, 0.35, 101)) ic = GRASS[1];   // 北の岸：雪の段のかげ
+        else {
+          var iv = dither(noise(x / 16, y / 10, 102) * 0.7 + noise(x / 5, y / 5, 103) * 0.3, x, y);
+          ic = iv < 0.4 ? ICE[1] : iv < 0.78 ? ICE[2] : ICE[3];
+          // ななめの光の筋（左上から右下へ）
+          var band = ((x + y * 2) % 46 + 46) % 46;
+          if (band < 2 && noise(x / 12, y / 12, 104) > 0.45) ic = ICE[4];
+          else if (band < 4 && noise(x / 12, y / 12, 104) > 0.45) ic = ICE[3];
+          // 白いひび：細い線のノイズ
+          var cr = noise(x / 9, y / 9, 105);
+          if (Math.abs(cr - 0.5) < 0.012) ic = ICE[4];
+          else if (Math.abs(cr - 0.5) < 0.024 && hash(x, y, 106) < 0.5) ic = ICE[0];
+          if (hash(x, y, 107) < 0.004) ic = ICE[4];
+        }
+        put(x, y, ic);
+      }
     }
 
     // ---------- 3. 影（木・しげみ・がけの南と東の地面を暗く） ----------

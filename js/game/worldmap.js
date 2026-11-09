@@ -38,9 +38,9 @@ var WorldMap = (function () {
       // 山（烈風の峰）はまんなかの茶色い山。ドワーフキングをたおすと開く（2026-11-08）。説明文は data.js の DUNGEONS.yama.intro
       { id: "yama", kind: "dungeon", x: 196, y: 62,
         note: "6階と12階に、強い魔物がいる。" },
-      // 雪山の説明（2026-11-04 保護者が書いた文。作るときに data.js の DUNGEONS の intro に移す）
-      //   雪山：「魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。」「吹雪の向こう側では、巨大な雪の獣がうごめいているという。」
-      { id: "yuki", kind: "dungeon", locked: true, x: 282, y: 52 },
+      // 雪山（白銀の霊峰）は右上の白い山。大怪鳥をたおすと開く（2026-11-09）。説明文は data.js の DUNGEONS.yuki.intro
+      { id: "yuki", kind: "dungeon", x: 282, y: 52,
+        note: "6階と12階に、強い魔物がいる。" },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
       { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
     ]
