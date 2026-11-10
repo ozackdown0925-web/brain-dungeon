@@ -1181,8 +1181,10 @@
     var ctx = Render.ctx;
     // 攻撃を受けたとき：キャラのまわりが少し赤く光る（2026-10-19）
     if (A.hurtT > 0) Combat.glowDot(ctx, px, py - 6, 16, "#ffffff", "#ef3b3b", 0.75 * A.hurtT / 0.3);
-    if (A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
+    var lift = Combat.airLift(A);   // ドラゴンダイブ：空にいるあいだは上にずらして描く（かげは地面に残す。点滅もしない）
+    if (!lift && A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
     Render.rect(px - 6, py + 5, 12, 3, "rgba(0,0,0,0.35)");
+    py -= Math.round(lift);
     // 段階7-2b：ドット絵（sprites.js）。歩く・走る・攻撃でコマを変える
     var ph = Math.sin(A.walk), moving = A.move > 0.1;
     var frame = A.swing > 0 ? "attack" : !moving ? "stand" : A.running ? (ph > 0 ? "runA" : "runB") : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";

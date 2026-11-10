@@ -96,18 +96,32 @@ var GameData = (function () {
     { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" },
     { id: "tamer", name: "魔物使い",   need: [["hunter", 5], ["mage", 5]],     arms: "弓・杖／軽装備",   note: "たおしたダンジョンの主を呼んで、大技を使わせる。魔術師の魔法も使える" }
   ];
+  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
   var TOP_JOBS = [
-    { name: "聖剣士",     from: "騎士",       note: "光の剣でたたかう" },
-    { name: "大魔導師",   from: "黒魔道士",   note: "画面全体に火の魔法" },
-    { name: "天弓",       from: "スナイパー", note: "画面のすべての敵に矢" },
-    { name: "武神",       from: "修行僧",     note: "攻撃がとても速くなる" },
-    { name: "大司教",     from: "白魔道士",   note: "全員を守る聖なる場所" },
-    { name: "魔剣聖",     from: "魔法剣士",   note: "火と水と光の3連撃" },
-    { name: "竜騎士",     from: "忍者",       note: "ジャンプと、敵を通りぬける突進" },
-    { name: "剣闘王",     from: "剣闘士",     note: "まわりを何度も斬る大旋風" },
-    { name: "聖騎士長",   from: "聖騎士",     note: "全員の受けるダメージを大きく減らす" },
-    { name: "召喚士",     from: "魔物使い",   note: "幻獣の祠でたおした幻獣を呼ぶ" }
+    { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
+      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングスブレード"] },
+    { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
+      skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
+    { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
+      skills: [null, null, "ストームアロー", null, "ラピッドショット", null, "アストラルレイン"] },
+    { name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
+      skills: [null, "岩石投げ", null, null, "メテオストライク", null, "無双乱舞"] },
+    { name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
+      skills: [null, null, null, "リザレクション", null, "アストラルオーラ", "セイクレッド"] },
+    { name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
+      skills: [null, null, null, null, null, null, "魔炎連舞"] },
+    { name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
+      skills: [null, null, null, null, null, null, "ドラゴンダイブ"] },
+    { name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
+      skills: [null, null, null, "斬鉄剣", null, null, "ヴォルテックス"] },
+    { name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
+      skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
+    { name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
+      skills: [null, null, null, null, null, null, "クロノフォール"] },
+    { name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
+      skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
+
   // 系統：その職と、その職からつながる上級職・最上級職
   // 組み合わせの上級職（2026-10-20）：魔法剣士は魔術師の系統、聖騎士は僧侶の系統、賢者は両方の系統にも入る
   var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage", "tamer"], hunter: ["hunter", "sniper", "tamer"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
@@ -332,7 +346,32 @@ var GameData = (function () {
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] }
+    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
+    // 最上級職の大技のお試し（2026-11-08 保護者の案と強さのたたき台）。最上級職はまだないので、もとの上級職のスキルとして置き、
+    // 「全開放の試し」のときだけ使える（preview：ふつうには覚えない）。見た目は今の上級職の絵のまま。数字は遊んでみて直す
+    { id: "x.kings",  job: "knight", star: 8, preview: "騎士王", name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ4人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knight", weapons: ["sword"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.6, elem: "light", length: 260, width: 64, color: "#ffd75a" }] },
+    { id: "x.abyss",  job: "blackmage", star: 8, preview: "大魔導師", name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "blackmage", line: "blackmage" }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
+    { id: "x.astral", job: "sniper", star: 8, preview: "グランドアーチャー", name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "sniper", weapons: ["bow"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.55, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
+    { id: "x.musou",  job: "monk", star: 8, preview: "武神", name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "monk", weapons: ["fist"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
+    { id: "x.sacred", job: "whitemage", star: 8, preview: "大司教", name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "whitemage", line: "whitemage" }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "pillar", stat: "m", mult: 4.5, elem: "light", radius: 40, range: 170, color: "#fff2a0", dur: 1.8 }] },
+    { id: "x.maen",   job: "magicknight", star: 8, preview: "魔剣聖", name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "magicknight", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
+    { id: "x.dive",   job: "ninja", star: 8, preview: "竜騎士", name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "ninja", weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 34, range: 150, elem: "weapon", color: "#7fc8ff" }] },
+    { id: "x.vortex", job: "gladiator", star: 8, preview: "グラディエーター", name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "gladiator", weapons: ["sword", "axe"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 },
+           { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
+           { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
+           { t: "rapid", count: 6, interval: 0.28, step: 10, hit: { t: "arc", stat: "p", mult: 0.5, elem: "weapon", color: "#fff3a0" } }] },
+    { id: "x.divine", job: "paladin", star: 8, preview: "パラディン", name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "paladin", weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, color: "#fff2a0" }] },
+    { id: "x.chrono", job: "sage", star: 8, preview: "時の賢者", name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { only: "sage", line: "sage" }, mp: 28, ct: 30,
+      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });
@@ -999,14 +1038,15 @@ var GameData = (function () {
     if (!c) return true;
     if (c.weapons && c.weapons.indexOf(weapon) < 0) return false;
     if (c.line && !inLine(job, c.line)) return false;
+    if (c.only && job !== c.only) return false;   // 職業専用（最上級職の★6。2026-11-09 保護者と決定）
     return true;
   }
   function condText(skill) {
     var c = skill.cond;
     if (!c) return "条件なし";
-    if (c.weapons) return c.weapons.map(function (w) { return WEAPONS[w].name; }).join("・") + "を装備";
-    if (c.line) return JOBS[c.line].name + "の系統";
-    return "";
+    var t = c.weapons ? c.weapons.map(function (w) { return WEAPONS[w].name; }).join("・") + "を装備" : c.line ? JOBS[c.line].name + "の系統" : "";
+    if (c.only) t = JOBS[c.only].name + "だけ" + (c.weapons ? "・" + t : "");
+    return t;
   }
 
   return {

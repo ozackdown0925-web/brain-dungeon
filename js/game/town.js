@@ -683,6 +683,7 @@ var Town = (function () {
       var items = GameData.SKILLS.filter(function (sk) {
         if (sk.job !== job || !!sk.passive !== passive) return false;
         var got = h.learned.indexOf(sk.id) >= 0;
+        if (sk.preview && !got) return false;   // 最上級職の大技のお試しは、全開放の試しのときだけ出す
         if (onlyUsable) return got && GameData.canSet(sk, h.job, wt);
         return got || job === h.job;
       });
@@ -733,14 +734,14 @@ var Town = (function () {
       det.appendChild(el("p", "sk-desc", sk.desc || ""));
       var info = el("div", "sk-info");
       var line = function (k, v) { var d = el("div", "sk-line"); d.appendChild(el("span", "sk-k", k)); d.appendChild(el("span", "sk-v", v)); info.appendChild(d); };
-      line("覚える", GameData.JOBS[sk.job].name + (sk.star === 1 ? "になったとき" : "の★" + (sk.star - 1)));
+      line("覚える", sk.preview ? "最上級職「" + sk.preview + "」の★6（いまは全開放の試しだけ）" : GameData.JOBS[sk.job].name + (sk.star === 1 ? "になったとき" : "の★" + (sk.star - 1)));
       if (!sk.passive) {
         line("MP", String(sk.mp));
         line("待ち", sk.once ? "1回の冒険で1回" : sk.ct + "秒");
       }
       line("条件", GameData.condText(sk) + (sk.passive ? "（ほかの職でもつけられる）" : ""));
       det.appendChild(info);
-      if (!got) det.appendChild(el("p", "sk-why", GameData.JOBS[sk.job].name + "の熟練度が★" + (sk.star - 1) + "になると覚える。"));
+      if (!got) det.appendChild(el("p", "sk-why", sk.preview ? "最上級職の大技のお試し。全開放の試しのときだけ使える。" : GameData.JOBS[sk.job].name + "の熟練度が★" + (sk.star - 1) + "になると覚える。"));
       else if (!ok) det.appendChild(el("p", "sk-why", "いまはセットできない（" + GameData.condText(sk) + "）"));
       else {
         var row = el("div", "sk-btns");
@@ -842,7 +843,7 @@ var Town = (function () {
     var J = GameData.JOBS[j];
     det.appendChild(el("div", "sk-k job-sk-head", "覚えるスキル"));
     var chips = el("div", "job-sk");
-    GameData.SKILLS.filter(function (sk) { return sk.job === j; }).forEach(function (sk) {
+    GameData.SKILLS.filter(function (sk) { return sk.job === j && !sk.preview; }).forEach(function (sk) {
       var got = h.learned.indexOf(sk.id) >= 0;
       chips.appendChild(el("span", "job-sk-chip" + (got ? " got" : "") + (sk.passive ? " pas" : ""), (sk.star === 1 ? "はじめ " : "★" + (sk.star - 1) + " ") + sk.name));
     });
@@ -909,6 +910,12 @@ var Town = (function () {
     det.appendChild(el("div", "sk-name", t.name));
     det.appendChild(el("div", "sk-kind", "最上級職　★1つに熟練度 " + GameState.STAR_NEED_TOP));
     det.appendChild(el("p", "sk-desc", t.note));
+    detLine(det, "装備", t.arms);
+    // スキル名（2026-11-08）：まだ決めていないものは ？？？
+    det.appendChild(el("div", "sk-k job-sk-head", "覚えるスキル"));
+    var chips = el("div", "job-sk");
+    (t.skills || []).forEach(function (n, i) { chips.appendChild(el("span", "job-sk-chip", (i === 0 ? "はじめ " : "★" + i + " ") + (n || "？？？"))); });
+    det.appendChild(chips);
     // 条件（2026-11-03 保護者が決定）：もとの上級職の熟練度が MAX（★7）と、地方2（フロストクレスト）のクリア
     detLine(det, "条件", t.from + "の熟練度 MAX（★7）・地方2（" + GameData.REGIONS.frostcrest.name + "）をクリア");
     det.appendChild(el("p", "sk-why", "まだなれない（最上級職は、これから作る）"));
