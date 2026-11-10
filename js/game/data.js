@@ -350,11 +350,11 @@ var GameData = (function () {
     // 最上級職の大技のお試し（2026-11-08 保護者の案と強さのたたき台）。最上級職はまだないので、もとの上級職のスキルとして置き、
     // 「全開放の試し」のときだけ使える（preview：ふつうには覚えない）。見た目は今の上級職の絵のまま。数字は遊んでみて直す
     { id: "x.kings",  job: "knight", star: 8, preview: "騎士王", name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ4人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knight", weapons: ["sword"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 5.0, elem: "light", length: 260, width: 64, color: "#ffd75a" }] },
+      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.6, elem: "light", length: 260, width: 64, color: "#ffd75a" }] },
     { id: "x.abyss",  job: "blackmage", star: 8, preview: "大魔導師", name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "blackmage", line: "blackmage" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
     { id: "x.astral", job: "sniper", star: 8, preview: "グランドアーチャー", name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "sniper", weapons: ["bow"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.6, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
+      fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.55, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
     { id: "x.musou",  job: "monk", star: 8, preview: "武神", name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "monk", weapons: ["fist"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
     { id: "x.sacred", job: "whitemage", star: 8, preview: "大司教", name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "whitemage", line: "whitemage" }, mp: 24, ct: 20,
