@@ -159,6 +159,14 @@ var Shelf = (function () {
   function writePending(list) { try { if (list.length) localStorage.setItem(PENDING_STORE, JSON.stringify(list)); else localStorage.removeItem(PENDING_STORE); } catch (e) { /* そのまま */ } }
   function sameRec(a, b) { return a.date === b.date && a.qid === b.qid && a.answeredAt === b.answeredAt; }
 
+  // しばらく出さないプリント（出典の書き出しで見分ける）。塾でやっていないジャンプアップ問題（2026-11-11 保護者）。
+  // 問題と記録は消さないので、ここから外せばまた出る。
+  var HIDE_SOURCES = ["ジャンプアップ"];
+  function hidden(q) {
+    var s = String(q.source || "");
+    return HIDE_SOURCES.some(function (h) { return s.indexOf(h) === 0; });
+  }
+
   // 問題と記録を読む（書庫を開くたびに読み直す）
   function load() {
     key = BDApi.getKey("player"); today = ymd(new Date());
@@ -167,7 +175,7 @@ var Shelf = (function () {
     var qs = BDApi.call("shelfQuestions", {}, key, { timeout: 60000 });
     var rs = BDApi.call("shelfHistory", {}, key, { timeout: 60000 });
     loading = qs.then(function (q) { return rs.then(function (r) { return { q: q.questions || [], r: r.records || [] }; }); }).then(function (got) {
-      Q = got.q.filter(function (q) { return q && q.id && q.enabled !== false; });
+      Q = got.q.filter(function (q) { return q && q.id && q.enabled !== false && !hidden(q); });
       byId = {}; Q.forEach(function (q) { byId[q.id] = q; });
       var mine = readPending().filter(function (x) { return (x._k || key) === key; });
       // 送れていない答えのうち、もう GAS に入っているものは重ねない
