@@ -23,6 +23,10 @@ var Combat = (function () {
   // ---------- 敵に当たる ----------
   // spec：{ stat, mult, elem, crit, status, push }、ox/oy：押し返す向きの元
   var RIVAL_CAP = 0.45;
+  // ボスへの大きな一撃は、伸びがにぶる（2026-11-11 保護者：子どもが組み合わせを考えて出した大ダメージは、ナーフせずに残したい。
+  //   ボスだけ、一撃が最大HPの BOSS_SOFT をこえた分は BOSS_SOFT_RATE 倍にする。ふつうの攻撃（今は最大HPの2〜4%）は変わらない。
+  //   例：盗賊のおかしら（HP 4800）に 900 → 384＋516×0.5＝642。ドワーフキング（HP 6000）に 900 → 480＋420×0.5＝690）
+  var BOSS_SOFT = 0.08, BOSS_SOFT_RATE = 0.5;
   function hitEnemy(e, c, spec, ox, oy) {
     if (e.dead) return 0;
     var dealt = 0;
@@ -38,6 +42,10 @@ var Combat = (function () {
       var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
       // 闘技場の相手：1回で HP の 45% までしかへらない（2026-11-01 保護者：ヘッドショットの会心などで一撃で倒せてしまった。どんな技でも3回は当てる）
       if (e.rival && res.amount > Math.ceil(e.maxHp * RIVAL_CAP)) res.amount = Math.ceil(e.maxHp * RIVAL_CAP);
+      if (e.def.boss && !e.rival) {
+        var soft = e.maxHp * BOSS_SOFT;
+        if (res.amount > soft) res.amount = Math.round(soft + (res.amount - soft) * BOSS_SOFT_RATE);
+      }
       // ドワーフキングの盾がまえ（2026-11-07）：前からの攻撃は減る。横・後ろからはふつう
       var guarded = Bosses.guardFront(e, ox, oy);
       if (guarded) { res.amount = Math.max(1, Math.round(res.amount * e.def.guardCut)); res.crit = false; }
