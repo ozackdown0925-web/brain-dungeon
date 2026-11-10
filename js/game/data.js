@@ -809,6 +809,7 @@ var GameData = (function () {
   //   2026-11-09 保護者（Lv27 で遊んで）：スノーゴーレムの攻撃がペンギンより弱かった。ボスの物攻は深さで上がらない決まった数字なのに、
   //     ふつうの敵は深さで上がる（霊峰では約7.8倍）ため。ボスと呼ばれる敵の物攻を上げ、ふつうの攻撃がペンギンの体当たりくらい、
   //     大技がすべりこみくらい（Lv45 で約90。つららは約145）になるようにした：スノーゴーレム 44→70、雪だるま 30→65、氷牙獣 46→90、雪オオカミ 22→75、つらら ×3.0→×2.2
+  //   2026-11-11 保護者：つららより大ジャンプが痛い（よけられるようにするより、ダメージを下げてほしい）→ 着地 ×1.5→×1.0、氷のトゲ ×1.0→×0.7
   ENEMIES.icefang_boss = {
     name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 90, matk: 0, pdef: 12, mdef: 8,
     res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
@@ -816,8 +817,8 @@ var GameData = (function () {
     chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
     rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 1.8,
     howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 75,
-    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
-    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
+    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.0, leapsHalf: 3,
+    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 0.7,
     breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
     armorCut: 0.5, armorTime: 8, armorEvery: 20
   };
