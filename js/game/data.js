@@ -536,6 +536,77 @@ var GameData = (function () {
       res: { slash: 0.5, pierce: 0.5, strike: 0.5, dark: 1.75, light: 0 }, speed: 30, r: 6,
       reach: 18, windup: 0.6, cooldown: 2.0, color: "#f0d070", glow: true
     },
+    // ---- 烈風の峰の敵（地方2の山。段階2、2026-11-08 保護者と決定）。数字は遊んでみてから直す ----
+    // 弱点がかたよらないように、火（ハーピー・雪オオカミ）・斬（山ヤギ）・打（岩の子ゴーレム）・闇（風の精）に分けた。刺が弱点の敵はいない
+    // ハーピー：空を飛ぶ（水や崖の上も通る）。じぐざぐに近づいて、かぎづめで引っかく。火が弱点
+    harpy: {
+      name: "ハーピー", kind: "bee", fly: true, hp: 26, patk: 9, pdef: 2, mdef: 3,
+      res: { fire: 1.3, strike: 0.75 }, speed: 50, r: 6,
+      reach: 13, windup: 0.35, cooldown: 1.5, color: "#7a8ac0"
+    },
+    // 山ヤギ：ワイルドボアと同じく、赤い線で予告してから角で突進する。岩にぶつかるとふらつく。斬が弱点、打はいまひとつ
+    goat: {
+      name: "山ヤギ", kind: "boar", hp: 52, patk: 9, pdef: 4, mdef: 2,
+      res: { slash: 1.3, strike: 0.75 }, speed: 26, r: 7,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#d8d0c0",
+      chargeMin: 24, chargeRange: 160, chargeMax: 190, chargeWarn: 0.7, chargeSpeed: 240, chargeMult: 2.0, chargeEvery: 4, tired: 1.6
+    },
+    // 岩の子ゴーレム：岩の体。のろいが、かたくて HP が多い。こぶしで重い一撃。打が弱点、斬と刺は半減
+    golem_kid: {
+      name: "岩の子ゴーレム", kind: "melee", hp: 64, patk: 11, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5 }, speed: 14, r: 7,
+      reach: 14, windup: 0.7, cooldown: 1.9, lunge: 4, color: "#8a8478"
+    },
+    // 風の精（4階から）：ふわふわ浮いて、はなれたところから風の刃を飛ばす（魔法のダメージ）。
+    // 体のまわりの風が矢をそらすので、刺は半減。斬・打もいまひとつ。闇が弱点
+    wind_sprite: {
+      name: "風の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 11, pdef: 4, mdef: 5,
+      res: { pierce: 0.5, slash: 0.75, strike: 0.75, dark: 1.3 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 120, color: "#a8e0c8", wind: true
+    },
+    // 雪オオカミ（7階から）：オオカミと同じく群れで回りこみ、すきを見てかみつく。オオカミより少し強い。火が弱点
+    snow_wolf: {
+      name: "雪オオカミ", kind: "wolf", hp: 36, patk: 9, pdef: 3, mdef: 2,
+      res: { fire: 1.3, water: 0.75 }, speed: 50, r: 5,
+      reach: 12, circle: 34, windup: 0.35, cooldown: 1.5, lunge: 8, color: "#dfe6ee"
+    },
+    // ---- 白銀の霊峰の敵（地方2の雪山。段階2、2026-11-09 保護者と決定）。数字は遊んでみてから直す ----
+    // 弱点：火（雪男・氷のスライム）・打（氷の精）・刺（ペンギンの兵隊。刺が弱点の敵がいなかったので1種類だけ）
+    // 雪男：のしのし近づいて、こぶしでなぐる。はなれていると、雪玉を投げる（throw*）。火が弱点、打はいまひとつ（分厚い毛皮）
+    yeti: {
+      name: "雪男", kind: "melee", hp: 60, patk: 11, pdef: 5, mdef: 2,
+      res: { fire: 1.3, strike: 0.75 }, speed: 18, r: 7,
+      reach: 14, windup: 0.55, cooldown: 1.8, lunge: 4, color: "#f4f8fc",
+      throwRange: 110, throwEvery: 3.5, throwWindup: 0.7, ballSpeed: 110
+    },
+    // 氷の精：ふわふわ浮いて、はなれたところから氷のつぶてを撃つ（魔法のダメージ）。たたけばくだけるので打が弱点、刺は半減、水は効きにくい
+    ice_sprite: {
+      name: "氷の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 4, mdef: 5,
+      res: { strike: 1.3, pierce: 0.5, water: 0.5 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 130, color: "#7ac8f0", ice: true
+    },
+    // 氷のスライム：はねて動き、氷のつぶを吐く。たおすと、小さい2つに分かれる（split。小さいほうは経験値や物を落とさない）。
+    // 火が弱点、斬・刺はいまひとつ、水は効かない
+    ice_slime: {
+      name: "氷のスライム", kind: "frog", hp: 44, patk: 9, pdef: 3, mdef: 3,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#bfe6f8", ice: true, split: "ice_slime_mini"
+    },
+    ice_slime_mini: {
+      name: "氷のスライムの子", kind: "frog", hp: 16, patk: 6, pdef: 2, mdef: 2,
+      res: { fire: 1.3, slash: 0.75, pierce: 0.75, water: 0 }, speed: 0, r: 4,
+      reach: 50, keep: 30, hopSpeed: 90, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.6, spitSpeed: 100, color: "#bfe6f8", ice: true
+    },
+    // ペンギンの兵隊：かぶとをかぶったペンギン。山ヤギと同じく、赤い線で予告してから腹ばいですべって突っこむ。
+    // 岩にぶつかるとふらつく。刺が弱点（槍や弓が活きる）、水は効きにくい
+    penguin: {
+      name: "ペンギンの兵隊", kind: "boar", hp: 46, patk: 9, pdef: 4, mdef: 2,
+      res: { pierce: 1.3, water: 0.5 }, speed: 22, r: 6,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#2a3248",
+      chargeMin: 24, chargeRange: 170, chargeMax: 200, chargeWarn: 0.7, chargeSpeed: 260, chargeMult: 1.8, chargeEvery: 3.5, tired: 1.6, chargeWord: "すべりこみの構え！"
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -549,6 +620,10 @@ var GameData = (function () {
     statue_wood:   { name: "木像", training: true, trainDepth: 1,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a87a4a" },
     statue_stone:  { name: "石像", training: true, trainDepth: 8,  kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#8595a1" },
     statue_bronze: { name: "銅像", training: true, trainDepth: 15, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#c08440" },
+    // 2026-11-09 足した像：各ダンジョンの1階くらい（装備の段の名前にそろえる）
+    statue_iron:    { name: "鉄像", training: true, trainDepth: 25, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#6e7482" },
+    statue_steel:   { name: "鋼像", training: true, trainDepth: 40, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#8ea4bc" },
+    statue_mithril: { name: "ミスリル像", training: true, trainDepth: 52, kind: "melee", hp: 40, patk: 8, pdef: 5, mdef: 2, res: {}, speed: 24, r: 6, reach: 14, windup: 0.35, cooldown: 1.1, lunge: 6, color: "#a0e0e8" },
     // 大オオカミが遠ぼえで呼ぶ。速いが弱い
     wolf_pup: {
       name: "子オオカミ", kind: "melee", hp: 20, patk: 6, pdef: 2, mdef: 1,
@@ -611,6 +686,73 @@ var GameData = (function () {
     bombEvery: 10, bombEveryHalf: 7, bombCount: 1, bombCountHalf: 3, bombWindup: 0.5, bombWarn: 1.1, bombRadius: 26, bombMult: 1.8
   };
 
+  // ドワーフキング（12階・主。2026-11-07。絵は保護者の Gemini の絵をもとに Claude が描きなおした）：おかしら（すばやく詰める）・ダークエルフ（はなれて撃つ）とちがい、
+  //   重く、どっしり構えて、地面をたたく大技で押してくる。数字は仮（遊んでみてから直す）
+  //   ハンマーの一撃：前へふり下ろす（重い）。
+  //   盾がまえ（guardEvery 秒ごと、guardTime 秒）：盾を前に構えて、ゆっくりこちらへ向きなおる。前からの攻撃は guardCut 倍（横・後ろからはふつう）。
+  //     終わりに、前にいれば盾でなぐる（bashMult）。弓や魔法で遠くから撃ち続けるだけでは勝ちにくく、まわりこむと楽になる
+  //   大地たたき（slamEvery 秒ごと）：ハンマーを振り上げ（まわりに赤い輪で予告）→ 地面をたたく。まわり（slamNear）に当たり、
+  //     こちらへ向かって slamLines 本（HP 半分から slamLinesHalf 本）の道に、光の柱が根もとから先へ順に立つ（立つ少し前に地面が光る。横へよければかわせる）
+  //   トマホーク（axeEvery 秒ごと。少しはなれているとき）：振りかぶって、回しながらまっすぐ投げる（つらぬいて壁まで飛ぶ）。
+  //     HP 半分からは扇に axeCountHalf 本投げて、すぐ大地たたき（連携）→ そのあとふらつく（すきあり）
+  //     （はじめは大ジャンプだったが、2026-11-07 保護者：ジャンプはもっと身軽なボスにとっておく）
+  //   HP が半分になると、子分（ドワーフの斧使いと鎚使い）を1回だけ呼び、少し速くなる。水が弱点、火はいまひとつ（鍛冶の民なので）
+  //   強さ（tools/balance.js の式で試算）：坑道12階（Lv31・鋼R＋5）で剣 44振り・弓 55本（盾がまえで前からは減る）。おかしら（6階）は剣 39振り・弓 37本
+  ENEMIES.dwarf_boss = {
+    name: "ドワーフキング", kind: "dwarf_boss", boss: true, hp: 6000, patk: 40, matk: 0, pdef: 13, mdef: 9,
+    res: { water: 1.3, fire: 0.5 }, speed: 24, speedHalf: 30, r: 14, color: "#a82a2a",
+    reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, swingMult: 1.3,
+    guardEvery: 9, guardTime: 2.6, guardCut: 0.25, guardTurn: 1.4, bashReach: 26, bashMult: 1.0,
+    slamEvery: 11, slamEveryHalf: 8, slamWarn: 0.9, slamNear: 36, slamMult: 1.7, slamLines: 3, slamLinesHalf: 5, slamSpread: 0.38,
+    slamLen: 210, slamStep: 22, slamR: 13, slamGap: 0.1, quakeMult: 1.5,
+    axeEvery: 7, axeEveryHalf: 9, axeWindup: 0.6, axeSpeed: 170, axeMult: 1.4, axeCountHalf: 3, axeSpread: 0.3, tired: 1.6
+  };
+
+  // ラフレシア（烈風の峰6階・中ボス。段階3、2026-11-08。数字は仮）：湯けむりの谷にさく、大きな毒の花。動かない（部屋のまんなかに根を張る）。
+  //   おかしら（つめる）・ドワーフキング（重い大技）・大木の魔物（根の大波）とちがい、毒で「立つ場所」をうばい、吸いこみで引きよせて押してくる。
+  //   ふつう：近くにいれば、つるのむちでまわりをなぎはらう（whipReach）。はなれていれば、毒の種を3つ吐く（当たると猛毒になることがある）のと、
+  //     つるの一撃（大木の魔物の根の大波を1本だけ。プレイヤーのいる場所を通る帯が vineWarn 秒光ってから、つるがつき出る。2026-11-08 保護者の案）をかわりばんこに。
+  //   毒はすべて猛毒（2026-11-08 保護者）。
+  //   毒の霧（fogEvery 秒ごと）：地面に紫の輪（fogWarn 秒）→ 毒の霧が fogTime 秒のこる。中にいると少しずつダメージと猛毒。1つはいつもプレイヤーの足もと。
+  //   吸いこみ（inhaleEvery 秒ごと）：大きく息を吸い、inhaleTime 秒のあいだ、仲間をまんなかへ引きよせる（歩けば逃げられる速さ）。
+  //     そのあと、まわり（breathRadius）に毒の息を吐く（大ダメージと猛毒。赤い輪で予告）。
+  //   つぼみ（budEvery 秒ごと。HP が 75% を切ってから）：まわりの地面に、つぼみ（raff_bud）を生やす。budTime 秒で咲いて、毒の霧をまく。先にこわせば咲かない。
+  //   HP が半分：花びらが大きく開き、毒の種が5つになり、霧と吸いこみの間かくが短くなる。つぼみは3つ。
+  //   斬が弱点（つるも花も切れる）。草は効かない、火は湯けむりでしめっているのでいまひとつ、水もいまひとつ
+  ENEMIES.raff_boss = {
+    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 38, matk: 0, pdef: 10, mdef: 10,
+    res: { slash: 1.3, grass: 0, fire: 0.75, water: 0.75 }, speed: 0, r: 20, color: "#c83a3a",
+    whipReach: 34, windup: 0.55, cooldown: 1.3, cooldownHalf: 1.0, whipMult: 1.2,
+    seedSpeed: 115, seeds: 3, seedsHalf: 5, seedSpread: 0.32, seedMult: 0.8,
+    vineW: 24, vineWarn: 1.0, vineMult: 1.6,
+    fogEvery: 9, fogEveryHalf: 7, fogWarn: 1.0, fogTime: 5, fogR: 26, fogCount: 2, fogCountHalf: 3, fogMult: 0.25,
+    inhaleEvery: 13, inhaleEveryHalf: 10, inhaleTime: 1.8, inhalePull: 34, breathWarn: 0.6, breathRadius: 62, breathMult: 2.0,
+    budEvery: 12, budTime: 6, buds: 2, budsHalf: 3
+  };
+  // ラフレシアのつぼみ：動かない。budTime 秒で咲いて、毒の霧をまいて消える（咲いて消えたときは、経験値やごほうびは出ない）。斬が弱点
+  ENEMIES.raff_bud = {
+    name: "ラフレシアのつぼみ", kind: "bud", hp: 40, patk: 0, pdef: 2, mdef: 2,
+    res: { slash: 1.3, grass: 0 }, speed: 0, r: 6, color: "#c83a3a"
+  };
+  // 大怪鳥（烈風の峰12階・主。段階4、2026-11-09。数字は仮）：峰のいただきに巣をつくる、空の覇者。空を飛ぶ（崖の外の空の上も通る）。
+  //   ふつうの技（2026-11-09 保護者：急降下などはふつうの技、大技は竜巻）：
+  //     かぎづめ：近くにいると、ひっかく（clawReach）。
+  //     羽ばたき：はなれていると、風の刃を扇に飛ばす（風の精と同じ絵。HP 半分から5つ）。
+  //     急降下（diveEvery 秒ごと）：高く舞い上がり、プレイヤーへ赤い線で予告（diveWarn 秒）→ 線にそって一気に突っこむ。
+  //   大技「竜巻」（stormEvery 秒ごと）：崖の外の空へ飛んでいき、竜巻を起こす（2つ。HP 半分から3つ）。
+  //     竜巻は部屋の中をうろうろ動き、ふれるとダメージと、外へはじき飛ばされる。stormTime 秒で消える。
+  //     空にいるあいだは剣などは届かず、矢・魔法だけが当たる（崖の外まで歩けないので）。空からも風の刃を撃ってくる。
+  //   火が弱点（つばさが燃える）。草はいまひとつ
+  ENEMIES.roc_boss = {
+    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 42, matk: 0, pdef: 10, mdef: 9,
+    res: { fire: 1.3, grass: 0.75 }, speed: 46, r: 16, color: "#8a6a3a",
+    clawReach: 22, windup: 0.5, cooldown: 1.3, cooldownHalf: 1.0, clawMult: 1.2, keep: 64,
+    bladeSpeed: 150, blades: 3, bladesHalf: 5, bladeSpread: 0.3, bladeMult: 0.8,
+    diveEvery: 7, diveEveryHalf: 5.5, diveWarn: 0.8, diveSpeed: 340, diveMult: 1.8, diveMax: 280,
+    stormEvery: 18, stormEveryHalf: 15, stormTime: 8, stormCount: 2, stormCountHalf: 3, stormWarn: 0.9,
+    tornadoR: 13, tornadoSpeed: 42, tornadoMult: 1.0, tornadoPush: 70, skyShot: 1.6
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -627,6 +769,54 @@ var GameData = (function () {
     rockEvery: 11, rockEveryHalf: 7, rockCount: 4, rockCountHalf: 7, rockWindup: 0.6, rockWindupHalf: 0.45,
     rockSpeed: 140, rockSpeedHalf: 175, rockMult: 1.8, rockR: 10, chipMult: 0.6, tired: 2.0,
     backGap: 50, backTime: 0.5, backSpeed: 150   // 岩を投げるとき、近すぎたら先に後ろへ下がる
+  };
+
+  // スノーゴーレム（白銀の霊峰6階・中ボス。段階3、2026-11-09 保護者と決定。数字は仮）：ゴーレムがもと（動きは bosses.js の golem と snowGolem）。
+  //   ぶん回し・3回攻撃はゴーレムと同じ。岩石投げのかわりに「雪玉ころがし」（大きな雪玉を地面に転がす。壁で3回まではね返る）。
+  //   吹雪：画面が白くなり、まわりしか見えなくなる。HP 半分で1回だけ、くずれて雪だるまを3体出す（雪の山には攻撃が当たらない）。
+  //   雪だるまを全部たおすと、もとにもどってふらつく。のこっていると、splitPile 秒で合体して回復する。
+  //   火と打が弱点（雪がとける・くだける）、刺はいまひとつ、水は効きにくい。斬はふつう（ゴーレムとちがって、岩ではないので）。
+  //   強さ：剣で約47回（Lv41・ミスリル R＋5で1振り約190）＋雪だるま。大怪鳥（約48回＋空の時間）より楽にならないように
+  ENEMIES.snowgolem_boss = {
+    name: "スノーゴーレム", kind: "snowgolem_boss", boss: true, snow: true, hp: 9000, patk: 70, matk: 0, pdef: 12, mdef: 6,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 18, r: 16, cooldown: 1.5, color: "#dfe8f4",
+    spinRange: 28, spinWarn: 0.8, spinRadius: 44, spinMult: 1.5,
+    comboEvery: 6, comboHits: 3, comboHitsHalf: 4, comboRange: 80, comboWindup: 0.45, comboStep: 16, comboReach: 22, comboMult: 1.1,
+    rockEvery: 10, rockEveryHalf: 8, rockCount: 2, rockCountHalf: 3, rockWindup: 0.7, rockWindupHalf: 0.55, tired: 2.0,
+    ballSpeed: 120, ballSpeedHalf: 150, ballR: 12, ballMult: 1.6, ballBounce: 3, ballLife: 7,
+    backGap: 50, backTime: 0.5, backSpeed: 150,
+    blizzardEvery: 16, blizzardEveryHalf: 13, blizzardTime: 6,
+    splitCount: 3, splitPile: 14, splitHeal: 0.05, reformTired: 3.0
+  };
+  // 雪だるま（スノーゴーレムがくずれたときに出る）：ちょこちょこ近づいて、体当たり。火と打が弱点
+  ENEMIES.snowman = {
+    name: "雪だるま", kind: "melee", hp: 420, patk: 65, pdef: 6, mdef: 4,
+    res: { fire: 1.3, strike: 1.3, pierce: 0.75, water: 0.5 }, speed: 34, r: 6,
+    reach: 14, windup: 0.5, cooldown: 1.4, lunge: 6, color: "#f4f8fc"
+  };
+  // 氷牙獣（白銀の霊峰12階・主。段階4、2026-11-09。数字は仮）：大オオカミがもと（動きは bosses.js の iceFang）。
+  //   かみつき・大突進（赤い線で予告）は大オオカミと同じ。遠ぼえで雪オオカミを2匹呼ぶ（強さは pupHp・pupAtk）。
+  //   大技「大遠ぼえ」（2026-11-09 保護者の案：遠ぼえでつららが降ってくる）：空を向いてほえると、部屋じゅうにつららが次々に降る。
+  //     落ちる場所に影（輪）が出て、少しあとに落ちる。1本目はプレイヤーの足もと。HP 半分から本数が増える。いちばん大きなダメージ
+  //   大ジャンプ：高くとび上がり、落ちる場所に影（輪）が出る → 着地でダメージ、まわりに氷のトゲが生える（少しおくれて）。
+  //   こおりの息：扇の形に予告 → 吐く。当たるとダメージ、扇の床が frostLife 秒「すべる氷」になる。
+  //   HP 半分から：氷のよろい（受けるダメージ armorCut 倍。火の攻撃を当てるか armorTime 秒でとける。armorEvery 秒ごとにまた着る）。大ジャンプが3回続けて。
+  //   火が弱点（よろいもとける）、水は効きにくい。
+  //   強さ：剣で約55回（Lv45・ミスリル R＋5で1振り約210）＋よろい。中ボスのスノーゴーレム（約47回）より楽にならないように
+  //   2026-11-09 保護者（Lv27 で遊んで）：スノーゴーレムの攻撃がペンギンより弱かった。ボスの物攻は深さで上がらない決まった数字なのに、
+  //     ふつうの敵は深さで上がる（霊峰では約7.8倍）ため。ボスと呼ばれる敵の物攻を上げ、ふつうの攻撃がペンギンの体当たりくらい、
+  //     大技がすべりこみくらい（Lv45 で約90。つららは約145）になるようにした：スノーゴーレム 44→70、雪だるま 30→65、氷牙獣 46→90、雪オオカミ 22→75、つらら ×3.0→×2.2
+  ENEMIES.icefang_boss = {
+    name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 90, matk: 0, pdef: 12, mdef: 8,
+    res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
+    reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
+    chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 2.2,
+    howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 75,
+    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
+    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
+    breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
+    armorCut: 0.5, armorTime: 8, armorEvery: 20
   };
 
   // ダークエルフ（15階・主。段階5、2026-10-26 保護者と決定）：はなれて回りながら、弓を引いて矢を撃つ（HP が半分を切ると扇に3本）。
@@ -752,7 +942,7 @@ var GameData = (function () {
     },
     // 黒鉄の坑道（地方2の段階1、2026-10-27）：地方2（フロストクレスト）の1つ目。12階（6階におかしら（盗賊）、12階にドワーフキング）。
     // ダークエルフ（原生の秘境の主）をたおすと開く。深さは秘境の続き（39＋階）。部屋は洞窟の型（theme: cave）。
-    // 階の数は仮。ボスはおかしら・ドワーフキングを作るまで、ゴーレム・ダークエルフを仮に使う（前後の文も仮）。装備の段は仕上げの段階で決める（今は鋼）
+    // 階の数は仮。ボスは6階がおかしら、12階がドワーフキング（前後の文は仮）。装備の段は仕上げの段階で決める（今は鋼）
     kodo: {
       id: "kodo", tagline: "貴重なミスリルを産出する薄暗い坑道。", intro: ["貴重なミスリルを産出する薄暗い坑道。", "現在は盗賊たちが根城を築いており、さらにその奥には「誇り高きドワーフたちが暮らしている」という噂もある。"],
       region: "frostcrest", name: "黒鉄の坑道", short: "坑道", floors: 12, needs: "hikyo", depthBase: 39, theme: "cave", tier: 2,
@@ -763,13 +953,54 @@ var GameData = (function () {
         6: { enemy: "bandit_boss", title: "盗賊をこらしめし者",   // 盗賊のおかしら（段階3、2026-11-03）。前後の文は Claude が書いた仮の文
              before: ["坑道の広間に、たいまつの明かりがゆれている。", "フードをかぶった男が、剣をくるりと回した。", "「ここはおれたち盗賊のなわばりだ。生きて帰れると思うなよ！」"],
              after: ["おかしらはひざをつき、剣を落とした。", "「くっ……おぼえてろ！」 煙といっしょに、おかしらは消えていった。", "坑道の奥へ、道が続いている。"] },
-        12: { enemy: "elf_boss", title: "黒鉄をきわめし者",
-              before: ["坑道のいちばん奥に、玉座のような岩がある。", "暗やみの中から、何者かがこちらをにらんでいる。"],
-              after: ["坑道に、静けさがもどった。", "山へ続く道が見えてきた。"] }
+        12: { enemy: "dwarf_boss", title: "黒鉄をきわめし者",   // ドワーフキング（2026-11-07）。前後の文は Claude が書いた仮の文
+              before: ["坑道のいちばん奥に、岩をけずった玉座がある。", "かんむりをかぶったドワーフが、大きなハンマーを地面に立てた。", "「わが坑道をあらす者よ。このハンマーで、たたきなおしてくれる！」"],
+              after: ["ドワーフキングは、ハンマーを置いて、大きく息をついた。", "「……見事だ。おぬしの力、みとめよう。奥のミスリルは、持っていくがよい」", "山へ続く道が見えてきた。"] }
+      }
+    },
+    // 烈風の峰（地方2の山。段階1、2026-11-08）：12階（6階にラフレシア、12階に大怪鳥。どちらもまだ作っていないので、
+    // 今は大木の魔物とダークエルフを仮に使う）。ドワーフキング（黒鉄の坑道の主）をたおすと開く。深さは坑道の続き（51＋階）。
+    // 部屋は山の型（theme: peak）。装備の段はミスリル（3。2026-11-06 に決めた足し算の伸び ×3.16）。
+    // 説明は 2026-11-04 保護者が書いた山道の文。名前は仮（Claude の案）
+    yama: {
+      id: "yama", tagline: "雪山へと続く険しく冷たい一本道。", intro: ["雪山へと続く険しく冷たい一本道。", "頂上付近には「空の覇者である大怪鳥が巣食っている」と言い伝えられ、誰もが恐れて近寄らない。"],
+      region: "frostcrest", name: "烈風の峰", short: "峰", floors: 12, needs: "kodo", depthBase: 51, theme: "peak", tier: 3,
+      // 敵の強さの上のせ（段階2、2026-11-08。仮）：装備がミスリルの段（鋼の1.23倍）になる分だけ、坑道より上げた。
+      //   HP ×2.3・攻撃 ×1.1（坑道は ×1.9・×1.25。山の敵はもとの攻撃が少し高いので、上のせは小さく）。tools/balance.js で、坑道と同じくらいの「何振りで」「何回で」になるようにした
+      //   岩の子ゴーレムはもとの HP が高いので HP の上のせを小さく
+      foeHp: 2.3, foeAtk: 1.1, foeType: { golem_kid: { hp: 0.75 } },
+      bosses: {
+        // room・theme：ボスの部屋をかえる（2026-11-08 保護者：ラフレシアは崖の部屋でなく、ふつうの部屋。雪の中はおかしいので、
+        //   地熱で雪がとけた、湯けむりの谷にした。dungeon.js の BOSS_ROOMS と tiles.js の peakwarm）
+        6: { enemy: "raff_boss", title: "峰の花をしずめし者", room: "warm", theme: "peakwarm",   // ラフレシア（段階3、2026-11-08）。前後の文は Claude が書いた仮の文
+             before: ["雪がとけた谷に、湯けむりが立ちのぼっている。", "そのまんなかに、大きな花がさいている。", "あまいにおいが、あたりにただよってきた……。"],
+             after: ["大きな花は、しおれて岩の間に消えた。", "峰の上へ、道が続いている。"] },
+        12: { enemy: "roc_boss", title: "烈風をきわめし者",       // 大怪鳥（段階4、2026-11-09）。前後の文は Claude が書いた仮の文
+              before: ["峰のいただきに、大きな巣がある。", "はげしい風が、ごうごうとふきつけてくる。", "空から、大きな影がおりてきた！"],
+              after: ["風が、すっとやんだ。", "雲の切れ間から、白い雪山が見えてきた。"] }
+      }
+    },
+    // 白銀の霊峰（地方2の雪山。段階1、2026-11-09）：12階（6階にスノーゴーレム、12階に氷牙獣。どちらもまだ作っていないので、
+    // 12階はまだ作っていないので、ドワーフキングを仮に使う）。大怪鳥（烈風の峰の主）をたおすと開く。深さは峰の続き（63＋階）。
+    // 部屋は雪山の型（theme: snow。一面の雪と凍った湖）。装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。敵の上のせで強さを合わせる）。
+    // 説明は 2026-11-04 保護者が書いた雪山の文。名前は仮（Claude の案）
+    yuki: {
+      id: "yuki", tagline: "魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", intro: ["魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。", "吹雪の向こう側では、巨大な雪の獣がうごめいているという。"],
+      region: "frostcrest", name: "白銀の霊峰", short: "霊峰", floors: 12, needs: "yama", depthBase: 63, theme: "snow", tier: 3,
+      // 敵の強さの上のせ（段階2、2026-11-09。仮）：HP ×1.9・攻撃 ×1.1。雪山の敵はもとの HP が高め（ペンギン46・雪男60）なので、峰（×2.3）より小さく。
+      //   tools/balance.js で、ペンギンの兵隊が剣で約4振り・受けて約22回（峰の雪オオカミ・岩の子ゴーレムのあいだくらい）。雪男は HP・攻撃を少し小さく（約4.5振り・約20回）
+      foeHp: 1.9, foeAtk: 1.1, foeType: { yeti: { hp: 0.85, atk: 0.85 } },
+      bosses: {
+        6: { enemy: "snowgolem_boss", title: "雪の巨人をくだきし者", room: "snowfield",   // スノーゴーレム（段階3、2026-11-09。ゴーレムがもと）。部屋は雪原の広場。前後の文は Claude が書いた仮の文
+             before: ["雪原のまんなかに、大きな雪の山がある。", "雪の山が、ゆっくりと立ち上がった！"],
+             after: ["雪の巨人は、くずれて雪の山にもどった。", "霊峰の上へ、道が続いている。"] },
+        12: { enemy: "icefang_boss", title: "白銀をきわめし者",   // 氷牙獣（段階4、2026-11-09。大オオカミがもと）。前後の文は Claude が書いた仮の文
+              before: ["霊峰のいただきは、一面の氷だ。", "吹雪の向こうで、二つの青い目が光った。", "大きな獣のうなり声が、ひびいてくる……。"],
+              after: ["獣は雪の上にたおれ、吹雪がやんだ。", "峰の向こうに、まだ見ぬ土地が広がっている。"] }
       }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
@@ -780,9 +1011,12 @@ var GameData = (function () {
          heavy: "鉄のよろい", light: "なめし革の服", magic: "絹のローブ" },
     // 鋼の段（原生の秘境の段階6、2026-10-26）。弓・杖・服・ローブは、それらしい名前にした（保護者があとで直してよい）
     2: { sword: "鋼の剣", greatsword: "鋼の大剣", axe: "鋼の斧", bow: "風の長弓", spear: "鋼の槍", fist: "鋼のこて", staff: "水晶の杖",
-         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" }
+         heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" },
+    // ミスリルの段（烈風の峰。2026-11-08。ドワーフキングをたおすと、宝箱とお店がミスリルになる）。名前は仮（保護者があとで直してよい）
+    3: { sword: "ミスリルの剣", greatsword: "ミスリルの大剣", axe: "ミスリルの斧", bow: "銀翼の弓", spear: "ミスリルの槍", fist: "ミスリルのこて", staff: "月光の杖",
+         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }

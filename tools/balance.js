@@ -20,8 +20,8 @@ var RAR = 1;   // R
 
 function levelAt(depth) { return Math.max(1, Math.round(depth * 0.6)); }
 function tierMult(t) {
-  if (PLAN && t > 2) return L.TIER_MULT[2] + 0.6 * (t - 2);
-  return L.TIER_MULT[t] !== undefined ? L.TIER_MULT[t] : Math.pow(1.6, t);   // 今の式（1段ごとに ×1.6）
+  if (L.TIER_MULT[t] !== undefined) return L.TIER_MULT[t];
+  return L.TIER_MULT[2] + 0.6 * (t - 2);   // 鋼のあとは1段ごとに ＋0.6（2026-11-06 決定。ミスリル＝段3 は loot.js に入った）
 }
 function gearK(ilv, tier) { return (1 + L.ILV_STEP * (ilv - 1)) * L.RARITY[RAR].mult * tierMult(tier) * (1 + L.PLUS_STEP * PLUS); }
 
@@ -51,7 +51,7 @@ function row(label, depth, tier, D, type) {
 }
 var head = ["場所", "Lv", "物攻", "1振り", "敵", "敵HP", "敵物防", "何振りで", "受ける", "HP", "何回で", "守りで減る"];
 var rows = [];
-var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword" };
+var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword", yama: "harpy", yuki: "penguin" };
 G.DUNGEON_ORDER.forEach(function (id) {
   var D = G.DUNGEONS[id];
   [1, D.floors].forEach(function (f) {

@@ -136,6 +136,7 @@ const PLAYER_ACTIONS = {
   loadCheckpoint: function (p, role, player) { return { data: loadCheckpoint_(saveOwner_(player, p), String(p.id || '')) }; },
   saveSlots: function (p, role, player) { return saveSlots_(player); },
   moveSaveToDebug: function (p, role, player) { return moveSaveToDebug_(player); },
+  copySaveToDebug: function (p, role, player) { return copySaveToDebug_(player, String(p.from || '')); },
   // 闘技場（2026-10-30）：相手のパーティ（子ども→保護者の対戦用、保護者→子ども）。3人の仲間だけを返す
   rivalParty: function (p, role, player) { return rivalParty_(player); },
   logAdventure: function (p, role, player) { logAdventure_(player, p.entry); return {}; },
@@ -317,6 +318,20 @@ function moveSaveToDebug_(player) {
     }
     return { moved: true };
   });
+}
+// 今のセーブを「デバッグ用」にコピーする（2026-11-09 保護者の希望）。from：'main'＝保護者の対戦用、'child'＝子どものセーブ。
+// コピーもとは変えない。デバッグ用にセーブがあれば、上書きする前に「セーブの控え」に残す（保護者画面のセーブの復元でもどせる）
+function copySaveToDebug_(player, from) {
+  if (player !== 'parent') throw new Error('parent only');
+  const src = from === 'child' ? DEFAULT_PLAYER : from === 'main' ? player : '';
+  if (!src) throw new Error('bad from');
+  const data = loadGame_(src).data;
+  if (!data) throw new Error('no save');
+  const debug = player + DEBUG_SUFFIX;
+  const before = loadGame_(debug);
+  if (before.data) withLock_(() => addCheckpoint_(debug, 'コピーする前', '', before.data, nowStr_()));
+  const label = from === 'child' ? '子どものセーブからコピー' : '対戦用からコピー';
+  return saveGame_(debug, { data: data, force: true, checkpoint: label, summary: '' });
 }
 // セーブ：プレイヤーごとに1行。返す data は JSON の文字列のまま（画面で読む）
 function loadGame_(player) {

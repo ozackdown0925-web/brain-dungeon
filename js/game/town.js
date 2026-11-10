@@ -522,9 +522,10 @@ var Town = (function () {
   }
 
   // ---------- 宿屋：訓練場（2026-10-21 保護者の案） ----------
-  // 武器の強さやスキルをためす部屋。まんなかにゴブリンの形の像（木・石・銅）、すみに回復の泉。
+  // 武器の強さやスキルをためす部屋。まんなかにゴブリンの形の像（木・石・銅・鉄・鋼・ミスリル）、すみに回復の泉。
   // 像は攻撃してくるかを選べる。属性ごとの効き方（弱点・ふつう・半減・無効）も選べる。経験値やお金はもらえない。
-  var STATUES = [["statue_wood", "木像", "ゴブリンの剣士の 1階くらい"], ["statue_stone", "石像", "8階くらい"], ["statue_bronze", "銅像", "15階くらい（瘴気の森 1階）"]];
+  var STATUES = [["statue_wood", "木像", "ゴブリンの剣士の 1階くらい"], ["statue_stone", "石像", "8階くらい"], ["statue_bronze", "銅像", "15階くらい（瘴気の森 1階）"],
+    ["statue_iron", "鉄像", "25階くらい（秘境 1階）"], ["statue_steel", "鋼像", "40階くらい（坑道 1階）"], ["statue_mithril", "ミスリル像", "52階くらい（峰 1階）"]];   // 鉄・鋼・ミスリルは 2026-11-09
   var RES_STEPS = [[1.3, "弱点"], [1, "ふつう"], [0.5, "半減"], [0, "無効"]];
   function trainCfg() {
     var c = null;
@@ -571,10 +572,18 @@ var Town = (function () {
     });
     box.appendChild(button("ぜんぶ「ふつう」にもどす", function () { set(function (c) { c.res = {}; }); }));
 
+    // 1日10分まで（2026-11-09 保護者の希望）
+    var left = GameState.trainingLeft();
+    if (left !== Infinity) {
+      var mm = Math.ceil(left / 60);
+      box.appendChild(el("p", left > 0 ? "" : "note", left > 0 ? "訓練は1日" + Math.round(GameState.TRAIN_SEC_PER_DAY / 60) + "分まで。今日あと 約" + mm + "分" : "今日はもう" + Math.round(GameState.TRAIN_SEC_PER_DAY / 60) + "分きたえた。今日の訓練はこれまで。また明日！"));
+    }
     var go = button("訓練場に入る", function () {
+      if (GameState.trainingLeft() <= 0) return;
       townEl.hidden = true;
       Adventure.startTraining(trainCfg());
     }, "big");
+    go.disabled = left <= 0;
     go.style.marginTop = "12px";
     box.appendChild(el("div", "", "")).appendChild(go);
     bodyEl.appendChild(box);
@@ -586,11 +595,16 @@ var Town = (function () {
   function renderArena(g) {
     var me = Sync.player(), who = me === "parent" ? "子ども" : "保護者";
     var box = el("div", "arena");
-    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。1日" + GameState.ARENA_PER_DAY + "回まで。"));
+    box.appendChild(el("p", "note", who + "のパーティと対戦できる。相手は1人ずつ出てきて、3人をたおせば勝ち。こちらの3人がたおれたら負け。道具は使えない。"));
     var a = GameState.arena(), today = GameState.arenaToday(), left = GameState.arenaLeft();
     var free = Sync.isDebug() || GameState.unlimited();
     box.appendChild(el("p", "", "これまで：" + (a.wins || 0) + "勝 " + (a.losses || 0) + "敗" + (today ? "　今日：" + today.tw + "勝 " + today.tl + "敗" : "")));
-    if (!free) box.appendChild(el("p", "", "今日あと " + left + " 回 対戦できる"));
+    // 挑戦権は書庫の問題のごほうび（2026-11-09）
+    var pass = GameState.arenaPass(), passN = GameState.arenaPassCount(), PS = GameState.ARENA_PASS_STEPS;
+    if (!free) {
+      box.appendChild(el("p", "note", "挑戦権は書庫でもらえる：今日 " + PS[0] + "問 解いたら1回、" + PS[1] + "問で2回、今日の分を全部解いたら3回。"));
+      box.appendChild(el("p", "", "今日書庫で解いた数 " + (pass.done || 0) + " 問 → 挑戦権 " + passN + " 回。今日あと " + left + " 回 対戦できる"));
+    }
     var foes = el("div", "arena-foes");
     foes.appendChild(el("p", "note", "相手を読みこんでいます…"));
     box.appendChild(foes);
@@ -601,13 +615,13 @@ var Town = (function () {
         GameState.recordArena(win);
         open("arena");
         var rest = GameState.arenaLeft();
-        say(win ? "勝った！ おめでとう！" : rest > 0 ? "負けてしまった… もう一度挑戦してみよう" : "負けてしまった… また明日、挑戦しよう");
+        say(win ? "勝った！ おめでとう！" : rest > 0 ? "負けてしまった… もう一度挑戦してみよう" : GameState.arenaPassCount() < GameState.ARENA_PER_DAY ? "負けてしまった… 書庫で問題を解くと、また挑戦できる" : "負けてしまった… また明日、挑戦しよう");
       } });
     }, "big");
     go.disabled = true;
     go.style.marginTop = "10px";
     box.appendChild(go);
-    if (left <= 0 && !free) box.appendChild(el("p", "note", "今日の対戦は終わり。また明日！"));
+    if (left <= 0 && !free) box.appendChild(el("p", "note", passN < GameState.ARENA_PER_DAY ? "挑戦権がない。書庫で問題を解くと、挑戦権がもらえる。" : "今日の対戦は終わり。また明日！"));
     bodyEl.appendChild(box);
     Sync.rivalParty().then(function (r) {
       rivalCache = r;

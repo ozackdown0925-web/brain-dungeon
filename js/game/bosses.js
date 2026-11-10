@@ -11,7 +11,7 @@ var Bosses = (function () {
   var waves = [];   // 地面を走る衝撃の輪とひび（ゴーレム）：{ x, y, t, max, r0, r1, cracks }
   var quake = { t: 0, amp: 0 };   // 画面のゆれ（ゴーレムの大きな攻撃）
 
-  function clear() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; quake.t = 0; }
+  function clear() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; quake.t = 0; if (typeof blizz !== "undefined") blizz.t = 0; if (typeof frost !== "undefined") frost.length = 0; }
   // 画面をゆらす。amp はゆれのはば（ドット）、t は長さ（秒）
   function shake(amp, t) { if (amp >= quake.amp || quake.t <= 0) { quake.amp = amp; quake.t = t; } }
   function shakeOffset() {
@@ -27,13 +27,24 @@ var Bosses = (function () {
     e.ai = { charge: d.chargeEvery ? 4 : 0, howl: d.howlEvery ? 8 : 0, roots: d.rootEvery ? 5 : 0, pollen: d.pollenEvery ? 9 : 0,
              dive: d.diveEvery ? 5 : 0, rain: d.rainEvery ? 8 : 0, pillar: d.pillarEvery ? 6 : 0, blink: d.blinkEvery ? 4 : 0, summon: d.summonEvery ? 10 : 0, hop: 0.6,
              rock: d.rockEvery ? 6 : 0, combo: d.comboEvery ? 3 : 0, orb: d.orbEvery ? 4 : 0, spin: 0, da: d.daEvery ? 8 : 0,
-             dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0 };
+             dash: d.dashEvery ? 4 : 0, bomb: d.bombEvery ? 7 : 0,
+             guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0,
+             fog: d.fogEvery ? 4 : 0, inhale: d.inhaleEvery ? 9 : 0, bud: d.budEvery ? 6 : 0, storm: d.stormEvery ? 12 : 0,
+             leap: d.leapEvery ? 5 : 0, breath: d.breathEvery ? 7 : 0, icerain: d.rainEvery ? 9 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
   function interrupt(e) {
     if (e.state === "warn" || e.state === "charge" || e.state === "howl" || e.state === "pollen" || e.state === "seed" ||
-        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash") { e.state = "recover"; e.t = 0.4; }
+        e.state === "rain" || e.state === "cast" || e.state === "dive" || e.state === "spin" || e.state === "combo" || e.state === "lift" || e.state === "back" || e.state === "aim" || e.state === "dark" || e.state === "throw" || e.state === "slash" ||
+        e.state === "guard" || e.state === "slam" || e.state === "toss" || e.state === "inhale" || e.state === "breath" ||
+        e.state === "rise" || e.state === "swoop" || e.state === "flap") { e.state = "recover"; e.t = 0.4; }
+    e.guarding = false;
+    if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
+      if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
+      e.untouchable = false; e.leapsLeft = 0;
+      for (var j = hazards.length - 1; j >= 0; j--) if (hazards[j].from === e && (hazards[j].look === "leap" || hazards[j].kind === "cone") && hazards[j].t < hazards[j].warn) hazards.splice(j, 1);
+    }
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
 
@@ -45,13 +56,17 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "icefang_boss") iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // 氷牙獣は大オオカミがもと
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "witch_boss") witch(e, dt, room, p, hurt, api, ux, uy, gap, dist);
-    else if (d.kind === "golem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "golem_boss" || d.kind === "snowgolem_boss") golem(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // スノーゴーレムはゴーレムがもと（d.snow）
     else if (d.kind === "elf_boss") elf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -75,36 +90,7 @@ var Bosses = (function () {
       }
       return;
     }
-    if (e.state === "warn") { // 大突進の予告：赤い線
-      e.t -= dt;
-      // 走り出す 0.3 秒前までは、プレイヤーのほうへ向きを合わせ直す（早めに動いてもよけきれないように。2026-10-18）
-      if (e.t > 0.3 && !p.down && e.chargeLine) {
-        var ax = p.x - e.x, ay = p.y - e.y, al = Math.sqrt(ax * ax + ay * ay) || 1;
-        ax /= al; ay /= al;
-        e.aim = { x: ax, y: ay }; e.face = { x: ax, y: ay };
-        e.chargeLen = Math.min(260, rayLength(room, e.x, e.y, ax, ay, e.r));
-        e.chargeLine.x2 = e.x + ax * e.chargeLen; e.chargeLine.y2 = e.y + ay * e.chargeLen;
-      }
-      if (e.t <= 0) { e.state = "charge"; e.travel = 0; e.hitDone = false; }
-      return;
-    }
-    if (e.state === "charge") {
-      var step = d.chargeSpeed * dt, bx = e.x, by = e.y;
-      room.move(e, e.aim.x * step, e.aim.y * step);
-      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
-      e.travel += step;
-      e.walk += dt * 20;
-      // 走ったあとに土けむりを残す（12ドットごと）
-      e.dustAt = (e.dustAt || 0) + moved;
-      if (e.dustAt >= 12) { e.dustAt = 0; dust.push({ x: e.x - e.aim.x * 8 + (Math.random() - 0.5) * 8, y: e.y + 8 + (Math.random() - 0.5) * 4, t: 0, max: 0.7, s: Math.random() }); }
-      var px = p.x - e.x, py = p.y - e.y;
-      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 3) * (e.r + p.r + 3)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.chargeMult, big: true }); }
-      if (moved < step * 0.4 || e.travel >= e.chargeLen) {
-        e.state = "recover"; e.t = 0.9;
-        removeLines(e);
-      }
-      return;
-    }
+    if (wolfCharge(e, dt, room, p, hurt)) return;
     if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
     if (p.down) return;
     var pups = api.alive().filter(function (o) { return o.type === "wolf_pup"; }).length;
@@ -128,6 +114,219 @@ var Bosses = (function () {
       e.face = { x: ux, y: uy };
     } else if (e.cd <= 0) {
       e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+    }
+  }
+
+  // 大突進（大オオカミ・氷牙獣）：予告の赤い線（warn）→ 走る（charge）。この2つのときは true
+  function wolfCharge(e, dt, room, p, hurt) {
+    var d = e.def;
+    if (e.state === "warn") { // 大突進の予告：赤い線
+      e.t -= dt;
+      // 走り出す 0.3 秒前までは、プレイヤーのほうへ向きを合わせ直す（早めに動いてもよけきれないように。2026-10-18）
+      if (e.t > 0.3 && !p.down && e.chargeLine) {
+        var ax = p.x - e.x, ay = p.y - e.y, al = Math.sqrt(ax * ax + ay * ay) || 1;
+        ax /= al; ay /= al;
+        e.aim = { x: ax, y: ay }; e.face = { x: ax, y: ay };
+        e.chargeLen = Math.min(260, rayLength(room, e.x, e.y, ax, ay, e.r));
+        e.chargeLine.x2 = e.x + ax * e.chargeLen; e.chargeLine.y2 = e.y + ay * e.chargeLen;
+      }
+      if (e.t <= 0) { e.state = "charge"; e.travel = 0; e.hitDone = false; }
+      return true;
+    }
+    if (e.state === "charge") {
+      var step = d.chargeSpeed * dt, bx = e.x, by = e.y;
+      room.move(e, e.aim.x * step, e.aim.y * step);
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step;
+      e.walk += dt * 20;
+      // 走ったあとに土けむりを残す（12ドットごと）
+      e.dustAt = (e.dustAt || 0) + moved;
+      if (e.dustAt >= 12) { e.dustAt = 0; dust.push({ x: e.x - e.aim.x * 8 + (Math.random() - 0.5) * 8, y: e.y + 8 + (Math.random() - 0.5) * 4, t: 0, max: 0.7, s: Math.random() }); }
+      var px = p.x - e.x, py = p.y - e.y;
+      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 3) * (e.r + p.r + 3)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.chargeMult, big: true }); }
+      if (moved < step * 0.4 || e.travel >= e.chargeLen) {
+        e.state = "recover"; e.t = 0.9;
+        removeLines(e);
+      }
+      return true;
+    }
+    return false;
+  }
+  function startCharge(e, room, ux, uy) {
+    var d = e.def;
+    e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+    e.chargeLen = Math.min(260, rayLength(room, e.x, e.y, ux, uy, e.r));
+    e.chargeLine = { kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 4, t: 0, warn: d.chargeWarn };
+    hazards.push(e.chargeLine);
+    e.state = "warn"; e.t = d.chargeWarn; e.ai.charge = d.chargeEvery + Math.random() * 2;
+    Battle.pop(e.x, e.y - 30, "大突進の構え！", "#ef5b5b", 9);
+  }
+
+  // ---------- 氷牙獣（白銀の霊峰12階・主。段階4、2026-11-09。大オオカミがもと） ----------
+  // かみつき・大突進・遠ぼえ（雪オオカミを呼ぶ）は大オオカミと同じ。大ジャンプ（落ちる場所に影 → 着地のまわりに氷のトゲ）、
+  // こおりの息（扇の形に予告 → 吐く。床が少しのあいだ「すべる氷」になる）。HP 半分から氷のよろい（受けるダメージ半分。火か時間でとける）、大ジャンプが3回続けて
+  var frost = [];   // こおりの息で凍った床（core.js の罠と同じ形。すべる氷として調べる）：{ type: "ice", tx, ty, w, h, found, t, max }
+  var TILE = 16;
+  function iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.armorCd = Math.max(0, (e.armorCd || 0) - dt);
+    if (e.armor > 0) { e.armor -= dt; if (e.armor <= 0) meltArmor(e, false); }
+    if (e.state === "windup") { // かみつき
+      e.t -= dt;
+      if (e.t <= 0) { if (!p.down && gap <= d.reach + 2) hurt(e, p.x, p.y - 8); e.state = "recover"; e.t = 0.35; e.cd = half ? d.cooldownHalf : d.cooldown; }
+      return;
+    }
+    if (e.state === "howl") {
+      e.t -= dt;
+      if (e.t <= 0) {
+        for (var i = 0; i < d.pups; i++) {
+          var a = Math.random() * Math.PI * 2, sx = e.x + Math.cos(a) * 30, sy = e.y + Math.sin(a) * 30;
+          if (room.hitsWall(sx - 5, sy - 5, 10, 10)) { sx = e.x; sy = e.y + 20; }
+          var pup = api.spawn("snow_wolf", sx, sy, 1);
+          pup.hp = pup.maxHp = d.pupHp; pup.patk = d.pupAtk;   // 霊峰の雪オオカミの強さ（呼ばれた敵は深さで強くならないので、ここで決める）
+          pup.summoned = true; pup.owner = e;
+        }
+        e.state = "recover"; e.t = 0.5; e.ai.howl = d.howlEvery;
+      }
+      return;
+    }
+    if (e.state === "bighowl") {   // 大遠ぼえ：空を向いてほえ終わると、つららが降りはじめる
+      e.t -= dt;
+      if (e.t <= 0) { icicleRain(e, room, p, half); e.state = "recover"; e.t = 0.8; e.ai.icerain = half ? d.rainEveryHalf : d.rainEvery; }
+      return;
+    }
+    if (wolfCharge(e, dt, room, p, hurt)) return;
+    if (e.state === "crouch") {   // 大ジャンプの前に、ぐっと身をかがめる
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.state = "air"; e.t = d.leapAir; e.untouchable = true; e.leapFrom = { x: e.x, y: e.y };
+        e.mark = { kind: "circle", look: "leap", from: e, x: p.x, y: p.y, r: d.leapR, t: 0, warn: d.leapAir, erupt: 0.3, hit: false, opts: { mult: d.leapMult, big: true } };
+        hazards.push(e.mark);
+      }
+      return;
+    }
+    if (e.state === "air") {   // 空にいるあいだ（当たらない）：影はプレイヤーを追い、着地の leapLock 秒前に止まる
+      e.t -= dt;
+      var m = e.mark;
+      if (e.t > d.leapLock && !p.down && !room.hitsWall(p.x - e.r, p.y - e.r, e.r * 2, e.r * 2)) { m.x = p.x; m.y = p.y; }
+      var k = 1 - Math.max(0, e.t) / d.leapAir;
+      e.x = e.leapFrom.x + (m.x - e.leapFrom.x) * k; e.y = e.leapFrom.y + (m.y - e.leapFrom.y) * k;
+      var fx = m.x - e.leapFrom.x; if (Math.abs(fx) > 2) e.face = { x: fx > 0 ? 1 : -1, y: 0 };
+      if (e.t <= 0) {   // 着地：ずしん。まわりに氷のトゲ（少しおくれて生える）
+        e.x = m.x; e.y = m.y; e.untouchable = false;
+        shake(3, 0.3); Sound.play("hit");
+        waves.push({ x: e.x, y: e.y + 8, t: 0, max: 0.4, r0: 8, r1: d.spikeDist + 6, cracks: [], ice: true });
+        for (var s = 0; s < d.spikeCount; s++) {
+          var sa = (s + (e.leapsLeft % 2) * 0.5) / d.spikeCount * Math.PI * 2;
+          hazards.push({ kind: "circle", look: "spike", from: e, x: e.x + Math.cos(sa) * d.spikeDist, y: e.y + 6 + Math.sin(sa) * d.spikeDist * 0.7,
+                         r: d.spikeR, t: 0, warn: d.spikeWarn, erupt: 0.6, hit: false, seed: Math.random() * 100, opts: { mult: d.spikeMult } });
+        }
+        e.leapsLeft--;
+        if (e.leapsLeft > 0 && !p.down) { e.state = "crouch"; e.t = 0.3; }
+        else { e.state = "recover"; e.t = 0.9; e.ai.leap = half ? d.leapEveryHalf : d.leapEvery; }
+      }
+      return;
+    }
+    if (e.state === "breathWarn") {   // こおりの息の予告：扇の形が光る
+      e.t -= dt;
+      if (e.t <= 0) { e.state = "breath"; e.t = 0.5; }
+      return;
+    }
+    if (e.state === "breath") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.7; } return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    if (half && !(e.armor > 0) && e.armorCd <= 0) {   // 氷のよろいを着る
+      e.armor = d.armorTime; e.armorCd = d.armorEvery;
+      Battle.pop(e.x, e.y - 40, "氷のよろい！", "#9ff4ff", 9); Sound.play("trap");
+      e.state = "recover"; e.t = 0.5;
+      return;
+    }
+    if (e.ai.icerain <= 0) {
+      e.state = "bighowl"; e.t = d.rainHowl;
+      Battle.pop(e.x, e.y - 34, "大遠ぼえ！", "#9ff4ff", 10); shake(1, d.rainHowl);
+      return;
+    }
+    var pups = api.alive().filter(function (o) { return o.owner === e; }).length;
+    if (e.ai.howl <= 0 && pups < 1) {
+      e.state = "howl"; e.t = 0.8;
+      Battle.pop(e.x, e.y - 34, "遠ぼえ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.leap <= 0) {
+      e.state = "crouch"; e.t = d.leapCrouch; e.leapsLeft = half ? d.leapsHalf : 1;
+      Battle.pop(e.x, e.y - 34, "大ジャンプ！", "#9ff4ff", 9);
+      return;
+    }
+    if (e.ai.breath <= 0 && dist < d.breathLen) {
+      e.face = { x: ux, y: uy };
+      hazards.push({ kind: "cone", from: e, x: e.x + ux * 10, y: e.y + uy * 6, ang: Math.atan2(uy, ux), spread: d.breathSpread, len: d.breathLen,
+                     t: 0, warn: d.breathWarn, erupt: 0.5, hit: false, seed: Math.random() * 100, opts: { mult: d.breathMult } });
+      e.state = "breathWarn"; e.t = d.breathWarn; e.ai.breath = d.breathEvery + Math.random() * 2;
+      Battle.pop(e.x, e.y - 34, "こおりの息！", "#9ff4ff", 9);
+      return;
+    }
+    if (e.ai.charge <= 0) { startCharge(e, room, ux, uy); return; }
+    if (gap > d.reach - 2) {
+      if (!e.status.para) { room.move(e, ux * d.speed * dt, uy * d.speed * dt); e.walk += dt * 8; }
+      e.face = { x: ux, y: uy };
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+    }
+  }
+  // 大遠ぼえのつらら：1本目はプレイヤーの足もと、半分はプレイヤーのまわり、のこりは部屋のどこか。少しずつずらして落ちる
+  function icicleRain(e, room, p, half) {
+    var d = e.def, n = half ? d.rainCountHalf : d.rainCount;
+    for (var i = 0; i < n; i++) {
+      var x = p.x, y = p.y, tries = 0;
+      do {
+        if (i === 0) { x = p.x; y = p.y; }
+        else if (i % 2) { var a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 60; x = p.x + Math.cos(a) * r; y = p.y + Math.sin(a) * r * 0.8; }
+        else { x = 24 + Math.random() * (room.pxW - 48); y = 24 + Math.random() * (room.pxH - 48); }
+        tries++;
+      } while (i > 0 && tries < 8 && room.hitsWall(x - 6, y - 6, 12, 12));
+      hazards.push({ kind: "circle", look: "icicle", from: e, x: x, y: y, r: d.rainR, t: 0, warn: d.rainWarn + i * d.rainGap, erupt: 0.45, hit: false,
+                     seed: Math.random() * 100, opts: { mult: d.rainMult, big: true } });
+    }
+  }
+  // 氷のよろいがとける（fire：火の攻撃でとけた）。skills.js の hitEnemy からも呼ぶ
+  function meltArmor(e, fire) {
+    if (!(e.armor > 0) && fire) return;
+    e.armor = 0;
+    Battle.pop(e.x, e.y - 40, fire ? "よろいがとけた！" : "よろいがはがれた", fire ? "#ffb84a" : "#bfe6f8", 9);
+    for (var i = 0; i < 10; i++) {   // 氷のかけらが飛びちる
+      var a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 40;
+      chips.push({ x: e.x, y: e.y, z: 10 + Math.random() * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: 60 + Math.random() * 60, t: 0, max: 0.8, c: i % 2 ? "#bfe6f8" : "#ffffff", s: 2 });
+    }
+  }
+  // 受けるダメージの倍率（氷のよろいを着ているとき）
+  function armorMult(e) { return e.armor > 0 ? e.def.armorCut : 1; }
+  // こおりの息の扇の中か
+  function inCone(h, x, y, pad) {
+    var dx = x - h.x, dy = y - h.y, l = Math.sqrt(dx * dx + dy * dy);
+    if (l > h.len + pad) return false;
+    if (l < 8) return true;
+    var diff = Math.atan2(dy, dx) - h.ang;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return Math.abs(diff) <= h.spread + pad / Math.max(l, 1);
+  }
+  // こおりの息が当たった：プレイヤーにダメージ、扇の床を凍らせる
+  function breathHit(h, p, hurt, room) {
+    if (!p.down && !h.from.dead && inCone(h, p.x, p.y, p.r)) hurt(h.from, p.x, p.y - 8, h.opts);
+    var d = h.from.def, x0 = Math.floor((h.x - h.len) / TILE), x1 = Math.floor((h.x + h.len) / TILE), y0 = Math.floor((h.y - h.len) / TILE), y1 = Math.floor((h.y + h.len) / TILE);
+    for (var ty = y0; ty <= y1; ty++) for (var tx = x0; tx <= x1; tx++) {
+      var cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+      if (!inCone(h, cx, cy, 0) || room.hitsWall(tx * TILE + 2, ty * TILE + 2, TILE - 4, TILE - 4)) continue;
+      var old = null;
+      for (var i = 0; i < frost.length; i++) if (frost[i].tx === tx && frost[i].ty === ty) old = frost[i];
+      if (old) { old.t = 0; old.max = d.frostLife; continue; }
+      frost.push({ type: "ice", tx: tx, ty: ty, w: 1, h: 1, found: true, hidden: false, t: 0, max: d.frostLife, seed: Math.random() * 100 });
+    }
+  }
+  function updateFrost(dt) {
+    for (var i = frost.length - 1; i >= 0; i--) {
+      var f = frost[i]; f.t += dt; if (f.wait > 0) f.wait -= dt;
+      if (f.t >= f.max) frost.splice(i, 1);
     }
   }
 
@@ -239,6 +438,141 @@ var Bosses = (function () {
     }
   }
 
+  // ---------- ドワーフキング（黒鉄の坑道12階・主。2026-11-07） ----------
+  // ハンマーの一撃。盾がまえ（前からの攻撃を減らす。ゆっくり向きなおる → 盾でなぐる）。
+  // 大地たたき（まわり＋こちらへ向けて、光の柱が根もとから順に立つ）。トマホーク投げ（回りながらまっすぐ飛ぶ）。HP 半分から、トマホーク3本 → 大地たたきの連携・子分を呼ぶ
+  function dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.pose = Math.max(0, (e.pose || 0) - dt);   // ハンマーをたたきつけた絵を出す時間
+    e.swingT = Math.max(0, (e.swingT || 0) - dt);
+    if (e.state === "windup") {   // ハンマーを振り上げる → 前へふり下ろす
+      e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        var px = p.x - e.x, py = p.y - e.y, pd = Math.sqrt(px * px + py * py) || 1;
+        if (!p.down && pd - e.r - p.r <= d.reach + 4 && (px * e.aim.x + py * e.aim.y) / pd > 0.2) hurt(e, p.x, p.y - 8, { mult: d.swingMult });
+        addWave(e.x + e.aim.x * (e.r + 10), e.y + 6 + e.aim.y * (e.r + 10), 3, 16, 0.3, 0);
+        shake(1, 0.12); Sound.play("swing");
+        e.pose = 0.35; e.swingT = 0.22;
+        e.state = "recover"; e.t = 0.55; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "guard") {   // 盾がまえ：ゆっくりこちらへ向きなおる。前からの攻撃は減る（skills.js の hitEnemy）
+      e.t -= dt;
+      if (!p.down) turnToward(e, ux, uy, d.guardTurn * dt);
+      if (e.t <= 0) {
+        e.guarding = false;
+        var bx = p.x - e.x, by = p.y - e.y, bd = Math.sqrt(bx * bx + by * by) || 1;
+        if (!p.down && bd - e.r - p.r <= d.bashReach && (bx * e.face.x + by * e.face.y) / bd > 0.3) {   // 前にいれば、盾でなぐる
+          hurt(e, p.x, p.y - 8, { mult: d.bashMult });
+          e.swingT = 0.22; e.aim = { x: e.face.x, y: e.face.y }; shake(1, 0.12);
+        }
+        e.state = "recover"; e.t = 0.5; e.ai.guard = d.guardEvery;
+      }
+      return;
+    }
+    if (e.state === "slam") {   // 大地たたき：振り上げ（赤い輪）→ たたく
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && dist - p.r <= d.slamNear) hurt(e, p.x, p.y - 8, { mult: d.slamMult, big: true });
+        addWave(e.x, e.y + 8, 8, d.slamNear + 10, 0.45, 8);
+        for (var sd = 0; sd < 8; sd++) { var sa = sd * Math.PI / 4 + Math.random() * 0.4; addDust(e.x + Math.cos(sa) * 26, e.y + 8 + Math.sin(sa) * 16); }
+        shake(3, 0.35); Sound.play("hit");
+        e.pose = 0.7;
+        if (e.combo) { e.combo = false; tire(e); }
+        else { e.state = "recover"; e.t = 0.8; }
+        e.ai.slam = half ? d.slamEveryHalf : d.slamEvery;
+      }
+      return;
+    }
+    if (e.state === "toss") {   // トマホークを振りかぶる → 回しながら、まっすぐ投げる（HP 半分から扇に3本 → すぐ大地たたき）
+      e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        var a0 = Math.atan2(e.aim.y, e.aim.x), n = half ? d.axeCountHalf : 1;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.axeSpread, d.axeSpeed, { tomahawk: true, big: true, pierce: true, mult: d.axeMult, rad: 5, dy: -14, life: 3, spin: e.aim.x >= 0 ? 1 : -1 });
+        Sound.play("swing");
+        e.thrown = 0.25; e.ai.toss = half ? d.axeEveryHalf : d.axeEvery;
+        if (half) {   // HP 半分から：投げてすぐ大地たたき（連携）
+          e.state = "slam"; e.t = d.slamWarn; e.combo = true; startQuake(e, room, p, half);
+          Battle.pop(e.x, e.y - 50, "大地たたき！", "#ef5b5b", 9);
+        } else { e.state = "recover"; e.t = 0.6; }
+      }
+      return;
+    }
+    if (e.state === "call") {   // 子分を呼ぶ
+      e.t -= dt;
+      if (e.t <= 0) {
+        ["dwarf_axe", "dwarf_hammer"].forEach(function (t) {
+          var ang = Math.random() * Math.PI * 2, f = api.spawn(t, e.x + Math.cos(ang) * 36, e.y + Math.sin(ang) * 36, 50);
+          f.summoned = true;
+        });
+        e.state = "recover"; e.t = 0.5;
+      }
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (half && !e.called) {   // HP が半分：子分を呼ぶ（1回だけ）
+      e.called = true;
+      e.state = "call"; e.t = 0.6;
+      Battle.pop(e.x, e.y - 50, "者ども、かかれ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.toss <= 0 && gap > 30) {   // 少しはなれていると、トマホーク
+      e.state = "toss"; e.t = d.axeWindup; e.aim = { x: ux, y: uy };
+      Battle.pop(e.x, e.y - 50, "トマホーク！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.slam <= 0) {
+      e.state = "slam"; e.t = d.slamWarn; e.combo = false; startQuake(e, room, p, half);
+      Battle.pop(e.x, e.y - 50, "大地たたき！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.guard <= 0) {
+      e.state = "guard"; e.t = d.guardTime; e.guarding = true;
+      Battle.pop(e.x, e.y - 50, "盾がまえ", "#c8d0dc", 8);
+      return;
+    }
+    if (gap > d.reach - 2) {
+      var sp = half ? d.speedHalf : d.speed;
+      if (!e.status.para) { room.move(e, ux * sp * dt, uy * sp * dt); e.walk = (e.walk || 0) + dt * 6; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 大地たたきの光の柱：こちらへ向けて扇に何本か。それぞれの道に、根もとから先へ順に立つ（壁で止まる）。
+  // 立つ少し前（0.35秒）に、その場所の地面が光る
+  function startQuake(e, room, p, half) {
+    var d = e.def, n = half ? d.slamLinesHalf : d.slamLines, a0 = Math.atan2(p.y - e.y, p.x - e.x);
+    for (var i = 0; i < n; i++) {
+      var a = a0 + (i - (n - 1) / 2) * d.slamSpread, cx = Math.cos(a), cy = Math.sin(a);
+      var len = Math.min(d.slamLen, rayLength(room, e.x, e.y, cx, cy, 4));
+      for (var s = d.slamNear, j = 0; s <= len; s += d.slamStep, j++) {
+        hazards.push({ kind: "circle", look: "quake", from: e, x: e.x + cx * s, y: e.y + 6 + cy * s, r: d.slamR, t: 0, warn: e.t + j * d.slamGap, erupt: 0.4, hit: false,
+                       opts: { mult: d.quakeMult, big: true } });
+      }
+    }
+  }
+  // 向き（face）を、(ux, uy) のほうへ、1回に最大 step（ラジアン）だけまわす
+  function turnToward(e, ux, uy, step) {
+    var a = Math.atan2(e.face.y, e.face.x), b = Math.atan2(uy, ux), diff = b - a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    a += Math.max(-step, Math.min(step, diff));
+    e.face = { x: Math.cos(a), y: Math.sin(a) };
+  }
+  // 盾がまえのとき、(ox, oy) から来た攻撃が前からか（skills.js の hitEnemy から呼ぶ）
+  function guardFront(e, ox, oy) {
+    if (!e.guarding || ox === undefined) return false;
+    var dx = ox - e.x, dy = oy - e.y, l = Math.sqrt(dx * dx + dy * dy);
+    if (l < 1) return false;
+    return (dx * e.face.x + dy * e.face.y) / l > 0.35;
+  }
+
   function removeLines(e) {
     for (var i = hazards.length - 1; i >= 0; i--) if (hazards[i].from === e && hazards[i].kind === "line") hazards.splice(i, 1);
   }
@@ -248,6 +582,232 @@ var Bosses = (function () {
       if (room.hitsWall(x + ux * s - r, y + uy * s - r, r * 2, r * 2)) return Math.max(0, s - 4);
     }
     return 400;
+  }
+
+  // ---------- ラフレシア（烈風の峰6階。段階3、2026-11-08）。動かない。毒の霧で立つ場所をうばい、吸いこみで引きよせる ----------
+  function raff(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.face = { x: ux, y: uy };
+    e.whipT = Math.max(0, (e.whipT || 0) - dt);
+    e.puffT = Math.max(0, (e.puffT || 0) - dt);
+    if (half && !e.bloomed) {   // HP が半分：花びらが大きく開く（1回だけ。少しのあいだ止まって、まわりの霧を吹きとばす見た目）
+      e.bloomed = true; e.state = "recover"; e.t = 0.8; e.puffT = 0.6;
+      Battle.pop(e.x, e.y - 50, "花びらが大きく開いた！", "#ff7aa0", 9);
+      return;
+    }
+    if (e.state === "windup") {   // つるのむち：まわりをなぎはらう
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.whipReach + 2) hurt(e, p.x, p.y - 8, { mult: d.whipMult });
+        e.whipT = 0.3; Sound.play("swing");
+        e.state = "recover"; e.t = 0.5; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "seed") {   // 毒の種を吐く（扇に3つ。HP 半分から5つ）
+      e.t -= dt;
+      if (e.t <= 0) {
+        var a0 = Math.atan2(uy, ux), n = half ? d.seedsHalf : d.seeds;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.seedSpread, d.seedSpeed, { spit: true, mult: d.seedMult, dy: -16, life: 2.4, status: { type: "venom", chance: 0.3, dur: 6 } });
+        e.puffT = 0.25; Sound.play("swing");
+        e.state = "recover"; e.t = 0.5; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.4;
+      }
+      return;
+    }
+    if (e.state === "inhale") {   // 吸いこみ：まんなかへ引きよせる（歩けば逃げられる）
+      e.t -= dt;
+      if (!p.down && dist > e.r + p.r + 4) room.move(p, -ux * d.inhalePull * dt, -uy * d.inhalePull * dt);
+      if (e.t <= 0) { e.state = "breath"; e.t = d.breathWarn; Battle.pop(e.x, e.y - 50, "毒の息！", "#ef5b5b", 9); }
+      return;
+    }
+    if (e.state === "breath") {   // 毒の息：まわりに大ダメージと毒（赤い輪で予告）
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && dist - p.r <= d.breathRadius) hurt(e, p.x, p.y - 8, { mult: d.breathMult, big: true, status: { type: "venom", chance: 1, dur: 8 } });
+        e.breathFx = 0.5; Sound.play("hit"); shake(2, 0.25);
+        e.state = "recover"; e.t = 0.9;
+      }
+      return;
+    }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    if (e.ai.inhale <= 0) {
+      e.state = "inhale"; e.t = d.inhaleTime; e.ai.inhale = half ? d.inhaleEveryHalf : d.inhaleEvery;
+      Battle.pop(e.x, e.y - 50, "吸いこみ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.fog <= 0) {   // 毒の霧：1つはプレイヤーの足もと、ほかはまわりのどこか
+      var nf = half ? d.fogCountHalf : d.fogCount;
+      for (var f = 0; f < nf; f++) {
+        var fx = p.x, fy = p.y;
+        if (f > 0) { var fa = Math.random() * Math.PI * 2, fr = 40 + Math.random() * 70; fx = e.x + Math.cos(fa) * fr; fy = e.y + Math.sin(fa) * fr * 0.8; }
+        addFog(e, fx, fy, d.fogWarn);
+      }
+      e.ai.fog = half ? d.fogEveryHalf : d.fogEvery; e.puffT = 0.3;
+      Battle.pop(e.x, e.y - 50, "毒の霧", "#b46ad8", 8);
+      e.state = "recover"; e.t = 0.4;
+      return;
+    }
+    if (e.ai.bud <= 0 && e.hp <= e.maxHp * 0.75) {   // つぼみを生やす（HP が 75% を切ってから）
+      var nb = half ? d.budsHalf : d.buds;
+      for (var b = 0; b < nb; b++) {
+        var ba = Math.random() * Math.PI * 2, br = 56 + Math.random() * 40, bx = e.x + Math.cos(ba) * br, by = e.y + Math.sin(ba) * br * 0.8;
+        if (room.hitsWall(bx - 6, by - 6, 12, 12)) { bx = e.x + Math.cos(ba) * 46; by = e.y + Math.sin(ba) * 36; }
+        var bud = api.spawn("raff_bud", bx, by, e.depth || 1);
+        bud.summoned = true; bud.owner = e; bud.bloomT = d.budTime; bud.birth = 0.4;
+      }
+      e.ai.bud = d.budEvery;
+      Battle.pop(e.x, e.y - 50, "つぼみが生えた！", "#ff7aa0", 8);
+      e.state = "recover"; e.t = 0.5;
+      return;
+    }
+    if (e.cd > 0) return;
+    if (gap <= d.whipReach) { e.state = "windup"; e.t = d.windup; return; }
+    // はなれているとき：毒の種と、つるの一撃（大木の魔物の「根の大波」を1本だけ。2026-11-08 保護者の案）をかわりばんこに
+    e.vineNext = !e.vineNext;
+    if (!e.vineNext) { e.state = "seed"; e.t = 0.55; return; }
+    var W = d.vineW, vert = Math.abs(p.y - e.y) > Math.abs(p.x - e.x);   // プレイヤーのいる場所を通る帯。ボスから見て上下にいるなら縦、左右なら横
+    hazards.push(vert
+      ? { kind: "rect", from: e, x: p.x - W / 2, y: 0, w: W, h: room.pxH, t: 0, warn: d.vineWarn, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: { mult: d.vineMult, big: true } }
+      : { kind: "rect", from: e, x: 0, y: p.y - W / 2, w: room.pxW, h: W, t: 0, warn: d.vineWarn, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: { mult: d.vineMult, big: true } });
+    e.puffT = 0.25;
+    e.state = "recover"; e.t = 0.6; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.6;
+  }
+
+  // ---------- 大怪鳥（烈風の峰12階・主。段階4、2026-11-09）。飛ぶ。急降下・かぎづめ・羽ばたきがふつうの技、大技は空へ飛んで竜巻 ----------
+  // 竜巻を起こすときに飛んでいく空の場所（峰のいただきの上側は崖の外の空。rooms.js の PeakBossRoom）。
+  // いちばん近い床から 60 ドットほどはなれる（剣・槍のふつうの攻撃は届かない）
+  var SKY_X = 352, SKY_Y = 88;
+  function roc(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.slashT = Math.max(0, (e.slashT || 0) - dt);
+    var tx = Math.floor(e.x / World.TILE), ty = Math.floor(e.y / World.TILE);
+    e.overSky = room.tile(tx, ty) === "C";   // 崖の外の空の上（影を描かない）
+    // 高さ（絵だけ）：ふだんは少し浮く。急降下の前は高く、突っこむときは低く
+    var altTo = e.state === "rise" ? 26 : e.state === "swoop" ? 3 : e.state === "sky" ? 4 : e.state === "takeoff" || e.state === "land" ? 14 : 10;
+    e.alt = (e.alt === undefined ? 10 : e.alt) + (altTo - (e.alt === undefined ? 10 : e.alt)) * Math.min(1, dt * 6);
+    if (e.state === "windup") {   // かぎづめ
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.clawReach + 2) hurt(e, p.x, p.y - 8, { mult: d.clawMult });
+        e.slashT = 0.25; Sound.play("swing");
+        e.state = "recover"; e.t = 0.45; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "flap") {   // 羽ばたき：風の刃を扇に
+      e.face = { x: ux, y: uy };
+      e.t -= dt;
+      if (e.t <= 0) { rocBlades(e, api, ux, uy, half ? d.bladesHalf : d.blades); e.state = "recover"; e.t = 0.5; e.cd = (half ? d.cooldownHalf : d.cooldown) + 0.6; }
+      return;
+    }
+    if (e.state === "rise") {   // 急降下の構え：高く舞い上がり、赤い線でねらう（0.3 秒前まで向きを合わせ直す）
+      e.t -= dt;
+      if (e.t > 0.3 && !p.down && e.chargeLine) {
+        e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+        e.chargeLen = Math.min(d.diveMax, Math.max(dist + 40, 120));
+        e.chargeLine.x2 = e.x + ux * e.chargeLen; e.chargeLine.y2 = e.y + uy * e.chargeLen;
+      }
+      if (e.t <= 0) { e.state = "swoop"; e.travel = 0; e.hitDone = false; Sound.play("swing"); }
+      return;
+    }
+    if (e.state === "swoop") {   // 急降下：線にそって一気に突っこむ（壁で止まる）
+      var step = d.diveSpeed * dt, bx = e.x, by = e.y;
+      room.move(e, e.aim.x * step, e.aim.y * step);
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step;
+      var px = p.x - e.x, py = p.y - e.y;
+      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 4) * (e.r + p.r + 4)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.diveMult, big: true }); }
+      if (moved < step * 0.4 || e.travel >= e.chargeLen) {
+        e.state = "recover"; e.t = 0.9; addDust(e.x, e.y + 6); shake(1, 0.15);
+        removeLines(e);
+      }
+      return;
+    }
+    if (e.state === "takeoff" || e.state === "land") {   // 空へ飛んでいく・もどってくる（壁は気にせず、まっすぐ）
+      var gx = e.goal.x - e.x, gy = e.goal.y - e.y, gl = Math.sqrt(gx * gx + gy * gy);
+      var sp = 150 * dt;
+      if (gl <= sp) {
+        e.x = e.goal.x; e.y = e.goal.y;
+        if (e.state === "takeoff") {
+          e.state = "sky"; e.t = d.stormTime; e.skyShot = 1.2;
+          var n = half ? d.stormCountHalf : d.stormCount;
+          for (var k = 0; k < n; k++) addTornado(e, room, p, k);
+          Battle.pop(e.x, e.y - 40, "竜巻！", "#ef5b5b", 10); shake(1, 0.3);
+        } else { e.state = "recover"; e.t = 0.6; e.cd = 0.8; }
+      } else { e.x += gx / gl * sp; e.y += gy / gl * sp; e.face = { x: gx / gl, y: gy / gl }; }
+      return;
+    }
+    if (e.state === "sky") {   // 崖の外の空：竜巻が動いているあいだ、空から風の刃を撃つ（剣などは届かない）
+      e.face = { x: ux, y: uy };
+      e.t -= dt; e.skyShot -= dt;
+      if (e.skyShot <= 0 && !p.down) { rocBlades(e, api, ux, uy, 3); e.skyShot = d.skyShot; }
+      if (e.t <= 0) {
+        e.state = "land";
+        e.goal = { x: Math.max(80, Math.min(room.pxW - 80, p.x + (Math.random() < 0.5 ? -50 : 50))), y: Math.max(170, Math.min(room.pxH - 70, p.y - 40)) };
+      }
+      return;
+    }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    if (e.ai.storm <= 0) {   // 大技：空へ
+      e.ai.storm = half ? d.stormEveryHalf : d.stormEvery;
+      e.state = "takeoff"; e.goal = { x: SKY_X, y: SKY_Y };
+      Battle.pop(e.x, e.y - 40, "空へ舞い上がった！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.dive <= 0) {   // 急降下
+      e.ai.dive = (half ? d.diveEveryHalf : d.diveEvery) + Math.random() * 1.5;
+      e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy };
+      e.chargeLen = Math.min(d.diveMax, Math.max(dist + 40, 120));
+      e.chargeLine = { kind: "line", from: e, x1: e.x, y1: e.y, x2: e.x + ux * e.chargeLen, y2: e.y + uy * e.chargeLen, w: e.r * 2 + 2, t: 0, warn: d.diveWarn };
+      hazards.push(e.chargeLine);
+      e.state = "rise"; e.t = d.diveWarn;
+      Battle.pop(e.x, e.y - 40, "急降下！", "#ef5b5b", 9);
+      return;
+    }
+    e.face = { x: ux, y: uy };
+    if (e.cd <= 0 && gap <= d.clawReach) { e.state = "windup"; e.t = d.windup; return; }
+    if (e.cd <= 0 && gap > 44) { e.state = "flap"; e.t = 0.45; return; }
+    if (gap > d.clawReach - 4 && !e.status.para) room.move(e, ux * d.speed * dt, uy * d.speed * dt);
+  }
+  function rocBlades(e, api, ux, uy, n) {
+    var d = e.def, a0 = Math.atan2(uy, ux);
+    for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.bladeSpread, d.bladeSpeed, { wind: true, mult: d.bladeMult, dy: -8, life: 3 });
+    e.flapFx = 0.3;
+  }
+  // 竜巻：1つめはプレイヤーの近く、ほかは部屋のどこか（床の上）
+  function addTornado(boss, room, p, k) {
+    var d = boss.def, x = p.x, y = p.y;
+    for (var tries = 0; tries < 20; tries++) {
+      if (k === 0) { var a = Math.random() * Math.PI * 2; x = p.x + Math.cos(a) * 60; y = p.y + Math.sin(a) * 40; }
+      else { x = 40 + Math.random() * (room.pxW - 80); y = 150 + Math.random() * (room.pxH - 200); }
+      if (!room.hitsWall(x - 8, y - 8, 16, 16)) break;
+    }
+    hazards.push({ kind: "tornado", from: boss, x: x, y: y, r: d.tornadoR, t: 0, warn: d.stormWarn, life: d.stormTime - 0.5, tick: 0, seed: Math.random() * 100, push: 0 });
+  }
+  function updateTornado(h, dt, p, hurt, room) {
+    var d = h.from.def;
+    if (h.push > 0 && room) { h.push -= dt; room.move(p, h.px * d.tornadoPush / 0.3 * dt, h.py * d.tornadoPush / 0.3 * dt); }
+    if (h.t < h.warn) return;
+    // プレイヤーのほうへ、ふらふらと寄っていく
+    var a = Math.atan2(p.y - h.y, p.x - h.x) + Math.sin(h.t * 1.3 + h.seed) * 1.3;
+    var nx = h.x + Math.cos(a) * d.tornadoSpeed * dt, ny = h.y + Math.sin(a) * d.tornadoSpeed * dt;
+    if (room && room.hitsWall(nx - 6, ny - 6, 12, 12)) { h.seed += 1.7; }
+    else { h.x = nx; h.y = ny; }
+    h.tick -= dt;
+    var dx = p.x - h.x, dy = p.y - h.y, dd = Math.sqrt(dx * dx + dy * dy) || 0.001;
+    if (h.tick <= 0 && !p.down && !h.from.dead && dd < h.r + p.r) {
+      hurt(h.from, p.x, p.y - 8, { mult: d.tornadoMult });
+      h.tick = 1.0; h.push = 0.3; h.px = dx / dd; h.py = dy / dd;   // 外へはじき飛ばす
+      Battle.pop(p.x, p.y - 30, "巻きこまれた！", "#cfe8ff", 8);
+    }
+  }
+  // 毒の霧を置く（ラフレシアと、咲いたつぼみ）：予告の輪 warn 秒 → 霧が fogTime 秒のこる
+  function addFog(boss, x, y, warn) {
+    var d = boss.def;
+    hazards.push({ kind: "circle", look: "fog", from: boss, x: x, y: y, r: d.fogR, t: 0, warn: warn, erupt: d.fogTime, hit: false, tick: 0,
+                   seed: Math.random() * 100, opts: { mult: d.fogMult, status: { type: "venom", chance: 0.4, dur: 5 } } });
   }
 
   // ---------- 大木の魔物（動かない） ----------
@@ -460,6 +1020,7 @@ var Bosses = (function () {
   // ぶん回し（近く・まわりの広い範囲）、ふみこみながらの3回攻撃、大技の岩石投げ（飛んでくる岩。投げ終わるとふらつく）
   function golem(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
     var d = e.def, half = e.hp <= e.maxHp / 2;
+    if (d.snow && snowGolem(e, dt, room, p, api, half)) return;   // スノーゴーレム：吹雪・雪だるまに分かれる
     if (e.state === "spin") {   // うでを広げて構える → ぶん回し（まわりにとどけば当たる）
       e.t -= dt;
       if (e.t <= 0) {
@@ -490,7 +1051,12 @@ var Bosses = (function () {
     if (e.state === "lift") {   // 岩を持ち上げる → まっすぐ投げる（何回か続けて）。投げ終わるとふらつく
       e.t -= dt;
       if (!p.down) e.face = { x: ux, y: uy };
-      if (e.t <= 0) {
+      if (e.t <= 0 && d.snow) {   // スノーゴーレム：大きな雪玉を地面に転がす（壁ではね返る）
+        rollBall(e, ux, uy, half);
+        e.thrown = 0.2; e.rocks--;
+        if (e.rocks > 0) e.t = half ? d.rockWindupHalf : d.rockWindup;
+        else tire(e);
+      } else if (e.t <= 0) {
         var sy = e.y - 24, ang = Math.atan2(p.y - sy, p.x - e.x);   // 頭の上から投げる
         api.addArrow(e, ang, half ? d.rockSpeedHalf : d.rockSpeed, { rock: true, big: true, mult: d.rockMult, rad: d.rockR, dy: -24, life: 3, split: half ? d.chipMult : 0, spin: Math.random() < 0.5 ? 1 : -1 });
         e.thrown = 0.2; e.rocks--;
@@ -713,7 +1279,103 @@ var Bosses = (function () {
     e.state = "lift"; e.rocks = half ? d.rockCountHalf : d.rockCount + (Math.random() < 0.5 ? 1 : 0);
     e.ai.rock = half ? d.rockEveryHalf : d.rockEvery;   // 次の岩石投げまでの時間は、始めたときから数える（止められても、すぐにはくり返さない）
     e.t = (half ? d.rockWindupHalf : d.rockWindup) + 0.3;
-    Battle.pop(e.x, e.y - 50, "岩石投げ！", "#ef5b5b", 9);
+    Battle.pop(e.x, e.y - 50, d.snow ? "雪玉ころがし！" : "岩石投げ！", "#ef5b5b", 9);
+  }
+
+  // ---------- スノーゴーレム（白銀の霊峰6階・中ボス。段階3、2026-11-09 保護者と決定）。ゴーレムがもと ----------
+  // ぶん回し・3回攻撃はゴーレムと同じ。岩石投げのかわりに「雪玉ころがし」：大きな雪玉を地面に転がす（壁で ballBounce 回はね返る）。
+  // 吹雪（blizzardEvery 秒ごと、blizzardTime 秒）：画面が白くなり、まわりしか見えない（core.js の drawSnowfall。Bosses.blizzard() で強さ）。
+  // HP が半分を切ると、1回だけ、くずれて雪の山になり、雪だるまを splitCount 体出す（雪の山には攻撃が当たらない）。
+  //   雪だるまを全部たおすと、雪が集まってもとにもどり、しばらくふらつく（すきあり）。
+  //   splitPile 秒たってものこっていたら、のこった雪だるまを吸いこんで合体し、1体につき最大HPの splitHeal だけ回復する。
+  // この関数が動きを受け持ったフレームは true を返す
+  var blizz = { t: 0, max: 1 };
+  function blizzard() { return blizz.t > 0 ? Math.min(1, blizz.t / 0.6, (blizz.max - blizz.t) / 0.6 + 0.001) : 0; }
+  function snowGolem(e, dt, room, p, api, half) {
+    var d = e.def;
+    if (blizz.t > 0) blizz.t = Math.max(0, blizz.t - dt);
+    e.blizzCd = (e.blizzCd === undefined ? 7 : e.blizzCd) - dt;
+    if (e.state === "pile") {
+      e.t -= dt;
+      var mates = api.alive().filter(function (o) { return o.owner === e; });
+      e.face = { x: 0, y: 1 };
+      if (!mates.length) {   // 全部たおした：雪が集まってもとにもどり、ふらつく
+        e.untouchable = false; e.state = "tired"; e.t = d.reformTired;
+        addWave(e.x, e.y + 8, 6, 40, 0.45, 0);
+        Battle.pop(e.x, e.y - 50, "体がもどった！ ふらついている！", "#ffe066", 9);
+        return true;
+      }
+      if (e.t <= 0) {   // 時間切れ：のこった雪だるまを吸いこんで合体し、回復する
+        mates.forEach(function (m) { m.dead = true; m.fade = 0.4; m.absorbed = true; });
+        var heal = Math.round(e.maxHp * d.splitHeal * mates.length);
+        e.hp = Math.min(e.maxHp, e.hp + heal);
+        e.untouchable = false; e.state = "recover"; e.t = 0.8;
+        addWave(e.x, e.y + 8, 40, 6, 0.45, 0);
+        Battle.pop(e.x, e.y - 50, "合体した！ HP が " + heal + " もどった", "#ef5b5b", 9);
+        return true;
+      }
+      return true;
+    }
+    if (half && !e.splitDone && (e.state === "chase" || e.state === "recover")) {   // くずれて、雪だるまに分かれる
+      e.splitDone = true; e.state = "pile"; e.t = d.splitPile; e.untouchable = true;
+      for (var i = 0; i < d.splitCount; i++) {
+        var a = -Math.PI / 2 + i / d.splitCount * Math.PI * 2, sx = e.x + Math.cos(a) * 30, sy = e.y + Math.sin(a) * 22;
+        if (room.hitsWall(sx - 6, sy - 6, 12, 12)) { sx = e.x; sy = e.y + 20; }
+        var m = api.spawn("snowman", sx, sy, 1);
+        m.summoned = true; m.owner = e; m.cd = 0.8 + i * 0.3;
+      }
+      for (var k = 0; k < 10; k++) { var ka = Math.random() * Math.PI * 2; addDust(e.x + Math.cos(ka) * 20, e.y + 8 + Math.sin(ka) * 12); }
+      shake(2, 0.3);
+      Battle.pop(e.x, e.y - 50, "くずれて、雪だるまに分かれた！", "#ef5b5b", 9);
+      return true;
+    }
+    if (e.blizzCd <= 0 && e.state === "chase" && !p.down) {   // 吹雪（動きは止めない。見えにくくなるだけ）
+      e.blizzCd = (half ? d.blizzardEveryHalf : d.blizzardEvery) + d.blizzardTime;
+      blizz.t = blizz.max = d.blizzardTime;
+      Battle.pop(e.x, e.y - 50, "吹雪だ！", "#ef5b5b", 9);
+    }
+    return false;
+  }
+  // 雪玉：ゴーレムの前に出して、プレイヤーのほうへ転がす。壁や岩にぶつかると、はね返る（ballBounce 回まで。そのあとはくだける）
+  function rollBall(e, ux, uy, half) {
+    var d = e.def, sp = half ? d.ballSpeedHalf : d.ballSpeed;
+    var a = Math.atan2(uy, ux) + (Math.random() - 0.5) * 0.25;
+    hazards.push({ kind: "ball", from: e, x: e.x + Math.cos(a) * (e.r + 4), y: e.y + 6 + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                   r: d.ballR, t: 0, life: d.ballLife, bounce: d.ballBounce, hitCd: 0, roll: 0, opts: { mult: d.ballMult, big: true } });
+    Sound.play("swing");
+  }
+  function updateBall(h, dt, p, hurt, room) {
+    h.hitCd = Math.max(0, h.hitCd - dt);
+    var nx = h.x + h.vx * dt, ny = h.y + h.vy * dt, r = h.r * 0.8;
+    if (room.hitsWall(nx - r, h.y - r, r * 2, r * 2)) { h.vx = -h.vx; h.bounce--; nx = h.x; shake(1, 0.08); }
+    if (room.hitsWall(h.x - r, ny - r, r * 2, r * 2)) { h.vy = -h.vy; h.bounce--; ny = h.y; shake(1, 0.08); }
+    h.x = nx; h.y = ny; h.roll += Math.sqrt(h.vx * h.vx + h.vy * h.vy) * dt;
+    var dx = p.x - h.x, dy = p.y - h.y;
+    if (!p.down && h.hitCd <= 0 && dx * dx + dy * dy < (h.r + p.r) * (h.r + p.r) && !h.from.dead) {
+      hurt(h.from, p.x, p.y - 8, h.opts);
+      h.bounce = -1;   // 当たると、くだける
+    }
+    if (h.bounce < 0 || h.t >= h.life) { snowBreak(h.x, h.y); return true; }
+    return false;
+  }
+  // 雪玉がくだけた：白いかけら
+  function snowBreak(x, y) {
+    for (var i = 0; i < 9; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 50;
+      chips.push({ x: x, y: y, z: 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: 50 + Math.random() * 60, t: 0, max: 0.7 + Math.random() * 0.4,
+                   c: ["#ffffff", "#e2e8f0", "#c8d2de", "#a8b4c4"][i % 4], s: i % 3 === 0 ? 3 : 2 });
+    }
+  }
+  // 雪玉の絵：白い玉に、転がる向きに回るもよう（青いかげ）
+  function drawSnowball(ctx, x, y, r, roll) {
+    x = Math.round(x); y = Math.round(y);
+    ctx.fillStyle = "#140c1c"; ctx.beginPath(); ctx.arc(x, y, r + 1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#c8d2de"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f4f8fc"; ctx.beginPath(); ctx.arc(x - 2, y - 2, r - 2, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 4; i++) {   // 転がるもよう
+      var a = roll / r + i * Math.PI / 2, px = x + Math.cos(a) * (r - 4), py = y + Math.sin(a) * (r - 4) * 0.8;
+      Render.rect(Math.round(px) - 1, Math.round(py) - 1, 2, 2, "#a8b4c4");
+    }
   }
   // 投げられた岩（ゴーレム）：ドット絵（24×21）。2026-10-26 保護者が送ってくれた絵の形をそのまま使い、色はゴーレムに合わせた灰色にした。
   // 1〜5 が明るい順、5 はふちどり。投げた岩は 90度ずつ向きを変えて、回っているように見せる（ドットがにじまないように）
@@ -782,7 +1444,7 @@ var Bosses = (function () {
   }
 
   // ---------- 予告と大技（地面） ----------
-  function updateHazards(dt, p, hurt) {
+  function updateHazards(dt, p, hurt, room) {
     for (var di = dust.length - 1; di >= 0; di--) { dust[di].t += dt; if (dust[di].t >= dust[di].max) dust.splice(di, 1); }
     for (var ci = chips.length - 1; ci >= 0; ci--) {   // かけら：はねて落ちる
       var c = chips[ci]; c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vz -= 260 * dt; c.z += c.vz * dt;
@@ -791,14 +1453,45 @@ var Bosses = (function () {
     }
     for (var wi = waves.length - 1; wi >= 0; wi--) { waves[wi].t += dt; if (waves[wi].t >= waves[wi].max + 0.6) waves.splice(wi, 1); }
     quake.t = Math.max(0, quake.t - dt);
+    updateFrost(dt);
     for (var i = hazards.length - 1; i >= 0; i--) {
       var h = hazards[i];
       h.t += dt;
       if (h.kind === "line") continue; // 大突進の線は、ボスが走り終わると消える
+      if (h.kind === "ball") {   // スノーゴーレムの雪玉
+        if (updateBall(h, dt, p, hurt, room) || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
+      if (h.kind === "cone") {   // 氷牙獣のこおりの息
+        if (h.t >= h.warn && !h.hit) { h.hit = true; breathHit(h, p, hurt, room); }
+        if (h.t >= h.warn + h.erupt || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
+      if (h.kind === "tornado") {   // 大怪鳥の竜巻
+        updateTornado(h, dt, p, hurt, room);
+        if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
+      if (h.look === "fog" && h.t >= h.warn) {   // 毒の霧：のこっているあいだ、中にいると 0.7 秒ごとに少しダメージと毒
+        h.hit = true; h.tick -= dt;
+        var fin = (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r * 0.5) * (h.r + p.r * 0.5);
+        if (fin && h.tick <= 0 && !p.down && !h.from.dead) { hurt(h.from, p.x, p.y - 8, h.opts); h.tick = 0.7; }
+        if (h.t >= h.warn + h.erupt) hazards.splice(i, 1);
+        continue;
+      }
       if (h.track && h.t < h.warn && !h.track.dead) { h.x = h.track.x; h.y = h.track.y; }   // 魔物使いの瘴気の柱：予告のあいだ、ねらった敵についていく（track。大ガマの follow とは別。2026-10-26 名前がぶつかって大ガマが消えたので分けた）
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
         if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
+        if (h.look === "quake") shake(1, 0.06);
+        if (h.look === "icicle") {   // つららがささる：ずしん。大きな氷のかけらが飛びちる
+          shake(2, 0.12);
+          for (var ic = 0; ic < 12; ic++) {
+            var ia = Math.random() * Math.PI * 2, isp = 30 + Math.random() * 60;
+            chips.push({ x: h.x, y: h.y, z: 8 + Math.random() * 20, vx: Math.cos(ia) * isp, vy: Math.sin(ia) * isp * 0.6, vz: 70 + Math.random() * 80, t: 0, max: 0.7 + Math.random() * 0.4,
+                         c: ic % 3 === 0 ? "#ffffff" : ic % 3 === 1 ? "#c8eaf8" : "#8cc4e4", s: ic % 4 === 0 ? 4 : 2 + (ic % 2) });
+          }
+        }
         var inside = h.kind === "circle"
           ? (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r) * (h.r + p.r)
           : p.x > h.x && p.x < h.x + h.w && p.y > h.y && p.y < h.y + h.h;
@@ -812,18 +1505,52 @@ var Bosses = (function () {
   // ボスが倒れたら、地面の予告も消す
   // 魔物使いが呼んだ主の大技を置く（2026-10-26）。h.ally(h) が、予告がおわったときに敵に当てる
   function addAlly(h) { h.t = 0; h.hit = false; h.from = null; if (h.seed === undefined) h.seed = Math.random() * 100; hazards.push(h); }
-  function bossDown() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; }
+  function bossDown() { hazards.length = 0; dust.length = 0; chips.length = 0; waves.length = 0; blizz.t = 0; frost.length = 0; }
 
   // ---------- 描画 ----------
   // 大技の絵（2026-10-18 に仮の絵から差しかえ）：予告は半とうめいの光。本番は、根の大波が太いつる、大突進のあとは土けむり（ドット）
   function rnd(n) { var v = Math.sin(n * 12.9898) * 43758.5453; return v - Math.floor(v); }
 
+  // 大怪鳥の竜巻：予告は地面の風の輪。本番は、白い風が何段にも回る、上ほど太いうず
+  function drawTornado(ctx, h, cam, glow) {
+    var x = Math.round(h.x - cam.x), y = Math.round(h.y - cam.y);
+    if (h.t < h.warn) {
+      var kw = h.t / h.warn;
+      for (var i = 0; i < 10; i++) {
+        var a = glow * 6 + i / 10 * Math.PI * 2, r = 4 + kw * h.r;
+        Render.rect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r * 0.5), 2, 1, "rgba(230,245,255," + (0.3 + 0.6 * kw).toFixed(2) + ")");
+      }
+      return;
+    }
+    var end = h.warn + h.life, fade = Math.min(1, (end - h.t) / 0.5, (h.t - h.warn) / 0.3);
+    ctx.fillStyle = "rgba(0,0,0," + (0.25 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y + 2, h.r, h.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    var H = 46;
+    for (var j = 0; j < 9; j++) {   // 下から上へ：輪が太くなり、左右にゆれる
+      var k = j / 8, ry = y - k * H, rr = 3 + k * (h.r + 4), sx = Math.sin(glow * 5 + j * 0.7 + h.seed) * 3 * k;
+      ctx.strokeStyle = "rgba(" + (j % 2 ? "236,246,255" : "176,196,214") + "," + ((0.55 + 0.3 * (1 - k)) * fade).toFixed(2) + ")";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x + sx, ry, rr, rr * 0.32, 0, glow * 9 + j, glow * 9 + j + Math.PI * 1.4); ctx.stroke();
+    }
+    for (var q = 0; q < 8; q++) {   // 巻き上げられた小石と葉
+      var qa = glow * 7 + q * 0.8 + h.seed, qk = ((glow * 0.9 + q * 0.13) % 1), qr = 4 + qk * (h.r + 2);
+      Render.rect(Math.round(x + Math.cos(qa) * qr), Math.round(y - qk * H + Math.sin(qa) * qr * 0.3), 2, 2, q % 3 ? "rgba(120,110,96," + fade.toFixed(2) + ")" : "rgba(110,160,90," + fade.toFixed(2) + ")");
+    }
+  }
   function drawHazards(cam, glow) {
     var ctx = Render.ctx;
+    frost.forEach(function (f) { drawFrost(ctx, f, cam, glow); });
     waves.forEach(function (w) { drawWave(ctx, w, cam); });
     hazards.forEach(function (h) {
+      if (h.kind === "cone") { drawCone(ctx, h, cam, glow); return; }
       if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       if (h.kind === "circle") { drawCircle(ctx, h, cam, glow); return; }
+      if (h.kind === "tornado") { drawTornado(ctx, h, cam, glow); return; }
+      if (h.kind === "ball") {   // 雪玉：地面にかげ
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(Math.round(h.x - cam.x), Math.round(h.y - cam.y) + h.r - 2, h.r, h.r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+        drawSnowball(ctx, h.x - cam.x, h.y - cam.y - 2, h.r, h.roll);
+        return;
+      }
       var x = h.x - cam.x, y = h.y - cam.y;
       if (h.t < h.warn) drawRootWarn(ctx, h, x, y, glow);
       else drawRootErupt(ctx, h, x, y);
@@ -863,9 +1590,9 @@ var Bosses = (function () {
     });
     if (k < 1) {
       var al = 1 - k;
-      ctx.strokeStyle = "rgba(255,240,200," + (0.9 * al).toFixed(2) + ")"; ctx.lineWidth = 3;
+      ctx.strokeStyle = (w.ice ? "rgba(240,252,255," : "rgba(255,240,200,") + (0.9 * al).toFixed(2) + ")"; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = "rgba(168,152,120," + (0.8 * al).toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.strokeStyle = (w.ice ? "rgba(122,184,220," : "rgba(168,152,120,") + (0.8 * al).toFixed(2) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(x, y, r * 0.8, r * 0.44, 0, 0, Math.PI * 2); ctx.stroke();
     }
   }
@@ -875,8 +1602,13 @@ var Bosses = (function () {
   function drawCircle(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
-    var col = h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
+    if (h.look === "fog" && h.t >= h.warn) { drawFog(ctx, h, x, y, glow); return; }
+    var col = h.look === "fog" ? [170, 90, 220] : h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
+    if (h.look === "quake") { drawQuake(ctx, h, x, y, glow); return; }
+    if (h.look === "leap") { drawLeapMark(ctx, h, x, y, glow); return; }
+    if (h.look === "spike") { drawSpike(ctx, h, x, y, glow); return; }
+    if (h.look === "icicle") { drawIcicleDrop(ctx, h, x, y, glow); return; }
     if (h.t < h.warn) {
       ctx.fillStyle = c(0.10 + 0.25 * k + 0.05 * Math.sin(glow * 16));
       ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.7, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.fill();
@@ -926,6 +1658,62 @@ var Bosses = (function () {
         ctx.fillRect(Math.round(x + Math.cos(a) * R) - 1, Math.round(y + Math.sin(a) * R * 0.7 - Math.sin(q * Math.PI) * 6) - 1, 3, 3);
       }
     }
+  }
+
+  // ラフレシアの毒の霧：紫のもやが、ゆっくりうずを巻いてのこる。はじめはふわっと広がり、終わりぎわはうすくなる
+  function drawFog(ctx, h, x, y, glow) {
+    var q = (h.t - h.warn) / h.erupt, grow = Math.min(1, (h.t - h.warn) / 0.3), fade = q > 0.85 ? (1 - q) / 0.15 : 1, a = grow * fade;
+    ctx.fillStyle = "rgba(110,50,150," + (0.28 * a).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * grow, h.r * 0.7 * grow, 0, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 7; i++) {   // もやのかたまり：まわりをゆっくり回る
+      var an = glow * 0.6 + i * 0.9 + h.seed, rr = h.r * (0.25 + 0.5 * rnd(h.seed + i)) * grow;
+      var bx = x + Math.cos(an) * rr, by = y + Math.sin(an) * rr * 0.7 - 3;
+      ctx.fillStyle = "rgba(180,110,230," + (0.22 * a).toFixed(2) + ")";
+      ctx.beginPath(); ctx.ellipse(bx, by, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    for (var j = 0; j < 6; j++) {   // のぼっていく泡（1点ずつ）
+      var ph = (glow * 0.8 + j / 6 + h.seed) % 1, px = x + (rnd(h.seed * 3 + j) - 0.5) * h.r * 1.4, py = y + (rnd(h.seed * 5 + j) - 0.5) * h.r * 0.8 - ph * 10;
+      Render.rect(Math.round(px), Math.round(py), 2, 2, "rgba(220,170,255," + ((1 - ph) * a).toFixed(2) + ")");
+    }
+  }
+
+  // ドワーフキングの大地たたき（2026-11-07 保護者の案）：その場所が立つ 0.35 秒前から地面が光り、光の柱が立って消える。
+  // 柱は根もとから先へ順に立つので、光が走ってくるように見える
+  function drawQuake(ctx, h, x, y, glow) {
+    var left = h.warn - h.t;
+    if (left > 0) {
+      if (left > 0.35) return;
+      var k = 1 - left / 0.35;
+      ctx.fillStyle = "rgba(255,200,90," + (0.15 + 0.35 * k).toFixed(2) + ")";
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r * (0.5 + 0.5 * k), h.r * 0.6 * (0.5 + 0.5 * k), 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r * k, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,150,60," + (0.5 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.stroke();
+      return;
+    }
+    var q = Math.min(1, (h.t - h.warn) / h.erupt), fade = 1 - q;
+    var hh = 64 * Math.min(1, q * 5), w = h.r * (1.3 - 0.5 * q);
+    var g = ctx.createLinearGradient(0, y - hh, 0, y);
+    g.addColorStop(0, "rgba(255,170,60,0)");
+    g.addColorStop(0.35, "rgba(255,190,90," + (0.6 * fade).toFixed(2) + ")");
+    g.addColorStop(1, "rgba(255,245,200," + (0.95 * fade).toFixed(2) + ")");
+    ctx.fillStyle = g; ctx.fillRect(x - w / 2, y - hh, w, hh);
+    ctx.fillStyle = "rgba(255,255,235," + (0.9 * fade).toFixed(2) + ")"; ctx.fillRect(x - w / 6, y - hh * 0.8, w / 3, hh * 0.8);   // まんなかの白い芯
+    ctx.fillStyle = "rgba(255,140,50," + (0.45 * fade).toFixed(2) + ")";
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); else ctx.arc(x, y, h.r, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 4; i++) {   // 立ちのぼる光のつぶ
+      var py = y - ((q * 1.5 + i * 0.25) % 1) * hh;
+      Render.rect(Math.round(x + Math.sin(i * 2.3 + h.x) * w * 0.6), Math.round(py), 1, 2, "rgba(255,240,180," + fade.toFixed(2) + ")");
+    }
+  }
+  // トマホーク（回る斧）：柄（木）と、刃（鋼）。rot は回る角度
+  function drawTomahawk(ctx, x, y, rot) {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(rot); ctx.scale(1.4, 1.4);
+    ctx.fillStyle = "#140c1c"; ctx.fillRect(-7, -2, 14, 4); ctx.fillRect(2, -7, 7, 10);
+    ctx.fillStyle = "#8a5a32"; ctx.fillRect(-6, -1, 12, 2);
+    ctx.fillStyle = "#b8c0cc"; ctx.fillRect(3, -6, 5, 8);
+    ctx.fillStyle = "#e6ecf4"; ctx.fillRect(7, -6, 1, 8);
+    ctx.fillStyle = "#7a8494"; ctx.fillRect(3, 1, 5, 1);
+    ctx.restore();
   }
 
   // 大突進の予告：走る方向へ、赤い矢じるしの光が流れる。時間がたつほど強くなる
@@ -1016,10 +1804,181 @@ var Bosses = (function () {
     ctx.lineCap = "butt"; ctx.lineJoin = "miter";
   }
 
+  // ---------- 氷牙獣の絵 ----------
+  // こおりの息で凍った床：うす青の氷に白い光（とける前はうすくなる）
+  function drawFrost(ctx, f, cam, glow) {
+    var x = f.tx * TILE - Math.round(cam.x), y = f.ty * TILE - Math.round(cam.y);
+    var a = Math.min(1, f.t / 0.25, (f.max - f.t) / 1.2);
+    ctx.fillStyle = "rgba(190,230,250," + (0.55 * a).toFixed(2) + ")"; ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = "rgba(255,255,255," + (0.6 * a).toFixed(2) + ")";
+    var o = Math.floor(rnd(f.seed) * 8);
+    ctx.fillRect(x + 2 + o, y + 3, 5, 1); ctx.fillRect(x + 3, y + 10 + (o % 3), 3, 1);
+    if (Math.sin(glow * 3 + f.seed) > 0.85) Render.rect(x + 8 + (o % 5), y + 6, 1, 1, "rgba(255,255,255," + a.toFixed(2) + ")");
+  }
+  // こおりの息：予告は扇の形のうす青い光（だんだん濃く）。本番は、白と水色の息の粒が扇に広がる
+  function drawCone(ctx, h, cam, glow) {
+    var x = h.x - cam.x, y = h.y - cam.y;
+    if (h.t < h.warn) {
+      var k = h.t / h.warn;
+      ctx.fillStyle = "rgba(150,220,255," + (0.12 + 0.25 * k + 0.05 * Math.sin(glow * 16)).toFixed(2) + ")";
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, h.len, h.ang - h.spread, h.ang + h.spread); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(190,240,255," + (0.5 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1;   // 外へ広がっていく線：外のはしに着いたときに息が来る
+      ctx.beginPath(); ctx.arc(x, y, h.len * k, h.ang - h.spread, h.ang + h.spread); ctx.stroke();
+      return;
+    }
+    var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
+    for (var i = 0; i < 40; i++) {
+      var r1 = rnd(h.seed + i), r2 = rnd(h.seed + i * 3.7);
+      var dd = h.len * Math.min(1, q * 1.6) * (0.25 + 0.75 * r1), aa = h.ang + (r2 * 2 - 1) * h.spread;
+      var px = Math.round(x + Math.cos(aa) * dd), py = Math.round(y + Math.sin(aa) * dd);
+      Render.rect(px, py, i % 3 ? 2 : 3, i % 3 ? 2 : 3, (i % 2 ? "rgba(255,255,255," : "rgba(159,244,255,") + fade.toFixed(2) + ")");
+    }
+  }
+  // 大ジャンプの落ちる場所：影がだんだん大きく濃く。着地の leapLock 秒前からは赤い「！」
+  function drawLeapMark(ctx, h, x, y, glow) {
+    if (h.t >= h.warn) return;
+    var k = Math.min(1, h.t / h.warn), locked = h.from && h.warn - h.t <= h.from.def.leapLock;
+    ctx.fillStyle = "rgba(20,30,50," + (0.15 + 0.35 * k).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.4 + 0.6 * k), h.r * 0.6 * (0.4 + 0.6 * k), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = locked ? "rgba(255,80,64,0.9)" : "rgba(159,244,255," + (0.5 + 0.3 * Math.sin(glow * 14)).toFixed(2) + ")"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+    if (locked) Render.text("！", x, y - h.r * 0.6 - 12, { size: 11, align: "center", bold: true, color: "#ff5040" });
+  }
+  // 氷のトゲ：予告は地面の小さな水色の輪とひび。本番は、地面から氷のトゲが3本つき出て、くだけて消える
+  function drawSpike(ctx, h, x, y, glow) {
+    if (h.t < h.warn) {
+      var k = h.t / h.warn;
+      ctx.fillStyle = "rgba(150,220,255," + (0.2 + 0.35 * k).toFixed(2) + ")";
+      ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    var q = (h.t - h.warn) / h.erupt, up = q < 0.2 ? q / 0.2 : q > 0.7 ? Math.max(0, (1 - q) / 0.3) : 1;
+    ctx.fillStyle = "rgba(60,110,150," + (0.35 * up).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    [[-5, 12, 4], [0, 20, 5], [5, 14, 4]].forEach(function (v, i) {
+      var bx = Math.round(x + v[0] + (rnd(h.seed + i) - 0.5) * 3), hh = Math.round(v[1] * up), w = v[2];
+      if (hh < 1) return;
+      ctx.fillStyle = "#3a6a96"; ctx.beginPath(); ctx.moveTo(bx - w - 1, y + 1); ctx.lineTo(bx, y - hh - 1); ctx.lineTo(bx + w + 1, y + 1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#bfe6f8"; ctx.beginPath(); ctx.moveTo(bx - w, y); ctx.lineTo(bx, y - hh); ctx.lineTo(bx + w, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(bx - 1, y - 1); ctx.lineTo(bx, y - hh + 1); ctx.lineTo(bx + 1, y - 1); ctx.closePath(); ctx.fill();
+    });
+  }
+  // 大遠ぼえのつらら：予告は地面の影（だんだん濃く）と、上から落ちてくるつらら。本番は、くだけて氷のかけらが飛びちる
+  function drawIcicleDrop(ctx, h, x, y, glow) {
+    var img = icicleImg();
+    if (h.t < h.warn) {
+      var k = Math.min(1, h.t / h.warn), last = h.warn - h.t < 0.35;
+      ctx.fillStyle = "rgba(20,40,70," + (0.12 + 0.3 * k).toFixed(2) + ")";
+      ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.5 + 0.5 * k), h.r * 0.6 * (0.5 + 0.5 * k), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = last ? "rgba(255,90,70,0.85)" : "rgba(159,244,255," + (0.4 + 0.4 * k).toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+      if (last) {   // 最後の 0.35 秒：上から大きなつららが落ちてくる（うしろに光のすじ）
+        var fy = Math.round(y - (h.warn - h.t) / 0.35 * 170), ix = Math.round(x);
+        for (var sl = 0; sl < 3; sl++) {
+          var sx = ix + (sl - 1) * 6, sy = fy - img.height - 6;
+          var g = ctx.createLinearGradient(0, sy - 40, 0, sy + 16);
+          g.addColorStop(0, "rgba(220,245,255,0)"); g.addColorStop(1, "rgba(220,245,255,0.6)");
+          ctx.fillStyle = g; ctx.fillRect(sx, sy - 40 + (sl % 2) * 8, 1, 56);
+        }
+        ctx.drawImage(img, ix - Math.floor(img.width / 2), fy - img.height + 2);
+      }
+      return;
+    }
+    var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
+    if (q < 0.5) {   // つきささったつららが、下から上へくだけていく
+      var keep = Math.max(0, Math.round(img.height * (1 - q / 0.5) * 0.75));
+      if (keep > 0) ctx.drawImage(img, 0, 0, img.width, keep, Math.round(x) - Math.floor(img.width / 2), Math.round(y) + 6 - keep, img.width, keep);
+    }
+    ctx.strokeStyle = "rgba(230,250,255," + (0.8 * fade).toFixed(2) + ")"; ctx.lineWidth = 2;   // 冷たい衝撃の輪
+    ctx.beginPath(); ctx.ellipse(x, y, h.r * (0.6 + q * 0.8), h.r * 0.6 * (0.6 + q * 0.8), 0, 0, Math.PI * 2); ctx.stroke();
+    for (var i = 0; i < 6; i++) {   // きらきら光る氷の粉
+      var a = i / 6 * Math.PI * 2 + h.seed, R = h.r * (0.4 + q * 1.1);
+      if (Math.sin(glow * 20 + i) > 0) Render.rect(Math.round(x + Math.cos(a) * R), Math.round(y + Math.sin(a) * R * 0.6 - q * 10), 1, 1, "rgba(255,255,255," + fade.toFixed(2) + ")");
+    }
+  }
+  // 大遠ぼえのつららの絵（はば23・長さ70のドット絵。はじめの1回だけ作る）：上に雪のかたまり、左から光が当たって4段のかげ、
+  // まんなかに白い光のすじ、中のひび、ところどころに小さなつららの枝。先はとがって、うすい水色
+  var icicleCache = null;
+  function icicleImg() {
+    if (icicleCache) return icicleCache;
+    var W = 23, H = 70, C = 11, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    var c = cv.getContext("2d");
+    function px(x, y, col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+    var OUT = "#1c3656", T = ["#f4fcff", "#c8eaf8", "#8cc4e4", "#5a94c4", "#3a6a9c"];
+    function halfAt(y) {   // なめらかな太さ（ところどころ少しふくらむ）
+      var f = (y - 7) / (H - 7);
+      return Math.max(0, Math.round((C - 2) * Math.pow(1 - f, 0.9) + 1.2 * Math.sin(f * 10) * (1 - f)));
+    }
+    for (var y = 7; y < H; y++) {   // 本体
+      var f = (y - 7) / (H - 7), half = halfAt(y);
+      for (var x = C - half - 1; x <= C + half + 1; x++) {
+        if (x === C - half - 1 || x === C + half + 1) { px(x, y, OUT); continue; }
+        var t = half ? (x - (C - half)) / (2 * half) : 0.5;
+        var col = t < 0.2 ? T[0] : t < 0.42 ? T[1] : t < 0.64 ? T[2] : t < 0.86 ? T[3] : T[4];
+        if (f > 0.82) col = t < 0.5 ? "#e8f8ff" : "#b0e0f6";   // 先はうすい水色
+        px(x, y, col);
+      }
+      if (f < 0.78 && half > 1) px(C - Math.round(half * 0.5), y, "#ffffff");   // 光のすじ
+      if (f > 0.15 && f < 0.6 && half > 3 && y % 9 < 3) px(C + Math.round(half * 0.35), y, "rgba(255,255,255,0.55)");   // 奥の光
+    }
+    px(C, H - 1, OUT);
+    for (var cr = 0; cr < 3; cr++) {   // 中のひび
+      var cy = 16 + cr * 12, cx = C + (cr % 2 ? 2 : -1);
+      for (var j = 0; j < 4; j++) px((cx + (cr % 2 ? -j : j) * 0.6) | 0, cy + j, "rgba(255,255,255,0.7)");
+    }
+    [[2, 5], [20, 4]].forEach(function (b) {   // 雪のふちからぶら下がる、小さなつらら
+      for (var k = 0; k < b[1]; k++) {
+        px(b[0], 9 + k, k === b[1] - 1 ? OUT : T[1]); px(b[0] - 1, 9 + k, OUT); px(b[0] + 1, 9 + k, k < b[1] - 2 ? T[3] : OUT);
+      }
+    });
+    for (var sx = 0; sx < W; sx++) {   // 上の雪のかたまり（まるい山の形。下のふちは少しでこぼこ）
+      var dd = (sx - C) / (C + 0.5), top = 1 + Math.round(4 * dd * dd), bot = 8 + (rnd(sx * 2.1) > 0.6 ? 1 : 0);
+      for (var sy = top; sy <= bot; sy++) px(sx, sy, sy === top || sy === bot ? OUT : sy === top + 1 ? "#ffffff" : sy >= bot - 1 ? "#a8bcd0" : sy >= bot - 2 ? "#d0deec" : "#eef6fc");
+    }
+    icicleCache = cv;
+    return cv;
+  }
+  // 氷牙獣：大オオカミの絵（52×40）を氷の色にして、1.3倍で描く。空にいるときは高く、よろいを着ているときは白い光と氷のかけら
+  var FANG_SCALE = 1.3;
+  function drawIceFang(ctx, e, x, y, glow) {
+    var d = e.def, lift = 0, frame;
+    if (e.state === "air") { var k = 1 - Math.max(0, e.t) / d.leapAir; lift = Math.round(Math.sin(k * Math.PI) * 80); }
+    var moving = e.state === "chase" || e.state === "charge" || e.state === "air", ph = Math.sin(e.walk || 0);
+    frame = e.state === "air" ? "walkA" : !moving ? "stand" : ph > 0 ? "walkA" : "walkB";
+    var crouch = e.state === "crouch" ? 3 : 0;
+    var sh = e.state === "air" ? Math.max(0.3, 1 - lift / 100) : 1;   // 影（空にいるときは小さく）
+    Render.rect(Math.round(x - 22 * sh), y + 10, Math.round(44 * sh), 6, "rgba(0,0,0,0.35)");
+    ctx.save();
+    ctx.translate(x, y + 14 - lift + crouch); ctx.scale(FANG_SCALE, FANG_SCALE - crouch * 0.03);
+    Monsters.drawBoss(ctx, e, 0, 0, frame);
+    if (e.armor > 0) {   // 氷のよろい：白い光を重ねる
+      var fl = e.flash; e.flash = 1;
+      ctx.globalAlpha = 0.35 + 0.1 * Math.sin(glow * 6);
+      Monsters.drawBoss(ctx, e, 0, 0, frame);
+      ctx.globalAlpha = 1; e.flash = fl;
+    }
+    ctx.restore();
+    if (e.armor > 0) {   // まわりを回る氷のかけら
+      for (var i = 0; i < 5; i++) {
+        var a = glow * 1.6 + i / 5 * Math.PI * 2, cx = Math.round(x + Math.cos(a) * 30), cy = Math.round(y - 14 - lift + Math.sin(a) * 10);
+        Render.rect(cx - 1, cy - 3, 3, 6, "#bfe6f8"); Render.rect(cx, cy - 2, 1, 3, "#ffffff");
+      }
+    }
+    if (e.state === "warn") Render.text("！", x, y - 46 - lift, { size: 12, align: "center", bold: true, color: "#ef5b5b" });
+    if (e.state === "howl") Render.text("ウォォーン", x, y - 46, { size: 8, align: "center", bold: true, color: "#ffd24a" });
+    if (e.state === "bighowl") Render.text("ウォォォーーン！", x, y - 48, { size: 9, align: "center", bold: true, color: "#9ff4ff" });
+    if (e.state === "breathWarn" || e.state === "breath") {   // 口もとに冷たい息
+      var mx = x + e.face.x * 30, my = y - 18 + e.face.y * 8;
+      Combat.glowDot(ctx, mx, my, 4 + Math.sin(glow * 30), "#ffffff", "#9ff4ff", 0.8);
+    }
+  }
+
   // ボスの絵
   function draw(e, cam, glow) {
     var x = Math.round(e.x - cam.x), y = Math.round(e.y - cam.y), d = e.def, ctx = Render.ctx;
-    if (d.kind === "wolf_boss") {
+    if (d.kind === "icefang_boss") drawIceFang(ctx, e, x, y, glow);
+    else if (d.kind === "wolf_boss") {
       // 段階7-2c：ドット絵（monsters.js、52×40）。足もとは y＋11
       var ph = Math.sin(e.walk || 0), moving = e.state === "chase" || e.state === "charge";
       Render.rect(x - 18, y + 8, 36, 5, "rgba(0,0,0,0.35)");
@@ -1074,8 +2033,9 @@ var Bosses = (function () {
       if (e.state === "vanish" || e.state === "appear") {   // 紫のけむり
         for (var sm = 0; sm < 8; sm++) { var sa = sm * 0.785 + glow; Render.rect(Math.round(x + Math.cos(sa) * 14), Math.round(y - 10 + Math.sin(sa) * 10), 3, 3, "rgba(150,90,200,0.6)"); }
       }
-    } else if (d.kind === "golem_boss") {
-      // ゴーレム（48×52）：足もとは y＋16
+    } else if (d.kind === "golem_boss" || d.kind === "snowgolem_boss") {
+      // ゴーレム（48×52）：足もとは y＋16。スノーゴーレムは同じ絵の雪の色（monsters.js の BOSS_PAL.snowgolem_boss）
+      if (e.state === "pile") { drawSnowPile(ctx, e, x, y, glow); return; }
       Render.rect(x - 20, y + 12, 40, 6, "rgba(0,0,0,0.35)");
       if (e.state === "spin") {   // ぶん回しのとどく範囲：赤い輪が、だんだん濃くなる
         var ks = 1 - e.t / d.spinWarn;
@@ -1091,7 +2051,10 @@ var Bosses = (function () {
       if (e.state === "combo" && !(e.punch > 0)) gf = e.hits % 2 ? "punchR" : "punchL";
       var shake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
       Monsters.drawBoss(ctx, e, x + shake, y + 16, gf);
-      if (e.state === "lift" && !(e.thrown > 0)) drawRock(ctx, x, y - 44, d.rockR, 0);   // 頭の上に持ち上げた岩
+      if (e.state === "lift" && !(e.thrown > 0)) {
+        if (d.snow) drawSnowball(ctx, x, y - 44, d.ballR, 0);   // 頭の上に持ち上げた雪玉
+        else drawRock(ctx, x, y - 44, d.rockR, 0);              // 頭の上に持ち上げた岩
+      }
       if (e.sweep > 0) {   // ぶん回しの風
         var kw = 1 - e.sweep / 0.35;
         ctx.strokeStyle = "rgba(216,208,184," + (1 - kw).toFixed(2) + ")"; ctx.lineWidth = 3;
@@ -1119,6 +2082,98 @@ var Bosses = (function () {
       Monsters.drawBoss(ctx, e, x, y + 14 + bob2, e.pose > 0 || e.state === "charge" ? "attack" : "stand");
       if (e.slashT > 0) Combat.drawSlash(ctx, x, y - 6, e.aim || e.face, 1.1, d.reach + 14, "#ffe7a0", 1 - e.slashT / 0.2, e.slashFlip);
       if (e.state === "windup" || e.state === "warn") Render.text("！", x, y - 44, { size: 11, align: "center", bold: true, color: e.state === "warn" ? "#ef5b5b" : "#ffd24a" });
+    } else if (d.kind === "dwarf_boss") {
+      // ドワーフキング（43×48、正面向き）：足もとは y＋14。たたいたあとは「攻撃」の絵
+      Render.rect(x - 16, y + 9, 32, 6, "rgba(0,0,0,0.35)");
+      if (e.state === "slam") {   // 大地たたきの構え：まわりの赤い輪が、だんだん濃くなる
+        var kq = 1 - Math.max(0, e.t) / d.slamWarn;
+        ctx.fillStyle = "rgba(239,91,91," + (0.08 + 0.22 * kq).toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(x, y + 6, d.slamNear, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * kq).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y + 6, d.slamNear, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (e.state === "windup" || e.state === "toss") Combat.glowDot(ctx, x, y - 10, 22, "#ffffff", "#ef5b5b", 0.25 + 0.15 * Math.sin(glow * 20));
+      if (e.guarding) {   // 盾がまえ：向いている側に、銀の光の弧（ここからの攻撃は減る）
+        var ga0 = Math.atan2(e.face.y, e.face.x);
+        ctx.strokeStyle = "rgba(220,228,240," + (0.55 + 0.25 * Math.sin(glow * 12)).toFixed(2) + ")"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x, y - 6, e.r + 12, ga0 - 1.1, ga0 + 1.1); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y - 6, e.r + 14, ga0 - 0.8, ga0 + 0.8); ctx.stroke();
+      }
+      var dshake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
+      Monsters.drawBoss(ctx, e, x + dshake, y + 14, e.pose > 0 ? "attack" : "stand");
+      if (e.swingT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 6, e.aim, 0.9, d.reach + e.r, "#e6ecf4", 1 - e.swingT / 0.22, false);
+      if (e.state === "toss") drawTomahawk(ctx, x + (e.face.x < -0.2 ? 14 : -14), y - 40, -0.6 + (1 - e.t / d.axeWindup) * 0.8 * (e.face.x < -0.2 ? -1 : 1));   // 振りかぶったトマホーク
+      if (e.state === "windup" || e.state === "slam" || e.state === "toss") Render.text("！", x, y - 50, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる
+        for (var ds = 0; ds < 3; ds++) {
+          var da2 = glow * 4 + ds * 2.1, dx2 = Math.round(x + Math.cos(da2) * 12), dy2 = Math.round(y - 44 + Math.sin(da2) * 3);
+          Render.rect(dx2, dy2 - 1, 1, 3, "#ffe066"); Render.rect(dx2 - 1, dy2, 3, 1, "#ffe066");
+        }
+      }
+    } else if (d.kind === "raff_boss") {
+      // ラフレシア（56×44、正面）：足もとは y＋16。吸いこみ・毒の息・種を吐くときは、まんなかが開いた「攻撃」の絵
+      Render.rect(x - 24, y + 10, 48, 7, "rgba(0,0,0,0.35)");
+      if (e.state === "breath") {   // 毒の息の予告：まわりの赤い輪が、だんだん濃くなる
+        var kb2 = 1 - Math.max(0, e.t) / d.breathWarn;
+        ctx.fillStyle = "rgba(239,91,91," + (0.1 + 0.25 * kb2).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius, d.breathRadius * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(239,91,91," + (0.5 + 0.4 * kb2).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius, d.breathRadius * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      if (e.state === "windup") {   // つるのむちの構え：とどく範囲が黄色く
+        var kwh = 1 - Math.max(0, e.t) / d.windup;
+        ctx.strokeStyle = "rgba(255,210,74," + (0.3 + 0.5 * kwh).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.whipReach + e.r, (d.whipReach + e.r) * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      var open = e.state === "inhale" || e.state === "breath" || e.state === "seed" || e.puffT > 0 || e.breathFx > 0;
+      var sway = e.state === "inhale" ? Math.round(Math.sin(glow * 30)) : 0;
+      Monsters.drawBoss(ctx, e, x + sway, y + 16, (e.bloomed ? "big" : "") + (open ? "open" : "stand"));
+      if (e.state === "inhale") {   // 吸いこみ：まわりから、まんなかへ流れこむ風の線
+        for (var iw = 0; iw < 12; iw++) {
+          var ia = iw / 12 * Math.PI * 2 + glow, ip = (glow * 1.6 + iw * 0.37) % 1, ir = 90 * (1 - ip) + 14;
+          Render.rect(Math.round(x + Math.cos(ia) * ir), Math.round(y - 6 + Math.sin(ia) * ir * 0.7), 3, 1, "rgba(240,250,255," + (0.3 + 0.6 * ip).toFixed(2) + ")");
+        }
+      }
+      if (e.breathFx > 0) {   // 毒の息：紫の輪が広がる
+        e.breathFx -= 1 / 60;
+        var kbf = 1 - e.breathFx / 0.5;
+        ctx.fillStyle = "rgba(150,70,200," + (0.4 * (1 - kbf)).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.breathRadius * (0.4 + 0.6 * kbf), d.breathRadius * 0.75 * (0.4 + 0.6 * kbf), 0, 0, Math.PI * 2); ctx.fill();
+        for (var bp = 0; bp < 16; bp++) { var bpa = bp / 16 * Math.PI * 2, bpr = d.breathRadius * kbf; Render.rect(Math.round(x + Math.cos(bpa) * bpr), Math.round(y + 4 + Math.sin(bpa) * bpr * 0.75), 3, 3, "rgba(200,140,240," + (1 - kbf).toFixed(2) + ")"); }
+      }
+      if (e.whipT > 0) {   // つるのむち：まわりを回る緑の弧
+        var kwp = 1 - e.whipT / 0.3, wr = d.whipReach + e.r;
+        ctx.strokeStyle = "rgba(94,168,74," + (1 - kwp).toFixed(2) + ")"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(x, y + 2, wr, wr * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
+        ctx.strokeStyle = "rgba(200,240,140," + (1 - kwp).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 2, wr - 2, (wr - 2) * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
+      }
+      if (e.state === "windup" || e.state === "breath") Render.text("！", x, y - 40, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+    } else if (d.kind === "roc_boss") {
+      // 大怪鳥（飛ぶ）：絵は e.alt だけ上に描く。地面の影は、崖の外の空の上では描かない
+      var alt = Math.round(e.alt || 10) + Math.round(Math.sin(glow * 4) * 2);
+      if (!e.overSky) { var sw2 = e.state === "rise" ? 18 : 26; Render.rect(x - sw2 / 2, y + 6, sw2, 5, "rgba(0,0,0,0.3)"); }
+      if (e.state === "windup") {   // かぎづめの構え：とどく範囲が黄色く
+        var kc2 = 1 - Math.max(0, e.t) / d.windup;
+        ctx.strokeStyle = "rgba(255,210,74," + (0.3 + 0.5 * kc2).toFixed(2) + ")"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 4, d.clawReach + e.r, (d.clawReach + e.r) * 0.75, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      var fr = e.state === "swoop" ? "dive" : (e.state === "rise" || e.state === "flap" || e.flapFx > 0 || Math.floor(glow * (e.state === "sky" || e.state === "takeoff" ? 8 : 5)) % 2) ? "down" : "up";
+      if (e.flapFx > 0) e.flapFx -= 1 / 60;
+      Monsters.drawBoss(ctx, e, x, y + 12 - alt, fr);
+      if (e.state === "sky" || e.state === "takeoff" || e.state === "land") {   // 空を飛ぶあいだは、まわりに風の線
+        for (var sw = 0; sw < 6; sw++) {
+          var swk = (glow * 1.4 + sw * 0.17) % 1;
+          Render.rect(Math.round(x - 40 + swk * 80), Math.round(y - alt - 20 + sw * 7), 6, 1, "rgba(240,250,255," + (0.5 * (1 - Math.abs(swk - 0.5) * 2)).toFixed(2) + ")");
+        }
+      }
+      if (e.slashT > 0) {   // かぎづめ：3本の白い線
+        var ks = 1 - e.slashT / 0.25, fx3 = x + e.face.x * 18, fy3 = y - 4 + e.face.y * 12;
+        ctx.strokeStyle = "rgba(255,255,255," + (1 - ks).toFixed(2) + ")"; ctx.lineWidth = 1;
+        for (var cl = -1; cl <= 1; cl++) { ctx.beginPath(); ctx.moveTo(fx3 - 7 + cl * 3, fy3 - 7); ctx.lineTo(fx3 + 7 + cl * 3, fy3 + 7); ctx.stroke(); }
+      }
+      if (e.state === "windup" || e.state === "rise") Render.text("！", x, y - alt - 34, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
     } else if (d.kind === "elf_boss") {
       // ダークエルフ（34×48）：足もとは y＋14。宙返りのときは、とび上がりながら1回転する
       var hop = 0, rot = 0;
@@ -1205,10 +2260,24 @@ var Bosses = (function () {
     if (marks.length) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 16, { size: 7, align: "center", color: GameData.STATUS[marks[0]].color });
   }
 
+  // スノーゴーレムがくずれた雪の山：白い山がゆっくり上下し、雪だるまがのこっている時間を、まわりの輪で見せる
+  function drawSnowPile(ctx, e, x, y, glow) {
+    var d = e.def, k = Math.max(0, e.t / d.splitPile), bob = Math.round(Math.sin(glow * 3) * 1);
+    x = Math.round(x); y = Math.round(y);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(x, y + 14, 24, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#140c1c"; ctx.beginPath(); ctx.ellipse(x, y + 8 + bob, 23, 13, 0, Math.PI, 0); ctx.lineTo(x + 23, y + 14); ctx.lineTo(x - 23, y + 14); ctx.fill();
+    ctx.fillStyle = "#c8d2de"; ctx.beginPath(); ctx.ellipse(x, y + 9 + bob, 21, 11, 0, Math.PI, 0); ctx.lineTo(x + 21, y + 13); ctx.lineTo(x - 21, y + 13); ctx.fill();
+    ctx.fillStyle = "#f4f8fc"; ctx.beginPath(); ctx.ellipse(x - 4, y + 7 + bob, 14, 8, 0, Math.PI, 0); ctx.fill();
+    Render.rect(x - 7, y + 2 + bob, 3, 2, "#2e9ab8"); Render.rect(x + 4, y + 2 + bob, 3, 2, "#2e9ab8");   // 雪の中で光る目
+    ctx.strokeStyle = "rgba(122,200,240,0.7)"; ctx.lineWidth = 2;   // のこり時間の輪
+    ctx.beginPath(); ctx.arc(x, y - 18, 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+  }
+
   // ふつうの敵（ワイルドボア。原生の秘境の段階2）も使う：壁までの長さ・予告の線の絵・土けむり
   function addDust(x, y) { dust.push({ x: x, y: y, t: 0, max: 0.6, s: Math.random() }); }
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb };
+           rockBreak: rockBreak, guardFront: guardFront, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
+           frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();

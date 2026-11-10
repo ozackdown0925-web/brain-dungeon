@@ -46,10 +46,10 @@ var World = (function () {
     }
     return this.rows[ty].charAt(tx);
   };
-  // 通れないところ：岩の壁・木・水・崩れた石柱（I。原生の秘境）
+  // 通れないところ：岩の壁・木・水・崩れた石柱（I。原生の秘境）・崖の下の空（C。烈風の峰のボスの部屋。落ちない）
   Room.prototype.solidAt = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V" || t === "I";
+    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V" || t === "I" || t === "C";
   };
   // タイルを1つ書きかえる（鍵で扉を開けたときなど）
   Room.prototype.setTile = function (tx, ty, ch) {
@@ -57,7 +57,7 @@ var World = (function () {
     this.rows[ty] = r.substring(0, tx) + ch + r.substring(tx + 1);
     this.ver = (this.ver || 0) + 1;   // 絵を描き直す印
   };
-  // 矢や魔法が止まるところ：岩の壁と木と石柱（水の上は飛んでいける）
+  // 矢や魔法が止まるところ：岩の壁と木と石柱（水の上と崖の下の空は飛んでいける）
   Room.prototype.blocksShot = function (tx, ty) {
     var t = this.tile(tx, ty);
     return t === "#" || t === "T" || t === "L" || t === "V" || t === "I";
@@ -73,7 +73,7 @@ var World = (function () {
     var y0 = Math.floor(y / TILE), y1 = Math.floor((y + h - 0.001) / TILE);
     for (var ty = y0; ty <= y1; ty++) {
       for (var tx = x0; tx <= x1; tx++) {
-        if (this.solidAt(tx, ty) && !(this._fly && this.tile(tx, ty) === "~")) return true;   // 浮いているもの（瘴気の霊）は水の上も通る
+        if (this.solidAt(tx, ty) && !(this._fly && (this.tile(tx, ty) === "~" || this.tile(tx, ty) === "C"))) return true;   // 浮いているもの（瘴気の霊・空を飛ぶもの）は水の上と崖の下の空も通る
       }
     }
     return false;

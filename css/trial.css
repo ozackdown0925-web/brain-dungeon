@@ -103,3 +103,8 @@ input, textarea, .qcard, .notice { -webkit-user-select: text; user-select: text;
   #shelfAnswer { scroll-padding-bottom: 120px; }
 }
 .shelf-reward { margin: 8px 0 4px; font-weight: 700; color: #b8860b; }
+/* 日本地図の棚：地図をタップして答える問題（js/game/chizu.js。2026-11-09） */
+.chizu-tap-box { border-radius: 10px; overflow: hidden; }
+.chizu-tap-box { text-align: center; background: #cfe6f2; }
+.chizu-tap-box svg { display: inline-block; vertical-align: top; width: 100%; height: auto; max-height: calc(100vh - 260px); min-height: 300px; -webkit-tap-highlight-color: transparent; }
+.chizu-tap-box path { cursor: pointer; }

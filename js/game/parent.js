@@ -271,6 +271,26 @@ var Parent = (function () {
         };
         foot.appendChild(mv);
       }
+      // 今のセーブをデバッグ用にコピー（2026-11-09）：対戦用・子ども。コピーもとは変わらない
+      function copyBtn(from, name) {
+        var b = el("button", "btn small-btn", name + "をデバッグ用にコピー"); b.type = "button";
+        b.onclick = function () {
+          Dialog.confirm(name + "を、デバッグ用のセーブにコピーします。" + name + "は変わりません。\n" +
+            (debug.exists ? "今のデバッグ用のセーブは上書きされます（セーブの控えに残すので、セーブの復元でもどせます）。\n" : "") +
+            "コピーしたら、デバッグ用に切りかえます。よいですか？", function () {
+            b.disabled = true;
+            Sync.copyToDebug(from).then(null, function (err) {
+              b.disabled = false;
+              var m = String(err && err.message || "");
+              render(m.indexOf("unknown action") >= 0 ? "GAS を新しくすると使えるようになります" :
+                m.indexOf("no save") >= 0 ? name + "がまだありません" : "コピーできませんでした（" + m + "）");
+            });
+          }, null, { yes: "コピーする" });
+        };
+        return b;
+      }
+      if (main.exists) foot.appendChild(copyBtn("main", "対戦用のセーブ"));
+      foot.appendChild(copyBtn("child", "子どものセーブ"));
       var to = dbg ? "" : "debug";
       var sw = el("button", "btn small-btn", dbg ? "対戦用に切りかえる" : "デバッグ用に切りかえる"); sw.type = "button";
       sw.onclick = function () {

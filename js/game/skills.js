@@ -38,12 +38,27 @@ var Combat = (function () {
       var res = Battle.damage(atk, def, { mult: spec.mult, element: elem, res: e.res, crit: Party.eff(c, "crit") + (spec.crit || 0), critMul: 1.5 + (c.stats.critDmg || 0) });
       // 闘技場の相手：1回で HP の 45% までしかへらない（2026-11-01 保護者：ヘッドショットの会心などで一撃で倒せてしまった。どんな技でも3回は当てる）
       if (e.rival && res.amount > Math.ceil(e.maxHp * RIVAL_CAP)) res.amount = Math.ceil(e.maxHp * RIVAL_CAP);
+      // ドワーフキングの盾がまえ（2026-11-07）：前からの攻撃は減る。横・後ろからはふつう
+      var guarded = Bosses.guardFront(e, ox, oy);
+      if (guarded) { res.amount = Math.max(1, Math.round(res.amount * e.def.guardCut)); res.crit = false; }
+      // 氷牙獣の氷のよろい（2026-11-09）：受けるダメージ半分。火の攻撃を当てるととける（その1回はふつうに当たる）
+      if (e.armor > 0) {
+        if (elem === "fire") Bosses.meltArmor(e, true);
+        else {
+          res.amount = Math.max(1, Math.round(res.amount * Bosses.armorMult(e))); res.crit = false;
+          if (!(e.guardPop > Date.now())) { e.guardPop = Date.now() + 900; Battle.pop(e.x, e.y - 52, "かたい！", "#9ff4ff", 8); }
+        }
+      }
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;
       e.swingsTaken = (e.swingsTaken || 0) + 1;
       Battle.showHit(e.x, e.y - 20, res, false);
       Sound.play("hit");
+      if (guarded) {   // 盾ではじいた：銀の火花と「ガード」
+        effects.push({ kind: "spark", x: e.x + e.face.x * (e.r + 2), y: e.y - 10 + e.face.y * 6, t: 0.2, max: 0.2, ang: Math.random() * Math.PI, color: "#e6ecf4" });
+        if (!(e.guardPop > Date.now())) { e.guardPop = Date.now() + 600; Battle.pop(e.x, e.y - 52, "ガード", "#c8d0dc", 8); }
+      }
       // 当たったところに、火花（物理）か、はじける光（魔法）を出す。
       // 火・水・草・光・闇の攻撃は、属性ごとのエフェクト（2026-10-27 保護者と決定。魔法剣・魔法・スキルのどれでも）。
       // 弱点をついたときは大きく・長く、効かないときは小さく・うすく

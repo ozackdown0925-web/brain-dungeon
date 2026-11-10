@@ -157,6 +157,7 @@
 
   function enterRoom(k, fromDir) {
     curKey = k;
+    skyLift = 0;
     var c = dg.cells[k];
     c.visited = true;
     room = c.room;
@@ -169,6 +170,7 @@
     run.entry = { x: p.x, y: p.y, face: p.face }; // 落とし穴に落ちたら、ここへもどる
     run.inPit = false;
     run.falls = [];   // 落ちてくる岩（落石の罠。部屋を出ると消える）
+    run.gust = null;  // 突風で押し流されているところ（烈風の峰）
     A.inv = 0.6; // 部屋に入った直後は少しだけ無敵
     // たおした敵はもどらない。まだいる敵は、もとの場所に HP 満タンでいる。
     var lv = 0;
@@ -437,7 +439,7 @@
     for (var tries = 0; tries < 12 && !spot; tries++) {
       var a = Math.random() * Math.PI * 2, x = ne.x + Math.cos(a) * 22, y = ne.y + Math.sin(a) * 18;
       var ch = room.tile(Math.floor(x / T), Math.floor(y / T));
-      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
+      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
     }
     if (!spot) return;
     var type = nestPick();
@@ -449,6 +451,18 @@
     GameState.noteSeen(type);
     ne.birth = 0.5;
     n.made++;
+    run.roomAlive = Enemies.alive().length;
+  }
+  // 氷のスライム（白銀の霊峰、2026-11-09）：たおすと、左右に小さいスライムが2つ出る。小さいほうは経験値や物を落とさない（summoned）
+  function splitFoe(e) {
+    for (var i = 0; i < 2; i++) {
+      var sx = e.x + (i ? 7 : -7), sy = e.y + (i ? 3 : -3);
+      if (room.hitsWall(sx - 4, sy - 4, 8, 8)) { sx = e.x; sy = e.y; }
+      var m = Enemies.spawn(e.def.split, sx, sy, run.depth || dg.power);
+      toughen(m);
+      m.summoned = true; m.cd = 0.9 + i * 0.4; m.face = { x: i ? 1 : -1, y: 0 };
+    }
+    Battle.pop(e.x, e.y - 30, "分かれた！", "#bfe6f8", 8);
     run.roomAlive = Enemies.alive().length;
   }
   // 巣をこわした：経験値は敵3体分。ゴールドや素材は落とさない（宝箱があるので）
@@ -485,6 +499,7 @@
       });
     }
     if (e.def.boss) { startBossCine(e); return; }
+    if (e.def.split) splitFoe(e);   // 氷のスライム：小さい2つに分かれる
     if (e.summoned) return; // 子オオカミは何も落とさない
     // 敵が落とすもの：ゴールドと素材だけ（装備は宝箱・ボス・お店・鍛冶屋から）
     var drop = Loot.enemyDrop(e.type, dg.power, settings.correct);
@@ -729,20 +744,48 @@
         }
       }
     }
+    // 突風（烈風の峰、2026-11-08 保護者と決定）：押し流されているあいだは、決まった向きへ動かされる（岩や壁では止まる。落とし穴に入ることもある）
+    if (run.gust && run.gust.t > 0) {
+      run.gust.t -= dt;
+      var gk = Math.min(1, run.gust.t / 0.25);   // 終わりぎわは弱くなる
+      room.move(A, run.gust.dx * GUST_SPEED * gk * dt, run.gust.dy * GUST_SPEED * gk * dt);
+    }
     // 罠：立っているタイルで調べる
     var tx = Math.floor(A.x / T), ty = Math.floor(A.y / T), onPit = false;
-    for (var i = 0; i < c.traps.length; i++) {
-      var t = c.traps[i];
+    var traps = Bosses.frost().length ? c.traps.concat(Bosses.frost()) : c.traps;   // 氷牙獣のこおりの息で凍った床も、すべる氷として調べる
+    for (var i = 0; i < traps.length; i++) {
+      var t = traps[i];
       if (tx < t.tx || ty < t.ty || tx >= t.tx + t.w || ty >= t.ty + t.h) continue;
       if (t.hidden && !t.found) { t.found = true; Battle.pop(A.x, A.y - 40, "隠れた罠！", "#c86ae0", 8); snapshot(); Sound.play("trap"); }
       var ch = Party.current();
-      if (t.type === "rock") {
+      if (t.type === "wind") {
+        if (!(t.wait > 0)) {
+          var gd = Dungeon.DIRS[t.dir] || { dx: 1, dy: 0 };
+          t.wait = 2;
+          run.gust = { dx: gd.dx, dy: gd.dy, t: GUST_TIME };
+          say("突風だ！ 風に押し流される！"); Sound.play("trap");
+        }
+        continue;
+      }
+      if (t.type === "ice") {
+        // すべる氷（白銀の霊峰、2026-11-09 保護者と決定）：ふむと、向いている向きへ少しのあいだすべっていく（突風と同じ動き。岩や壁で止まる）
+        if (!(t.wait > 0)) {
+          var fl = Math.sqrt(A.face.x * A.face.x + A.face.y * A.face.y) || 1;
+          t.wait = 1.5;
+          run.gust = { dx: A.face.x / fl, dy: A.face.y / fl, t: SLIDE_TIME, slide: true };
+          say("つるっ！ 氷ですべった！"); Sound.play("trap");
+        }
+        continue;
+      }
+      if (t.type === "rock" || t.type === "icicle") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
         if (!(t.wait > 0)) {
           t.wait = 2.5;
-          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME });
-          say("頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+          // つらら（白銀の霊峰、2026-11-09）：落石と同じ。上から氷のつららが落ちてくる
+          var icy = t.type === "icicle";
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy });
+          say(icy ? "頭の上で、つららがきしむ音がした！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
         }
         continue;
       }
@@ -781,6 +824,10 @@
     return false;
   }
 
+  // ---------- 突風（烈風の峰） ----------
+  var GUST_TIME = 0.7, GUST_SPEED = 130;
+  var SLIDE_TIME = 0.6;   // すべる氷（白銀の霊峰）：0.6秒すべる（およそ4〜5マス）   // 0.7秒、1秒あたり130点（およそ5マス流される）
+
   // ---------- 落石（黒鉄の坑道） ----------
   var FALL_TIME = 0.9, FALL_R = 13;
   function updateFalls(dt, c) {
@@ -798,12 +845,57 @@
             ch.hp = Math.max(1, ch.hp - dmg);
             A.hurtT = 0.3;
             Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
-            say("落石に当たった！");
+            say(f.ice ? "つららに当たった！" : "落石に当たった！");
           }
         }
       } else f.dust -= dt;
     });
     run.falls = run.falls.filter(function (f) { return f.t > 0 || f.dust > 0; });
+  }
+  // ---------- 雪（白銀の霊峰。2026-11-09） ----------
+  // 雪山の部屋では、画面に雪がちらちら降る（絵だけ。遊び方は変わらない）。粒は手前（大きく速い）と奥（小さくおそい）の2種類。
+  // 部屋といっしょに少し流れる（カメラの動きを半分だけ足す）ので、歩くと雪の中を進んでいるように見える
+  var SNOW_N = 70;
+  // 吹雪（スノーゴーレムの技。Bosses.blizzard() が 0〜1）：画面が白くなり、まわり（半径 BLIZ_R）だけ見える。雪の粒も多く速く、横へ流れる
+  var BLIZ_R = 46;
+  function drawSnowfall() {
+    if (!room || room.theme !== "snow") return;
+    var t = glow, vw = view.w, vh = view.h, bz = Bosses.blizzard ? Bosses.blizzard() : 0;
+    if (bz > 0) {
+      var ctx = Render.ctx, px = A.x - cam.x, py = A.y - 8 - cam.y;
+      var gr = ctx.createRadialGradient(px, py, BLIZ_R * 0.6, px, py, BLIZ_R * 1.8);
+      gr.addColorStop(0, "rgba(232,240,250,0)");
+      gr.addColorStop(1, "rgba(232,240,250," + (0.93 * bz).toFixed(2) + ")");
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, vw, vh);
+      for (var b = 0; b < 90 * bz; b++) {
+        var bxx = ((b * 53.1 + t * (160 + (b % 5) * 30)) % (vw + 40) + vw + 40) % (vw + 40) - 20, byy = ((b * 37.7 + t * 40 + Math.sin(t * 2 + b) * 8) % (vh + 20) + vh + 20) % (vh + 20) - 10;
+        Render.rect(Math.round(bxx), Math.round(byy), b % 3 ? 2 : 3, 1, "rgba(255,255,255,0.8)");
+      }
+    }
+    for (var i = 0; i < SNOW_N; i++) {
+      var near = i % 3 === 0, sp = near ? 34 : 18, sz = near ? 2 : 1;
+      var bx = (i * 97.3) % 1, by = (i * 61.7) % 1;
+      var y = ((by * (vh + 20) + t * sp - cam.y * (near ? 0.5 : 0.3)) % (vh + 20) + vh + 20) % (vh + 20) - 10;
+      var x = ((bx * (vw + 20) + Math.sin(t * 0.9 + i) * 6 + t * (near ? 8 : 4) - cam.x * (near ? 0.5 : 0.3)) % (vw + 20) + vw + 20) % (vw + 20) - 10;
+      Render.rect(Math.round(x), Math.round(y), sz, sz, near ? "rgba(255,255,255,0.85)" : "rgba(230,240,252,0.6)");
+    }
+  }
+  // 突風で押し流されているあいだ：まわりに、流れる向きの白い風の線
+  function drawGust() {
+    if (!run.gust || !(run.gust.t > 0)) return;
+    if (run.gust.slide) {   // すべる氷：足もとに、白い氷のかけらが後ろへ飛ぶ
+      for (var si = 0; si < 4; si++) {
+        var sp2 = ((SLIDE_TIME - run.gust.t) * 4 + si / 4) % 1;
+        Render.rect(Math.round(A.x - cam.x - run.gust.dx * (4 + sp2 * 12) + (si - 1.5) * 3), Math.round(A.y + 4 - cam.y - run.gust.dy * (4 + sp2 * 12)), 2, 1, "rgba(232,248,255," + (0.9 - sp2 * 0.7).toFixed(2) + ")");
+      }
+      return;
+    }
+    var g = run.gust, x = A.x - cam.x, y = A.y - 8 - cam.y, k = Math.min(1, g.t / 0.25);
+    for (var i = 0; i < 6; i++) {
+      var ph = ((GUST_TIME - g.t) * 3 + i / 6) % 1, side = (i - 2.5) * 5;
+      var lx = x - g.dx * (16 - ph * 32) - g.dy * side, ly = y - g.dy * (16 - ph * 32) + g.dx * side;
+      Render.rect(Math.round(lx), Math.round(ly), g.dx ? 6 : 1, g.dy ? 6 : 1, "rgba(240,250,255," + (0.7 * k).toFixed(2) + ")");
+    }
   }
   // 影はだんだん濃く大きく、岩は上から落ちてくる。落ちたら砂けむり
   function drawFalls() {
@@ -816,7 +908,12 @@
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R * (0.5 + 0.5 * k), FALL_R * (0.5 + 0.5 * k) * 0.55, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(255,90,64," + (0.3 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R, FALL_R * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-        if (k > 0.35) {   // 岩：上から落ちてくる
+        if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
+          var iy = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
+          Render.rect(x - 3, iy - 10, 7, 4, "#140c1c"); Render.rect(x - 2, iy - 6, 5, 4, "#140c1c"); Render.rect(x - 1, iy - 2, 3, 3, "#140c1c"); Render.rect(x, iy + 1, 1, 2, "#140c1c");
+          Render.rect(x - 2, iy - 9, 5, 3, "#b8dcf0"); Render.rect(x - 1, iy - 6, 3, 4, "#94c4e0"); Render.rect(x, iy - 2, 1, 3, "#6ea4c8");
+          Render.rect(x - 1, iy - 9, 1, 5, "#f0faff");
+        } else if (k > 0.35) {   // 岩：上から落ちてくる
           var ry = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 5, ry - 4, 10, 8, "#140c1c");
           Render.rect(x - 4, ry - 3, 8, 6, "#544f5a");
@@ -827,18 +924,28 @@
         var kd = 1 - f.dust / 0.35;
         for (var i = 0; i < 8; i++) {
           var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
-          Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
+          if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
+          else Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
         }
       }
     });
   }
 
   // 部屋が画面より大きいときは、キャラについていく。小さいときは、部屋を画面のまんなかに置く。
+  var skyLift = 0;   // 空のボスを見るために画面を上へずらす割合（0〜1）
   function updateCamera() {
     if (room.pxW <= view.w) cam.x = -Math.round((view.w - room.pxW) / 2);
     else cam.x = Math.round(clamp(A.x - view.w / 2, 0, room.pxW - view.w));
     if (room.pxH <= view.h) cam.y = -Math.round((view.h - room.pxH) / 2);
-    else cam.y = Math.round(clamp(A.y - view.h / 2, 0, room.pxH - view.h));
+    else {
+      // 大怪鳥が崖の外の空にいるあいだは、画面を少し上へずらして、空のボスも見えるようにする（2026-11-09）
+      var cy0 = clamp(A.y - view.h / 2, 0, room.pxH - view.h);
+      var up = boss && !boss.dead && boss.overSky;
+      skyLift += ((up ? 1 : 0) - skyLift) * 0.06;
+      if (skyLift < 0.01 && !up) skyLift = 0;
+      var cy1 = boss ? clamp(Math.min(A.y - view.h / 2, Math.max(boss.y - 90, A.y - view.h + 40)), 0, room.pxH - view.h) : cy0;
+      cam.y = Math.round(cy0 + (cy1 - cy0) * skyLift);
+    }
     var q = Bosses.shakeOffset();   // ゴーレムの大きな攻撃で、画面がゆれる
     cam.x += q.x; cam.y += q.y;
   }
@@ -852,12 +959,14 @@
     if (curKey === dg.exit && (!dg.boss || dg.bossDown)) drawExit();
     Enemies.draw(cam);
     drawFalls();
+    drawGust();
     if (cine && cine.kind === "boss") drawBossCine();
     Combat.drawCastBack(cam, view);   // スキルを使ったとき：画面が少し暗くなり、使った仲間のまわりが光る
     drawActor();
     room.drawCrowns(cam, view, A.y + 6, true);    // キャラより奥（北）の行の木の葉は、キャラの前
     Combat.draw(cam);
     Battle.draw(cam);
+    drawSnowfall();
     drawHud();
     if (run.fade > 0) Render.rect(0, 0, view.w, view.h, "rgba(0,0,0," + Math.min(1, run.fade / 0.3).toFixed(2) + ")");
     if (cine && cine.kind === "exit") drawExitCine();
@@ -883,6 +992,24 @@
       var x = Math.round(t.tx * T - cam.x), y = Math.round(t.ty * T - cam.y);
       if (t.type === "pit") {
         ctx.drawImage(Props.get("pit"), x, y);
+      } else if (t.type === "wind") {   // 突風：うずを巻く風の線と、流される向きの矢印（白と水色）。ゆっくり動く
+        var gd2 = Dungeon.DIRS[t.dir] || { dx: 1, dy: 0 }, cx2 = x + 8, cy2 = y + 8, ph2 = (glow * 1.5 + i * 0.3) % 1;
+        for (var gw = 0; gw < 3; gw++) {
+          var gp = (ph2 + gw / 3) % 1, off = (gp - 0.5) * 10;
+          var lx = cx2 + gd2.dx * off - gd2.dy * (gw - 1) * 4, ly = cy2 + gd2.dy * off + gd2.dx * (gw - 1) * 4;
+          Render.rect(Math.round(lx - gd2.dx * 2), Math.round(ly - gd2.dy * 2), gd2.dx ? 4 : 1, gd2.dy ? 4 : 1, gp < 0.7 ? "rgba(232,248,255,0.8)" : "rgba(168,212,232,0.5)");
+        }
+        // 矢印の先
+        Render.rect(Math.round(cx2 + gd2.dx * 6) - 1, Math.round(cy2 + gd2.dy * 6) - 1, 2, 2, "#e8f8ff");
+        Render.rect(Math.round(cx2 + gd2.dx * 4 - gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 + gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
+        Render.rect(Math.round(cx2 + gd2.dx * 4 + gd2.dy * 2) - 1, Math.round(cy2 + gd2.dy * 4 - gd2.dx * 2) - 1, 2, 2, "#a8d4e8");
+      } else if (t.type === "ice") {   // すべる氷：つるつるの氷の板（うす青に白い光）
+        Render.rect(x + 1, y + 2, 14, 12, "#3a6a90"); Render.rect(x + 2, y + 3, 12, 10, "#94c4e0");
+        Render.rect(x + 3, y + 4, 4, 1, "#f0faff"); Render.rect(x + 3, y + 5, 2, 1, "#f0faff"); Render.rect(x + 9, y + 9, 3, 1, "#e8f6ff");
+        if ((glow * 0.8 + i * 0.37) % 1 < 0.15) Render.rect(x + 10, y + 5, 2, 2, "#ffffff");   // ときどき光る
+      } else if (t.type === "icicle") {   // つらら：落ちてわれた氷のかけらと、床のひび
+        Render.rect(x + 3, y + 5, 3, 2, "#b8dcf0"); Render.rect(x + 10, y + 9, 2, 2, "#94c4e0"); Render.rect(x + 6, y + 12, 3, 1, "#e8f6ff");
+        Render.rect(x + 4, y + 8, 1, 1, "#525c70"); Render.rect(x + 5, y + 9, 1, 1, "#525c70"); Render.rect(x + 6, y + 10, 2, 1, "#525c70"); Render.rect(x + 10, y + 5, 1, 2, "#525c70");
       } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
         Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");
@@ -909,7 +1036,7 @@
     }
     if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" ? room.theme : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
       for (var sp = 0; sp < 5; sp++) {
         var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
         if (ph > 0.85) continue;
@@ -1289,7 +1416,8 @@
   // 画面の右に、1秒あたりのダメージ（最近10秒）・合計ダメージ・使った MP・こわした回数とかかった時間を出す。
   var training = null;
   function startTraining(cfg) {
-    training = { type: cfg.type, attack: !!cfg.attack, res: cfg.res || {}, statue: null, respawn: 0, clock: 0 };
+    if (GameState.trainingLeft() <= 0) { Town.openTraining(); return; }   // 今日の10分は使いきった（宿屋の画面でも入れないようにしている）
+    training = { type: cfg.type, attack: !!cfg.attack, res: cfg.res || {}, statue: null, respawn: 0, clock: 0, unsaved: 0, ending: false };
     resetTrainStats();
     trial = { correct: 0, subjects: [], test: true, training: true };
     settings.correct = 0; settings.dungeon = "forest1";
@@ -1329,6 +1457,12 @@
   }
   function trainUpdate(dt) {
     training.clock += dt;
+    // 1日10分まで（2026-11-09）。iPad の中には30秒ごとに覚えさせ、出るときに GAS へ送る
+    if (!training.ending && GameState.trainingLeft() !== Infinity) {
+      GameState.addTraining(dt); training.unsaved += dt;
+      if (training.unsaved >= 30) { training.unsaved = 0; GameState.save(); }
+      if (GameState.trainingLeft() <= 0) { trainTimeUp(); return; }
+    }
     var st = training.statue;
     // 像に入ったダメージ（毒などもふくむ）
     if (st && st.hp < training.lastHp) {
@@ -1350,6 +1484,11 @@
       if (training.respawn <= 0) { spawnStatue(dg.cells[curKey].enemies[0]); run.roomAlive = 1; }
     }
     while (training.log.length && training.clock - training.log[0][0] > 10) training.log.shift();
+  }
+  function trainTimeUp() {
+    training.ending = true;
+    paused = true; Input.releaseAll();   // 知らせを読んでいるあいだは止めておく（メニューは出さない）
+    Dialog.alert("今日は 10分 きたえた！\n今日の訓練は これまでにしよう。\n（また明日、訓練場に入れる）", function () { leaveTraining(); });
   }
   function trainRevive() {
     Party.members().forEach(function (m) { m.down = false; m.hp = m.stats.hp; m.mp = m.stats.mp; m.status = {}; });
@@ -1373,11 +1512,15 @@
       ["こわした回数 " + training.kills + (training.lastKill !== null ? "　前回 " + training.lastKill.toFixed(1) + "秒" : ""), "#ece7da"],
       ["像の HP " + Math.max(0, Math.ceil(st && !st.dead ? st.hp : 0)) + "/" + (st ? st.maxHp : 0), "#ef9a9a"]
     ];
+    // 今日の訓練ののこり時間（1日10分まで。2026-11-09）
+    var left = GameState.trainingLeft(), sec = Math.ceil(left);
+    if (left !== Infinity) lines.push(["今日の訓練 のこり " + Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2), left < 60 ? "#ffd24a" : "#a3c88a"]);
     Render.rect(x - 150, y - 3, 153, lines.length * 10 + 5, "rgba(10,12,18,0.72)");
     lines.forEach(function (l, i) { Render.text(l[0], x, y + i * 10, { size: 7, align: "right", color: l[1] }); });
   }
   function leaveTraining() {
     setPaused(false);
+    if (GameState.trainingLeft() !== Infinity) { GameState.save(); if (window.Sync) Sync.save("", ""); }   // 使った時間を残す
     active = false; dg = null; training = null;
     Enemies.clear(); Combat.clear(); Battle.clear();
     Sound.bgm("town");
@@ -1482,7 +1625,7 @@
     var beat = arena.rivals.filter(function (r) { return r.down; }).length;
     var lines = win
       ? [arena.who + "のパーティに勝った！", "たおれた仲間：" + downs + "人　かかった時間：" + Math.round(arena.clock) + "秒"]
-      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　" + (GameState.arenaLeft() > 1 ? "もう一度、挑戦してみよう！" : "また明日、挑戦しよう！")];
+      : [gaveUp ? "降参した。" : "3人ともたおれてしまった…", "たおした相手：" + beat + "人　" + (GameState.arenaLeft() > 1 ? "もう一度、挑戦してみよう！" : GameState.arenaPassCount() < GameState.ARENA_PER_DAY ? "書庫で問題を解くと、また挑戦できる！" : "また明日、挑戦しよう！")];
     Sound.play(win ? "levelup" : "down");
     showStory(win ? "勝った！" : "負けた…", lines, "闘技場にもどる", function () { leaveArena(win); });
   }
@@ -1534,7 +1677,7 @@
       finish("quit");
     }, null, { yes: "やめて拠点にもどる", no: "冒険を続ける" });
   });
-  window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape")) setPaused(false); });
+  window.addEventListener("keydown", function (e) { if (paused && (e.code === "Escape") && !(training && training.ending)) setPaused(false); });
 
   function setPaused(on) {
     paused = on;

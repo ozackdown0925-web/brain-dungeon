@@ -35,11 +35,12 @@ var WorldMap = (function () {
       { id: "base", kind: "base", x: 60, y: 124 },
       { id: "kodo", kind: "dungeon", x: 76, y: 80,
         note: "6階と12階に、強い魔物がいる。" },
-      // 山道と雪山の説明（2026-11-04 保護者が書いた文。作るときに data.js の DUNGEONS の intro に移す）
-      //   山道：「雪山へと続く険しく冷たい一本道。」「頂上付近には「空の覇者である大怪鳥が巣食っている」と言い伝えられ、誰もが恐れて近寄らない。」
-      //   雪山：「魔王城へと続く道を阻む、凍てつくような寒さに支配された過酷な山岳地帯。」「吹雪の向こう側では、巨大な雪の獣がうごめいているという。」
-      { id: "yama", kind: "dungeon", locked: true, x: 196, y: 62 },
-      { id: "yuki", kind: "dungeon", locked: true, x: 282, y: 52 },
+      // 山（烈風の峰）はまんなかの茶色い山。ドワーフキングをたおすと開く（2026-11-08）。説明文は data.js の DUNGEONS.yama.intro
+      { id: "yama", kind: "dungeon", x: 196, y: 62,
+        note: "6階と12階に、強い魔物がいる。" },
+      // 雪山（白銀の霊峰）は右上の白い山。大怪鳥をたおすと開く（2026-11-09）。説明文は data.js の DUNGEONS.yuki.intro
+      { id: "yuki", kind: "dungeon", x: 282, y: 52,
+        note: "6階と12階に、強い魔物がいる。" },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
       { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
     ]
