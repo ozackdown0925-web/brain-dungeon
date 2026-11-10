@@ -676,10 +676,13 @@ var GameData = (function () {
   //   影走り：床に赤い線で予告 → その線を一気に走りぬけて斬る（線から出ればよけられる）。
   //   爆弾投げ：こちらの足もとに爆弾（落ちる場所に輪で予告。HP半分から3つ）。HP が半分になると、子分（盗賊の剣士と弓使い）を1回だけ呼ぶ。
   //   HP 半分から速くなる（動き・斬り・大技の間かく）。刺が弱点（子分と同じ）
+  // 2026-11-11 保護者（子どもが Lv28 の剣闘士でおかしらを楽にたおし、爆弾で7・大技で30くらいしか受けなかった）：坑道と峰のボスの物攻が、
+  //   深さで上がるまわりの敵より低かったので（霊峰のボスを 2026-11-09 に直したのと同じ理由）、大技がその階の体力の12〜17%になるように上げた：
+  //   おかしら 36→58、ドワーフキング 40→62、ラフレシア 38→66、大怪鳥 42→70。氷牙獣のつららは ×2.2→×1.8（大怪鳥からの上がり方を小さく）
   ENEMIES.bandit_boss = {
     // 2026-11-03 保護者：Lv19（ゴーレムをたおしたところ）で普通に勝てた。斬が効きにくいゴーレムと、剣で戦うとほぼ同じだったので、
     //   坑道6階に来るころ（Lv24〜25くらい）に合わせて強くした：HP 3400→4800、物攻 30→36、物防 9→11
-    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 36, matk: 0, pdef: 11, mdef: 8,
+    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 58, matk: 0, pdef: 11, mdef: 8,
         res: { pierce: 1.3 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
     reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
     dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
@@ -699,7 +702,7 @@ var GameData = (function () {
   //   HP が半分になると、子分（ドワーフの斧使いと鎚使い）を1回だけ呼び、少し速くなる。水が弱点、火はいまひとつ（鍛冶の民なので）
   //   強さ（tools/balance.js の式で試算）：坑道12階（Lv31・鋼R＋5）で剣 44振り・弓 55本（盾がまえで前からは減る）。おかしら（6階）は剣 39振り・弓 37本
   ENEMIES.dwarf_boss = {
-    name: "ドワーフキング", kind: "dwarf_boss", boss: true, hp: 6000, patk: 40, matk: 0, pdef: 13, mdef: 9,
+    name: "ドワーフキング", kind: "dwarf_boss", boss: true, hp: 6000, patk: 62, matk: 0, pdef: 13, mdef: 9,
     res: { water: 1.3, fire: 0.5 }, speed: 24, speedHalf: 30, r: 14, color: "#a82a2a",
     reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, swingMult: 1.3,
     guardEvery: 9, guardTime: 2.6, guardCut: 0.25, guardTurn: 1.4, bashReach: 26, bashMult: 1.0,
@@ -720,7 +723,7 @@ var GameData = (function () {
   //   HP が半分：花びらが大きく開き、毒の種が5つになり、霧と吸いこみの間かくが短くなる。つぼみは3つ。
   //   斬が弱点（つるも花も切れる）。草は効かない、火は湯けむりでしめっているのでいまひとつ、水もいまひとつ
   ENEMIES.raff_boss = {
-    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 38, matk: 0, pdef: 10, mdef: 10,
+    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 66, matk: 0, pdef: 10, mdef: 10,
     res: { slash: 1.3, grass: 0, fire: 0.75, water: 0.75 }, speed: 0, r: 20, color: "#c83a3a",
     whipReach: 34, windup: 0.55, cooldown: 1.3, cooldownHalf: 1.0, whipMult: 1.2,
     seedSpeed: 115, seeds: 3, seedsHalf: 5, seedSpread: 0.32, seedMult: 0.8,
@@ -744,7 +747,7 @@ var GameData = (function () {
   //     空にいるあいだは剣などは届かず、矢・魔法だけが当たる（崖の外まで歩けないので）。空からも風の刃を撃ってくる。
   //   火が弱点（つばさが燃える）。草はいまひとつ
   ENEMIES.roc_boss = {
-    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 42, matk: 0, pdef: 10, mdef: 9,
+    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 70, matk: 0, pdef: 10, mdef: 9,
     res: { fire: 1.3, grass: 0.75 }, speed: 46, r: 16, color: "#8a6a3a",
     clawReach: 22, windup: 0.5, cooldown: 1.3, cooldownHalf: 1.0, clawMult: 1.2, keep: 64,
     bladeSpeed: 150, blades: 3, bladesHalf: 5, bladeSpread: 0.3, bladeMult: 0.8,
@@ -811,7 +814,7 @@ var GameData = (function () {
     res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
     reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
     chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
-    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 2.2,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 1.8,
     howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 75,
     leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
     spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
