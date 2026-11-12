@@ -4,6 +4,8 @@
 //   小4までに習わない漢字なのに、ふりがなの辞書（js/game/furigana.js）にも
 //   {漢字|よみ} の書きこみにもない所を出す。何も出なければ OK。
 //   node tools/check-furigana.js --all   … 辞書で読みがついた所も含めて、全部の文を出す
+//   node tools/check-furigana.js --adj   … 熟語の途中で1文字だけ読みがついた所を出す（「霊峰」が「れい・みね」になる、など）。
+//                                          まちがっていたら、熟語まるごとの読みを辞書に足す
 var fs = require("fs"), path = require("path");
 var root = path.join(__dirname, "..");
 var KANJI = require("./kanji-sho4.js");
@@ -63,7 +65,20 @@ function htmlTexts(src) {
   return out;
 }
 
-var all = process.argv.indexOf("--all") >= 0, problems = 0;
+var all = process.argv.indexOf("--all") >= 0, adj = process.argv.indexOf("--adj") >= 0, problems = 0, adjSeen = {};
+// 熟語の途中で1文字だけ読みがついた所（となりにも漢字がある所）を、言葉ごとに1回だけ出す
+function checkAdj(f, s) {
+  var re = /[一-鿿々]+/g, m;
+  while ((m = re.exec(s.text))) {
+    var segs = Furi.parse(m[0]);
+    if (segs.length < 2) continue;
+    var single = false;
+    for (var k = 0; k < segs.length; k++) if (segs[k].r != null && segs[k].t.length === 1) single = true;
+    if (!single || adjSeen[m[0]]) continue;
+    adjSeen[m[0]] = true;
+    console.log(f + ":" + s.line + "  " + Furi.markup(m[0]));
+  }
+}
 var files = fs.readdirSync(path.join(root, "js/game")).filter(function (f) { return /\.js$/.test(f) && f !== "furigana.js"; })
   .map(function (f) { return "js/game/" + f; }).concat(["game.html"]);
 files.forEach(function (f) {
@@ -71,6 +86,7 @@ files.forEach(function (f) {
   var src = fs.readFileSync(path.join(root, f), "utf8");
   var list = /\.js$/.test(f) ? jsStrings(src) : htmlTexts(src);
   list.forEach(function (s) {
+    if (adj) { checkAdj(f, s); return; }
     var hasK = false, miss = "";
     Furi.parse(s.text).forEach(function (seg) {
       if (seg.r != null) { hasK = true; return; }
@@ -83,5 +99,6 @@ files.forEach(function (f) {
     else if (all && hasK) console.log(f + ":" + s.line + "  " + Furi.markup(s.text).replace(/\s+/g, " ").trim());
   });
 });
-if (!all) console.log(problems ? "\nふりがなのない、小4までに習わない漢字：" + problems + " か所" : "OK：ふりがなのつけ忘れはありません");
+if (adj) console.log("\n↑ 読みがおかしい言葉があれば、熟語まるごとの読みを js/game/furigana.js の辞書に足す");
+else if (!all) console.log(problems ? "\nふりがなのない、小4までに習わない漢字：" + problems + " か所" : "OK：ふりがなのつけ忘れはありません");
 process.exitCode = problems ? 1 : 0;
