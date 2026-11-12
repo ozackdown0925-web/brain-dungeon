@@ -136,6 +136,8 @@ var GameData = (function () {
   // stat：p＝物攻、m＝魔攻。elem：weapon＝武器の属性。status：{ type: poison/para/sleep/break, chance, dur }
   var EDGE = ["sword", "greatsword", "axe"];
   var HEAVY = ["greatsword", "axe"];
+  // 魔物使いの呼び出しの前のため（秒。2026-11-12 保護者：破衝撃の1.5秒くらいは待たせたい。すばやい構えの30%を引いても約1.5秒）
+  var SUMMON_CHARGE = 2.2;
   var SKILLS = [
     // 戦士
     { id: "w.spin",   job: "warrior", star: 1, name: "回転ぎり", desc: "まわりの敵を、まとめて斬る。",   short: "回転",   cond: { weapons: EDGE }, mp: 6, ct: 4,
@@ -336,15 +338,15 @@ var GameData = (function () {
       fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] },
     // 魔物使い（2026-10-26 保護者と決定）：はじめはパッシブ。★1〜★6 は各ダンジョンの主を呼ぶ。呼べるのは、その★になって、その主をたおしているとき（boss）。
     // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。強さは物攻と魔攻の高い方（stat: "best"。守りは使った方）。数字は仮（2026-10-26：弱かったので、MP・待ち時間を下げ、倍率を上げた。
-    // 2026-11-12 保護者「強すぎる」：上級職の★7の大技（倍率2.4〜3.2・待ち12〜16秒）より強かったので、倍率を約2/3、待ち時間を20秒前後に。
-    //   大木 3.0→2.0・15→20秒、魔女 3.2→2.2・15→20秒、エルフ 玉1.0→0.55・回る玉0.5→0.3・18→22秒。MP も少し上げた）
+    // 2026-11-12 保護者「強すぎる。威力は変えず、自分が止まる・出るまでのためとMPを大きく。少なくとも破衝撃（1.5秒ため）くらいは待たせたい」：
+    //   呼ぶ前にため（SUMMON_CHARGE 2.2秒。すばやい構えで30%短くなっても約1.5秒）。MP 16・18・20 → 24・26・28。倍率と待ち時間は前のまま）
     { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
-    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "大木の魔物を呼ぶ。自分を中心に十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 20, ct: 20,
-      fx: [{ t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 2.0, elem: "grass" }] },
-    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 20, ct: 20,
-      fx: [{ t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 2.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
-    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 24, ct: 22,
-      fx: [{ t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 0.55, orbs: 6, touch: 0.3, elem: "dark" }] },
+    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。自分を中心に十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 24, ct: 15,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
+    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "ためてから、沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 26, ct: 15,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
+    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ためてから、ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 28, ct: 18,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
