@@ -230,7 +230,7 @@ var Parent = (function () {
         var b = el("button", "btn small-btn", "このセーブにもどす"); b.type = "button";
         b.onclick = function () {
           Dialog.confirm("この時のセーブにもどします。今のセーブは、一覧に残っている時点までもどります。よいですか？", function () {
-            b.disabled = true;
+            b.disabled = true; document.getElementById("slotMsg").textContent = "コピーしています…";
             Sync.restore(h.id, h.label).then(function () { render("セーブを復元した"); },
               function (err) { b.disabled = false; render("復元できませんでした（" + err.message + "）"); });
           }, null, { yes: "もどす" });
@@ -245,6 +245,11 @@ var Parent = (function () {
   }
 
   // 保護者のセーブの枠（2026-10-29）：対戦用とデバッグ用を切りかえる。保護者の端末だけに出す
+  // セーブの枠のボタンのしっぱいは、ボタンのすぐ下に出す（上の parentNote は画面の外で見えないことがある。2026-11-12）
+  function slotError(msg) {
+    render(msg);
+    document.getElementById("slotMsg").textContent = msg;
+  }
   function renderSlots() {
     var sec = document.getElementById("slotSection");
     sec.hidden = Sync.player() !== "parent";
@@ -265,8 +270,8 @@ var Parent = (function () {
         var mv = el("button", "btn small-btn", "今のセーブをデバッグ用に移す"); mv.type = "button";
         mv.onclick = function () {
           Dialog.confirm("今のセーブ（と、セーブの控え）をデバッグ用に移します。\n対戦用は空になり、キャラクリから始めます。よいですか？", function () {
-            mv.disabled = true;
-            Sync.moveToDebug().then(null, function (err) { mv.disabled = false; render("移せませんでした（" + err.message + "）"); });
+            mv.disabled = true; document.getElementById("slotMsg").textContent = "移しています…";
+            Sync.moveToDebug().then(null, function (err) { mv.disabled = false; slotError("移せませんでした（" + err.message + "）"); });
           }, null, { yes: "移す" });
         };
         foot.appendChild(mv);
@@ -282,7 +287,7 @@ var Parent = (function () {
             Sync.copyToDebug(from).then(null, function (err) {
               b.disabled = false;
               var m = String(err && err.message || "");
-              render(m.indexOf("unknown action") >= 0 ? "GAS を新しくすると使えるようになります" :
+              slotError(m.indexOf("unknown action") >= 0 ? "コピーできませんでした。GAS がまだ古い版です（clasp push のあと、今のデプロイを新しい版にする）" :
                 m.indexOf("no save") >= 0 ? name + "がまだありません" : "コピーできませんでした（" + m + "）");
             });
           }, null, { yes: "コピーする" });
@@ -296,8 +301,8 @@ var Parent = (function () {
       sw.onclick = function () {
         var target = to ? debug : main;
         Dialog.confirm((to ? "デバッグ用" : "対戦用") + "のセーブに切りかえます。" + (target.exists ? "" : "\nまだセーブがないので、キャラクリから始めます。") + "よいですか？", function () {
-          sw.disabled = true;
-          Sync.switchSlot(to).then(null, function (err) { sw.disabled = false; render("切りかえられませんでした（" + err.message + "）"); });
+          sw.disabled = true; document.getElementById("slotMsg").textContent = "切りかえています…";
+          Sync.switchSlot(to).then(null, function (err) { sw.disabled = false; slotError("切りかえられませんでした（" + err.message + "）"); });
         }, null, { yes: "切りかえる" });
       };
       foot.appendChild(sw);
