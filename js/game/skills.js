@@ -746,7 +746,7 @@ var Combat = (function () {
 
   // ---------- 魔物使い：ダンジョンの主を呼ぶ（2026-10-26 保護者と決定） ----------
   // 魔法陣から主があらわれ（呼ぶあいだは止まる）、大技を1回、敵に使って消える。強さは呼んだ仲間の魔攻で決まる
-  //   大木の魔物：根の大波（自分を中心に十字。部屋のはしからはしまでの横と縦の帯）
+  //   大木の魔物：根の大波（敵がいちばん多く入るところを中心に十字。2026-11-12 から自動。部屋のはしからはしまでの横と縦の帯）
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
   //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して（さわった敵にも当たる）、少し回ってから近くの敵を1体ずつねらって撃つ。敵をつらぬく）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
@@ -774,9 +774,10 @@ var Combat = (function () {
   }
   function summonRoots(c, spec, a) {
     // 2026-10-26 保護者の希望：向きが分かりにくいので、自分を中心に十字（横と縦の帯）に出す。まん中で重なっても、1体に当たるのは1回だけ
-    var room = hooks.room, W = 30, done = [];
+    // 2026-11-12 保護者の希望：呼ぶ前のためがのびて位置どりが難しくなったので、十字の中心は自動で合わせる（敵がいちばん多く入るところ。同じなら自分に近いところ）
+    var room = hooks.room, W = 30, done = [], cp = rootsCenter(a, W);
     [true, false].forEach(function (across) {
-      var h = across ? { kind: "rect", x: 0, y: a.y - W / 2, w: room.pxW, h: W } : { kind: "rect", x: a.x - W / 2, y: 0, w: W, h: room.pxH };
+      var h = across ? { kind: "rect", x: 0, y: cp.y - W / 2, w: room.pxW, h: W } : { kind: "rect", x: cp.x - W / 2, y: 0, w: W, h: room.pxH };
       h.warn = 0.3; h.erupt = 0.4;   // 予告 0.45→0.3秒（2026-10-26）
       h.ally = function (hz) {
         Sound.play("hit");
@@ -787,6 +788,20 @@ var Combat = (function () {
       };
       Bosses.addAlly(h);
     });
+  }
+  // 根の十字の中心：敵の x と y の組み合わせから、横の帯と縦の帯に入る敵がいちばん多いところ。敵がいなければ自分
+  function rootsCenter(a, W) {
+    var list = Enemies.hostile(), best = { x: a.x, y: a.y }, bestN = 0, bestD = 0;
+    function inBand(e, cx, cy) { return Math.abs(e.y - cy) < W / 2 + e.r || Math.abs(e.x - cx) < W / 2 + e.r; }
+    list.forEach(function (ex) {
+      list.forEach(function (ey) {
+        var cx = ex.x, cy = ey.y, n = 0;
+        list.forEach(function (e) { if (inBand(e, cx, cy)) n++; });
+        var d = (cx - a.x) * (cx - a.x) + (cy - a.y) * (cy - a.y);
+        if (n > bestN || (n === bestN && d < bestD)) { bestN = n; bestD = d; best = { x: cx, y: cy }; }
+      });
+    });
+    return best;
   }
   function summonPillars(c, spec, a) {
     var list = Enemies.hostile().slice().sort(function (p, q) {
