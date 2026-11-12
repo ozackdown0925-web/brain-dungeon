@@ -341,7 +341,7 @@ var GameData = (function () {
     // 2026-11-12 保護者「強すぎる。威力は変えず、自分が止まる・出るまでのためとMPを大きく。少なくとも破衝撃（1.5秒ため）くらいは待たせたい」：
     //   呼ぶ前にため（SUMMON_CHARGE 2.2秒。すばやい構えで30%短くなっても約1.5秒）。MP 16・18・20 → 24・26・28。倍率と待ち時間は前のまま）
     { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
-    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。自分を中心に十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 24, ct: 15,
+    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。敵がいちばん多く入るところを中心に、十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 24, ct: 15,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
     { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "ためてから、沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 26, ct: 15,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
