@@ -439,7 +439,7 @@
     for (var tries = 0; tries < 12 && !spot; tries++) {
       var a = Math.random() * Math.PI * 2, x = ne.x + Math.cos(a) * 22, y = ne.y + Math.sin(a) * 18;
       var ch = room.tile(Math.floor(x / T), Math.floor(y / T));
-      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
+      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && ch !== "K" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
     }
     if (!spot) return;
     var type = nestPick();
@@ -1036,7 +1036,7 @@
     }
     if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" || room.theme === "crystal" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
       for (var sp = 0; sp < 5; sp++) {
         var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
         if (ph > 0.85) continue;

@@ -42,7 +42,21 @@ var WorldMap = (function () {
       { id: "yuki", kind: "dungeon", x: 282, y: 52,
         note: "6階と12階に、強い魔物がいる。" },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
-      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
+      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 },
+      // 次の地方への道：東のはし（雪山の向こう）。氷牙獣をたおすと開く（2026-11-14）
+      { id: "to_volca", kind: "road", to: "volcamarine", x: 306, y: 108 }
+    ],
+    // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。
+    // 地図の絵は、保護者の絵ができるまで mapart.js の仮の絵（町は湖の西岸、鍾乳洞は北西の岩山、神殿は湖のまんなか、火山は北東）。
+    // 湖底神殿と火山はまだ作っていないので locked（いつも「？？？」）
+    volcamarine: [
+      { id: "base", kind: "base", x: 84, y: 118 },
+      { id: "shonyu", kind: "dungeon", x: 58, y: 56,
+        note: "5階と10階に、強い魔物がいる。" },
+      { id: "kotei", kind: "dungeon", x: 176, y: 104, locked: true },
+      { id: "kazan", kind: "dungeon", x: 266, y: 46, locked: true },
+      // 前の地方への道：西のはし
+      { id: "to_frost", kind: "road", to: "frostcrest", x: 14, y: 96 }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }

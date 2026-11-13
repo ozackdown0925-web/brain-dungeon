@@ -61,15 +61,16 @@ var Dungeon = (function () {
   }
 
   // ---------- 部屋の型に道をあける ----------
-  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I" && ch !== "C"; }
+  function passable(ch) { return ch !== "#" && ch !== "T" && ch !== "~" && ch !== "I" && ch !== "C" && ch !== "K"; }
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
-  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : ForestRooms; }
+  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : th === "crystal" ? CrystalRooms : ForestRooms; }
   // ボスごとにかえる部屋（data.js の bosses の room）。warm＝烈風の峰6階の湯けむりの谷（ラフレシア。2026-11-08）
   // snowfield＝白銀の霊峰6階の雪原の広場（スノーゴーレム。2026-11-09）
-  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom };
-  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : BossRoom; }
+  // lakeside＝水晶の鍾乳洞5階の地底湖のほとり（2026-11-14）
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom };
+  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -171,7 +172,15 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
-    if (theme === "snow") {
+    if (theme === "crystal") {
+      // 水晶の鍾乳洞（地方3の段階1、2026-11-14）：鍾乳洞の敵ができるまでの仮。坑道の後半と同じ（ドワーフの部隊に、火トカゲ・水のスライム・光の精・大コウモリ）
+      var CQ = ["dwarf_axe", "dwarf_hammer", "dwarf_axe"];
+      for (var cj = 0; cj < n; cj++) types.push(CQ[cj % 3]);
+      if (rnd() < 0.45) types[types.length - 1] = "fire_lizard";
+      if (rnd() < 0.4) types[0] = "slime";
+      if (rnd() < 0.45) types[1] = "light_sprite";
+      else if (rnd() < 0.3) types[1] = "bat";
+    } else if (theme === "snow") {
       // 白銀の霊峰（段階2、2026-11-09 保護者と決定）：前半（1〜6階）は氷のスライムとペンギンの兵隊がかわりばんこの群れに、雪男（4階から氷の精）。
       // 後半（7〜12階）はペンギンの兵隊の群れに、雪男・氷の精・ときどき氷のスライム
       if (floor <= 6) {
@@ -353,6 +362,7 @@ var Dungeon = (function () {
   function placeThings(dg, floor, seed, dungeon) {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
+    var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞（罠は段階2で決める。今は坑道と同じ数で、落とし穴と毒の沼だけ）
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -465,7 +475,7 @@ var Dungeon = (function () {
     // 原生の秘境（2026-10-25 保護者と決定）：罠は落とし穴と毒の沼だけ。樹海より2つ多く、落とし穴が多め
     // 黒鉄の坑道（2026-10-27、仮）：樹海より1つ多く、落とし穴が多め
     // 烈風の峰（2026-11-08 保護者と決定）：坑道と同じ数。突風4割・落とし穴4割・毒の沼2割
-    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : cave || peak || snow ? 1 : 0);
+    var traps = 2 + Math.floor(floor / 3) + (rnd() < 0.5 ? 1 : 0) + (swamp || wild ? 2 : cave || peak || snow || crystal ? 1 : 0);
     var trapRooms = keys.filter(function (k) { return k !== dg.start && notNest(k); });
     var perRoom = {};
     for (var t = 0, tries = 0; t < traps && tries < 60; tries++) {
@@ -513,6 +523,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
+    if (th === "crystal") return ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime", "light_sprite"];   // 水晶の鍾乳洞（仮。今は巣を置かない）
     if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
     if (th === "peak") return floor <= 6 ? ["harpy", "goat", "golem_kid"] : ["snow_wolf", "harpy", "wind_sprite"];   // 烈風の峰（今は巣を置かない）
     if (th === "cave") return floor <= 6 ? ["thief_sword", "thief_archer", "bat", "rock_worm"] : ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime"];   // 坑道（今は巣を置かない）

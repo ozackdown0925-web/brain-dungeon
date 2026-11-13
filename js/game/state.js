@@ -284,7 +284,7 @@ var GameState = (function () {
         // 新しい地方の最初のダンジョンなら、地方への道が開けたことを知らせる（2026-10-27）
         var R = GameData.regionOf(GameData.dungeonOf(id).region);
         if (R.needs === id) {
-          report.push({ name: "", raw: true, lines: ["新しい地方「" + R.name + "」への道が開けた！（ワールドマップの北の山道から行ける）"], exp: 0 });
+          report.push({ name: "", raw: true, lines: ["新しい地方「" + R.name + "」への道が開けた！（" + (R.road || "ワールドマップの端の道から行ける") + "）"], exp: 0 });
           return;
         }
         report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });

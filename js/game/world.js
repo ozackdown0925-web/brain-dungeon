@@ -46,10 +46,10 @@ var World = (function () {
     }
     return this.rows[ty].charAt(tx);
   };
-  // 通れないところ：岩の壁・木・水・崩れた石柱（I。原生の秘境）・崖の下の空（C。烈風の峰のボスの部屋。落ちない）
+  // 通れないところ：岩の壁・木・水・崩れた石柱（I。原生の秘境）・崖の下の空（C。烈風の峰のボスの部屋。落ちない）・水晶のかたまり（K。水晶の鍾乳洞）
   Room.prototype.solidAt = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V" || t === "I" || t === "C";
+    return t === "#" || t === "~" || t === "T" || t === "L" || t === "V" || t === "I" || t === "C" || t === "K";
   };
   // タイルを1つ書きかえる（鍵で扉を開けたときなど）
   Room.prototype.setTile = function (tx, ty, ch) {
@@ -57,10 +57,10 @@ var World = (function () {
     this.rows[ty] = r.substring(0, tx) + ch + r.substring(tx + 1);
     this.ver = (this.ver || 0) + 1;   // 絵を描き直す印
   };
-  // 矢や魔法が止まるところ：岩の壁と木と石柱（水の上と崖の下の空は飛んでいける）
+  // 矢や魔法が止まるところ：岩の壁と木と石柱と水晶（水の上と崖の下の空は飛んでいける）
   Room.prototype.blocksShot = function (tx, ty) {
     var t = this.tile(tx, ty);
-    return t === "#" || t === "T" || t === "L" || t === "V" || t === "I";
+    return t === "#" || t === "T" || t === "L" || t === "V" || t === "I" || t === "K";
   };
   // 敵が部屋の外に出ないようにする
   Room.prototype.keepInside = function (e) {
