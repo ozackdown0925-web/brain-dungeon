@@ -341,12 +341,13 @@ var GameData = (function () {
     // 2026-11-12 保護者「強すぎる。威力は変えず、自分が止まる・出るまでのためとMPを大きく。少なくとも破衝撃（1.5秒ため）くらいは待たせたい」：
     //   呼ぶ前にため（SUMMON_CHARGE 2.2秒。すばやい構えで30%短くなっても約1.5秒）。MP 16・18・20 → 24・26・28。倍率と待ち時間は前のまま）
     // 2026-11-12 夕方 保護者「MP消費もっと増やしてもいい」：MP 36・38・40（Lv25 の MP 約126 で、続けて呼べるのは3回くらい）
+    // 2026-11-13 保護者「クールダウンは1分くらいあってもいい」：待ち時間 15・15・18秒 → 3つとも60秒
     { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
-    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。敵がいちばん多く入るところを中心に、十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 36, ct: 15,
+    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。敵がいちばん多く入るところを中心に、十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 36, ct: 60,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
-    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "ためてから、沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 38, ct: 15,
+    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "ためてから、沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 38, ct: 60,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
-    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ためてから、ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 40, ct: 18,
+    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ためてから、ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 40, ct: 60,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
     // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
