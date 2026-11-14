@@ -613,6 +613,33 @@ var GameData = (function () {
       reach: 12, windup: 0.45, cooldown: 1.6, color: "#2a3248",
       chargeMin: 24, chargeRange: 170, chargeMax: 200, chargeWarn: 0.7, chargeSpeed: 260, chargeMult: 1.8, chargeEvery: 3.5, tired: 1.6, chargeWord: "すべりこみの構え！"
     },
+    // ---- 水晶の鍾乳洞の敵（地方3の最初のダンジョン。段階2、2026-11-14 Claude の案）。数字は遊んでみてから直す ----
+    // 弱点がかたよらないように、打（洞くつガニ）・草（地底の半魚人）・闇（水晶の精）・斬（水晶コウモリ）に分けた
+    // 洞くつガニ：背中に水晶が生えた大きなカニ。のろいが、かたくて HP が多い。はさみで重い一撃。打が弱点（からをわる）、斬と刺と水は半減
+    cave_crab: {
+      name: "洞くつガニ", kind: "melee", hp: 58, patk: 10, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5, water: 0.5 }, speed: 18, r: 7,
+      reach: 14, windup: 0.5, cooldown: 1.6, lunge: 5, color: "#c84a3a"
+    },
+    // 地底の半魚人：三つまたの槍で、少しはなれたところから突く（ゴブリンの槍兵と同じ動き）。草が弱点、水は効かない
+    fishman: {
+      name: "地底の半魚人", kind: "spear", hp: 44, patk: 10, pdef: 4, mdef: 3,
+      res: { grass: 1.3, water: 0 }, speed: 30, r: 6,
+      reach: 32, keep: 22, windup: 0.5, cooldown: 1.4, lunge: 4, color: "#3a8a8a"
+    },
+    // 水晶の精（3階から）：ふわふわ浮いて、はなれたところから水晶のかけらを撃つ（魔法のダメージ）。
+    // かたいので刺は半減、光は効かない（光をはね返す）、闇が弱点
+    crystal_sprite: {
+      name: "水晶の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 5, mdef: 5,
+      res: { dark: 1.3, light: 0, pierce: 0.5 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 130, color: "#a8a0ff", ice: true
+    },
+    // 水晶コウモリ：大コウモリと同じく飛んで（水の上も通る）、じぐざぐに近づいてかみつく。うすい羽なので斬が弱点、打はいまひとつ
+    crystal_bat: {
+      name: "水晶コウモリ", kind: "bee", fly: true, hp: 20, patk: 8, pdef: 2, mdef: 2,
+      res: { slash: 1.3, strike: 0.75 }, speed: 54, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.4, color: "#4a7ad0"
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -1020,12 +1047,14 @@ var GameData = (function () {
     // 水晶の鍾乳洞（地方3の最初のダンジョン。段階1、2026-11-14）：10階（5階・10階がボス）。氷牙獣（白銀の霊峰の主）をたおすと開く。
     //   深さは霊峰の続き（75＋階）。部屋は水晶の洞くつの型（theme: crystal。湖の下につながる、光る水晶の洞くつ。坑道と見分けがつくように）。
     //   装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。プラチナは鍾乳洞の主をたおすと、の案）。
-    //   敵とボスはまだ仮：敵は坑道の後半（ドワーフ・火トカゲ・水のスライム・光の精・大コウモリ）、ボスはドワーフキングと氷牙獣（段階2〜4で作る）。
+    //   敵は段階2（2026-11-14）で作った（洞くつガニ・地底の半魚人・水晶の精・水晶コウモリ）。ボスはまだ仮：ドワーフキングと氷牙獣（段階3・4で作る）。
     //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
     shonyu: {
       id: "shonyu", tagline: "湖の下にひろがる、青く光る水晶の洞くつ。", intro: ["湖の下にひろがる、青く光る水晶の洞くつ。", "地底の湖には、水晶の光に引きよせられた魔物がすみついているという。"],
       region: "volcamarine", name: "水晶の鍾乳洞", short: "鍾乳洞", floors: 10, needs: "yuki", depthBase: 75, theme: "crystal", tier: 3,
-      foeHp: 1.9, foeAtk: 1.1, foeType: { dwarf_axe: { hp: 0.75, atk: 0.9 }, dwarf_hammer: { hp: 0.75, atk: 0.85 } },   // 仮（段階2で敵といっしょに決める）
+      // 敵の強さの上のせ（段階2、2026-11-14。仮）：HP ×1.9・攻撃 ×1.0。装備はミスリルのまま（深さで敵だけ強くなる）なので、攻撃は霊峰（×1.1）より少し小さく。
+      //   tools/balance.js で、地底の半魚人が剣で約4振り・受けて約22回（霊峰のペンギンの兵隊と同じくらい）。洞くつガニは斬が半減なので、HP を少し小さく
+      foeHp: 1.9, foeAtk: 1.0, foeType: { cave_crab: { hp: 0.8 } },
       bosses: {
         5: { enemy: "dwarf_boss", title: "水晶の洞くつをすすみし者", room: "lakeside",   // 仮のボス（段階3で作る）。部屋は地底湖のほとり
              before: ["地底の湖のほとりに、大きな影がある。", "水晶の光の中で、何かが動いた！"],
