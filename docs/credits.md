@@ -10,6 +10,7 @@
 - 地面と部屋の絵：プログラムで1点ずつ描いたドット絵（`js/game/tiles.js`。地面・道・草むら・水・橋・木・森のしげみ・岩のがけ・鍵の扉・つる）。素材は使っていない。
 - ダンジョンの小物：Claude が1点ずつ描いたドット絵（`js/game/props.js`。宝箱・鍵・落とし穴）。素材は使っていない。
 - 顔グラフィック：保護者が Gemini で作った顔のたたき台（8人。同じ日に保護者が直した版）を、Claude が 48×48 点・24色以下のドット絵にした（`js/game/faces.js`、2026-10-18）。ダンジョンの中の髪の色は、この顔の髪に合わせた。
+- 湖畔の街リムネとヴォルカマリンの絵（`assets/maps/limne.png`・`volcamarine.png`）：保護者が Gemini で作った絵（2026-11-14）。Claude が 320×180 点にちぢめて、色を128色にへらした（町の絵は横を少しちぢめた）。
 - 鉱山の町ボルダとフロストクレストの絵（`assets/maps/borda.png`・`frostcrest.png`）：保護者が Gemini で作った絵（2026-10-27）。Claude が 320×180 点にちぢめて、色を128色にへらした（町の絵は横を少しちぢめた）。
 - 拠点（エルム村）とワールドマップ（フォレストヴェール）の絵：保護者が Gemini で作った絵を、Claude が 320×180 点・128色にした（`assets/maps/`、`js/game/mapart.js`、2026-10-18）。建物と場所の押せる位置は、絵に合わせた。
 - 日本地図（書庫の日本地図の棚・印刷用の白地図）：Natural Earth の「Admin 1 – States, Provinces」（1:10m、パブリックドメイン。https://www.naturalearthdata.com/）から日本の都道府県のさかいだけを取り出し、Claude がなめらかにした（`tools/make-japan-map.py` → `js/game/japanmap.js`、2026-11-09）。

@@ -47,16 +47,16 @@ var WorldMap = (function () {
       { id: "to_volca", kind: "road", to: "volcamarine", x: 306, y: 108 }
     ],
     // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。
-    // 地図の絵は、保護者の絵ができるまで mapart.js の仮の絵（町は湖の西岸、鍾乳洞は北西の岩山、神殿は湖のまんなか、火山は北東）。
-    // 湖底神殿と火山はまだ作っていないので locked（いつも「？？？」）
+    // 地図の絵は保護者が Gemini で作ったもの（2026-11-14）：町は左の川ぞい、鍾乳洞は湖の北の水晶の洞くつ、神殿は湖のまんなか、
+    // 火山は右の赤い火山。湖底神殿と火山はまだ作っていないので locked（いつも「？？？」）
     volcamarine: [
-      { id: "base", kind: "base", x: 84, y: 118 },
-      { id: "shonyu", kind: "dungeon", x: 58, y: 56,
+      { id: "base", kind: "base", x: 80, y: 110 },
+      { id: "shonyu", kind: "dungeon", x: 192, y: 58,
         note: "5階と10階に、強い魔物がいる。" },
-      { id: "kotei", kind: "dungeon", x: 176, y: 104, locked: true },
-      { id: "kazan", kind: "dungeon", x: 266, y: 46, locked: true },
-      // 前の地方への道：西のはし
-      { id: "to_frost", kind: "road", to: "frostcrest", x: 14, y: 96 }
+      { id: "kotei", kind: "dungeon", x: 184, y: 98, locked: true },
+      { id: "kazan", kind: "dungeon", x: 298, y: 50, locked: true },
+      // 前の地方への道：右下の雪山（白銀の霊峰を越えてきた）
+      { id: "to_frost", kind: "road", to: "frostcrest", x: 300, y: 124 }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }
