@@ -3,9 +3,11 @@
 // 木の葉は別の絵（行ごとの帯）にして、キャラより奥の行の葉はキャラの前に描く（木の後ろを歩けるように）。
 // タイル（16×16点）の文字：. 地面　: となりの部屋への道　* 草むら　~ 水　= 橋　T 木　# 壁　L 鍵のかかった扉　V つる　P 毒の沼（通れる。瘴気の森）
 //   I 崩れた石柱（原生の秘境）：1つだけなら折れて立っている柱、横に2つ以上ならぶと、たおれた柱
+//   K 水晶のかたまり（水晶の鍾乳洞。通れない）：青か紫に光る水晶の柱が3〜4本。まわりの床がうすく光る
 // 部屋の色合い（room.theme）：forest（新緑の樹海）・swamp（瘴気の森。2026-10-21 保護者の案：同じ絵を青・紫の色にして、枯れた木をまぜる）
 //   wild（原生の秘境。2026-10-25 保護者と決定：樹海の絵を、少し深く暗い緑にして「奥地」らしく。水は深い青緑、岩は苔むした灰色）
 //   cave（黒鉄の坑道。2026-10-27：暗い岩の床。まわりの壁も岩のがけ）
+//   crystal（水晶の鍾乳洞。2026-11-14：青紫の暗い岩の床に、光る水晶（K）と光る地底湖。まわりの壁も岩のがけ）
 //   peak（烈風の峰。2026-11-08：茶色がかった岩の地面に、うすく雪がのる。がけの上は雪。木は暗い緑の針葉樹の色。まわりの壁も岩のがけ）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
@@ -113,14 +115,32 @@ var Tiles = (function () {
       VINE: pal(["#0a1a0e", "#183218", "#265e26", "#427e36"]),
       WITHER: null,
       ICE: pal(["#3a6a90", "#6ea4c8", "#94c4e0", "#b8dcf0", "#e8f6ff"])
+    },
+    // 水晶の鍾乳洞（地方3の最初のダンジョン。段階1、2026-11-14）：湖の下につながる、光る水晶の洞くつ。
+    // 床は青紫の暗い岩（坑道の灰色・霊峰の雪と見分けがつく）。草むらは青緑に光る苔、花のかわりに小さな水晶のかけら。
+    // 水は地底湖（深い青に、明るい水色の光）。水晶のかたまり（K）は CRYSTAL（青）と CRYSTAL2（紫）
+    crystal: {
+      GRASS: pal(["#10121e", "#181c2c", "#20263a", "#2a3248", "#3a4562"]),
+      DIRT: pal(["#1c1a28", "#282638", "#36344a", "#46445e"]),
+      TALL: pal(["#0a1a20", "#10302e", "#18463e", "#26685a", "#4eb09a"]),
+      WATER: pal(["#04102a", "#082048", "#0e3270", "#1c5aa0", "#8ee4ff"]),
+      LEAF: pal(["#0e0e1a", "#181828", "#222236", "#2e2e46", "#3e3e5a"]),
+      BARK: pal(["#1e1814", "#33291f", "#4a3c2c", "#64523c"]),
+      ROCK: pal(["#0e1020", "#1a1e34", "#282e4a", "#3a4264", "#56608a"]),
+      FLOWER: pal(["#9ff0ff", "#cfa8ff", "#ffffff"]),
+      VINE: pal(["#0c140e", "#18281a", "#244a26", "#3a6a36"]),
+      WITHER: null,
+      CRYSTAL: pal(["#14204a", "#24509a", "#3c8ad8", "#80d0ff", "#e4faff"]),
+      CRYSTAL2: pal(["#24164a", "#4a3296", "#7a5ad8", "#bc9cff", "#f4ecff"])
     }
   };
-  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, ICE, THEME = "forest";
+  var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, ICE, CRYSTAL, CRYSTAL2, THEME = "forest";
   var ICE0 = pal(["#3a6a90", "#6ea4c8", "#94c4e0", "#b8dcf0", "#e8f6ff"]);   // 凍った湖（テーマに ICE がないとき）
   function useTheme(name) {
     var th = THEMES[name] || THEMES.forest;
     THEME = THEMES[name] ? name : "forest";
     GRASS = th.GRASS; DIRT = th.DIRT; TALL = th.TALL; WATER = th.WATER; LEAF = th.LEAF; BARK = th.BARK; ROCK = th.ROCK; FLOWER = th.FLOWER; VINE = th.VINE; WITHER = th.WITHER; SNOW = th.SNOW || null; ICE = th.ICE || ICE0;
+    CRYSTAL = th.CRYSTAL || THEMES.crystal.CRYSTAL; CRYSTAL2 = th.CRYSTAL2 || THEMES.crystal.CRYSTAL2;
   }
   // 雪の色（烈風の峰）：草の地面の明るさ（GRASS の 1〜4）を、同じ明るさの雪の色にかえる
   function snowy(c) {
@@ -197,7 +217,7 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
-    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" || THEME === "snow" ? "rock" : "forest";
+    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" || THEME === "snow" || THEME === "crystal" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];
@@ -222,6 +242,7 @@ var Tiles = (function () {
       if (t === "I") return "pillar";
       if (t === "C") return "sky";
       if (t === "F") return "ice";
+      if (t === "K") return "crystal";
       return "ground";
     }
     for (var ky = -KB; ky < h + KB; ky++) for (var kx = -KB; kx < w + KB; kx++) kindGrid.push(kindRaw(kx, ky));
@@ -324,6 +345,12 @@ var Tiles = (function () {
           if (r0 < 0.3 && !onDirt) put(px, py, GRASS[4]);
           else if (r0 < 0.42 && !onDirt) { put(px, py, GRASS[1]); put(px + 1, py, GRASS[2]); put(px, py - 1, GRASS[4]); }
           else if (r0 < 0.47) { put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py - 1, GRASS[4]); put(px + 1, py - 1, GRASS[4]); }   // 雪から頭を出した小石
+          continue;
+        }
+        if (THEME === "crystal") {         // 水晶の鍾乳洞：草のかわりに、小さな水晶のかけら（とがった2〜3点）と、光る粒
+          if (r0 < 0.16 && !onDirt) { var fc2 = FLOWER[Math.floor(hash(tx, ty, 40 + s) * 2)]; put(px, py - 1, fc2); put(px, py, fc2); put(px + 1, py, GRASS[4]); put(px, py + 1, GRASS[0]); }
+          else if (r0 < 0.3) put(px, py, FLOWER[2]);
+          else if (r0 < 0.36) { put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py + 1, ROCK[1]); put(px + 1, py + 1, ROCK[0]); }
           continue;
         }
         if (r0 < 0.45 && !onDirt) {        // 草の葉（V の形）
@@ -838,6 +865,62 @@ var Tiles = (function () {
       }
       pebbles(tx, ty, 2 + Math.floor(hash(tx, ty, 147) * 2));
     }
+
+    // ---------- 6c. 水晶のかたまり（K。水晶の鍾乳洞、2026-11-14） ----------
+    // 1マスに、とがった水晶の柱を3〜4本（まんなかがいちばん高い）。色はかたまりごとに青（CRYSTAL）か紫（CRYSTAL2）。
+    // 左の面が明るく右の面が暗い。左のふちに白い光の線。柱は木の葉と同じ帯に描く（キャラが後ろにいると、水晶が前に見える）。
+    // まわりの床（半径 22 点）は、水晶の色でうすく光る（洞くつの明かり）
+    var isCry = function (tx9, ty9) { return kind(tx9, ty9) === "crystal"; };
+    function mix(c, g, k) { return [Math.round(c[0] + (g[0] - c[0]) * k), Math.round(c[1] + (g[1] - c[1]) * k), Math.round(c[2] + (g[2] - c[2]) * k)]; }
+    var cryList = [];
+    for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) if (isCry(tx, ty)) cryList.push([tx, ty]);
+    // 床の光（先に全部の水晶の分を描いてから、柱を描く）
+    cryList.forEach(function (q) {
+      var CP = hash(q[0], q[1], 150) < 0.6 ? CRYSTAL : CRYSTAL2, gcx = q[0] * T + 8, gcy = q[1] * T + 11;
+      for (var yy = gcy - 22; yy <= gcy + 22; yy++) for (var xx = gcx - 22; xx <= gcx + 22; xx++) {
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        var kg = kind(Math.floor(xx / T), Math.floor(yy / T));
+        if (kg !== "ground" && kg !== "path" && kg !== "tall" && kg !== "crystal") continue;
+        var dd9 = Math.sqrt((xx - gcx) * (xx - gcx) + (yy - gcy) * (yy - gcy) * 1.6) / 22;
+        if (dd9 >= 1) continue;
+        var kk9 = dither((1 - dd9) * 0.75, xx, yy);
+        if (kk9 > 0.2) put(xx, yy, mix(get(xx, yy), CP[kk9 > 0.55 ? 2 : 1], kk9 > 0.55 ? 0.45 : 0.28));
+      }
+    });
+    cryList.forEach(function (q) {
+      var qx = q[0], qy = q[1], CP = hash(qx, qy, 150) < 0.6 ? CRYSTAL : CRYSTAL2;
+      var baseY = qy * T + 15, n9 = 3 + (hash(qx, qy, 151) < 0.5 ? 1 : 0);
+      // 柱：dx（まんなかからのずれ）・高さ・はば・かたむき。まんなかの柱を最後に描く（いちばん前）
+      var spikes = [];
+      for (var k9 = 0; k9 < n9; k9++) {
+        var side = k9 === n9 - 1 ? 0 : (k9 % 2 ? 1 : -1) * (3 + Math.floor(hash(qx, qy, 152 + k9) * 3));
+        spikes.push({ dx: side, hgt: (side === 0 ? 22 : 13) + Math.floor(hash(qx, qy, 156 + k9) * 7), wid: side === 0 ? 7 : 5, lean: side * 0.1 });
+      }
+      // 根もとの影
+      for (var sy9 = baseY - 1; sy9 <= baseY + 1; sy9++) for (var sx9 = qx * T; sx9 <= qx * T + 17; sx9++) if (sx9 < W && sy9 < H) put(sx9, sy9, dark(get(sx9, sy9), 0.6));
+      spikes.forEach(function (sp) {
+        var cx9 = qx * T + 8 + sp.dx;
+        for (var yy = 0; yy < sp.hgt; yy++) {
+          var gy9 = baseY - yy, tipK = (sp.hgt - yy) / 5;               // 先の5点はとがる
+          var half = Math.max(0, Math.min(sp.wid / 2, tipK * sp.wid / 2));
+          var mid = cx9 + sp.lean * yy;
+          var x0 = Math.round(mid - half), x1 = Math.round(mid + half);
+          for (var xx = x0 - 1; xx <= x1 + 1; xx++) {
+            var c9;
+            if (xx < x0 || xx > x1) c9 = CP[0];                                  // ふち
+            else {
+              var f9 = x1 > x0 ? (xx - x0) / (x1 - x0) : 0.5;
+              c9 = f9 < 0.25 ? CP[4] : f9 < 0.5 ? CP[3] : f9 < 0.75 ? CP[2] : CP[1];
+              if (f9 >= 0.25 && f9 < 0.5 && (gy9 + xx) % 7 === 0) c9 = CP[4];    // 中の光
+            }
+            putOver(xx, gy9, c9, qy);
+          }
+          if (yy === sp.hgt - 1) putOver(Math.round(mid), gy9 - 1, CP[0], qy);
+        }
+      });
+      // きらりと光る点
+      putOver(qx * T + 7, baseY - 14 - Math.floor(hash(qx, qy, 160) * 4), CP[4], qy);
+    });
 
     // ---------- 7. 鍵のかかった扉と、つる ----------
     for (ty = 0; ty < h; ty++) for (tx = 0; tx < w; tx++) {

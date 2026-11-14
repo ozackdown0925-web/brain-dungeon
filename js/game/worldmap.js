@@ -42,7 +42,21 @@ var WorldMap = (function () {
       { id: "yuki", kind: "dungeon", x: 282, y: 52,
         note: "6階と12階に、強い魔物がいる。" },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
-      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
+      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 },
+      // 次の地方への道：東のはし（雪山の向こう）。氷牙獣をたおすと開く（2026-11-14）
+      { id: "to_volca", kind: "road", to: "volcamarine", x: 306, y: 108 }
+    ],
+    // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。
+    // 地図の絵は保護者が Gemini で作ったもの（2026-11-14）：町は左の川ぞい、鍾乳洞は湖の北の水晶の洞くつ、神殿は湖のまんなか、
+    // 火山は右の赤い火山。湖底神殿と火山はまだ作っていないので locked（いつも「？？？」）
+    volcamarine: [
+      { id: "base", kind: "base", x: 80, y: 110 },
+      { id: "shonyu", kind: "dungeon", x: 192, y: 58,
+        note: "5階と10階に、強い魔物がいる。" },
+      { id: "kotei", kind: "dungeon", x: 184, y: 98, locked: true },
+      { id: "kazan", kind: "dungeon", x: 298, y: 50, locked: true },
+      // 前の地方への道：右下の雪山（白銀の霊峰を越えてきた）
+      { id: "to_frost", kind: "road", to: "frostcrest", x: 300, y: 124 }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }
