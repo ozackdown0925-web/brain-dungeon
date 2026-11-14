@@ -767,25 +767,27 @@
         }
         continue;
       }
-      if (t.type === "ice") {
+      if (t.type === "ice" || t.type === "wet") {
         // すべる氷（白銀の霊峰、2026-11-09 保護者と決定）：ふむと、向いている向きへ少しのあいだすべっていく（突風と同じ動き。岩や壁で止まる）
         if (!(t.wait > 0)) {
           var fl = Math.sqrt(A.face.x * A.face.x + A.face.y * A.face.y) || 1;
           t.wait = 1.5;
           run.gust = { dx: A.face.x / fl, dy: A.face.y / fl, t: SLIDE_TIME, slide: true };
-          say("つるっ！ 氷ですべった！"); Sound.play("trap");
+          // ぬれた岩（水晶の鍾乳洞、2026-11-15）：すべる氷と同じ動き
+          say(t.type === "wet" ? "つるっ！ ぬれた岩ですべった！" : "つるっ！ 氷ですべった！"); Sound.play("trap");
         }
         continue;
       }
-      if (t.type === "rock" || t.type === "icicle") {
+      if (t.type === "rock" || t.type === "icicle" || t.type === "drip") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
         if (!(t.wait > 0)) {
           t.wait = 2.5;
           // つらら（白銀の霊峰、2026-11-09）：落石と同じ。上から氷のつららが落ちてくる
-          var icy = t.type === "icicle";
-          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy });
-          say(icy ? "頭の上で、つららがきしむ音がした！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+          // 鍾乳石（水晶の鍾乳洞、2026-11-15）：落石と同じ。天井から、先に水晶のついた鍾乳石が落ちてくる
+          var icy = t.type === "icicle", drip = t.type === "drip";
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy, drip: drip });
+          say(icy ? "頭の上で、つららがきしむ音がした！" : drip ? "頭の上で、鍾乳石がぐらりとゆれた！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
         }
         continue;
       }
@@ -845,7 +847,7 @@
             ch.hp = Math.max(1, ch.hp - dmg);
             A.hurtT = 0.3;
             Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
-            say(f.ice ? "つららに当たった！" : "落石に当たった！");
+            say(f.ice ? "つららに当たった！" : f.drip ? "鍾乳石に当たった！" : "落石に当たった！");
           }
         }
       } else f.dust -= dt;
@@ -913,6 +915,11 @@
           Render.rect(x - 3, iy - 10, 7, 4, "#140c1c"); Render.rect(x - 2, iy - 6, 5, 4, "#140c1c"); Render.rect(x - 1, iy - 2, 3, 3, "#140c1c"); Render.rect(x, iy + 1, 1, 2, "#140c1c");
           Render.rect(x - 2, iy - 9, 5, 3, "#b8dcf0"); Render.rect(x - 1, iy - 6, 3, 4, "#94c4e0"); Render.rect(x, iy - 2, 1, 3, "#6ea4c8");
           Render.rect(x - 1, iy - 9, 1, 5, "#f0faff");
+        } else if (k > 0.35 && f.drip) {   // 鍾乳石：灰色の石の円すいで、先が青く光る水晶
+          var dy2 = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
+          Render.rect(x - 4, dy2 - 12, 9, 4, "#140c1c"); Render.rect(x - 3, dy2 - 8, 7, 4, "#140c1c"); Render.rect(x - 2, dy2 - 4, 5, 3, "#140c1c"); Render.rect(x - 1, dy2 - 1, 3, 3, "#140c1c");
+          Render.rect(x - 3, dy2 - 11, 7, 3, "#56608a"); Render.rect(x - 2, dy2 - 8, 5, 4, "#3a4264"); Render.rect(x - 1, dy2 - 4, 3, 3, "#80d0ff"); Render.rect(x, dy2 - 1, 1, 2, "#e4faff");
+          Render.rect(x - 2, dy2 - 11, 1, 5, "#7a84aa");
         } else if (k > 0.35) {   // 岩：上から落ちてくる
           var ry = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 5, ry - 4, 10, 8, "#140c1c");
@@ -924,7 +931,8 @@
         var kd = 1 - f.dust / 0.35;
         for (var i = 0; i < 8; i++) {
           var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
-          if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
+          if (f.drip) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(128,208,255," + (1 - kd).toFixed(2) + ")" : "rgba(86,96,138," + (1 - kd).toFixed(2) + ")");   // くだけた石と水晶
+          else if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
           else Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
         }
       }
@@ -1010,6 +1018,14 @@
       } else if (t.type === "icicle") {   // つらら：落ちてわれた氷のかけらと、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#b8dcf0"); Render.rect(x + 10, y + 9, 2, 2, "#94c4e0"); Render.rect(x + 6, y + 12, 3, 1, "#e8f6ff");
         Render.rect(x + 4, y + 8, 1, 1, "#525c70"); Render.rect(x + 5, y + 9, 1, 1, "#525c70"); Render.rect(x + 6, y + 10, 2, 1, "#525c70"); Render.rect(x + 10, y + 5, 1, 2, "#525c70");
+      } else if (t.type === "wet") {   // ぬれた岩（水晶の鍾乳洞）：天井からしずくが落ちてできた、黒くつやのある水たまり。ときどき波紋
+        Render.rect(x + 1, y + 3, 14, 10, "#0a1a34"); Render.rect(x + 2, y + 4, 12, 8, "#14305a");
+        Render.rect(x + 3, y + 5, 4, 1, "#5aa0d8"); Render.rect(x + 9, y + 9, 3, 1, "#3a78b0");
+        var rp = (glow * 0.9 + i * 0.37) % 1;
+        if (rp < 0.4) { var rr2 = Math.round(1 + rp * 8); Render.rect(x + 8 - rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8 + rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8, y + 8 - Math.round(rr2 / 2), 1, 1, "#8ee4ff"); }
+      } else if (t.type === "drip") {   // 鍾乳石：落ちてくだけた石のかけらと水晶のかけら、床のひび
+        Render.rect(x + 3, y + 5, 3, 2, "#56608a"); Render.rect(x + 10, y + 9, 2, 2, "#80d0ff"); Render.rect(x + 6, y + 12, 3, 1, "#3a4264");
+        Render.rect(x + 4, y + 8, 1, 1, "#0e1020"); Render.rect(x + 5, y + 9, 1, 1, "#0e1020"); Render.rect(x + 6, y + 10, 2, 1, "#0e1020"); Render.rect(x + 10, y + 5, 1, 2, "#0e1020");
       } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
         Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");
