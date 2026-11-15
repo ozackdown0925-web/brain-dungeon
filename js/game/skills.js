@@ -57,6 +57,16 @@ var Combat = (function () {
           if (!(e.guardPop > Date.now())) { e.guardPop = Date.now() + 900; Battle.pop(e.x, e.y - 52, "かたい！", "#9ff4ff", 8); }
         }
       }
+      // ヨロイガニのからごもり（2026-11-15）：打（こぶし・杖でたたく・かぶと割りなど）でたたくと、ひびが入って、何回かでわれる。打のほかは、ほとんど効かない。われたあとは少し多く効く
+      if (e.def.kind === "crab_boss") {
+        var sm = Bosses.shellMult(e, elem);
+        if (e.shelled && elem === "strike") Bosses.crackShell(e);
+        else if (sm < 1) {
+          res.crit = false;
+          if (!(e.guardPop > Date.now())) { e.guardPop = Date.now() + 900; Battle.pop(e.x, e.y - 52, "かたい！ たたいてわろう", "#c8d0dc", 8); }
+        }
+        if (sm !== 1) res.amount = Math.max(1, Math.round(res.amount * sm));
+      }
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;

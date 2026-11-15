@@ -1927,6 +1927,7 @@ var Monsters = (function () {
   var BOSS_PAL = {
     roc_boss: { A: "#140c1c", "1": "#3a2414", "2": "#5e3a20", "3": "#8a5a32", "4": "#b8844a", "5": "#e0b878", f: "#2a1a10", w: "#f4f0e8", W: "#c8c4bc", g: "#8a8a96", y: "#f0c040", Y: "#b07a20", r: "#e03030", R: "#801818", b: "#6a7a8a", B: "#9aaabc" },   // 大怪鳥（2026-11-09）
     raff_boss: { A: "#140c1c", "1": "#5a1420", "2": "#8a2030", "3": "#c83a3a", "4": "#e86a5a", "5": "#f8a890", w: "#f4e8d8", W: "#c8b8a8", c: "#2a0e1a", C: "#5a2a3a", D: "#3a1626", s: "#e8d8c0", g: "#2e5c34", G: "#4e8a40", h: "#8ac85a", p: "#b46ad8", P: "#e0b0ff" },   // ラフレシア（2026-11-08）
+    crab_boss: { A: "#140c1c", r: "#c84a3a", R: "#7a2424", o: "#f08a6a", p: "#d85a40", P: "#8a2a2a", w: "#ffc0a0", l: "#b04a3a", L: "#6a2020", e: "#f0e060", k: "#140c1c", c: "#5aa8e8", C: "#c8f0ff" },   // ヨロイガニ（2026-11-15）
     dwarf_boss: { A: "#140c1c", o: "#f0d070", O: "#c8a040", Q: "#8a6a2a", g: "#b8c0cc", G: "#7a8494", K: "#4a5060", s: "#e4a672", S: "#b86f50", r: "#d0502c", R: "#902a1c", c: "#a82a2a", C: "#5e1620", n: "#3e8948", N: "#265c42", b: "#8a5a32", B: "#5e3a20", e: "#3ad070", w: "#e6d5a2", W: "#a8905a" },   // ドワーフキング（2026-11-07）
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
     frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
@@ -4353,6 +4354,82 @@ var Monsters = (function () {
       "........................................................"
     ]
   };
+  // ヨロイガニ（水晶の鍾乳洞5階・中ボス。段階3、2026-11-15 Claude が描いた、56×38）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足を動かす）、pinch＝はさみを振り上げて開いた形、shell＝はさみと足と目を引っこめて、からにこもった形。
+  //   色：r・R・o＝赤いから、p・P＝はさみ、w＝はさみの先、l・L＝足、e＝目、c・C＝背中の水晶
+  var CRABB = (function () {
+    var W = 56, H = 38;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny));
+      }
+    }
+    function line(g, x0, y0, x1, y1, th, ch) {
+      var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) * 2;
+      for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (var a = 0; a < th; a++) for (var b = 0; b < th; b++) put(g, x - (th - 1) / 2 + a, y - (th - 1) / 2 + b, ch); }
+    }
+    function shell(nx, ny) { return ny > 0.5 ? "R" : (nx < -0.1 && ny < -0.2 && nx * nx + ny * ny > 0.35) ? "o" : "r"; }
+    function claw(nx, ny) { return ny > 0.35 ? "P" : (nx < -0.2 && ny < -0.1) ? "w" : "p"; }
+    // 左半分を描いて、右へうつす（mirror）
+    function half(g, f) {
+      var by = f.shell ? 28 : 25;
+      if (!f.shell) {   // 足（3本）
+        for (var i = 0; i < 3; i++) {
+          var up = (f.step === 1 && i % 2 === 0) || (f.step === 2 && i % 2 === 1) ? -2 : 0;
+          line(g, 18, by + 2 + i * 3, 9 - i, by + 7 + i * 2 + up, 2, i % 2 ? "L" : "l");
+          line(g, 9 - i, by + 7 + i * 2 + up, 7 - i, by + 11 + i + up, 1, "L");
+        }
+      } else {
+        for (var j = 0; j < 3; j++) line(g, 16, by + 4 + j * 2, 12, by + 6 + j * 2, 1, "L");   // 引っこめた足の先
+      }
+      // 背中の水晶（からの上から生える）
+      {
+        [[21, 7, 2], [24, 11, 3], [27, 15, 2]].forEach(function (s) {
+          var bx = s[0], h = s[1], w = s[2], top = by - 9 - h + (f.shell ? 2 : 0);
+          for (var yy = 0; yy <= h; yy++) { var ww = Math.max(0, Math.round(w * yy / h)); for (var xx = -ww; xx <= ww; xx++) put(g, bx + xx, top + yy, xx === 0 ? "C" : xx < 0 ? "C" : "c"); }
+        });
+      }
+      ell(g, 28, by, 18, 11, shell);   // から
+      // よろいのつなぎ目（からを横切る2本の弧）
+      for (var sx = 12; sx <= 28; sx++) {
+        var t2 = (sx - 28) / 17;
+        put(g, sx, by - 3 + Math.round(5 * t2 * t2), "R");
+        put(g, sx, by + 4 + Math.round(3 * t2 * t2), "R");
+      }
+      if (f.shell) {   // はさみを前にたたむ
+        ell(g, 21, by + 9, 6, 3.5, claw);
+        return;
+      }
+      // 目（柄の先に、黄色い目）
+      line(g, 17, by - 8, 17, by - 13, 1, "l");
+      ell(g, 17, by - 14, 1.6, 1.6, function () { return "e"; });
+      put(g, 17, by - 14, "k");
+      // うでとはさみ
+      var cx = f.pinch ? 6 : 7, cy = f.pinch ? 8 : 16, open = f.pinch ? 3 : 1;
+      line(g, 13, by + 2, cx + 2, cy + 6, 3, "P");
+      ell(g, cx, cy, 6, 5, claw);
+      for (var o = 0; o < open; o++) line(g, cx - 1, cy - 1 - o, cx + 5, cy - 5 - o, 1, ".");   // はさみのすきま
+    }
+    function make(f) {
+      var g = blank();
+      half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      // 右がわは光の当たり方を反転しない（左上から光）。から以外の o は右では r
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "o") g[y2][x2] = "r"; if (g[y2][x2] === "w") g[y2][x2] = "p"; }
+      // ふちどり
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), pinch: make({ pinch: true }), shell: make({ shell: true }) };
+  })();
   // ドワーフキング（黒鉄の坑道12階・主。2026-11-07 保護者の Gemini の絵をもとに Claude が描きなおした、43×48）。stand＝ふだん（ハンマーを地面に立てる）、attack＝正面の地面へハンマーをたたきつけた形。正面向きで、盾は絵の右側
   var DWARFK = {
     stand: [
@@ -4621,7 +4698,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -4638,6 +4715,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
