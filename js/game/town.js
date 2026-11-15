@@ -267,7 +267,7 @@ var Town = (function () {
   function recommendEquip(h) {
     var rec = GameState.recommendEquip(h), pv = GameState.previewEquip(h, rec);
     if (!pv.changed) { say("いまの装備が、おすすめと同じ"); return; }
-    var magic = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer"].indexOf(h.job) >= 0;
+    var magic = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer", "archmage", "archbishop", "timesage", "summoner"].indexOf(h.job) >= 0;
     var lines = ["おすすめの装備（" + (magic ? "魔攻 → 魔防 → 物攻 → 物防" : "物攻 → 物防 → 魔攻 → 魔防") + " の順にくらべた）"];
     ["weapon", "armor"].forEach(function (slot) {
       var w = slot === "weapon" ? "武器：" : "防具：";
@@ -679,11 +679,11 @@ var Town = (function () {
     tg.appendChild(cb); tg.appendChild(document.createTextNode(" いまセットできるスキルだけ出す"));
     list.appendChild(tg);
     var shown = [];
-    GameData.JOB_ORDER.concat(GameData.UPPER_ORDER).forEach(function (job) {
+    GameData.JOB_ORDER.concat(GameData.UPPER_ORDER, GameData.TOP_ORDER).forEach(function (job) {
       var items = GameData.SKILLS.filter(function (sk) {
         if (sk.job !== job || !!sk.passive !== passive) return false;
         var got = h.learned.indexOf(sk.id) >= 0;
-        if (sk.preview && !got) return false;   // 最上級職の大技のお試しは、全開放の試しのときだけ出す
+        if (GameData.tierOf(job) >= 3 && !got && job !== h.job) return false;   // 最上級職のスキルは、なるまで出さない
         if (onlyUsable) return got && GameData.canSet(sk, h.job, wt);
         return got || job === h.job;
       });
@@ -734,14 +734,14 @@ var Town = (function () {
       det.appendChild(el("p", "sk-desc", sk.desc || ""));
       var info = el("div", "sk-info");
       var line = function (k, v) { var d = el("div", "sk-line"); d.appendChild(el("span", "sk-k", k)); d.appendChild(el("span", "sk-v", v)); info.appendChild(d); };
-      line("覚える", sk.preview ? "最上級職「" + sk.preview + "」の★6（いまは全開放の試しだけ）" : GameData.JOBS[sk.job].name + (sk.star === 1 ? "になったとき" : "の★" + (sk.star - 1)));
+      line("覚える", GameData.JOBS[sk.job].name + (sk.star === 1 ? "になったとき" : "の★" + (sk.star - 1)));
       if (!sk.passive) {
         line("MP", String(sk.mp));
         line("待ち", sk.once ? "1回の冒険で1回" : sk.ct + "秒");
       }
       line("条件", GameData.condText(sk) + (sk.passive ? "（ほかの職でもつけられる）" : ""));
       det.appendChild(info);
-      if (!got) det.appendChild(el("p", "sk-why", sk.preview ? "最上級職の大技のお試し。全開放の試しのときだけ使える。" : GameData.JOBS[sk.job].name + "の熟練度が★" + (sk.star - 1) + "になると覚える。"));
+      if (!got) det.appendChild(el("p", "sk-why", sk.future ? "まだ覚えられない（これから作る）。" : GameData.JOBS[sk.job].name + (sk.star === 1 ? "になると覚える。" : "の熟練度が★" + (sk.star - 1) + "になると覚える。")));
       else if (!ok) det.appendChild(el("p", "sk-why", "いまはセットできない（" + GameData.condText(sk) + "）"));
       else {
         var row = el("div", "sk-btns");
@@ -782,7 +782,7 @@ var Town = (function () {
     bodyEl.appendChild(tabs);
     var lead = { base: "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。",
                  upper: "上級職は、もとの職の★で開く。一本道はもとの職を★7、組み合わせは2つの職を★5。もとの職のスキルもセットできる。パッシブは3つまで。",
-                 top: "最上級職は、上級職から一段上がる（これから作る）。なるための条件は、まだひみつ。" }[jobTab];
+                 top: "最上級職は、上級職から一段上がる。もとの上級職を★7にして、地方2をクリアすると開く。パッシブは4つまで。★6の大技は、その職だけのもの。" }[jobTab];
     bodyEl.appendChild(el("p", "sub", lead));
     var wrap = el("div", "sk-wrap"), list = el("div", "sk-list"), det = el("div", "sk-detail");
     if (jobTab === "base") jobBase(h, list, det);
@@ -843,7 +843,7 @@ var Town = (function () {
     var J = GameData.JOBS[j];
     det.appendChild(el("div", "sk-k job-sk-head", "覚えるスキル"));
     var chips = el("div", "job-sk");
-    GameData.SKILLS.filter(function (sk) { return sk.job === j && !sk.preview; }).forEach(function (sk) {
+    GameData.SKILLS.filter(function (sk) { return sk.job === j; }).forEach(function (sk) {
       var got = h.learned.indexOf(sk.id) >= 0;
       chips.appendChild(el("span", "job-sk-chip" + (got ? " got" : "") + (sk.passive ? " pas" : ""), (sk.star === 1 ? "はじめ " : "★" + (sk.star - 1) + " ") + sk.name));
     });
@@ -898,27 +898,35 @@ var Town = (function () {
     detLine(det, "パッシブ", "3つまでセットできる");
     jobSkillsAndButton(h, u.id, det);
   }
+  // 最上級職（2026-11-16 暫定で作った）：条件（もとの上級職★7・地方2のクリア）と転職
   function jobTop(h, list, det) {
     var T = GameData.TOP_JOBS;
     if (!selJob.top) selJob.top = T[0].name;
+    var r2 = GameState.region2Cleared();
     var grid = el("div", "sk-grid");
     T.forEach(function (t) {
-      grid.appendChild(jobItem(t.name, t.from + "から", "wait" + (selJob.top === t.name ? " sel" : ""), function () { selJob.top = t.name; say(""); render(); }));
+      var done = GameState.canBecome(h, t.id) || h.job === t.id;
+      var small = h.mastery[t.id] || h.job === t.id ? starText(GameState.stars(h, t.id)) : done ? "なれる！" : t.from + "から";
+      var it = jobItem(t.name, small, (done ? "ready" : "wait") + (selJob.top === t.name ? " sel" : ""), function () { selJob.top = t.name; say(""); render(); });
+      if (t.id === h.job) { var nm = it.querySelector(".job-item-name"); nm.insertBefore(el("span", "sk-mark", "E"), nm.firstChild); }
+      grid.appendChild(it);
     });
     list.appendChild(grid);
-    var t = T.filter(function (x) { return x.name === selJob.top; })[0] || T[0];
+    var t = T.filter(function (x) { return x.name === selJob.top; })[0] || T[0], J = GameData.JOBS[t.id];
+    det.appendChild(portrait(h, t.id));
     det.appendChild(el("div", "sk-name", t.name));
     det.appendChild(el("div", "sk-kind", "最上級職　★1つに熟練度 " + GameState.STAR_NEED_TOP));
     det.appendChild(el("p", "sk-desc", t.note));
-    detLine(det, "装備", t.arms);
-    // スキル名（2026-11-08）：まだ決めていないものは ？？？
-    det.appendChild(el("div", "sk-k job-sk-head", "覚えるスキル"));
-    var chips = el("div", "job-sk");
-    (t.skills || []).forEach(function (n, i) { chips.appendChild(el("span", "job-sk-chip", (i === 0 ? "はじめ " : "★" + i + " ") + (n || "？？？"))); });
-    det.appendChild(chips);
     // 条件（2026-11-03 保護者が決定）：もとの上級職の熟練度が MAX（★7）と、地方2（フロストクレスト）のクリア
-    detLine(det, "条件", t.from + "の熟練度 MAX（★7）・地方2（" + GameData.REGIONS.frostcrest.name + "）をクリア");
-    det.appendChild(el("p", "sk-why", "まだなれない（最上級職は、これから作る）"));
+    var need = t.need[0], st = GameState.stars(h, need[0]);
+    detLine(det, "条件", GameData.JOBS[need[0]].name + " ★" + need[1] + "（いま★" + st + "）" + (st >= need[1] ? " ✓" : ""), st >= need[1] ? "ok" : "");
+    detLine(det, "", "地方2（" + GameData.REGIONS.frostcrest.name + "）をクリア" + (r2 ? " ✓" : ""), r2 ? "ok" : "");
+    detLine(det, "装備", J.weapons.map(function (w) { return GameData.WEAPONS[w].name; }).join("・") + "／" + GameData.ARMORS[J.armor].name);
+    detLine(det, "伸びる", growthText(J.growth) + "（レベルが上がるとき）");
+    var st2 = GameState.stars(h, t.id), m2 = h.mastery[t.id] || 0;
+    detLine(det, "熟練度", starText(st2) + "　" + m2 + (st2 < GameState.MAX_STAR ? "（次の★まで " + ((st2 + 1) * GameState.starNeed(t.id) - m2) + "）" : "（極めた！）"));
+    detLine(det, "パッシブ", "4つまでセットできる");
+    jobSkillsAndButton(h, t.id, det);
   }
   function growthText(g) {
     var names = { str: "筋力", vit: "体力", mag: "魔力", int: "知力" };

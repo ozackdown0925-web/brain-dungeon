@@ -240,8 +240,9 @@
   function roomCleared() {
     var who = [];
     Party.members().forEach(function (m) {
-      if (m.down || !(m.stats.roomHp || m.stats.roomMp)) return;
-      m.hp = Math.min(m.stats.hp, m.hp + Math.round(m.stats.hp * (m.stats.roomHp || 0)));
+      var team = Party.teamMax("teamRoomHp");   // 天の恵み（2026-11-16）：これをつけた人が仲間にいれば、みんなのHPも回復
+      if (m.down || !(m.stats.roomHp || m.stats.roomMp || team)) return;
+      m.hp = Math.min(m.stats.hp, m.hp + Math.round(m.stats.hp * ((m.stats.roomHp || 0) + team)));
       m.mp = Math.min(m.stats.mp, m.mp + Math.round(m.stats.mp * (m.stats.roomMp || 0)));
       who.push(m.name);
     });
@@ -521,11 +522,17 @@
       if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
       return;
     }
+    // 斬り返し（2026-11-16）：構えているときに攻撃を受けると、ダメージなしで斬り返す
+    if (c.counter && Combat.counterHit(c)) return;
     // 身躱しの術（2026-10-20）：決まった確率で、敵の攻撃をよける
     var ev = Party.eff(c, "evade");
     if (ev > 0 && Math.random() < ev) { Battle.pop(A.x, A.y - 28, "よけた", "#a8d8ff", 8); A.inv = 0.35; return; }
     // cut：パッシブ「守りの誓い」「聖なる盾」。cutLow：聖なる盾の、HPが半分より少ないときの上のせ
     var cut = (c.stats.cut || 0) + (c.hp < c.stats.hp * 0.5 ? (c.stats.cutLow || 0) : 0);
+    // 2026-11-16 最上級職：守護者（仲間みんな）・ファランクスと聖槍陣（Party.eff の cut）・サンクチュアリの中・聖なる鎧（魔法の攻撃）
+    cut += Party.teamMax("teamCut") + Party.eff(c, "cut") + Combat.sanctCut();
+    if (opts.magic && c.stats.darkCut) cut += c.stats.darkCut;
+    cut = Math.min(0.8, cut);
     // 魔法の攻撃（影の魔導士・瘴気の霊。2026-10-21）は、敵の魔攻と仲間の魔防で計算する。ほかは物攻と物防
     // opts.atk：攻撃力をじかに決める（闘技場の相手のスキル。2026-10-30）
     var res = opts.magic
@@ -582,7 +589,7 @@
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
         // 部屋の敵を全滅させたら、武器をしまって走る（探索しやすいように。2026-10-17）
-        var sp = SPEED * (A.running ? CLEAR_SPEED : 1) * (c.stats.speedMul || 1);   // speedMul：パッシブ「疾走」
+        var sp = SPEED * (A.running ? CLEAR_SPEED : 1) * (c.stats.speedMul || 1) * (1 + Party.eff(c, "speed"));   // speedMul：パッシブ「疾走」。speed：アクセル
         Enemies.moveBlocked(room, A, a.x * sp * A.move * dt, a.y * sp * A.move * dt); // 敵はすり抜けない
         A.walk += dt * 8 * A.move * (A.running ? 1.8 : 1);
       }

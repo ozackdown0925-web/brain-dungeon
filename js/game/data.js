@@ -76,10 +76,35 @@ var GameData = (function () {
                    growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 2.0 } },
     // 魔物使い（2026-10-26 保護者と決定）：狩人＋魔術師。弓と杖／軽装備。たおしたダンジョンの主を呼んで、大技を使わせる
     tamer:       { name: "魔物使い", weapons: ["bow", "staff"], armor: "light", color: "#5c8a6a", tier: 2, from: "hunter", from2: "mage",
-                   growth: { str: 1.5, vit: 1.0, mag: 2.0, int: 2.0 } }
+                   growth: { str: 1.5, vit: 1.0, mag: 2.0, int: 2.0 } },
+    // 最上級職（2026-11-16 暫定で作った。名前・武器は 2026-11-08 保護者の表、スキルは 2026-11-15 の案）。tier 3。伸び方は上級職より少しよい。
+    // 絵は 2026-11-10 の試作（保護者の手直し待ち）。なるには、もとの上級職を★7 と地方2のクリア（2026-11-03 決定）
+    knightking:  { name: "騎士王",             weapons: ["sword"], armor: "heavy", color: "#ffd75a", tier: 3, from: "knight",
+                   growth: { str: 2.5, vit: 2.5, mag: 1.0, int: 1.0 } },
+    archmage:    { name: "大魔導師",           weapons: ["staff"], armor: "magic", color: "#5a2a8a", tier: 3, from: "blackmage",
+                   growth: { str: 0.5, vit: 1.5, mag: 3.0, int: 2.0 } },
+    grandarcher: { name: "グランドアーチャー", weapons: ["bow"], armor: "light", color: "#5ac860", tier: 3, from: "sniper",
+                   growth: { str: 2.5, vit: 2.0, mag: 1.0, int: 1.5 } },
+    wushen:      { name: "武神",               weapons: ["fist"], armor: "light", color: "#e0b030", tier: 3, from: "monk",
+                   growth: { str: 2.5, vit: 2.5, mag: 0.5, int: 1.5 } },
+    archbishop:  { name: "大司教",             weapons: ["staff"], armor: "magic", color: "#f4f4f6", tier: 3, from: "whitemage",
+                   growth: { str: 1.0, vit: 2.0, mag: 2.5, int: 2.0 } },
+    swordsaint:  { name: "魔剣聖",             weapons: ["sword"], armor: "heavy", color: "#6a3aa0", tier: 3, from: "magicknight",
+                   growth: { str: 2.5, vit: 2.0, mag: 2.5, int: 1.0 } },
+    dragoon:     { name: "竜騎士",             weapons: ["spear"], armor: "heavy", color: "#3a86c0", tier: 3, from: "ninja",
+                   growth: { str: 2.5, vit: 2.0, mag: 1.0, int: 1.5 } },
+    champion:    { name: "グラディエーター",   weapons: ["greatsword"], armor: "light", color: "#c81e34", tier: 3, from: "gladiator",
+                   growth: { str: 3.0, vit: 2.5, mag: 0.5, int: 0.5 } },
+    holylancer:  { name: "パラディン",         weapons: ["spear"], armor: "heavy", color: "#fff2a0", tier: 3, from: "paladin",
+                   growth: { str: 2.0, vit: 3.0, mag: 1.5, int: 1.5 } },
+    timesage:    { name: "時の賢者",           weapons: ["staff"], armor: "magic", color: "#4ec0a0", tier: 3, from: "sage",
+                   growth: { str: 0.5, vit: 1.5, mag: 3.0, int: 2.5 } },
+    summoner:    { name: "召喚士",             weapons: ["staff"], armor: "light", color: "#7ae0a8", tier: 3, from: "tamer",
+                   growth: { str: 1.5, vit: 1.5, mag: 2.5, int: 2.5 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
   var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage", "magicknight", "ninja", "gladiator", "paladin", "sage", "tamer"];   // 作った上級職
+  var TOP_ORDER = ["knightking", "archmage", "grandarcher", "wushen", "archbishop", "swordsaint", "dragoon", "champion", "holylancer", "timesage", "summoner"];   // 最上級職（2026-11-16 暫定）
   function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
@@ -96,29 +121,30 @@ var GameData = (function () {
     { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" },
     { id: "tamer", name: "魔物使い",   need: [["hunter", 5], ["mage", 5]],     arms: "弓・杖／軽装備",   note: "たおしたダンジョンの主を呼んで、大技を使わせる。魔術師の魔法も使える" }
   ];
-  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
+  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順（表の名前。いまのスキルは SKILLS）。
+  // need：もとの上級職を★7。もう1つの条件「地方2のクリア」は state.js の canBecome
   var TOP_JOBS = [
-    { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
+    { id: "knightking", need: [["knight", 7]], name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
       skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングスブレード"] },
-    { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
+    { id: "archmage", need: [["blackmage", 7]], name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
       skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
-    { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
+    { id: "grandarcher", need: [["sniper", 7]], name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
       skills: [null, null, "ストームアロー", null, "ラピッドショット", null, "アストラルレイン"] },
-    { name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
+    { id: "wushen", need: [["monk", 7]], name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
       skills: [null, "岩石投げ", null, null, "メテオストライク", null, "無双乱舞"] },
-    { name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
+    { id: "archbishop", need: [["whitemage", 7]], name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
       skills: [null, null, null, "リザレクション", null, "アストラルオーラ", "セイクレッド"] },
-    { name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
+    { id: "swordsaint", need: [["magicknight", 7]], name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
       skills: [null, null, null, null, null, null, "魔炎連舞"] },
-    { name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
+    { id: "dragoon", need: [["ninja", 7]], name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
       skills: [null, null, null, null, null, null, "ドラゴンダイブ"] },
-    { name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
+    { id: "champion", need: [["gladiator", 7]], name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
       skills: [null, null, null, "斬鉄剣", null, null, "ヴォルテックス"] },
-    { name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
+    { id: "holylancer", need: [["paladin", 7]], name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
       skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
-    { name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
+    { id: "timesage", need: [["sage", 7]], name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
       skills: [null, null, null, null, null, null, "クロノフォール"] },
-    { name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
+    { id: "summoner", need: [["tamer", 7]], name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
       skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
 
@@ -127,6 +153,12 @@ var GameData = (function () {
   var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage", "tamer"], hunter: ["hunter", "sniper", "tamer"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
                 knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"],
                 magicknight: ["magicknight"], ninja: ["ninja"], gladiator: ["gladiator"], paladin: ["paladin"], sage: ["sage"], tamer: ["tamer"] };
+  // 最上級職は、もとの上級職が入っている系統に入る（竜騎士は忍者の系統、大司教は白魔道士と僧侶の系統 など）。自分の系統も持つ
+  TOP_ORDER.forEach(function (t) {
+    var up = JOBS[t].from;
+    Object.keys(LINES).forEach(function (k) { if (LINES[k].indexOf(up) >= 0 && LINES[k].indexOf(t) < 0) LINES[k].push(t); });
+  });
+  TOP_ORDER.forEach(function (t) { LINES[t] = [t]; });
 
   // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
   // fx＝効果の並び。t の種類：
@@ -298,17 +330,17 @@ var GameData = (function () {
     { id: "nj.katon", job: "ninja", star: 7, name: "火遁の術", desc: "まわりを火で包む（火）。", short: "火遁", cond: { line: "ninja" }, mp: 14, ct: 14,
       fx: [{ t: "around", vis: "flame", stat: "p", mult: 2.4, radius: 40, elem: "fire", color: "#ff8a3d" }] },
     // 剣闘士：剣・斧。HPが少ないほど強い
-    { id: "gl.rush",  job: "gladiator", star: 1, name: "乱撃", desc: "その場で、すばやく4回斬る。", short: "乱撃", cond: { weapons: ["sword", "axe"] }, mp: 6, ct: 4,
+    { id: "gl.rush",  job: "gladiator", star: 1, name: "乱撃", desc: "その場で、すばやく4回斬る。", short: "乱撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 6, ct: 4,
       fx: [{ t: "rapid", count: 4, interval: 0.1, hit: { t: "arc", stat: "p", mult: 0.6, elem: "weapon" } }] },
     { id: "gl.back",  job: "gladiator", star: 2, name: "背水", desc: "HPが半分より少ないと物攻が上がる。HPが少ないほど上がり、最大で30%。", short: "背水", cond: null, passive: { backwater: 0.30 } },
     { id: "gl.risk",  job: "gladiator", star: 3, name: "捨て身", desc: "15秒のあいだ、物攻が30%上がり、物防が30%下がる。", short: "捨て身", cond: { line: "gladiator" }, mp: 6, ct: 30,
       fx: [{ t: "buff", stat: "patk", pct: 0.30, dur: 15 }, { t: "buff", stat: "pdef", pct: -0.30, dur: 15 }] },
-    { id: "gl.whirl", job: "gladiator", star: 4, name: "旋風撃", desc: "まわりを回転して斬ってから、正面を強く斬る。", short: "旋風撃", cond: { weapons: ["sword", "axe"] }, mp: 9, ct: 7,
+    { id: "gl.whirl", job: "gladiator", star: 4, name: "旋風撃", desc: "まわりを回転して斬ってから、正面を強く斬る。", short: "旋風撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 9, ct: 7,
       fx: [{ t: "around", vis: "spin", stat: "p", mult: 1.0, radius: 26, elem: "weapon" }, { t: "pause", time: 0.2 }, { t: "arc", vis: "smash", stat: "p", mult: 1.6, elem: "weapon" }] },
     { id: "gl.spirit",job: "gladiator", star: 5, name: "闘志", desc: "敵をたおすと、5秒のあいだ物攻が10%上がる。", short: "闘志", cond: null, passive: { fervor: 0.10 } },
-    { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe"] }, mp: 12, ct: 12,
+    { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 12, ct: 12,
       fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.2, elem: "weapon", speed: 200, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }] },
-    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "一歩ずつふみこみながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe"] }, mp: 15, ct: 15,
+    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "一歩ずつふみこみながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 15, ct: 15,
       fx: [{ t: "rapid", count: 6, interval: 0.24, step: 10, hit: { t: "arc", stat: "p", mult: 0.7, elem: "weapon", color: "#fff3a0" } }] },   // 2026-10-21：一歩ふみこんでは斬る、をゆっくり6回
     // 聖騎士：光の槍と守り
     { id: "pl.spear", job: "paladin", star: 1, name: "ホーリースピア", desc: "光の槍で、前へ一直線に突く（光）。", short: "ホーリー", cond: { weapons: ["spear"] }, mp: 7, ct: 4,
@@ -353,31 +385,151 @@ var GameData = (function () {
     { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
     { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    // 最上級職の大技のお試し（2026-11-08 保護者の案と強さのたたき台）。最上級職はまだないので、もとの上級職のスキルとして置き、
-    // 「全開放の試し」のときだけ使える（preview：ふつうには覚えない）。見た目は今の上級職の絵のまま。数字は遊んでみて直す
-    { id: "x.kings",  job: "knight", star: 8, preview: "騎士王", name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ4人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knight", weapons: ["sword"] }, mp: 24, ct: 20,
+    // ---------- 最上級職（2026-11-16 暫定。名前は 2026-11-08 保護者の表と 2026-11-15 の案。数字はたたき台で、遊んでみて直す） ----------
+    // ★7（star 7）の大技は職業専用（only。2026-11-09 決定）。★1〜★6 は条件が合えばほかの職でも使える
+    // 騎士王：剣の大技
+    { id: "kk.blow",  job: "knightking", star: 1, name: "王者の一撃", desc: "前を大きく、強く斬る。", short: "王者", cond: { weapons: ["sword"] }, mp: 8, ct: 5,
+      fx: [{ t: "arc", stat: "p", mult: 2.0, elem: "weapon", reach: 26, arc: 1.25, vis: "smash", color: "#ffd75a" }] },
+    { id: "kk.art",   job: "knightking", star: 2, name: "剣の極意", desc: "剣のふつうの攻撃が、いつも15%強い。", short: "極意", cond: { weapons: ["sword"] }, passive: { normal: 0.15 } },
+    { id: "kk.counter", job: "knightking", star: 3, name: "斬り返し", desc: "1秒、剣を構える。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
+      fx: [{ t: "counter", time: 1.0, hit: { t: "around", vis: "spin", stat: "p", mult: 2.4, radius: 32, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.2, elem: "weapon" } }] },
+    { id: "kk.aura",  job: "knightking", star: 4, name: "王者の威光", desc: "これをつけた人が仲間にいれば、仲間みんなの物防が8%上がる。", short: "威光", cond: null, passive: { teamPdef: 0.08 } },
+    { id: "kk.cross", job: "knightking", star: 5, name: "クロスブレイク", desc: "十字に2回斬る。斬った敵の物防を15秒下げる。", short: "クロス", cond: { weapons: ["sword"] }, mp: 12, ct: 8,
+      fx: [{ t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.4, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },
+    { id: "kk.order", job: "knightking", star: 6, name: "王の号令", desc: "仲間みんなの物攻と魔攻が、60秒のあいだ15%上がる。交代しても続く。", short: "号令", cond: null, mp: 14, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.15, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.15, dur: 60, party: true }] },
+    { id: "x.kings",  job: "knightking", star: 7, name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ4人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knightking", weapons: ["sword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.6, elem: "light", length: 260, width: 64, color: "#ffd75a" }] },
-    { id: "x.abyss",  job: "blackmage", star: 8, preview: "大魔導師", name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "blackmage", line: "blackmage" }, mp: 24, ct: 20,
+    // 大魔導師：大きな攻撃魔法
+    { id: "am.bind",  job: "archmage", star: 1, name: "バインド", desc: "まわりの敵を光の鎖でしばり、4秒動けなくする。", short: "バインド", cond: { line: "archmage" }, mp: 10, ct: 12,
+      fx: [{ t: "around", stat: "m", mult: 0.3, radius: 52, elem: "none", color: "#c9a8ff", status: { type: "para", chance: 1, dur: 4 } }] },
+    { id: "am.prom",  job: "archmage", star: 2, name: "プロミネンス", desc: "前へ、炎の柱が次々にふき上がる（火）。", short: "プロミネンス", cond: { line: "archmage" }, mp: 14, ct: 6,
+      fx: [{ t: "blasts", stat: "m", mult: 1.2, elem: "fire", count: 4, gap: 22, radius: 20, interval: 0.12, color: "#ff8a3d" }] },
+    { id: "am.mastery", job: "archmage", star: 3, name: "魔導の極み", desc: "魔攻が、いつも20%上がる。", short: "極み", cond: null, passive: { matk: 0.20 } },
+    { id: "am.tempest", job: "archmage", star: 4, name: "テンペスト", desc: "自分のまわりに大きな竜巻を起こす。敵を吸いよせながら何回も当たる（草）。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
+      fx: [{ t: "zone", look: "storm", stat: "m", mult: 0.5, elem: "grass", dist: 0, radius: 44, dur: 2.5, tick: 0.5, pull: 50 }] },
+    { id: "am.diamond", job: "archmage", star: 5, name: "ダイヤモンドダスト", desc: "まわりの広いところに氷のつぶをふらせる。当たった敵は6秒おそくなる（水）。", short: "ダスト", cond: { line: "archmage" }, mp: 20, ct: 14,
+      fx: [{ t: "around", vis: "dust", stat: "m", mult: 1.4, radius: 110, elem: "water", color: "#bfe8ff", status: { type: "slow", chance: 1, dur: 6 } }] },
+    { id: "am.elem",  job: "archmage", star: 6, name: "属性の極意", desc: "弱点をついたときのダメージが、×1.3 から ×1.5 になる。", short: "属性", cond: null, passive: { weak: 0.2 } },
+    { id: "x.abyss",  job: "archmage", star: 7, name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "archmage" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
-    { id: "x.astral", job: "sniper", star: 8, preview: "グランドアーチャー", name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "sniper", weapons: ["bow"] }, mp: 24, ct: 20,
+    // グランドアーチャー：風の矢と星の矢の雨
+    { id: "ga.holy",  job: "grandarcher", star: 1, name: "ホーリーアロー", desc: "光の矢。当たったところで光がはじけ、まわりの敵にも当たる（光）。", short: "ホーリー", cond: { weapons: ["bow"] }, mp: 8, ct: 4,
+      fx: [{ t: "shot", stat: "p", mult: 1.6, elem: "light", speed: 220, range: 180, size: 2, color: "#fff2a0", explode: 22 }] },
+    { id: "ga.gift",  job: "grandarcher", star: 2, name: "天性の弓", desc: "弓を持っているとき、物攻がいつも15%上がる。", short: "天性", cond: { weapons: ["bow"] }, passive: { patk: 0.15 } },
+    { id: "ga.storm", job: "grandarcher", star: 3, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬく（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.6, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a" }] },
+    { id: "ga.chain", job: "grandarcher", star: 4, name: "チェインアロー", desc: "当たった敵から、近くの敵へ2回とびうつる矢。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 180, size: 2, chain: 2, color: "#a8d8ff" }] },
+    { id: "ga.rapid", job: "grandarcher", star: 5, name: "ラピッドショット", desc: "矢をすばやく6本撃つ。", short: "ラピッド", cond: { weapons: ["bow"] }, mp: 12, ct: 7,
+      fx: [{ t: "rapid", count: 6, interval: 0.1, hit: { t: "shot", stat: "p", mult: 0.5, elem: "weapon", speed: 250, range: 180, size: 2, color: "#e8f4ff" } }] },
+    { id: "ga.wind",  job: "grandarcher", star: 6, name: "風読み", desc: "飛ばす攻撃は、遠くの敵ほどダメージが大きい（最大30%）。", short: "風読み", cond: null, passive: { far: 0.3 } },
+    { id: "x.astral", job: "grandarcher", star: 7, name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "grandarcher", weapons: ["bow"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.55, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
-    { id: "x.musou",  job: "monk", star: 8, preview: "武神", name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "monk", weapons: ["fist"] }, mp: 24, ct: 20,
+    // 武神：大きな一撃と、止まらない連続攻撃
+    { id: "ws.spirit", job: "wushen", star: 1, name: "闘気解放", desc: "15秒のあいだ、ふつうの攻撃の待ち時間が30%短くなる。", short: "闘気", cond: null, mp: 10, ct: 30,
+      fx: [{ t: "buff", stat: "wait", pct: -0.30, dur: 15, color: "#ffb84a" }] },
+    { id: "ws.rock",  job: "wushen", star: 2, name: "岩石投げ", desc: "大きな岩を投げる。当たると割れて、まわりの敵にも当たる（打）。", short: "岩石", cond: { weapons: ["fist"] }, mp: 10, ct: 6,
+      fx: [{ t: "shot", stat: "p", mult: 2.0, elem: "strike", speed: 130, range: 140, size: 6, orb: true, color: "#b08a60", explode: 22 }] },
+    { id: "ws.calm",  job: "wushen", star: 3, name: "不動心", desc: "しびれと眠りに、かからない。", short: "不動心", cond: null, passive: { steady: 1 } },
+    { id: "ws.hakkei", job: "wushen", star: 4, name: "発勁", desc: "前へ気を通して打つ。うしろの敵にも当たる（打）。", short: "発勁", cond: { weapons: ["fist"] }, mp: 9, ct: 5,
+      fx: [{ t: "arc", stat: "p", mult: 1.8, elem: "strike", reach: 44, arc: 0.35, color: "#ffe7a0" }] },
+    { id: "ws.meteor", job: "wushen", star: 5, name: "メテオストライク", desc: "高くとんで、拳で地面を打つ。まわりの敵に大きなダメージ（打）。空中は敵の攻撃が当たらない。", short: "メテオ", cond: { weapons: ["fist"] }, mp: 16, ct: 12,
+      fx: [{ t: "leap", stay: true, stat: "p", dive: 0, mult: 2.4, radius: 38, range: 0, elem: "strike", color: "#ffb84a", ground: "#ffb84a" }] },
+    { id: "ws.way",   job: "wushen", star: 6, name: "武の極み", desc: "物攻がいつも15%上がり、会心が出やすくなる。", short: "武の極み", cond: null, passive: { patk: 0.15, crit: 0.05 } },
+    { id: "x.musou",  job: "wushen", star: 7, name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "wushen", weapons: ["fist"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
-    { id: "x.sacred", job: "whitemage", star: 8, preview: "大司教", name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "whitemage", line: "whitemage" }, mp: 24, ct: 20,
+    // 大司教：生きかえらせ、聖なる光で守る
+    { id: "ab.sanct", job: "archbishop", star: 1, name: "サンクチュアリ", desc: "その場に光の輪を20秒出す。中にいるとHPが少しずつ回復し、受けるダメージが15%へる。", short: "聖域", cond: { line: "archbishop" }, mp: 18, ct: 40,
+      fx: [{ t: "zone", look: "holy", stat: "m", mult: 0, elem: "light", dist: 0, radius: 40, dur: 20, tick: 1, sanct: { heal: 0.03, cut: 0.15 } }] },
+    { id: "ab.mercy", job: "archbishop", star: 2, name: "慈愛", desc: "回復のスキルで回復する量が、いつも20%ふえる。", short: "慈愛", cond: null, passive: { heal: 0.20 } },
+    { id: "ab.ray",   job: "archbishop", star: 3, name: "ホーリーレイ", desc: "光の玉を3つ飛ばす。玉は敵を追いかける（光）。", short: "レイ", cond: { line: "archbishop" }, mp: 12, ct: 4,
+      fx: [{ t: "shot", stat: "m", mult: 1.0, elem: "light", count: 3, spread: 0.45, speed: 130, range: 160, size: 3, homing: true, color: "#fff2a0" }] },
+    { id: "ab.resur", job: "archbishop", star: 4, name: "リザレクション", desc: "たおれた仲間みんなを、HP50%でよみがえらせる。", short: "リザレク", cond: { line: "archbishop" }, mp: 40, ct: 120,
+      fx: [{ t: "revive", pct: 0.5, all: true }] },
+    { id: "ab.grace", job: "archbishop", star: 5, name: "天の恵み", desc: "これをつけた人が仲間にいれば、部屋の敵を全部たおしたとき、仲間みんなのHPが5%回復する。", short: "恵み", cond: null, passive: { teamRoomHp: 0.05 } },
+    { id: "ab.astral", job: "archbishop", star: 6, name: "アストラルオーラ", desc: "仲間みんなの物攻・魔攻・物防・魔防が60秒のあいだ10%上がり、HPも少しずつ回復する。交代しても続く。", short: "オーラ", cond: { line: "archbishop" }, mp: 24, ct: 45,
+      fx: [{ t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.10, dur: 60, party: true },
+           { t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "mdef", pct: 0.10, dur: 60, party: true },
+           { t: "regen", pct: 0.2, dur: 60, party: true }] },
+    { id: "x.sacred", job: "archbishop", star: 7, name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "archbishop" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 }, { t: "pillar", stat: "m", mult: 4.5, elem: "light", radius: 40, range: 170, color: "#fff2a0", dur: 1.8 }] },
-    { id: "x.maen",   job: "magicknight", star: 8, preview: "魔剣聖", name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "magicknight", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
+    // 魔剣聖：魔法の剣
+    { id: "ss.light", job: "swordsaint", star: 1, name: "聖光剣", desc: "15秒のあいだ、剣の攻撃が光になる。", short: "聖光剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "light", dur: 15 }] },
+    { id: "ss.art",   job: "swordsaint", star: 2, name: "魔剣の極意", desc: "剣に属性をのせる時間が2倍になり、火・水・草・光・闇のダメージがいつも15%強い。", short: "魔剣極意", cond: null, passive: { enchantMul: 1, elemDmg: 0.15 } },
+    { id: "ss.wave",  job: "swordsaint", star: 3, name: "斬空波", desc: "剣の属性の斬撃を飛ばす。何体でもつらぬく。", short: "斬空波", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.8, elem: "weapon", speed: 210, range: 150, size: 4, pierce: true, look: "crescent", color: "#c9a8ff", noAim: true }] },
+    { id: "ss.dark",  job: "swordsaint", star: 4, name: "暗黒剣", desc: "15秒のあいだ、剣の攻撃が闇になる。", short: "暗黒剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "dark", dur: 15 }] },
+    { id: "ss.cycle", job: "swordsaint", star: 5, name: "魔力循環", desc: "敵をたおすと、MPが3%回復する。", short: "循環", cond: null, passive: { mpOnKill: 0.03 } },
+    { id: "ss.break", job: "swordsaint", star: 6, name: "スペルブレイク", desc: "斬った敵の魔防を、20秒のあいだ下げる。", short: "スペル", cond: { weapons: ["sword", "greatsword"] }, mp: 8, ct: 8,
+      fx: [{ t: "arc", stat: "p", mult: 1.2, elem: "weapon", color: "#c070ff", status: { type: "mbreak", chance: 1, dur: 20 } }] },
+    { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
-    { id: "x.dive",   job: "ninja", star: 8, preview: "竜騎士", name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "ninja", weapons: ["spear"] }, mp: 24, ct: 20,
+    // 竜騎士：ジャンプと突進
+    { id: "dg.leap",  job: "dragoon", star: 1, name: "スカイリープ", desc: "その場で高くとび、着地でまわりに当たる。空中は敵の攻撃が当たらない。", short: "リープ", cond: { weapons: ["spear"] }, mp: 10, ct: 6,
+      fx: [{ t: "leap", stay: true, stat: "p", dive: 0, mult: 1.6, radius: 32, range: 0, elem: "weapon", color: "#7fc8ff", ground: "#7fc8ff" }] },
+    { id: "dg.scale", job: "dragoon", star: 2, name: "竜の鱗", desc: "物防と魔防が、いつも10%上がる。", short: "鱗", cond: null, passive: { pdef: 0.10, mdef: 0.10 } },
+    { id: "dg.fang",  job: "dragoon", star: 3, name: "竜牙突き", desc: "槍で、すばやく3回突く。", short: "竜牙", cond: { weapons: ["spear"] }, mp: 8, ct: 4,
+      fx: [{ t: "rapid", count: 3, interval: 0.1, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 34, arc: 0.25, vis: "lance", color: "#7fc8ff" } }] },
+    { id: "dg.rush",  job: "dragoon", star: 4, name: "ドラゴンラッシュ", desc: "敵を通りぬけて突進し、通った敵みんなに当たる。かべでは止まる。", short: "ラッシュ", cond: { weapons: ["spear"] }, mp: 12, ct: 7,
+      fx: [{ t: "pierceDash", dist: 90, stat: "p", mult: 1.8, elem: "weapon" }] },
+    { id: "dg.heart", job: "dragoon", star: 5, name: "竜の心", desc: "ボスへのダメージが、いつも15%大きい。", short: "竜の心", cond: null, passive: { bossDmg: 0.15 } },
+    { id: "dg.roar",  job: "dragoon", star: 6, name: "竜の咆哮", desc: "まわりの敵をしびれさせることがある。仲間みんなの物攻が、60秒のあいだ10%上がる。", short: "咆哮", cond: null, mp: 14, ct: 30,
+      fx: [{ t: "around", stat: "p", mult: 0, radius: 56, elem: "none", color: "#7fc8ff", status: { type: "para", chance: 0.5, dur: 2 } }, { t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }] },
+    { id: "x.dive",   job: "dragoon", star: 7, name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "dragoon", weapons: ["spear"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 34, range: 150, elem: "weapon", color: "#7fc8ff" }] },
-    { id: "x.vortex", job: "gladiator", star: 8, preview: "グラディエーター", name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "gladiator", weapons: ["sword", "axe"] }, mp: 24, ct: 20,
+    // グラディエーター：大剣
+    { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回しながら、前へ進む。まわりの敵に4回当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
+      fx: [{ t: "rapid", count: 4, interval: 0.2, step: 8, hit: { t: "around", vis: "spin", stat: "p", mult: 0.7, radius: 28, elem: "weapon" } }] },
+    { id: "ch.arm",   job: "champion", star: 2, name: "剛腕", desc: "大剣を持っているとき、物攻がいつも15%上がる。", short: "剛腕", cond: { weapons: ["greatsword"] }, passive: { patk: 0.15 } },
+    { id: "ch.cry",   job: "champion", star: 3, name: "ウォークライ", desc: "15秒のあいだ、自分の物攻が25%上がる。", short: "ウォークライ", cond: null, mp: 8, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.25, dur: 15 }] },
+    { id: "ch.zantetsu", job: "champion", star: 4, name: "斬鉄剣", desc: "1秒ためて、一閃。敵の物防をむしして斬る。かたい敵に強い。", short: "斬鉄剣", cond: { weapons: ["greatsword", "sword"] }, mp: 12, ct: 9,
+      fx: [{ t: "charge", time: 1.0 }, { t: "arc", stat: "p", mult: 2.2, elem: "weapon", reach: 28, arc: 0.9, vis: "smash", noDef: true, color: "#e8f4ff" }] },
+    { id: "ch.guts",  job: "champion", star: 5, name: "不屈の闘魂", desc: "HPが0になるときに1回だけ、HP1で持ちこたえる（1回の冒険で1回）。", short: "闘魂", cond: null, passive: { lastStand: 1 } },
+    { id: "ch.rift",  job: "champion", star: 6, name: "地裂撃", desc: "前の地面を一直線に割る。とどくところの敵みんなに当たる。", short: "地裂撃", cond: { weapons: ["greatsword", "axe"] }, mp: 14, ct: 10,
+      fx: [{ t: "arc", stat: "p", mult: 2.2, elem: "weapon", reach: 72, arc: 0.22, vis: "quake" }] },
+    { id: "x.vortex", job: "champion", star: 7, name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "champion", weapons: ["greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 },
            { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
            { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
            { t: "rapid", count: 6, interval: 0.28, step: 10, hit: { t: "arc", stat: "p", mult: 0.5, elem: "weapon", color: "#fff3a0" } }] },
-    { id: "x.divine", job: "paladin", star: 8, preview: "パラディン", name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "paladin", weapons: ["spear"] }, mp: 24, ct: 20,
+    // パラディン：槍で守り、聖なる大技
+    { id: "hl.javelin", job: "holylancer", star: 1, name: "ホーリージャベリン", desc: "光の槍を投げる。当たったところで光がはじけ、まわりの敵にも当たる（光）。", short: "ジャベリン", cond: { weapons: ["spear"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.8, elem: "light", speed: 210, range: 170, size: 3, color: "#fff2a0", explode: 22 }] },
+    { id: "hl.guard", job: "holylancer", star: 2, name: "守護者", desc: "これをつけた人が仲間にいれば、仲間みんなの受けるダメージが5%へる。", short: "守護者", cond: null, passive: { teamCut: 0.05 } },
+    { id: "hl.judge", job: "holylancer", star: 3, name: "審判の光", desc: "近くの敵みんなの上に、光が落ちる（光）。", short: "審判", cond: { line: "holylancer" }, mp: 16, ct: 12,
+      fx: [{ t: "judge", stat: "p", mult: 1.5, elem: "light", range: 170, radius: 14, color: "#fff2a0" }] },
+    { id: "hl.phalanx", job: "holylancer", star: 4, name: "ファランクス", desc: "槍と盾を構えて守りをかためる。8秒のあいだ、受けるダメージが40%へる。", short: "ファランクス", cond: { weapons: ["spear"] }, mp: 10, ct: 25,
+      fx: [{ t: "buff", stat: "cut", pct: 0.40, dur: 8, color: "#fff2a0" }] },
+    { id: "hl.armor", job: "holylancer", star: 5, name: "聖なる鎧", desc: "魔防がいつも15%上がり、魔法の攻撃のダメージが30%へる。", short: "聖なる鎧", cond: null, passive: { mdef: 0.15, darkCut: 0.3 } },
+    { id: "hl.field", job: "holylancer", star: 6, name: "聖槍陣", desc: "槍を地面に立てて光を広げ、まわりの敵をおし返す（光）。10秒のあいだ、仲間みんなの受けるダメージが15%へる。", short: "聖槍陣", cond: { weapons: ["spear"] }, mp: 16, ct: 20,
+      fx: [{ t: "around", stat: "p", mult: 1.5, radius: 36, elem: "light", push: 25, color: "#fff2a0" }, { t: "buff", stat: "cut", pct: 0.15, dur: 10, party: true }] },
+    { id: "x.divine", job: "holylancer", star: 7, name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "holylancer", weapons: ["spear"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, color: "#fff2a0" }] },
-    { id: "x.chrono", job: "sage", star: 8, preview: "時の賢者", name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { only: "sage", line: "sage" }, mp: 28, ct: 30,
-      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] }
+    // 時の賢者：時間をあやつる魔法
+    { id: "ts.delay", job: "timesage", star: 1, name: "ディレイ", desc: "まわりの敵の動きと攻撃を、15秒のあいだ半分の速さにする。", short: "ディレイ", cond: { line: "timesage" }, mp: 10, ct: 15,
+      fx: [{ t: "around", stat: "m", mult: 0, radius: 64, elem: "none", color: "#8ad8ff", status: { type: "slow", chance: 1, dur: 15 } }] },
+    { id: "ts.bless", job: "timesage", star: 2, name: "時の加護", desc: "スキルの待ち時間が、いつも10%短い。", short: "時の加護", cond: null, passive: { ctcut: 0.10 } },
+    { id: "ts.accel", job: "timesage", star: 3, name: "アクセル", desc: "仲間みんなが20秒のあいだ、歩く速さが20%上がり、ふつうの攻撃の待ち時間が20%短くなる。交代しても続く。", short: "アクセル", cond: { line: "timesage" }, mp: 14, ct: 30,
+      fx: [{ t: "buff", stat: "wait", pct: -0.20, dur: 20, party: true }, { t: "buff", stat: "speed", pct: 0.20, dur: 20, party: true, color: "#8ad8ff" }] },
+    { id: "ts.rewind", job: "timesage", star: 4, name: "リワインド", desc: "自分のHPを、10秒前の多さにもどす（今より多いときだけ）。", short: "リワインド", cond: { line: "timesage" }, mp: 16, ct: 30,
+      fx: [{ t: "rewind", back: 10 }] },
+    { id: "ts.foresee", job: "timesage", star: 5, name: "先読み", desc: "10%の確率で、敵の攻撃をよける。", short: "先読み", cond: null, passive: { dodge: 0.10 } },
+    { id: "ts.stop",  job: "timesage", star: 6, name: "タイムストップ", desc: "部屋の敵みんなの時間を3秒止める（ボスは1秒）。", short: "ストップ", cond: { line: "timesage" }, mp: 24, ct: 40,
+      fx: [{ t: "timestop", dur: 3, boss: 1 }] },
+    { id: "x.chrono", job: "timesage", star: 7, name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { only: "timesage" }, mp: 28, ct: 30,
+      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] },
+    // 召喚士：幻獣を呼ぶ（幻獣は魔王城の主をたおすと開く祠でたおす。まだない）
+    { id: "sm.bond",  job: "summoner", star: 1, name: "幻獣の絆", desc: "呼び出しのスキルの待ち時間が、いつも20%短い。", short: "絆", cond: null, passive: { summonCt: 0.2 } },
+    { id: "sm.cerberus", job: "summoner", star: 2, name: "ケルベロス", desc: "幻獣ケルベロスを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ケルベロス", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.garuda", job: "summoner", star: 3, name: "ガルーダ", desc: "幻獣ガルーダを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガルーダ", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.levia", job: "summoner", star: 4, name: "リヴァイアサン", desc: "幻獣リヴァイアサンを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "リヴァイア", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.phoenix", job: "summoner", star: 5, name: "フェニックス", desc: "幻獣フェニックスを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "フェニックス", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.jormun", job: "summoner", star: 6, name: "ヨルムンガンド", desc: "幻獣ヨルムンガンドを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ヨルムン", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.gaia",  job: "summoner", star: 7, name: "ガイア", desc: "幻獣ガイアを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガイア", future: true, cond: { only: "summoner" }, mp: 0, ct: 0, fx: [] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });
@@ -937,7 +1089,10 @@ var GameData = (function () {
     venom:  { name: "猛毒", color: "#ff3fb0" },   // 2026-11-01：瘴気の森のボスの毒。1秒ごとに最大HPの5%（毒の約3倍）。毒消しで治る
     para:   { name: "しびれ", color: "#ffe066" },
     sleep:  { name: "眠り", color: "#b48cf0" },
-    "break": { name: "防御ダウン", color: "#ff9a4d" }
+    "break": { name: "防御ダウン", color: "#ff9a4d" },
+    mbreak: { name: "魔防ダウン", color: "#c070ff" },   // 2026-11-16 スペルブレイク（魔剣聖）：魔防が下がる
+    slow:   { name: "おそくなった", color: "#8ad8ff" },   // 2026-11-16 ディレイ（時の賢者）・ダイヤモンドダスト：動きと攻撃が半分の速さ
+    stop:   { name: "止まった", color: "#c8b0ff" }        // 2026-11-16 タイムストップ（時の賢者）：まったく動かない
   };
 
   // 基礎パラメーター（レベル1はどれも10。上がるたびに職業の伸びを足す。小数は持ちこす）
@@ -1159,7 +1314,7 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, TOP_ORDER: TOP_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
     DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, REGIONS: REGIONS, REGION_ORDER: REGION_ORDER, regionOf: regionOf, dungeonsIn: dungeonsIn, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText

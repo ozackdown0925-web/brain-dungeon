@@ -427,6 +427,7 @@ var Enemies = (function () {
   // 状態異常をかける（docs/draft.md 1.7。ボスはあとで：成功率×0.3・長さ半分）
   function addStatus(e, type, dur) {
     if (e.dead) return;
+    if (type === "slow" || type === "stop") { timeStatus(e, type, dur); return; }
     // ボスには効きにくい：成功率×0.3、長さ半分（docs/draft.md 1.7）
     if (Bosses.isBoss(e)) {
       if (Math.random() >= 0.3) { Battle.pop(e.x, e.y - 30, "効かない", "#a3a8bd", 8); return; }
@@ -439,6 +440,14 @@ var Enemies = (function () {
     if (type === "sleep" || type === "para") { if (e.state === "windup" || e.state === "warn" || e.state === "charge") { e.state = "recover"; e.t = 0.2; } }   // ボアの突進の予告・突進も止まる
   }
 
+  // 時の魔法（2026-11-16 時の賢者・ダイヤモンドダスト）：おそくする（slow）・止める（stop）。ボスにも必ず効く（長さは呼ぶ側で決める。slow はボスは半分）
+  function timeStatus(e, type, dur) {
+    if (e.dead) return;
+    if (type === "slow" && Bosses.isBoss(e)) dur = dur / 2;
+    e.status[type] = { t: dur };
+    Battle.pop(e.x, e.y - 30, GameData.STATUS[type].name, GameData.STATUS[type].color, 8);
+    if (type === "stop" && Bosses.isBoss(e)) Bosses.interrupt(e);
+  }
   function tickStatus(e, dt, onKill) {
     var s = e.status;
     if (s.poison) {
@@ -452,7 +461,7 @@ var Enemies = (function () {
       }
       s.poison.t -= dt; if (s.poison.t <= 0) delete s.poison;
     }
-    ["para", "sleep", "break"].forEach(function (k) { if (s[k]) { s[k].t -= dt; if (s[k].t <= 0) delete s[k]; } });
+    ["para", "sleep", "break", "mbreak", "slow", "stop"].forEach(function (k) { if (s[k]) { s[k].t -= dt; if (s[k].t <= 0) delete s[k]; } });
   }
   function alive() { return list.filter(function (e) { return !e.dead; }); }
   // 味方にした敵（チャーム）をのぞいた、たたかう相手（2026-10-20）
@@ -505,9 +514,10 @@ var Enemies = (function () {
   function update(dt, room, p, hurt, onKill) {
     hooksRoom = room;
     killHook = onKill;
-    var foes = hostile().length;
+    var foes = hostile().length, DT = dt;
     updateFx(dt);
     list.forEach(function (e) {
+      var dt = DT * (e.status && e.status.slow ? 0.5 : 1);   // おそくなった敵は、半分の速さで動く（2026-11-16）
       e.flash = Math.max(0, e.flash - dt);
       e.lash = Math.max(0, (e.lash || 0) - dt);
       e.sweep = Math.max(0, (e.sweep || 0) - dt);
@@ -517,9 +527,9 @@ var Enemies = (function () {
       e.burst = Math.max(0, (e.burst || 0) - dt);
       e.birth = Math.max(0, (e.birth || 0) - dt);   // モンスターの巣が敵を出したときの輪
       if (e.dead) { e.fade -= dt; return; }
-      tickStatus(e, dt, onKill);
+      tickStatus(e, DT, onKill);
       if (e.dead) return;
-      if (e.status.sleep) return; // 眠っているあいだは何もしない
+      if (e.status.sleep || e.status.stop) return; // 眠っている・時間が止まっているあいだは何もしない
       if (Bosses.isBoss(e)) { Bosses.update(e, dt, room, p, hurt, api); return; }
       // チャーム（2026-10-20）：時間が来るか、部屋のほかの敵がいなくなったら元にもどる
       if (e.charm) { e.charm.t -= dt; if (e.charm.t <= 0 || foes === 0) uncharm(e); }
@@ -1254,5 +1264,5 @@ var Enemies = (function () {
   }
   function updateFx(dt) { for (var i = fxs.length - 1; i >= 0; i--) { fxs[i].t -= dt; if (fxs[i].t <= 0) fxs.splice(i, 1); } }
 
-  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, hostile: hostile, charm: charm, list: list, update: update, draw: draw, addStatus: addStatus, spawnRival: spawnRival, remove: remove };
+  return { spawn: spawn, clear: clear, moveBlocked: moveBlocked, alive: alive, hostile: hostile, charm: charm, list: list, update: update, draw: draw, addStatus: addStatus, timeStatus: timeStatus, spawnRival: spawnRival, remove: remove };
 })();

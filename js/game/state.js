@@ -150,7 +150,7 @@ var GameState = (function () {
   // 次のレベルまでの経験値。Lv25 までは前のまま（100＋48×Lv）。そこから先は少しずつふえ、半年（180日）ごろに Lv100 になる（2026-10-22。前は100日ごろに Lv100 で止まった）
   function expNeed(level) { return 100 + 48 * level + (level > 25 ? 4 * (level - 25) * (level - 25) : 0); }
   // パッシブの枠の数：基本職は2つ（上級職3・最上級職4は、上級職を作るときに）
-  function passiveSlots(h) { return GameData.tierOf(h.job) >= 2 ? 3 : 2; }
+  function passiveSlots(h) { var t = GameData.tierOf(h.job); return t >= 3 ? 4 : t >= 2 ? 3 : 2; }   // 最上級職は4つ（2026-11-16）
   // ★1つに必要な熟練度：基本職40・上級職60（2026-10-19 決定）
   function starNeed(job) { var t = GameData.tierOf(job); return t >= 3 ? STAR_NEED_TOP : t >= 2 ? STAR_NEED_UPPER : STAR_NEED; }
   function stars(h, job) { job = job || h.job; return Math.min(MAX_STAR, Math.floor((h.mastery[job] || 0) / starNeed(job))); }
@@ -168,10 +168,20 @@ var GameState = (function () {
     var J = GameData.JOBS[job];
     if (!J) return false;
     if (GameData.tierOf(job) === 1) return true;
-    var u = GameData.UPPER_JOBS.filter(function (x) { return x.id === job; })[0];
+    var top = GameData.tierOf(job) >= 3;
+    var u = (top ? GameData.TOP_JOBS : GameData.UPPER_JOBS).filter(function (x) { return x.id === job; })[0];
     if (!u) return false;
+    if (top && !region2Cleared()) return false;   // 最上級職：地方2のクリアも要る（2026-11-03 決定）
     return u.need.every(function (n) { return stars(h, n[0]) >= n[1]; });
   }
+  // 地方2（フロストクレスト）をクリアしたか：白銀の霊峰の主をたおした。全開放の試しのときは、クリアしたことにする
+  function region2Cleared() {
+    if (sandbox) return true;
+    var id = "yuki", dd = GameData.dungeonOf(id);
+    return !!(game && dd && progressOf(id).deepest >= dd.floors);
+  }
+  // なれる最上級職の一覧（今の職はのぞく）
+  function topList(h) { return GameData.TOP_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
   // なれる上級職の一覧（今の職はのぞく）
   function upperList(h) { return GameData.UPPER_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
@@ -230,7 +240,7 @@ var GameState = (function () {
       }
       if (h.level >= MAX_LEVEL) h.exp = 0;
       if (h.level > lv0) lines.push("レベルが " + lv0 + " → " + h.level + " に上がった！");
-      var st0 = stars(h), up0 = upperList(h);
+      var st0 = stars(h), up0 = upperList(h), top0 = topList(h);
       h.mastery[h.job] = (h.mastery[h.job] || 0) + Math.round(r.mastery[i] || 0);
       var st1 = stars(h);
       if (st1 > st0) lines.push(GameData.JOBS[h.job].name + "の熟練度が ★" + st1 + " になった！");
@@ -240,6 +250,10 @@ var GameState = (function () {
       upperList(h).forEach(function (j) {
         if (up0.indexOf(j) >= 0) return;
         lines.push("＠上級職「" + GameData.JOBS[j].name + "」に転職できるようになった！（転職の神殿で。上級職はパッシブの枠が3つになる）");
+      });
+      topList(h).forEach(function (j) {
+        if (top0.indexOf(j) >= 0) return;
+        lines.push("＠最上級職「" + GameData.JOBS[j].name + "」に転職できるようになった！（転職の神殿で。最上級職はパッシブの枠が4つになる）");
       });
       if (!h.setsOpen && upperOpen(h)) {
         h.setsOpen = true;
@@ -375,6 +389,9 @@ var GameState = (function () {
     s.mpOnHit = p.mpOnHit || 0; s.double = p.double || 0; s.speedMul = 1 + (p.speed || 0); s.backwater = p.backwater || 0; s.fervor = p.fervor || 0;
     s.autoHeal = p.autoHeal || 0; s.cutLow = p.cutLow || 0; s.autoMp = p.autoMp || 0; s.ctcut = p.ctcut || 0;
     s.castcut = p.castcut || 0;   // 魔物使い「すばやい構え」：スキルの構え・ための時間が短い（2026-10-26）
+    // 最上級職のパッシブ（2026-11-16 暫定）：剣の極意（ふつうの攻撃）・王者の威光・守護者・天の恵み（仲間みんな）・属性の極意（弱点）・風読み（遠く）・
+    //   不動心（しびれ・眠り）・魔剣の極意（属性の剣の時間・属性のダメージ）・魔力循環・竜の心（ボス）・不屈の闘魂・聖なる鎧（魔法の攻撃）・先読み・幻獣の絆
+    ["normal", "teamPdef", "teamCut", "teamRoomHp", "weak", "far", "steady", "enchantMul", "elemDmg", "mpOnKill", "bossDmg", "lastStand", "darkCut", "dodge", "summonCt"].forEach(function (k) { s[k] = p[k] || 0; });
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
   }
@@ -672,7 +689,7 @@ var GameState = (function () {
   //   同じなら、上の段の職 → ★の大きいもの。セットBが使えるときは6枠ぜんぶ。
   //   セットA：攻撃1・攻撃2・回復　セットB：攻撃3・攻撃4・強化（セットBがないとき：攻撃1・回復・強化）
   // パッシブ：上の段の職 → ★の大きいものの順。
-  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer"];
+  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer", "archmage", "archbishop", "timesage", "summoner"];
   function statOrder(h) { return MAGIC_JOBS.indexOf(h.job) >= 0 ? ["matk", "mdef", "patk", "pdef"] : ["patk", "pdef", "matk", "mdef"]; }
   function better(a, b, order) { // a が b より上なら 正
     for (var i = 0; i < order.length; i++) if (a[order[i]] !== b[order[i]]) return a[order[i]] - b[order[i]];
@@ -1069,7 +1086,7 @@ var GameState = (function () {
     history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
-    changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
+    changeJob: changeJob, canBecome: canBecome, region2Cleared: region2Cleared, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     recommendEquip: recommendEquip, previewEquip: previewEquip, applyEquip: applyEquip, recommendSkills: recommendSkills, applySkills: applySkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
