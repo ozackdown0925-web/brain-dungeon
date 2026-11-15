@@ -955,7 +955,7 @@ var Enemies = (function () {
       }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" || e.type === "cave_crab" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : e.type === "raff_bud" ? 20 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" || e.type === "cave_crab" || e.type === "crystal_spiderling" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : e.type === "raff_bud" ? 20 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       if (d.kind === "boar" && !e.dead && (e.state === "warn" || e.state === "charge") && e.chargeLen) {
         // 突進の予告の線（大オオカミと同じ絵。走っているあいだは、うすく残る）
         Bosses.drawChargeLine(ctx, { from: e, x1: e.lineX, y1: e.lineY, x2: e.lineX + e.aim.x * e.chargeLen, y2: e.lineY + e.aim.y * e.chargeLen,
@@ -1108,6 +1108,11 @@ var Enemies = (function () {
         var big = !a.opts.chip, sw = big ? 18 : 5;
         Render.rect(Math.round(x) - sw / 2, Math.round(y) + (big ? 20 : 8), sw, big ? 4 : 2, "rgba(0,0,0,0.35)");
         Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 9 * (a.opts.spin || 1));
+        return;
+      }
+      if (a.opts && a.opts.web) {   // 水晶の大グモの糸のかたまり（2026-11-15）
+        Render.rect(Math.round(x) - 3, Math.round(y) + 8, 6, 2, "rgba(0,0,0,0.25)");
+        Bosses.drawWeb(ctx, x, y, 5);
         return;
       }
       if (a.opts && a.opts.bubble) {   // ヨロイガニのあわ：ゆらゆらゆれながら進む（2026-11-15）

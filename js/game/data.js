@@ -806,7 +806,31 @@ var GameData = (function () {
     bubbleEvery: 7, bubbleEveryHalf: 5.5, bubbleWindup: 0.6, bubbles: 3, bubblesHalf: 5, bubbleSpread: 0.35, bubbleSpeed: 62, bubbleMult: 1.0, bubbleLife: 3.6,
     shellEvery: 13, shellEveryHalf: 10, shellTime: 4.5, shellCut: 0.3, shellBreak: 3, crackTime: 3.5, crackMult: 1.25,
     chargeWarn: 0.9, chargeSpeed: 250, chargeMult: 1.8, spins: 1, spinsHalf: 2,
-    callHp: 900, callAtk: 80
+    callHp: 500, callAtk: 75   // 2026-11-15：氷牙獣の子分（320）に近づけて 900→500
+  };
+
+  // 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15 Claude の案。数字は仮）：おしりが大きな水晶の、洞くつの主。
+  //   かみつき：近くにいると、きばでかむ（毒になることがある）。
+  //   糸はき（webEvery 秒ごと）：糸のかたまりを飛ばす。当たると、糸にからまって少し動けなくなる（しびれ）。HP 半分から扇に3つ。
+  //   天井へ（ceilEvery 秒ごと）：糸を出して天井へのぼり、見えなくなる（攻撃が当たらない）。足もとの影がこちらを追ってくる →
+  //     影が止まって赤い輪になったら、そこへ落ちてくる（まわりに大ダメージ）。落ちたあとは少しふらつく（すきあり）。
+  //   水晶の光線（beamEvery 秒ごと）：おしりの水晶に光をためて（赤い帯で予告）、まっすぐの光線を撃つ。HP 半分から扇に3本。
+  //   HP が半分になると、子グモを3体よぶ（1回だけ）。火が弱点（糸もよく燃える）、光はいまひとつ（水晶がはね返す）
+  //   強さ：氷牙獣（霊峰12階・HP 11500・物攻 90）より少し強く。鍾乳洞10階（Lv51 くらい・ミスリル）で剣で約55振り
+  ENEMIES.spider_boss = {
+    name: "水晶の大グモ", kind: "spider_boss", boss: true, hp: 12500, patk: 92, matk: 0, pdef: 12, mdef: 10,
+    res: { fire: 1.3, light: 0.5 }, speed: 44, speedHalf: 52, r: 16, color: "#7ad8f8",
+    reach: 20, windup: 0.45, cooldown: 1.1, cooldownHalf: 0.85, biteMult: 1.2,
+    webEvery: 6, webEveryHalf: 4.5, webWindup: 0.5, webSpeed: 130, webMult: 0.6, webs: 1, websHalf: 3, webSpread: 0.3,
+    ceilEvery: 15, ceilEveryHalf: 12, climbTime: 0.6, ceilTime: 2.4, ceilFollow: 70, leapLock: 0.8, dropR: 34, dropMult: 2.0, tired: 1.6,
+    beamEvery: 11, beamEveryHalf: 9, beamWarn: 1.0, beamLen: 240, beamW: 14, beamMult: 1.7, beams: 1, beamsHalf: 3, beamSpread: 0.5, beamTime: 0.35,
+    kids: 3, kidHp: 300, kidAtk: 72
+  };
+  // 子グモ（水晶の大グモが呼ぶ）：すばやく近づいてかむ。火が弱点
+  ENEMIES.crystal_spiderling = {
+    name: "子グモ", kind: "melee", hp: 24, patk: 8, pdef: 2, mdef: 2,
+    res: { fire: 1.3, light: 0.5 }, speed: 50, r: 5,
+    reach: 12, windup: 0.3, cooldown: 1.2, lunge: 8, color: "#7ad8f8"
   };
 
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
@@ -1067,7 +1091,7 @@ var GameData = (function () {
     // 水晶の鍾乳洞（地方3の最初のダンジョン。段階1、2026-11-14）：10階（5階・10階がボス）。氷牙獣（白銀の霊峰の主）をたおすと開く。
     //   深さは霊峰の続き（75＋階）。部屋は水晶の洞くつの型（theme: crystal。湖の下につながる、光る水晶の洞くつ。坑道と見分けがつくように）。
     //   装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。プラチナは鍾乳洞の主をたおすと、の案）。
-    //   敵は段階2（2026-11-14）で作った（洞くつガニ・地底の半魚人・水晶の精・水晶コウモリ）。5階のボスはヨロイガニ（段階3）。10階のボスはまだ仮：氷牙獣（段階4で作る）。
+    //   敵は段階2（2026-11-14）で作った（洞くつガニ・地底の半魚人・水晶の精・水晶コウモリ）。5階のボスはヨロイガニ（段階3）。10階のボスは水晶の大グモ（段階4）。
     //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
     shonyu: {
       id: "shonyu", tagline: "湖の下にひろがる、青く光る水晶の洞くつ。", intro: ["湖の下にひろがる、青く光る水晶の洞くつ。", "地底の湖には、水晶の光に引きよせられた魔物がすみついているという。"],
@@ -1079,9 +1103,9 @@ var GameData = (function () {
         5: { enemy: "crab_boss", title: "よろいのからをわりし者", room: "lakeside",   // ヨロイガニ（段階3、2026-11-15）。部屋は地底湖のほとり。前後の文は Claude が書いた仮の文
              before: ["地底の湖のほとりに、赤い岩のようなものがある。", "岩がゆっくりと立ち上がり、大きなはさみをふり上げた！"],
              after: ["大ガニは、あわをはきながら、湖の底へしずんでいった。", "洞くつの奥へ、道が続いている。"] },
-        10: { enemy: "icefang_boss", title: "水晶をきわめし者",   // 仮のボス（段階4で作る）
-              before: ["洞くつのいちばん奥は、天井まで水晶でおおわれている。", "水晶の光が、ふっと暗くなった……。"],
-              after: ["洞くつに、水晶の光がもどった。", "地上へ出る道の先に、大きな湖が見えている。"] }
+        10: { enemy: "spider_boss", title: "水晶をきわめし者",   // 水晶の大グモ（段階4、2026-11-15）。前後の文は Claude が書いた仮の文
+              before: ["洞くつのいちばん奥は、天井まで水晶でおおわれている。", "水晶の光が、ふっと暗くなった……。", "天井から、大きな水晶をかかえたクモが下りてきた！"],
+              after: ["大グモの水晶から光が消え、洞くつに静けさがもどった。", "地上へ出る道の先に、大きな湖が見えている。"] }
       }
     }
   };
