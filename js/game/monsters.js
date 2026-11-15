@@ -1927,6 +1927,7 @@ var Monsters = (function () {
   var BOSS_PAL = {
     roc_boss: { A: "#140c1c", "1": "#3a2414", "2": "#5e3a20", "3": "#8a5a32", "4": "#b8844a", "5": "#e0b878", f: "#2a1a10", w: "#f4f0e8", W: "#c8c4bc", g: "#8a8a96", y: "#f0c040", Y: "#b07a20", r: "#e03030", R: "#801818", b: "#6a7a8a", B: "#9aaabc" },   // 大怪鳥（2026-11-09）
     raff_boss: { A: "#140c1c", "1": "#5a1420", "2": "#8a2030", "3": "#c83a3a", "4": "#e86a5a", "5": "#f8a890", w: "#f4e8d8", W: "#c8b8a8", c: "#2a0e1a", C: "#5a2a3a", D: "#3a1626", s: "#e8d8c0", g: "#2e5c34", G: "#4e8a40", h: "#8ac85a", p: "#b46ad8", P: "#e0b0ff" },   // ラフレシア（2026-11-08）
+    spider_boss: { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a", w: "#e8e0d0" },   // 水晶の大グモ（2026-11-15）
     crab_boss: { A: "#140c1c", r: "#c84a3a", R: "#7a2424", o: "#f08a6a", p: "#d85a40", P: "#8a2a2a", w: "#ffc0a0", l: "#b04a3a", L: "#6a2020", e: "#f0e060", k: "#140c1c", c: "#5aa8e8", C: "#c8f0ff" },   // ヨロイガニ（2026-11-15）
     dwarf_boss: { A: "#140c1c", o: "#f0d070", O: "#c8a040", Q: "#8a6a2a", g: "#b8c0cc", G: "#7a8494", K: "#4a5060", s: "#e4a672", S: "#b86f50", r: "#d0502c", R: "#902a1c", c: "#a82a2a", C: "#5e1620", n: "#3e8948", N: "#265c42", b: "#8a5a32", B: "#5e3a20", e: "#3ad070", w: "#e6d5a2", W: "#a8905a" },   // ドワーフキング（2026-11-07）
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
@@ -4430,6 +4431,76 @@ var Monsters = (function () {
     }
     return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), pinch: make({ pinch: true }), shell: make({ shell: true }) };
   })();
+  // 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15 Claude が描いた、64×46）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足を動かす）、rear＝前足を振り上げて、きばを開いた形（かみつき・糸はき・光線）。
+  //   色：c・C・b・B・v＝おしりの水晶（光る面と暗い面）、g・G・h＝頭と胸、l・L＝足、e＝赤い目、w＝きば
+  var SPIDERB = (function () {
+    var W = 64, H = 46;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < g[0].length && y < g.length) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny));
+      }
+    }
+    function line(g, x0, y0, x1, y1, th, ch) {
+      var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) * 2;
+      for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (var a = 0; a < th; a++) for (var b = 0; b < th; b++) put(g, x - (th - 1) / 2 + a, y - (th - 1) / 2 + b, ch); }
+    }
+    // おしりの水晶：面ごとに明るさをかえる（左上から光）
+    function crystal(nx, ny) {
+      var a = Math.atan2(ny, nx), sec = Math.floor((a + Math.PI) / (Math.PI / 4)) % 8, r2 = nx * nx + ny * ny;
+      if (r2 < 0.12) return "C";
+      return ["c", "C", "c", "b", "B", "v", "B", "b"][sec];
+    }
+    function head(nx, ny) { return ny > 0.4 ? "G" : (nx < -0.2 && ny < -0.1) ? "h" : "g"; }
+    var LEGS = [[24, 22, 12, 8, 5, 24], [23, 26, 7, 18, 2, 34], [23, 30, 8, 31, 4, 42], [25, 33, 15, 38, 12, 45]];
+    function half(g, f) {
+      LEGS.forEach(function (L, i) {
+        var up = (f.step === 1 && i % 2 === 0) || (f.step === 2 && i % 2 === 1) ? -2 : 0;
+        var kx = L[2], ky = L[3] + up, fx = L[4], fy = L[5] + up;
+        if (f.rear && i === 0) { kx = 14; ky = 0; fx = 20; fy = 8; }   // 前足を振り上げる
+        line(g, L[0], L[1], kx, ky, 2, "l");
+        line(g, kx, ky, fx, fy, 2, "L");
+      });
+      ell(g, 32, 14, 15, 12, crystal);   // おしりの水晶
+      ell(g, 32, 31, 10, 8, head);       // 頭と胸
+      put(g, 29, 28, "e"); put(g, 30, 28, "e"); put(g, 27, 30, "e"); put(g, 30, 31, "e");   // 赤い目
+      var fo = f.rear ? 2 : 0;
+      line(g, 30 - fo, 37, 29 - fo, 41, 1, "w"); put(g, 30 - fo, 37, "w");   // きば
+    }
+    function make(f) {
+      W = f.kid ? 16 : 64; H = f.kid ? 24 : 46;
+      var g = blank();
+      if (f.kid) kid(g); else half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "h") g[y2][x2] = "g"; }
+      // おしりの光る面は、右がわでは暗く（光は左上から）
+      for (var y4 = 0; y4 < H; y4++) for (var x4 = W / 2 + 2; x4 < W; x4++) { if (g[y4][x4] === "C" && x4 > 36) g[y4][x4] = "c"; }
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    // 子グモ（16×24。ふつうの敵の大きさ）：同じ形を小さく
+    function kid(g) {
+      [[6, 15, 3, 11, 1, 15], [6, 16, 2, 16, 0, 20], [6, 17, 3, 20, 1, 23]].forEach(function (L) {
+        line(g, L[0], L[1], L[2], L[3], 1, "l"); line(g, L[2], L[3], L[4], L[5], 1, "L");
+      });
+      ell(g, 8, 13, 4, 3.5, crystal);
+      ell(g, 8, 18, 3, 2.5, head);
+      put(g, 7, 18, "e");
+    }
+    var KID = make({ kid: true });
+    W = 64; H = 46;
+    return { kid: KID, stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), rear: make({ rear: true }) };
+  })();
+  SMALL.crystal_spiderling = { down: SPIDERB.kid };   // 子グモは、大グモの絵を小さくしたもの（どの向きも同じ絵）
+  SMALL_PAL.crystal_spiderling = { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a" };
   // ドワーフキング（黒鉄の坑道12階・主。2026-11-07 保護者の Gemini の絵をもとに Claude が描きなおした、43×48）。stand＝ふだん（ハンマーを地面に立てる）、attack＝正面の地面へハンマーをたたきつけた形。正面向きで、盾は絵の右側
   var DWARFK = {
     stand: [
@@ -4698,7 +4769,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -4715,6 +4786,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();

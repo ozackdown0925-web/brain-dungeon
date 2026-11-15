@@ -31,7 +31,8 @@ var Bosses = (function () {
              guard: d.guardEvery ? 5 : 0, slam: d.slamEvery ? 7 : 0, toss: d.axeEvery ? 4 : 0,
              fog: d.fogEvery ? 4 : 0, inhale: d.inhaleEvery ? 9 : 0, bud: d.budEvery ? 6 : 0, storm: d.stormEvery ? 12 : 0,
              leap: d.leapEvery ? 5 : 0, breath: d.breathEvery ? 7 : 0, icerain: d.rainEvery ? 9 : 0,
-             bubble: d.bubbleEvery ? 3 : 0, shell: d.shellEvery ? 8 : 0 };
+             bubble: d.bubbleEvery ? 3 : 0, shell: d.shellEvery ? 8 : 0,
+             web: d.webEvery ? 3 : 0, ceil: d.ceilEvery ? 9 : 0, beam: d.beamEvery ? 6 : 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
@@ -41,7 +42,11 @@ var Bosses = (function () {
         e.state === "guard" || e.state === "slam" || e.state === "toss" || e.state === "inhale" || e.state === "breath" ||
         e.state === "rise" || e.state === "swoop" || e.state === "flap") { e.state = "recover"; e.t = 0.4; }
     e.guarding = false;
-    if (e.def.kind === "crab_boss" && e.state !== "shell") e.shelled = false;   // ヨロイガニ：回る突進が止まったら、からから出る
+    if (e.def.kind === "crab_boss" && e.state !== "shell") e.shelled = false;
+    if (e.def.kind === "spider_boss" && e.state === "beamWarn") {   // 水晶の大グモ：光線をためている途中なら、やめる（予告の帯も消す）
+      e.state = "recover"; e.t = 0.4;
+      for (var bj = hazards.length - 1; bj >= 0; bj--) if (hazards[bj].from === e && hazards[bj].kind === "beam" && hazards[bj].t < hazards[bj].warn) hazards.splice(bj, 1);
+    }   // ヨロイガニ：回る突進が止まったら、からから出る
     if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
       if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
       e.untouchable = false; e.leapsLeft = 0;
@@ -58,7 +63,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "icefang_boss") iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // 氷牙獣は大オオカミがもと
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -68,6 +73,7 @@ var Bosses = (function () {
     else if (d.kind === "bandit_boss") bandit(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "dwarf_boss") dwarfKing(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "crab_boss") crab(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "spider_boss") spider(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -670,6 +676,149 @@ var Bosses = (function () {
     if (e.shelled) return elem === "strike" ? 1 : e.def.shellCut;
     if (e.cracked > 0) return e.def.crackMult;
     return 1;
+  }
+  // ---------- 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15）。天井へのぼって落ちてくる・糸で足止め・水晶の光線 ----------
+  function spider(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.biteT = Math.max(0, (e.biteT || 0) - dt);
+    if (e.state === "windup") {   // かみつき
+      e.t -= dt;
+      if (e.t > 0.12 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.reach + 4) hurt(e, p.x, p.y - 8, { mult: d.biteMult, status: { type: "poison", chance: 0.3, dur: 6 } });
+        e.biteT = 0.2; Sound.play("swing");
+        e.state = "recover"; e.t = 0.45; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "web") {   // 糸はき
+      e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        var a0 = Math.atan2(e.aim.y, e.aim.x), n = half ? d.websHalf : d.webs;
+        for (var k = 0; k < n; k++) api.addArrow(e, a0 + (k - (n - 1) / 2) * d.webSpread, d.webSpeed, { web: true, mult: d.webMult, rad: 3, dy: -6, life: 2.2, status: { type: "para", chance: 0.6, dur: 1.5 } });
+        Sound.play("swing");
+        e.state = "recover"; e.t = 0.45; e.ai.web = half ? d.webEveryHalf : d.webEvery;
+      }
+      return;
+    }
+    if (e.state === "beamWarn") {   // 水晶の光線：おしりの水晶に光をためる（赤い帯で予告）→ 撃つ（帯は hazards の beam）
+      e.t -= dt;
+      if (e.t <= 0) { e.state = "beam"; e.t = d.beamTime; shake(1, 0.2); Sound.play("hit"); }
+      return;
+    }
+    if (e.state === "beam") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.6; } return; }
+    if (e.state === "climb") {   // 糸を出して、天井へのぼる
+      e.t -= dt;
+      e.lift = (1 - Math.max(0, e.t) / d.climbTime);
+      if (e.t <= 0) {
+        e.state = "ceil"; e.t = d.ceilTime + d.leapLock; e.untouchable = true;
+        e.mark = { kind: "circle", look: "leap", from: e, x: p.x, y: p.y, r: d.dropR, t: 0, warn: e.t, erupt: 0.3, hit: false, opts: { mult: d.dropMult, big: true } };
+        hazards.push(e.mark);
+      }
+      return;
+    }
+    if (e.state === "ceil") {   // 天井にいるあいだ（当たらない）：影がプレイヤーを追い、落ちる leapLock 秒前に止まる
+      e.t -= dt;
+      var m = e.mark;
+      if (e.t > d.leapLock && !p.down) {
+        var mx = p.x - m.x, my = p.y - m.y, ml = Math.sqrt(mx * mx + my * my), st = d.ceilFollow * dt;
+        if (ml > st) { mx = mx / ml * st; my = my / ml * st; }
+        if (!room.hitsWall(m.x + mx - e.r, m.y + my - e.r, e.r * 2, e.r * 2)) { m.x += mx; m.y += my; }
+      }
+      e.x = m.x; e.y = m.y;
+      e.lift = e.t > d.leapLock ? 1 : Math.max(0, e.t / d.leapLock);
+      if (e.t <= 0) {   // 落ちてくる：ずしん（ダメージは輪の hazards で）
+        e.untouchable = false; e.lift = 0;
+        shake(3, 0.3); Sound.play("hit");
+        addWave(e.x, e.y + 8, 8, d.dropR + 10, 0.4, 6);
+        for (var c = 0; c < 8; c++) { var ca = Math.random() * Math.PI * 2; chips.push({ x: e.x, y: e.y, z: 6, vx: Math.cos(ca) * 60, vy: Math.sin(ca) * 36, vz: 70 + Math.random() * 50, t: 0, max: 0.7, c: c % 2 ? "#7ad8f8" : "#e8fbff", s: 2 }); }
+        e.ai.ceil = half ? d.ceilEveryHalf : d.ceilEvery;
+        tire(e);
+      }
+      return;
+    }
+    if (e.state === "call") {   // 子グモを呼ぶ（おしりの水晶から、ぽろぽろ出てくる）
+      e.t -= dt;
+      if (e.t <= 0) {
+        for (var q = 0; q < d.kids; q++) {
+          var ang = q / d.kids * Math.PI * 2 + Math.random() * 0.5, sx = e.x + Math.cos(ang) * 30, sy = e.y + Math.sin(ang) * 24;
+          if (room.hitsWall(sx - 5, sy - 5, 10, 10)) { sx = e.x; sy = e.y + 22; }
+          var f = api.spawn("crystal_spiderling", sx, sy, 1);
+          f.hp = f.maxHp = d.kidHp; f.patk = d.kidAtk;   // 呼ばれた敵は深さで強くならないので、ここで決める
+          f.summoned = true;
+        }
+        e.state = "recover"; e.t = 0.5;
+      }
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (half && !e.called) {   // HP が半分：子グモを呼ぶ（1回だけ）
+      e.called = true; e.state = "call"; e.t = 0.7;
+      Battle.pop(e.x, e.y - 50, "子グモがあらわれた！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.ceil <= 0) {
+      e.state = "climb"; e.t = d.climbTime; e.lift = 0;
+      Battle.pop(e.x, e.y - 50, "天井へのぼった！", "#c8d0dc", 9);
+      return;
+    }
+    if (e.ai.beam <= 0) {   // 水晶の光線：こちらへ向けて（HP 半分から扇に3本）。根もとはボスのまんなか
+      var n2 = half ? d.beamsHalf : d.beams, b0 = Math.atan2(uy, ux);
+      for (var bi = 0; bi < n2; bi++) {
+        var ba = b0 + (bi - (n2 - 1) / 2) * d.beamSpread, bx = Math.cos(ba), by = Math.sin(ba);
+        hazards.push({ kind: "beam", from: e, x: e.x, y: e.y - 6, ux: bx, uy: by, len: Math.min(d.beamLen, rayLength(room, e.x, e.y, bx, by, 2) + 8), w: d.beamW,
+                       t: 0, warn: d.beamWarn, erupt: d.beamTime, hit: false, opts: { mult: d.beamMult, big: true } });
+      }
+      e.state = "beamWarn"; e.t = d.beamWarn; e.ai.beam = half ? d.beamEveryHalf : d.beamEvery;
+      Battle.pop(e.x, e.y - 50, "水晶の光線！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.web <= 0 && gap > 30) {
+      e.state = "web"; e.t = d.webWindup; e.aim = { x: ux, y: uy };
+      return;
+    }
+    if (gap > d.reach - 2) {   // カサカサと、ななめにゆれながら近づく
+      var spd = half ? d.speedHalf : d.speed, wig = Math.sin((e.walk || 0) * 0.35) * 0.5;
+      if (!e.status.para) { room.move(e, (ux - uy * wig) * spd * dt, (uy + ux * wig) * spd * dt); e.walk = (e.walk || 0) + dt * 14; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 光線が (px, py) に当たるか：線からのきょりが、太さの半分＋r より近い
+  function beamTouches(h, px, py, r) {
+    var dx = px - h.x, dy = py - h.y, along = dx * h.ux + dy * h.uy;
+    if (along < -r || along > h.len + r) return false;
+    var side = Math.abs(dx * h.uy - dy * h.ux);
+    return side < h.w / 2 + r;
+  }
+  // 水晶の光線の絵：予告は赤い帯（だんだん濃く）、本番は水色の太い光と白いしん
+  function drawBeam(ctx, h, cam, glow) {
+    var x = h.x - cam.x, y = h.y - cam.y, x2 = x + h.ux * h.len, y2 = y + h.uy * h.len;
+    ctx.save(); ctx.lineCap = "round";
+    if (h.t < h.warn) {
+      var k = h.t / h.warn;
+      ctx.strokeStyle = "rgba(239,91,91," + (0.12 + 0.25 * k + 0.05 * Math.sin(glow * 18)).toFixed(2) + ")"; ctx.lineWidth = h.w;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,120,110," + (0.4 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+    } else {
+      var q = (h.t - h.warn) / h.erupt, al = q < 0.7 ? 1 : Math.max(0, (1 - q) / 0.3);
+      ctx.strokeStyle = "rgba(122,216,248," + (0.45 * al).toFixed(2) + ")"; ctx.lineWidth = h.w + 6;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = "rgba(200,244,255," + (0.85 * al).toFixed(2) + ")"; ctx.lineWidth = h.w * 0.6;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255," + al.toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      for (var i = 0; i < 6; i++) {   // 光のつぶ
+        var t2 = rnd(i * 3.1 + Math.floor(glow * 20)), px = x + h.ux * h.len * t2 + (rnd(i + glow) - 0.5) * h.w, py = y + h.uy * h.len * t2 + (rnd(i * 2 + glow) - 0.5) * h.w;
+        Render.rect(Math.round(px), Math.round(py), 2, 2, "rgba(255,255,255," + (0.8 * al).toFixed(2) + ")");
+      }
+    }
+    ctx.restore();
   }
   // 大地たたきの光の柱：こちらへ向けて扇に何本か。それぞれの道に、根もとから先へ順に立つ（壁で止まる）。
   // 立つ少し前（0.35秒）に、その場所の地面が光る
@@ -1594,6 +1743,11 @@ var Bosses = (function () {
         if (h.t >= h.warn + h.erupt || h.from.dead) hazards.splice(i, 1);
         continue;
       }
+      if (h.kind === "beam") {   // 水晶の大グモの光線
+        if (h.t >= h.warn && !h.hit) { h.hit = true; if (!p.down && !h.from.dead && beamTouches(h, p.x, p.y - 4, p.r)) hurt(h.from, p.x, p.y - 8, h.opts); }
+        if (h.t >= h.warn + h.erupt || h.from.dead) hazards.splice(i, 1);
+        continue;
+      }
       if (h.kind === "tornado") {   // 大怪鳥の竜巻
         updateTornado(h, dt, p, hurt, room);
         if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
@@ -1673,6 +1827,7 @@ var Bosses = (function () {
       if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       if (h.kind === "circle") { drawCircle(ctx, h, cam, glow); return; }
       if (h.kind === "tornado") { drawTornado(ctx, h, cam, glow); return; }
+      if (h.kind === "beam") { drawBeam(ctx, h, cam, glow); return; }
       if (h.kind === "ball") {   // 雪玉：地面にかげ
         ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(Math.round(h.x - cam.x), Math.round(h.y - cam.y) + h.r - 2, h.r, h.r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
         drawSnowball(ctx, h.x - cam.x, h.y - cam.y - 2, h.r, h.roll);
@@ -2238,6 +2393,38 @@ var Bosses = (function () {
           Render.rect(dx2, dy2 - 1, 1, 3, "#ffe066"); Render.rect(dx2 - 1, dy2, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "spider_boss") {
+      // 水晶の大グモ（64×46、正面）：足もとは y＋14。天井にいるあいだは、糸にぶら下がって上にいる（lift：0〜1）
+      var lift = e.state === "climb" || e.state === "ceil" ? (e.lift || 0) : 0, up = Math.round(lift * 64);
+      Render.rect(x - 24, y + 9, 48, 6, "rgba(0,0,0," + (0.35 * (1 - lift)).toFixed(2) + ")");
+      if (lift > 0) {   // 天井からの糸
+        ctx.strokeStyle = "rgba(232,240,255,0.7)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, y - up - 40); ctx.lineTo(x, y - 260); ctx.stroke();
+      }
+      var sf = "stand", sph = Math.sin(e.walk || 0);
+      if (e.state === "chase") sf = sph > 0.3 ? "walkA" : sph < -0.3 ? "walkB" : "stand";
+      if (e.state === "windup" || e.state === "web" || e.state === "beamWarn" || e.state === "beam" || e.state === "call" || e.biteT > 0) sf = "rear";
+      var sshake = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
+      ctx.save();
+      if (lift > 0.5) ctx.globalAlpha = ctx.globalAlpha * Math.max(0.55, 1 - (lift - 0.5));   // 天井では少しうすく（攻撃が当たらない）
+      Monsters.drawBoss(ctx, e, x + sshake, y + 14 - up, sf);
+      ctx.restore();
+      if (e.state === "beamWarn" || e.state === "beam") {   // おしりの水晶が光る
+        var kbw = e.state === "beam" ? 1 : 1 - Math.max(0, e.t) / d.beamWarn;
+        Combat.glowDot(ctx, x, y - 18, 10 + kbw * 12, "#ffffff", "#7ad8f8", 0.3 + 0.6 * kbw);
+      }
+      if (e.state === "web") {   // 口の前に糸のかたまり
+        var kw2 = 1 - Math.max(0, e.t) / d.webWindup;
+        drawWeb(ctx, x + e.aim.x * 10, y + 4 + e.aim.y * 6, 2 + kw2 * 3);
+      }
+      if (e.biteT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 2, e.aim, 0.7, d.reach + e.r, "#ffd0d0", 1 - e.biteT / 0.2, false);
+      if (e.state === "windup" || e.state === "beamWarn") Render.text("！", x, y - 50, { size: 11, align: "center", bold: true, color: e.state === "beamWarn" ? "#ef5b5b" : "#ffd24a" });
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる
+        for (var ss = 0; ss < 3; ss++) {
+          var sa3 = glow * 4 + ss * 2.1, sx3 = Math.round(x + Math.cos(sa3) * 14), sy3 = Math.round(y - 40 + Math.sin(sa3) * 3);
+          Render.rect(sx3, sy3 - 1, 1, 3, "#ffe066"); Render.rect(sx3 - 1, sy3, 3, 1, "#ffe066");
+        }
+      }
     } else if (d.kind === "crab_boss") {
       // ヨロイガニ（56×38、正面）：足もとは y＋12。はさむときは「pinch」、からにこもる・回るときは「shell」の絵
       Render.rect(x - 22, y + 8, 44, 6, "rgba(0,0,0,0.35)");
@@ -2444,6 +2631,13 @@ var Bosses = (function () {
   }
 
   // ふつうの敵（ワイルドボア。原生の秘境の段階2）も使う：壁までの長さ・予告の線の絵・土けむり
+  // 水晶の大グモの糸のかたまり：白い糸が、からまった玉
+  function drawWeb(ctx, x, y, r) {
+    ctx.fillStyle = "rgba(240,244,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(240,244,255,0.9)"; ctx.lineWidth = 1;
+    for (var i = 0; i < 3; i++) { var a = i * 1.05; ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+  }
   // ヨロイガニのあわ：すきとおった水色の玉に、白い光
   function drawBubble(ctx, x, y, r, glow) {
     ctx.fillStyle = "rgba(120,190,255,0.28)"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
@@ -2454,6 +2648,6 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, drawBubble: drawBubble, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
+           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
            frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();
