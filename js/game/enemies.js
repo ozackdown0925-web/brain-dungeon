@@ -1110,6 +1110,12 @@ var Enemies = (function () {
         Bosses.drawRock(ctx, x, y, a.opts.rad, (3 - a.life) * 9 * (a.opts.spin || 1));
         return;
       }
+      if (a.opts && a.opts.bubble) {   // ヨロイガニのあわ：ゆらゆらゆれながら進む（2026-11-15）
+        var wb = Math.sin(clock * 6 + (a.opts.wob || 0));
+        Render.rect(Math.round(x) - 4, Math.round(y) + 10, 8, 2, "rgba(0,0,0,0.25)");
+        Bosses.drawBubble(ctx, x + wb * 1.5, y, 6 + wb * 0.6, clock);
+        return;
+      }
       if (a.opts && a.opts.tomahawk) {   // ドワーフキングのトマホーク：地面にかげ、回りながら飛ぶ（2026-11-07）
         Render.rect(Math.round(x) - 4, Math.round(y) + 14, 8, 2, "rgba(0,0,0,0.35)");
         Bosses.drawTomahawk(ctx, x, y, (3 - a.life) * 16 * (a.opts.spin || 1));
