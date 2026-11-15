@@ -44,13 +44,27 @@ var Party = (function () {
     c.buffs.forEach(function (b) { if (b.stat === stat) add += b.pct; });
     if (stat === "wait") return Math.max(0.3, (1 + add) * (c.stats.waitMul || 1)); // waitMul：パッシブ「身軽」
     if (stat === "crit") return c.stats.crit + add;
-    if (stat === "evade") return Math.max(0, add);   // 身躱しの術：よける確率
+    if (stat === "evade") return Math.max(0, add + (c.stats.dodge || 0));   // 身躱しの術・先読み（2026-11-16）：よける確率
+    if (stat === "cut" || stat === "speed") return add;   // ファランクス・聖槍陣（受けるダメージがへる）・アクセル（歩く速さ）（2026-11-16）
+    if (stat === "pdef") add += teamMax("teamPdef");   // 王者の威光：これをつけた人が仲間にいれば、みんなの物防が上がる
     if (stat === "patk" && c.stats.still && actor.move < 0.1) add += c.stats.still;   // パッシブ「狙撃の構え」：止まっているあいだ
     // パッシブ「背水」（2026-10-20）：HPが半分より少ないと物攻が上がる。HPが少ないほど上がり、0に近いとき最大
     if (stat === "patk" && c.stats.backwater && c.hp < c.stats.hp * 0.5) add += c.stats.backwater * (1 - c.hp / (c.stats.hp * 0.5));
     return c.stats[stat] * (1 + add);
   }
 
+  // 仲間のだれかがつけている「仲間みんなに効く」パッシブ（いちばん大きいもの）
+  function teamMax(key) {
+    var v = 0;
+    members.forEach(function (m) { if (!m.down && m.stats && m.stats[key] > v) v = m.stats[key]; });
+    return v;
+  }
+  // リワインド（2026-11-16）：back 秒前の HP（覚えているのは画面に出ているあいだの、0.5秒ごと20回分）
+  function hpAgo(c, back) {
+    var h = c.hpHist || [];
+    var n = Math.min(h.length, Math.round(back / 0.5));
+    return n ? h[h.length - n] : c.hp;
+  }
   // いま使っているスキルのセット（ボタン3つぶん）
   function skillsOf(c) { return c.page === 1 && c.setsOn ? c.skillsB : c.skills; }
   // セットA ⇔ B を入れかえる。できなければ false
@@ -88,6 +102,8 @@ var Party = (function () {
       if (c.down) return;
       c.mp = Math.min(c.stats.mp, c.mp + c.stats.mp * MP_REGEN * dt);
       for (var b = c.buffs.length - 1; b >= 0; b--) { c.buffs[b].t -= dt; if (c.buffs[b].t <= 0) c.buffs.splice(b, 1); }
+      if (c.counter) { c.counter.t -= dt; if (c.counter.t <= 0 || i !== active) c.counter = null; }   // 斬り返しの構え
+      if (i === active) { c.hpT = (c.hpT || 0) + dt; if (c.hpT >= 0.5) { c.hpT -= 0.5; (c.hpHist = c.hpHist || []).push(c.hp); if (c.hpHist.length > 20) c.hpHist.shift(); } }
       if (c.enchant) { c.enchant.t -= dt; if (c.enchant.t <= 0) c.enchant = null; }   // 魔法剣士の火炎剣など
       if (c.guts > 0) c.guts = Math.max(0, c.guts - dt);                                 // 不屈の光
       // パッシブ「オートヒール」（5秒ごとに HP）・「オートチャージ」（10秒ごとに MP）（2026-10-20）。待機中の仲間にも効く
@@ -130,6 +146,7 @@ var Party = (function () {
     var aura = 0;
     members.forEach(function (m) { if (!m.down && m.stats && m.stats.aura > aura) aura = m.stats.aura; });
     if (aura && Math.random() < aura) { Battle.pop(actor.x, actor.y - 28, "ふせいだ", "#ffffff", 8); return; }
+    if (c.stats.steady && (type === "para" || type === "sleep")) { Battle.pop(actor.x, actor.y - 28, "効かない", "#ffffff", 8); return; }   // 不動心（2026-11-16）
     if (type === "poison" && c.status.venom) return;   // 猛毒のときは、ふつうの毒にはならない
     if (type === "poison") c.status.poison = { t: dur, tick: 2 };
     else if (type === "venom") { delete c.status.poison; c.status.venom = { t: dur, tick: 1 }; }   // 猛毒は毒の上書き
@@ -144,6 +161,7 @@ var Party = (function () {
     c.hp = Math.max(0, c.hp - amount);
     if (c.status.sleep) { delete c.status.sleep; } // 眠りはダメージで起きる
     if (c.hp <= 0 && c.guts > 0) { c.hp = 1; Battle.pop(actor.x, actor.y - 34, "持ちこたえた！", "#fff2a0", 8); }   // 不屈の光
+    if (c.hp <= 0 && c.stats.lastStand && !c.used.lastStand) { c.used.lastStand = true; c.hp = 1; Battle.pop(actor.x, actor.y - 34, "不屈の闘魂！", "#ff8a6a", 8); }   // 不屈の闘魂（1回の冒険で1回）
     if (c.hp <= 0) { c.down = true; c.status = {}; c.buffs = []; c.regens = []; c.enchant = null; c.guts = 0; return true; }
     return false;
   }
@@ -160,7 +178,7 @@ var Party = (function () {
   }
 
   return {
-    actor: actor, skillsOf: skillsOf, flipSet: flipSet, makeChar: makeChar, fromHero: fromHero, recalc: recalc, eff: eff, setup: setup, current: current,
+    actor: actor, teamMax: teamMax, hpAgo: hpAgo, skillsOf: skillsOf, flipSet: flipSet, makeChar: makeChar, fromHero: fromHero, recalc: recalc, eff: eff, setup: setup, current: current,
     members: function () { return members; }, activeIndex: function () { return active; },
     canSwitch: canSwitch, switchNext: switchNext, switchTo: switchTo, switchCd: function () { return switchCd; },
     tick: tick, addStatus: addStatus, cure: cure, hurtActive: hurtActive, allDown: allDown, resetAll: resetAll
