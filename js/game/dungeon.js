@@ -173,13 +173,19 @@ var Dungeon = (function () {
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
     if (theme === "crystal") {
-      // 水晶の鍾乳洞（地方3の段階1、2026-11-14）：鍾乳洞の敵ができるまでの仮。坑道の後半と同じ（ドワーフの部隊に、火トカゲ・水のスライム・光の精・大コウモリ）
-      var CQ = ["dwarf_axe", "dwarf_hammer", "dwarf_axe"];
-      for (var cj = 0; cj < n; cj++) types.push(CQ[cj % 3]);
-      if (rnd() < 0.45) types[types.length - 1] = "fire_lizard";
-      if (rnd() < 0.4) types[0] = "slime";
-      if (rnd() < 0.45) types[1] = "light_sprite";
-      else if (rnd() < 0.3) types[1] = "bat";
+      // 水晶の鍾乳洞（地方3の段階2、2026-11-14 Claude の案）：前半（1〜5階）は地底の半魚人と洞くつガニがかわりばんこの群れに、
+      // 水晶コウモリ（3階から水晶の精）。後半（6〜10階）は半魚人の群れに、洞くつガニ・水晶の精・水晶コウモリ・ときどき水のスライム
+      if (floor <= 5) {
+        for (var cj = 0; cj < n; cj++) types.push(cj % 2 ? "cave_crab" : "fishman");
+        if (rnd() < 0.5) types[types.length - 1] = "crystal_bat";
+        if (floor >= 3 && rnd() < 0.4) types[1] = "crystal_sprite";
+      } else {
+        for (var ck = 0; ck < n; ck++) types.push("fishman");
+        if (rnd() < 0.7) types[0] = "cave_crab";
+        if (rnd() < 0.5) types[types.length - 1] = "crystal_sprite";
+        if (n >= 4 && rnd() < 0.5) types[1] = rnd() < 0.6 ? "crystal_bat" : "slime";
+        if (n >= 5 && rnd() < 0.3) types[2] = "cave_crab";
+      }
     } else if (theme === "snow") {
       // 白銀の霊峰（段階2、2026-11-09 保護者と決定）：前半（1〜6階）は氷のスライムとペンギンの兵隊がかわりばんこの群れに、雪男（4階から氷の精）。
       // 後半（7〜12階）はペンギンの兵隊の群れに、雪男・氷の精・ときどき氷のスライム
@@ -362,7 +368,7 @@ var Dungeon = (function () {
   function placeThings(dg, floor, seed, dungeon) {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
-    var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞（罠は段階2で決める。今は坑道と同じ数で、落とし穴と毒の沼だけ）
+    var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -483,15 +489,16 @@ var Dungeon = (function () {
       if ((perRoom[tk] || 0) >= 2) continue;
       // 黒鉄の坑道（2026-10-27 保護者の案）：落石（rock。1マス）を足す。落石4割・落とし穴4割・毒の沼2割
       // 白銀の霊峰（2026-11-09 保護者と決定）：つらら（icicle。落石と同じく影が出てから落ちる）3.5割・すべる氷（ice）3.5割・落とし穴3割。毒の沼はなし
-      var rv = rnd(), rock = (cave && rv < 0.4) || (snow && rv < 0.35), wind = peak && rv < 0.4, ice = snow && rv >= 0.35 && rv < 0.7;
-      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow ? !ice : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
+      // 水晶の鍾乳洞（2026-11-15）：鍾乳石（drip。落石と同じ）4割・ぬれた岩（wet。すべる氷と同じ）3割・落とし穴3割。毒の沼はなし
+      var rv = rnd(), rock = (cave && rv < 0.4) || (snow && rv < 0.35) || (crystal && rv < 0.4), wind = peak && rv < 0.4, ice = (snow && rv >= 0.35 && rv < 0.7) || (crystal && rv >= 0.4 && rv < 0.7);
+      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow || crystal ? !ice : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
       // 落とし穴と落石はまわり1マスも通れるところだけ（せまい道をふさがないように）
       var one = pit || rock || wind || ice;
       var ts = one ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
       var tp = pick(rnd, ts);
       // 突風（烈風の峰）：ふむと、決まった向き（dir：上下左右）へ少しのあいだ押し流される。見つけた突風の罠は、向きの矢印で見える
-      var tr = { type: rock ? (snow ? "icicle" : "rock") : wind ? "wind" : ice ? "ice" : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
+      var tr = { type: rock ? (snow ? "icicle" : crystal ? "drip" : "rock") : wind ? "wind" : ice ? (crystal ? "wet" : "ice") : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
       if (wind) tr.dir = ["n", "s", "e", "w"][Math.floor(rnd() * 4)];
       dg.cells[tk].traps.push(tr);
       mark(tk, tp.x, tp.y, one ? 1 : 2, one ? 1 : 2, 1);
@@ -523,7 +530,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
-    if (th === "crystal") return ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime", "light_sprite"];   // 水晶の鍾乳洞（仮。今は巣を置かない）
+    if (th === "crystal") return floor <= 5 ? ["fishman", "cave_crab", "crystal_bat"] : ["fishman", "cave_crab", "crystal_sprite"];   // 水晶の鍾乳洞（今は巣を置かない）
     if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
     if (th === "peak") return floor <= 6 ? ["harpy", "goat", "golem_kid"] : ["snow_wolf", "harpy", "wind_sprite"];   // 烈風の峰（今は巣を置かない）
     if (th === "cave") return floor <= 6 ? ["thief_sword", "thief_archer", "bat", "rock_worm"] : ["dwarf_axe", "dwarf_hammer", "fire_lizard", "slime"];   // 坑道（今は巣を置かない）

@@ -3904,6 +3904,54 @@ var Monsters = (function () {
   };
   SMALL.ice_slime = SMALL.slime;
   SMALL.ice_sprite = SMALL.light_sprite;
+  // 水晶の鍾乳洞（地方3。段階2、2026-11-14 Claude が描いた）
+  // 洞くつガニ：正面の絵だけ（カニは横に歩くので、どの向きも同じ絵）。背中に水晶が光る
+  SMALL.cave_crab = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".AA..........AA.",
+      "AorA........AroA",
+      "ArrA..A..A..ArrA",
+      ".ArA.AeAAeA.ArA.",
+      "..ArAArrrrAArA..",
+      "...AArrcCrrAA...",
+      "..AorrrccrrrRA..",
+      ".AorrrrrrrrrrRA.",
+      ".ArrrrrrrrrrrRA.",
+      "..ARrrrrrrrrRA..",
+      ".A.ARRRRRRRRA.A.",
+      "A.A.AAAAAAAA.A.A",
+      "A.A..A....A..A.A",
+      "................",
+      "................",
+      "................"
+    ] };
+  SMALL_PAL.cave_crab = { A: "#140c1c", r: "#c84a3a", R: "#8a2a2a", o: "#f08a6a", e: "#f0e060", c: "#80d0ff", C: "#e4faff" };
+  // 地底の半魚人：ゴブリンの槍兵の体に、魚の頭とひれ（槍は enemies.js で三つまたにして描く）
+  SMALL.fishman = (function () {
+    var src = SMALL.goblin_spear, out = {};
+    var HEAD = [".......AA.......", "......AUTA......", ".....AUTTXA.....", "....AQRRQQOA....", "A..AQRRQQQOOA..A"];
+    var HEAD_SIDE = ["........AA......", ".......AUTA.....", "......AUTXA.....", "....AQRRQOOA....", "...AQRRQQQOOA..."];
+    ["down", "up", "side"].forEach(function (d) {
+      var rows = src[d].slice(), h = d === "side" ? HEAD_SIDE : HEAD;
+      for (var i = 0; i < h.length; i++) rows[3 + i] = h[i];
+      out[d] = rows;
+    });
+    return out;
+  })();
+  SMALL_PAL.fishman = palWith({ Q: "#3a8a8a", R: "#5ab8b0", O: "#245a60", U: "#c8f4ff", T: "#7ad0e0", X: "#4a9ab0", F: "#a8e8e0", B: "#f0e060", K: "#140c1c",
+                                C: "#4e8a40", D: "#2a5a2e", V: "#7aaa4a", Y: "#a8e8e0" });   // 腰みのは海草の緑
+  // 水晶の精は光の精、水晶コウモリは大コウモリの絵で、色だけちがう
+  SMALL.crystal_sprite = SMALL.light_sprite;
+  SMALL_PAL.crystal_sprite = palWith({ H: "#eef8ff", B: "#a8a0ff", W: "#5a4ab8" });
+  SMALL.crystal_bat = SMALL.bat;
+  SMALL_PAL.crystal_bat = palWith({ M: "#24406a", L: "#80d0ff", K: "#e4faff", H: "#ffffff" });
   // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
   function palWith(o) { var r = {}, k; for (k in PAL) r[k] = PAL[k]; for (k in o) r[k] = o[k]; return r; }
   SMALL_PAL.harpy = { A: "#140c1c", h: "#3a3a8a", H: "#5a5ab8", s: "#f0c8a0", S: "#c8906a", e: "#140c1c", w: "#a8b8f0", W: "#6a7ac8", v: "#3e4a90", f: "#e8e0f8", y: "#f0c040", Y: "#a07820", k: "#d04648" };
@@ -4549,7 +4597,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "snowman" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "snowman" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
@@ -4562,7 +4610,7 @@ var Monsters = (function () {
     var d = dirOf(e.face), ph = Math.sin(e.walk || 0), moving = e.def.speed > 0 && (e.state === "chase" || e.state === "charge");
     var frame = !moving ? "stand" : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
     if (e.type === "vine" || e.type === "raff_bud") d = { dir: "down", flip: false };
-    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
+    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "crystal_bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
     var img = small(e.type, d.dir, frame, e.flash > 0);
     ctx.save();
     if (d.flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -8, Math.round(y) - img.height); }

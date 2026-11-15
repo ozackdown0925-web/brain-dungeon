@@ -896,7 +896,7 @@ var Enemies = (function () {
     else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
     else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
     else if (d.kind === "bee" && e.type === "harpy") fxs.push({ kind: "slash", col: "#e8f0ff", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // ハーピーはかぎづめで引っかく
-    else if (d.kind === "bee" && e.type === "bat") fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
+    else if (d.kind === "bee" && (e.type === "bat" || e.type === "crystal_bat")) fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
     else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
 
@@ -955,7 +955,7 @@ var Enemies = (function () {
       }
       Render.rect(x - 6, y + 4, 12, 3, "rgba(0,0,0,0.35)");
       // 段階7-2c：ドット絵（monsters.js）。足もとは y＋6。槍・弓・つるは、向きに合わせてここで描く
-      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : e.type === "raff_bud" ? 20 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
+      var top = e.type === "wolf_pup" || e.type === "frog" ? 8 : e.type === "wolf" || e.type === "boar" || e.type === "cave_crab" ? 10 : e.type === "mushroom" ? 10 : e.type === "wisp" || e.type === "dark_wisp" ? 14 : e.type === "raff_bud" ? 20 : 15;   // 頭の上のはしが、まんなかから何点上か（HP のバーと「！」の位置）
       if (d.kind === "boar" && !e.dead && (e.state === "warn" || e.state === "charge") && e.chargeLen) {
         // 突進の予告の線（大オオカミと同じ絵。走っているあいだは、うすく残る）
         Bosses.drawChargeLine(ctx, { from: e, x1: e.lineX, y1: e.lineY, x2: e.lineX + e.aim.x * e.chargeLen, y2: e.lineY + e.aim.y * e.chargeLen,
@@ -971,6 +971,12 @@ var Enemies = (function () {
         ctx.strokeStyle = "#7a5230"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(hx - e.face.x * 4, hy - e.face.y * 4); ctx.lineTo(ex, ey); ctx.stroke();
         Render.rect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2, "#c8ccd4");
+        if (e.type === "fishman") {   // 地底の半魚人：三つまたの槍（穂先の両がわにも、短い刃）
+          var px2 = -e.face.y, py2 = e.face.x, bx5 = ex - e.face.x * 3, by5 = ey - e.face.y * 3;
+          Render.rect(Math.round(bx5 + px2 * 3) - 1, Math.round(by5 + py2 * 3) - 1, 2, 2, "#c8ccd4");
+          Render.rect(Math.round(bx5 - px2 * 3) - 1, Math.round(by5 - py2 * 3) - 1, 2, 2, "#c8ccd4");
+          ctx.beginPath(); ctx.moveTo(bx5 + px2 * 3, by5 + py2 * 3); ctx.lineTo(bx5 - px2 * 3, by5 - py2 * 3); ctx.stroke();
+        }
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
