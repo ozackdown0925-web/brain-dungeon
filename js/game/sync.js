@@ -251,10 +251,21 @@ var Sync = (function () {
     });
   }
 
+  // 子どもの書庫の記録と、書庫の問題（保護者画面の「書庫の結果」用。2026-11-16）
+  function childShelfHistory() {
+    return BDApi.call("childShelfHistory", {}, key(), { timeout: 60000 }).then(function (r) { return r.records || []; }, function (err) {
+      if (String(err && err.message || "").indexOf("unknown action") >= 0) {
+        var e = new Error("GAS がまだ新しくなっていません（childShelfHistory がない）"); e.kind = "old"; throw e;
+      }
+      throw err;
+    });
+  }
+  function shelfQuestions() { return BDApi.call("shelfQuestions", {}, key(), { timeout: 60000 }).then(function (r) { return r.questions || []; }); }
+
   return {
     connected: connected, player: player, playerLabel: playerLabel,
     isDebug: isDebug, debugCorrect: debugCorrect, setDebugCorrect: setDebugCorrect, saveSlots: saveSlots, rivalParty: rivalParty, switchSlot: switchSlot, moveToDebug: moveToDebug, copyToDebug: copyToDebug, url: url, markDirty: markDirty,
-    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, drillQuestions: drillQuestions, image: image,
+    start: start, save: save, log: log, checkpoints: checkpoints, restore: restore, checkPin: checkPin, childHistory: childHistory, childShelfHistory: childShelfHistory, shelfQuestions: shelfQuestions, drillQuestions: drillQuestions, image: image,
     reconnect: reconnect, showOffline: showOffline, onError: onError
   };
 })();
