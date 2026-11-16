@@ -39,6 +39,8 @@ var Trial = (function () {
   // 問いを画面に出していた時間を教科ごとに数える（ほかの教科を見ているあいだ・画面をとじているあいだは数えない）。
   // 急いだ問い（RUSH）が RUSH_MAX こ以上あると、扉は開かない（この出発は1回分使ったことになる）
   var RUSH_MIN = 12, RUSH_PER_PART = 4, RUSH_MAX = 2;
+  // 「わからない」ボタン（2026-11-16 保護者の案）：この秒数だけ考えてから押せる。押した問いは×で、保護者画面に出る（急いだ問いには数えない）
+  var DONTKNOW_SECS = 30;
   var spent = {}, timing = null;   // spent[教科]＝ミリ秒、timing＝{ s: 教科, t: 数えはじめた時刻 }
 
   function pad(n) { return ("0" + n).slice(-2); }
@@ -64,6 +66,7 @@ var Trial = (function () {
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;
     $("trialBody").hidden = false;
+    if ($("trialTeach")) $("trialTeach").hidden = true;
     ready = false; shownKey = ""; current = "math";
     renderAll();
     if (!key) { close(); Sync.reconnect(""); return; }
@@ -132,6 +135,8 @@ var Trial = (function () {
       var d = days[r.date] || (days[r.date] = { date: r.date, lists: {} });
       (d.lists[r.subject] || (d.lists[r.subject] = [])).push(r); // 記録の順（古い順）
     });
+    // 前の日までに「わからない」と言って、まだおうちの人と直していない問いがあると、先に直す（2026-11-16 保護者の希望）
+    if (!rest && showTeach()) return;
     ready = true;
     SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); });
     // まだ解いていない教科から
@@ -333,11 +338,62 @@ var Trial = (function () {
     var secs = typeof it.secs === "number" ? it.secs : null;
     if (secs == null) { var m = /考えた時間 (\d+)秒/.exec(String(it.note || "")); if (m) secs = Number(m[1]); }
     if (secs == null) return false;
+    if (isDontKnow(it)) return false;
     var q = byId[it.qid];
     var n = q ? needSecs(q) : (Array.isArray(it.parts) ? it.parts.filter(function (p) { return p && !p.self; }).length * RUSH_PER_PART : 0);
     if (!q && n) n = Math.max(RUSH_MIN, n);
     return n > 0 && secs < n;
   }
+
+  // ---------- 「わからない」を放置しない（2026-11-16 保護者の希望） ----------
+  // その日は試練を続けてよい。次の日からは、おうちの人といっしょに直して、暗証番号で「直した」にするまで試練に進めない
+  function teachKey(r) { return r.date + "|" + r.qid; }
+  function untaught() {
+    var out = [];
+    Object.keys(days).sort().forEach(function (d) {
+      if (d >= today) return;
+      SUBJECTS.forEach(function (s) {
+        (days[d].lists[s.key] || []).forEach(function (r) {
+          if (r && r.qid && isDontKnow(r) && !GameState.dkTaught(teachKey(r))) out.push(r);
+        });
+      });
+    });
+    return out;
+  }
+  function teachBox() {
+    var b = $("trialTeach");
+    if (!b) { b = el("div", "ttech"); b.id = "trialTeach"; $("trialBody").parentNode.insertBefore(b, $("trialBody")); }
+    return b;
+  }
+  function showTeach() {
+    var list = untaught(), box = teachBox();
+    box.textContent = "";
+    if (!list.length) { box.hidden = true; $("trialBody").hidden = false; return false; }
+    $("trialBody").hidden = true; box.hidden = false;
+    box.appendChild(el("h3", "", "「わからない」をそのままにしない"));
+    box.appendChild(el("p", "", "前の日に「わからない」と言った問いが " + list.length + "つある。おうちの人といっしょに解き直してから、おうちの人に暗証番号を入れてもらおう。全部直すと、今日の試練に進める。"));
+    list.forEach(function (r) {
+      var q = byId[r.qid], card = el("div", "ttech-q");
+      var sub = SUBJECTS.filter(function (s) { return s.key === r.subject; })[0];
+      card.appendChild(el("b", "", r.date.slice(5).replace("-", "/") + "　" + (sub ? sub.name : r.subject) + "　" + (r.unit || "")));
+      var holder = el("div");
+      card.appendChild(holder);
+      if (q) DrillCore.renderQuestion(holder, q, { imageLoader: loadImage, saved: r });
+      else holder.appendChild(el("p", "muted", "この問題は今は出していないので、問題文は出せない。"));
+      var ok = el("button", "dq-btn small", "おうちの人と直した（暗証番号）"); ok.type = "button";
+      ok.addEventListener("click", function () {
+        Parent.askPin(function () {
+          GameState.markTaught(teachKey(r));
+          if (!showTeach()) { ready = true; SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); }); var first = SUBJECTS.filter(function (s) { return picks[s.key] && !itemOf(s.key); })[0]; current = first ? first.key : "math"; renderAll(); }
+        });
+      });
+      card.appendChild(ok);
+      box.appendChild(card);
+    });
+    return true;
+  }
+
+  function isDontKnow(it) { return !!it && (it.dontKnow === true || /^わからない/.test(String(it.note || ""))); }
 
   // ---------- 画面 ----------
   function renderAll() { renderTabs(); renderQuestion(); showMemo(current); renderDone(); startTimer(current); }
@@ -347,7 +403,7 @@ var Trial = (function () {
       var it = itemOf(s.key), none = ready && !picks[s.key];
       var b = el("button", "ttab" + (s.key === current ? " sel" : "")); b.type = "button"; b.dataset.s = s.key;
       b.appendChild(el("span", "tname", s.name));
-      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : "× ざんねん"));
+      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : isDontKnow(it) ? "？ わからない" : "× ざんねん"));
       b.addEventListener("click", function () { current = s.key; renderAll(); });
       nav.appendChild(b);
     });
@@ -367,6 +423,13 @@ var Trial = (function () {
     DrillCore.renderQuestion(holder, q, {
       answerRoot: ansBox, keypad: true,   // 数字の答えは、画面の数字のボタンで入れる（2026-10-19）
       requireAll: true,   // 空欄のままでは答え合わせできない（2026-11-16）
+      dontKnow: needSecs(q) ? {
+        guard: function () {
+          var secs = secsOf(current);
+          return secs >= DONTKNOW_SECS ? "" : "「わからない」は、" + DONTKNOW_SECS + "秒考えてから使えるよ（今 " + secs + "秒）。まずは問題をよく読んで、メモに書いて考えてみよう。";
+        },
+        done: "わからないことを正直に言えたね。おうちの人に知らせたよ。正しい答えと解説を読んでおこう。"
+      } : null,
       checkGuard: function () {
         var need = needSecs(q), secs = secsOf(current);
         if (!need || secs >= need) return "";
