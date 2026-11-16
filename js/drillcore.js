@@ -473,6 +473,21 @@
     action.append(checkBtn); update();
 
     function check() {
+      // opts.requireAll：入れていない欄があると答え合わせしない（知恵の試練。2026-11-16 保護者の希望：空欄のまま答え合わせして飛ばしていたため）
+      if (opts.requireAll && !allFilled()) {
+        emptyNote.textContent = "まだ答えを入れていない欄がある。わからなくても、考えて答えを入れてから答え合わせしよう。";
+        action.parentNode.insertBefore(emptyNote, action);
+        return;
+      }
+      // opts.checkGuard：答え合わせの前の知らせ（知恵の試練：急ぎすぎ。2026-11-16）。文が返ったら1回目は知らせだけ出す
+      var guard = opts.checkGuard ? opts.checkGuard() : "";
+      if (guard && !armed) {
+        armed = true;
+        checkBtn.textContent = "このまま答え合わせする";
+        emptyNote.textContent = guard;
+        action.parentNode.insertBefore(emptyNote, action);
+        return;
+      }
       if (!allFilled() && !armed) {
         armed = true;
         checkBtn.textContent = "このまま答え合わせする";

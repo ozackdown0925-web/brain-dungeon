@@ -971,6 +971,22 @@ var GameState = (function () {
 
   // 1日に出発できる回数は保護者画面で決める（はじめは2回）。テスト用に外せる（この端末だけ）
   // 今日もう何回冒険したか（拠点にもどった回数で数える）
+  // 知恵の試練で急いで答えた問いが多く、扉が開かなかった（2026-11-16 保護者の希望）：出発を1回分使ったことにして記録する
+  // GAS の冒険の記録には、終わり方「quit」とメモで送る（GAS の形は変えない）
+  function logRefused(res) {
+    if (!game) return;
+    var t = todayStr();
+    game.adventureCount = { date: t, n: adventuresToday() + 1 }; game.lastAdventure = t;
+    game.log.unshift({ date: t, at: new Date().toISOString(), dungeon: res.dungeon || "forest1", floor: res.floor || 0, kind: "refused", cleared: false,
+                       correct: res.correct || 0, subjects: res.subjects || [], rushed: res.rushed || 0 });
+    if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
+    save();
+    if (window.Sync) {
+      Sync.log({ date: t, kind: "quit", floor: res.floor || 0, correct: res.correct || 0, subjects: res.subjects || [],
+                 note: (GameData.dungeonOf(res.dungeon).name || "") + "・知恵の試練で急いで答えた問いが" + (res.rushed || 0) + "つあり、扉が開かなかった" });
+      Sync.save("", "");
+    }
+  }
   function adventuresToday() {
     if (!game) return 0;
     var c = game.adventureCount;
@@ -1082,7 +1098,7 @@ var GameState = (function () {
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, arenaPass: arenaPass, arenaPassCount: arenaPassCount, setArenaPass: setArenaPass, ARENA_PASS_STEPS: ARENA_PASS_STEPS, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
-    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, logRefused: logRefused, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
