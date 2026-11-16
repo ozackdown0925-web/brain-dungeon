@@ -471,6 +471,35 @@
     }
 
     action.append(checkBtn); update();
+    // opts.dontKnow：「わからない」ボタン（知恵の試練。2026-11-16 保護者の案：飛ばさずに正直に言える道）
+    //   { guard: function () { 押せないときの文を返す（押せるなら ""） }, done: 押したあとに出す文 }
+    //   押すと、答えの欄はそのままで全部×にし、正しい答えと解説を出す。記録の note に「わからない」と入る
+    var dkBtn = null;
+    if (opts.dontKnow && parts.length && !allRecall) {
+      dkBtn = btn("dq-btn ghost small dq-dontknow", "わからない", function () {
+        var msg = opts.dontKnow.guard ? opts.dontKnow.guard() : "";
+        if (msg) { emptyNote.textContent = msg; action.parentNode.insertBefore(emptyNote, action); return; }
+        dontKnow();
+      });
+      action.append(dkBtn);
+    }
+    function dontKnow() {
+      emptyNote.remove();
+      ws.forEach(function (w) { w.lock(); });
+      if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);
+      var results = parts.map(function (p, i) {
+        var v = ws[i].get(), r = { correct: false, value: v };
+        showPartResult(i, r, v); return r;
+      });
+      finish(results);
+      if (opts.dontKnow.done) ans.appendChild(el("p", "dq-note dq-dontknow-note", opts.dontKnow.done));
+      var rec = {
+        correct: false, dontKnow: true, note: "わからない",
+        input: "わからない：" + parts.map(function (p, i) { return (p.label ? p.label + " " : "") + inputText(p, results[i].value); }).join(" / "),
+        parts: parts.map(function (p, i) { var o = { label: p.label || "", value: results[i].value, correct: false, note: "わからない" }; if (SELF[p.type]) o.self = true; return o; })
+      };
+      if (opts.onFinish) opts.onFinish(rec);
+    }
 
     function check() {
       // opts.requireAll：入れていない欄があると答え合わせしない（知恵の試練。2026-11-16 保護者の希望：空欄のまま答え合わせして飛ばしていたため）
@@ -499,6 +528,7 @@
       ws.forEach(function (w) { w.lock(); });
       if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);   // 答え合わせのあとは数字のボタンをしまう
       checkBtn.remove();
+      if (dkBtn) dkBtn.remove();
       var results = parts.map(function (p, i) {
         var v = ws[i].get();
         if (SELF[p.type]) return { self: true, value: v };

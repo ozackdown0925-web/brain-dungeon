@@ -130,7 +130,30 @@ var DrillChart = (function () {
     box.appendChild(chart(s));
     box.appendChild(el("p", "note", "日付をタップすると、その日の問題と答えが見られる。"));
     box.appendChild(table(s, played));
+    box.appendChild(dontKnowList(s.days));
     if (state.day) box.appendChild(detail(state.day));
+  }
+  // 「わからない」と言った問い（2026-11-16 保護者の案：子どもが試練で「わからない」を押した問いを、保護者がいっしょに直すため）
+  function isDontKnow(r) { return /^わからない/.test(String(r.note || "")); }
+  function dontKnowList(days) {
+    var wrap = el("div", "dc-dk");
+    wrap.appendChild(el("b", "", "「わからない」と言った問い"));
+    var from = days[0] || "";
+    var list = records.filter(function (r) { var d = normDate(r.date); return r.qid && d >= from && isDontKnow(r); });
+    if (!list.length) { wrap.appendChild(el("p", "note", "この期間はない")); return wrap; }
+    list.sort(function (a, b) { return String(a.answeredAt || "") < String(b.answeredAt || "") ? 1 : -1; });
+    wrap.appendChild(el("p", "note", "いっしょに解き直してあげてください。日付を押すと、その日の問題と答えが見られる。"));
+    list.forEach(function (r) {
+      var d = normDate(r.date), sub = subjectOf(r.subject), wd = parseDay(d).getDay();
+      var line = el("div", "log-line");
+      var db = el("button", "dc-day", dayLabel(d) + "（" + WEEK[wd] + "）"); db.type = "button";
+      db.onclick = function () { state.day = d; render(); setTimeout(function () { var x = document.getElementById("dcDetail"); if (x) x.scrollIntoView({ behavior: "smooth", block: "start" }); }, 0); };
+      line.appendChild(db);
+      var nm = el("b", "", "　" + sub.name + "　"); nm.style.color = sub.color; line.appendChild(nm);
+      line.appendChild(document.createTextNode((r.unit || "") + "（" + r.qid + "）"));
+      wrap.appendChild(line);
+    });
+    return wrap;
   }
   function toggleGroup(items, cur, on) {
     var g = el("div", "dc-tg");
@@ -264,7 +287,7 @@ var DrillChart = (function () {
     var h = el("div", "dc-q-h");
     var nm = el("b", "", sub.name); nm.style.color = sub.color;
     h.appendChild(nm);
-    h.appendChild(el("span", "dc-q-mark " + (r.correct ? "ok" : "ng"), r.correct ? "○" : "×"));
+    h.appendChild(el("span", "dc-q-mark " + (r.correct ? "ok" : "ng"), r.correct ? "○" : isDontKnow(r) ? "？ わからない" : "×"));
     h.appendChild(el("span", "dc-q-unit", (q && q.unit) || r.unit || ""));
     c.appendChild(h);
     if (q && q.source) c.appendChild(el("div", "dc-q-src", q.source + (q.testMiss ? "　（テストでまちがえた）" : "")));

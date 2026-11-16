@@ -548,3 +548,5 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books.map-books { gap: 1px; }
 .shelf-books.map-books .book { width: 5px; }
 #dlgNote { white-space: pre-line; line-height: 1.7; }   /* ダンジョンの説明とボスの階のお知らせ（2026-11-04） */
+/* 「わからない」と言った問い（保護者画面。2026-11-16） */
+.dc-dk { margin-top: 12px; border: 1px solid var(--btn-line); border-radius: 10px; padding: 10px; }

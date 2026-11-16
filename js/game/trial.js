@@ -39,6 +39,8 @@ var Trial = (function () {
   // 問いを画面に出していた時間を教科ごとに数える（ほかの教科を見ているあいだ・画面をとじているあいだは数えない）。
   // 急いだ問い（RUSH）が RUSH_MAX こ以上あると、扉は開かない（この出発は1回分使ったことになる）
   var RUSH_MIN = 12, RUSH_PER_PART = 4, RUSH_MAX = 2;
+  // 「わからない」ボタン（2026-11-16 保護者の案）：この秒数だけ考えてから押せる。押した問いは×で、保護者画面に出る（急いだ問いには数えない）
+  var DONTKNOW_SECS = 30;
   var spent = {}, timing = null;   // spent[教科]＝ミリ秒、timing＝{ s: 教科, t: 数えはじめた時刻 }
 
   function pad(n) { return ("0" + n).slice(-2); }
@@ -333,11 +335,14 @@ var Trial = (function () {
     var secs = typeof it.secs === "number" ? it.secs : null;
     if (secs == null) { var m = /考えた時間 (\d+)秒/.exec(String(it.note || "")); if (m) secs = Number(m[1]); }
     if (secs == null) return false;
+    if (isDontKnow(it)) return false;
     var q = byId[it.qid];
     var n = q ? needSecs(q) : (Array.isArray(it.parts) ? it.parts.filter(function (p) { return p && !p.self; }).length * RUSH_PER_PART : 0);
     if (!q && n) n = Math.max(RUSH_MIN, n);
     return n > 0 && secs < n;
   }
+
+  function isDontKnow(it) { return !!it && (it.dontKnow === true || /^わからない/.test(String(it.note || ""))); }
 
   // ---------- 画面 ----------
   function renderAll() { renderTabs(); renderQuestion(); showMemo(current); renderDone(); startTimer(current); }
@@ -347,7 +352,7 @@ var Trial = (function () {
       var it = itemOf(s.key), none = ready && !picks[s.key];
       var b = el("button", "ttab" + (s.key === current ? " sel" : "")); b.type = "button"; b.dataset.s = s.key;
       b.appendChild(el("span", "tname", s.name));
-      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : "× ざんねん"));
+      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : isDontKnow(it) ? "？ わからない" : "× ざんねん"));
       b.addEventListener("click", function () { current = s.key; renderAll(); });
       nav.appendChild(b);
     });
@@ -367,6 +372,13 @@ var Trial = (function () {
     DrillCore.renderQuestion(holder, q, {
       answerRoot: ansBox, keypad: true,   // 数字の答えは、画面の数字のボタンで入れる（2026-10-19）
       requireAll: true,   // 空欄のままでは答え合わせできない（2026-11-16）
+      dontKnow: needSecs(q) ? {
+        guard: function () {
+          var secs = secsOf(current);
+          return secs >= DONTKNOW_SECS ? "" : "「わからない」は、" + DONTKNOW_SECS + "秒考えてから使えるよ（今 " + secs + "秒）。まずは問題をよく読んで、メモに書いて考えてみよう。";
+        },
+        done: "わからないことを正直に言えたね。おうちの人に知らせたよ。正しい答えと解説を読んでおこう。"
+      } : null,
       checkGuard: function () {
         var need = needSecs(q), secs = secsOf(current);
         if (!need || secs >= need) return "";
