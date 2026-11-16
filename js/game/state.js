@@ -987,6 +987,16 @@ var GameState = (function () {
       Sync.save("", "");
     }
   }
+  // 「わからない」と言った問いを、おうちの人と直したしるし（2026-11-16）。キーは「日付|問題ID」。最近の300こ
+  function dkTaught(k) { return !!(game && Array.isArray(game.dkTaught) && game.dkTaught.indexOf(k) >= 0); }
+  function markTaught(k) {
+    if (!game) return;
+    if (!Array.isArray(game.dkTaught)) game.dkTaught = [];
+    if (game.dkTaught.indexOf(k) < 0) game.dkTaught.push(k);
+    if (game.dkTaught.length > 300) game.dkTaught = game.dkTaught.slice(-300);
+    save();
+    if (window.Sync) Sync.save("", "");
+  }
   function adventuresToday() {
     if (!game) return 0;
     var c = game.adventureCount;
@@ -1098,7 +1108,7 @@ var GameState = (function () {
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, arenaPass: arenaPass, arenaPassCount: arenaPassCount, setArenaPass: setArenaPass, ARENA_PASS_STEPS: ARENA_PASS_STEPS, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
     get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
-    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, logRefused: logRefused, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, logRefused: logRefused, dkTaught: dkTaught, markTaught: markTaught, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,

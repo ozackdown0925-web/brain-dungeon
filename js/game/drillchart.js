@@ -142,7 +142,7 @@ var DrillChart = (function () {
     var list = records.filter(function (r) { var d = normDate(r.date); return r.qid && d >= from && isDontKnow(r); });
     if (!list.length) { wrap.appendChild(el("p", "note", "この期間はない")); return wrap; }
     list.sort(function (a, b) { return String(a.answeredAt || "") < String(b.answeredAt || "") ? 1 : -1; });
-    wrap.appendChild(el("p", "note", "いっしょに解き直してあげてください。日付を押すと、その日の問題と答えが見られる。"));
+    wrap.appendChild(el("p", "note", "いっしょに解き直してあげてください。次の日の試練の入り口で、子どもの iPad に暗証番号を入れて「直した」にするまで、試練に進めません。日付を押すと、その日の問題と答えが見られる。"));
     list.forEach(function (r) {
       var d = normDate(r.date), sub = subjectOf(r.subject), wd = parseDay(d).getDay();
       var line = el("div", "log-line");
