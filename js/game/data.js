@@ -951,8 +951,9 @@ var GameData = (function () {
   //     わられずにこもり終わると、からのまま回って突進（大オオカミの大突進と同じく、赤い線で予告）。HP 半分からは2回続けて。
   //   HP が半分になると、洞くつガニを2体呼ぶ（1回だけ）。打が弱点、水は効きにくい（水の中にすむので）
   //   強さ：霊峰のスノーゴーレム（6階・HP 9000）・氷牙獣（12階・HP 11500）のあいだ。鍾乳洞5階（Lv48 くらい・ミスリル）で、剣で約45振り（からごもりの時間を入れずに。1振り約210）
+  // 2026-11-17 段階5（数字の見直し）：tools/balance.js のボスの表で、ふつうの一撃が体力の約6%（氷牙獣と同じ）、大技が12〜17%になるように、物攻 84→100
   ENEMIES.crab_boss = {
-    name: "ヨロイガニ", kind: "crab_boss", boss: true, hp: 9500, patk: 84, matk: 0, pdef: 16, mdef: 8,
+    name: "ヨロイガニ", kind: "crab_boss", boss: true, hp: 9500, patk: 100, matk: 0, pdef: 16, mdef: 8,
     res: { strike: 1.3, water: 0.5 }, speed: 26, speedHalf: 32, r: 16, color: "#c84a3a",
     reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, pinchMult: 0.9, pinchGap: 0.25,
     bubbleEvery: 7, bubbleEveryHalf: 5.5, bubbleWindup: 0.6, bubbles: 3, bubblesHalf: 5, bubbleSpread: 0.35, bubbleSpeed: 62, bubbleMult: 1.0, bubbleLife: 3.6,
@@ -969,12 +970,13 @@ var GameData = (function () {
   //   水晶の光線（beamEvery 秒ごと）：おしりの水晶に光をためて（赤い帯で予告）、まっすぐの光線を撃つ。HP 半分から扇に3本。
   //   HP が半分になると、子グモを3体よぶ（1回だけ）。火が弱点（糸もよく燃える）、光はいまひとつ（水晶がはね返す）
   //   強さ：氷牙獣（霊峰12階・HP 11500・物攻 90）より少し強く。鍾乳洞10階（Lv51 くらい・ミスリル）で剣で約55振り
+  // 2026-11-17 段階5（数字の見直し）：物攻 92→108（ふつうの一撃が体力の約6%）。天井から落ちる一撃は ×2.0→×1.7（約17%。光線と同じくらい）
   ENEMIES.spider_boss = {
-    name: "水晶の大グモ", kind: "spider_boss", boss: true, hp: 12500, patk: 92, matk: 0, pdef: 12, mdef: 10,
+    name: "水晶の大グモ", kind: "spider_boss", boss: true, hp: 12500, patk: 108, matk: 0, pdef: 12, mdef: 10,
     res: { fire: 1.3, light: 0.5 }, speed: 44, speedHalf: 52, r: 16, color: "#7ad8f8",
     reach: 20, windup: 0.45, cooldown: 1.1, cooldownHalf: 0.85, biteMult: 1.2,
     webEvery: 6, webEveryHalf: 4.5, webWindup: 0.5, webSpeed: 130, webMult: 0.6, webs: 1, websHalf: 3, webSpread: 0.3,
-    ceilEvery: 15, ceilEveryHalf: 12, climbTime: 0.6, ceilTime: 2.4, ceilFollow: 70, leapLock: 0.8, dropR: 34, dropMult: 2.0, tired: 1.6,
+    ceilEvery: 15, ceilEveryHalf: 12, climbTime: 0.6, ceilTime: 2.4, ceilFollow: 70, leapLock: 0.8, dropR: 34, dropMult: 1.7, tired: 1.6,
     beamEvery: 11, beamEveryHalf: 9, beamWarn: 1.0, beamLen: 240, beamW: 14, beamMult: 1.7, beams: 1, beamsHalf: 3, beamSpread: 0.5, beamTime: 0.35,
     kids: 3, kidHp: 300, kidAtk: 72
   };
@@ -1250,7 +1252,8 @@ var GameData = (function () {
     //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
     shonyu: {
       id: "shonyu", tagline: "湖の下にひろがる、青く光る水晶の洞くつ。", intro: ["湖の下にひろがる、青く光る水晶の洞くつ。", "地底の湖には、水晶の光に引きよせられた魔物がすみついているという。"],
-      region: "volcamarine", name: "水晶の鍾乳洞", short: "鍾乳洞", floors: 10, needs: "yuki", depthBase: 75, theme: "crystal", tier: 3,
+      // tierAfter：主（いちばん下の階）をたおしたあとの段（2026-11-17）。大グモをたおすと、鍾乳洞の宝箱とお店がプラチナになる
+      region: "volcamarine", name: "水晶の鍾乳洞", short: "鍾乳洞", floors: 10, needs: "yuki", depthBase: 75, theme: "crystal", tier: 3, tierAfter: 4,
       // 敵の強さの上のせ（段階2、2026-11-14。仮）：HP ×1.9・攻撃 ×1.0。装備はミスリルのまま（深さで敵だけ強くなる）なので、攻撃は霊峰（×1.1）より少し小さく。
       //   tools/balance.js で、地底の半魚人が剣で約4振り・受けて約22回（霊峰のペンギンの兵隊と同じくらい）。洞くつガニは斬が半減なので、HP を少し小さく
       foeHp: 1.9, foeAtk: 1.0, foeType: { cave_crab: { hp: 0.8 } },
@@ -1278,9 +1281,12 @@ var GameData = (function () {
          heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" },
     // ミスリルの段（烈風の峰。2026-11-08。ドワーフキングをたおすと、宝箱とお店がミスリルになる）。名前は仮（保護者があとで直してよい）
     3: { sword: "ミスリルの剣", greatsword: "ミスリルの大剣", axe: "ミスリルの斧", bow: "銀翼の弓", spear: "ミスリルの槍", fist: "ミスリルのこて", staff: "月光の杖",
-         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" }
+         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" },
+    // プラチナの段（地方3。2026-11-17。水晶の大グモ（鍾乳洞の主）をたおすと、宝箱とお店がプラチナになる）。名前は 2026-11-10 保護者と決めたもの
+    4: { sword: "プラチナの剣", greatsword: "プラチナの大剣", axe: "プラチナの斧", bow: "プラチナの弓", spear: "プラチナの槍", fist: "プラチナのこて", staff: "太陽の杖",
+         heavy: "プラチナのよろい", light: "プラチナの鎖かたびら", magic: "プラチナのローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル", "プラチナ"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }

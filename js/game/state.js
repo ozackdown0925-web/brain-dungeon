@@ -529,8 +529,14 @@ var GameState = (function () {
   }
   function shopTier() {
     var t = 0;
-    GameData.DUNGEON_ORDER.forEach(function (id) { if (unlocked(id)) t = Math.max(t, GameData.dungeonOf(id).tier || 0); });
+    GameData.DUNGEON_ORDER.forEach(function (id) { if (unlocked(id)) t = Math.max(t, dungeonTier(id)); });
     return t;
+  }
+  // そのダンジョンの宝箱の段：主（いちばん下の階）をたおしていて tierAfter があれば、その段（2026-11-17。水晶の鍾乳洞 → プラチナ）
+  function dungeonTier(id) {
+    var D = GameData.dungeonOf(id);
+    if (D.tierAfter && game && progressOf(id).deepest >= D.floors) return D.tierAfter;
+    return D.tier || 0;
   }
   function shopItem(slot, base, ilv, tier) {
     tier = tier || 0;
@@ -1106,7 +1112,7 @@ var GameState = (function () {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     trainingLeft: trainingLeft, addTraining: addTraining, TRAIN_SEC_PER_DAY: TRAIN_SEC_PER_DAY,
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, arenaPass: arenaPass, arenaPassCount: arenaPassCount, setArenaPass: setArenaPass, ARENA_PASS_STEPS: ARENA_PASS_STEPS, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
-    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, dungeonTier: dungeonTier, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
     todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, logRefused: logRefused, dkTaught: dkTaught, markTaught: markTaught, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,

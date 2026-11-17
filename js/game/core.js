@@ -713,7 +713,7 @@
       }
       if (b.gold) dg.hasCKey = false;
       b.opened = true;
-      var got = Loot.chest(dg.power, settings.correct, b.rare, GameData.dungeonOf(dg.dungeon).tier || 0);
+      var got = Loot.chest(dg.power, settings.correct, b.rare, GameState.dungeonTier(dg.dungeon));
       if (got.equip) run.got.push(got.equip);
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] = (run.mat[m] || 0) + got.mat[m]; });
