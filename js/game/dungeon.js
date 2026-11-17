@@ -65,12 +65,13 @@ var Dungeon = (function () {
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
-  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : th === "crystal" ? CrystalRooms : ForestRooms; }
+  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : th === "crystal" ? CrystalRooms : th === "temple" ? TempleRooms : ForestRooms; }
   // ボスごとにかえる部屋（data.js の bosses の room）。warm＝烈風の峰6階の湯けむりの谷（ラフレシア。2026-11-08）
   // snowfield＝白銀の霊峰6階の雪原の広場（スノーゴーレム。2026-11-09）
   // lakeside＝水晶の鍾乳洞5階の地底湖のほとり（2026-11-14）
-  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom };
-  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : BossRoom; }
+  // altar＝しずみの湖底神殿6階の水の祭壇（2026-11-18）
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom, altar: TempleAltarBossRoom };
+  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : theme === "temple" ? TempleBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -172,7 +173,13 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
-    if (theme === "crystal") {
+    if (theme === "temple") {
+      // しずみの湖底神殿（地方3の段階1、2026-11-18）：神殿の敵ができるまでの仮。鍾乳洞の後半と同じ
+      for (var tj = 0; tj < n; tj++) types.push("fishman");
+      if (rnd() < 0.7) types[0] = "cave_crab";
+      if (rnd() < 0.5) types[types.length - 1] = "crystal_sprite";
+      if (n >= 4 && rnd() < 0.5) types[1] = "slime";
+    } else if (theme === "crystal") {
       // 水晶の鍾乳洞（地方3の段階2、2026-11-14 Claude の案）：前半（1〜5階）は地底の半魚人と洞くつガニがかわりばんこの群れに、
       // 水晶コウモリ（3階から水晶の精）。後半（6〜10階）は半魚人の群れに、洞くつガニ・水晶の精・水晶コウモリ・ときどき水のスライム
       if (floor <= 5) {
@@ -369,6 +376,8 @@ var Dungeon = (function () {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
     var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞
+    var temple = GameData.dungeonOf(dungeon).theme === "temple";   // しずみの湖底神殿（罠は段階2で決める。今は鍾乳洞と同じ）
+    if (temple) crystal = true;
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -530,6 +539,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
+    if (th === "temple") return ["fishman", "cave_crab", "crystal_sprite"];   // しずみの湖底神殿（仮。今は巣を置かない）
     if (th === "crystal") return floor <= 5 ? ["fishman", "cave_crab", "crystal_bat"] : ["fishman", "cave_crab", "crystal_sprite"];   // 水晶の鍾乳洞（今は巣を置かない）
     if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
     if (th === "peak") return floor <= 6 ? ["harpy", "goat", "golem_kid"] : ["snow_wolf", "harpy", "wind_sprite"];   // 烈風の峰（今は巣を置かない）
