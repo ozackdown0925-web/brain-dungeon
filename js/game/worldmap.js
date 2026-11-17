@@ -48,12 +48,13 @@ var WorldMap = (function () {
     ],
     // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。
     // 地図の絵は保護者が Gemini で作ったもの（2026-11-14）：町は左の川ぞい、鍾乳洞は湖の北の水晶の洞くつ、神殿は湖のまんなか、
-    // 火山は右の赤い火山。湖底神殿と火山はまだ作っていないので locked（いつも「？？？」）
+    // 火山は右の赤い火山。火山はまだ作っていないので locked（いつも「？？？」）。湖底神殿は 2026-11-18 から
     volcamarine: [
       { id: "base", kind: "base", x: 80, y: 110 },
       { id: "shonyu", kind: "dungeon", x: 192, y: 58,
         note: "5階と10階に、強い魔物がいる。" },
-      { id: "kotei", kind: "dungeon", x: 184, y: 98, locked: true },
+      { id: "kotei", kind: "dungeon", x: 184, y: 98,
+        note: "6階と12階に、強い魔物がいる。" },
       { id: "kazan", kind: "dungeon", x: 298, y: 50, locked: true },
       // 前の地方への道：右下の雪山（白銀の霊峰を越えてきた）
       { id: "to_frost", kind: "road", to: "frostcrest", x: 300, y: 124 }

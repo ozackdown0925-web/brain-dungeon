@@ -1265,9 +1265,27 @@ var GameData = (function () {
               before: ["洞くつのいちばん奥は、天井まで水晶でおおわれている。", "水晶の光が、ふっと暗くなった……。", "天井から、大きな水晶をかかえたクモが下りてきた！"],
               after: ["大グモの水晶から光が消え、洞くつに静けさがもどった。", "地上へ出る道の先に、大きな湖が見えている。"] }
       }
+    },
+    // しずみの湖底神殿（地方3の2つ目のダンジョン。段階1、2026-11-18）：12階（6階・12階がボス）。水晶の大グモ（鍾乳洞の主）をたおすと開く。
+    //   深さは鍾乳洞の続き（85＋階）。部屋は湖の底にしずんだ神殿の型（theme: temple。青緑の石だたみ・水路・石柱・海藻）。
+    //   装備の段は、はじめからプラチナ（tier: 4。2026-11-17 段階5で決めた形）。
+    //   敵とボスはまだ仮：敵は鍾乳洞の後半（半魚人・洞くつガニ・水晶の精・水のスライム）、ボスはヨロイガニと水晶の大グモ（段階2〜4で作る。案は大ダコ → 水竜）。
+    //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    kotei: {
+      id: "kotei", tagline: "湖の底にしずんだ、古い神殿。", intro: ["湖のまんなかの底にしずんだ、古い神殿。", "ふしぎな力で水が入らない神殿の中には、湖の魔物がすみついているという。"],
+      region: "volcamarine", name: "しずみの湖底神殿", short: "湖底神殿", floors: 12, needs: "shonyu", depthBase: 85, theme: "temple", tier: 4,
+      foeHp: 1.9, foeAtk: 1.0, foeType: { cave_crab: { hp: 0.8 } },   // 仮（段階2で敵といっしょに決める）
+      bosses: {
+        6: { enemy: "crab_boss", title: "神殿の水路をすすみし者", room: "altar",   // 仮のボス（段階3で大ダコにする案）。部屋は水の祭壇
+             before: ["神殿の広間のまんなかに、大きな水たまりがある。", "水の中で、何かが動いた！"],
+             after: ["魔物は、水の底へしずんでいった。", "神殿の奥へ、道が続いている。"] },
+        12: { enemy: "spider_boss", title: "湖底神殿をきわめし者",   // 仮のボス（段階4で水竜にする案）
+              before: ["神殿のいちばん奥は、まるい水の広間だ。", "水面が大きくもり上がった……。"],
+              after: ["神殿に、静けさがもどった。", "湖の向こうに、赤い火山が見えている。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
