@@ -75,6 +75,8 @@ var Combat = (function () {
         }
         if (sm !== 1) res.amount = Math.max(1, Math.round(res.amount * sm));
       }
+      // 大ダコ（2026-11-18）：床から出た足を全部切ると、ひるむ。ひるんでいるあいだは多く効く
+      if (e.def.kind === "octo_boss") { var om = Bosses.octoMult(e); if (om !== 1) res.amount = Math.max(1, Math.round(res.amount * om)); }
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;

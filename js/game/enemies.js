@@ -1085,12 +1085,12 @@ var Enemies = (function () {
         var L = (10 + d.reach) * reachK, nx = -e.face.y, ny = e.face.x, bend = Math.sin(lk * Math.PI * 2) * 8;
         var tx2 = x + e.face.x * L, ty2 = y - 2 + e.face.y * L, cx2 = x + e.face.x * L * 0.5 + nx * bend, cy2 = y - 2 + e.face.y * L * 0.5 + ny * bend;
         ctx.lineCap = "round";
-        ctx.strokeStyle = "#1e3f22"; ctx.lineWidth = 4;
+        ctx.strokeStyle = d.arm ? "#5a1a40" : "#1e3f22"; ctx.lineWidth = 4;   // 大ダコの足（2026-11-18）は赤むらさき
         ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(cx2, cy2, tx2, ty2); ctx.stroke();
-        ctx.strokeStyle = "#5a9a4e"; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = d.arm ? "#d87ab0" : "#5a9a4e"; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(cx2, cy2, tx2, ty2); ctx.stroke();
         ctx.lineCap = "butt";
-        Render.rect(Math.round(tx2) - 2, Math.round(ty2) - 2, 4, 3, "#8fd07a");   // 先の葉
+        Render.rect(Math.round(tx2) - 2, Math.round(ty2) - 2, 4, 3, d.arm ? "#f8d8ea" : "#8fd07a");   // 先の葉（足は吸盤）
       }
       // 状態異常の印
       var marks = Object.keys(e.status).filter(function (k) { return k !== "break"; });
