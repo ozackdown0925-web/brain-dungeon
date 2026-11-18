@@ -3954,6 +3954,69 @@ var Monsters = (function () {
   SMALL_PAL.crystal_sprite = palWith({ H: "#eef8ff", B: "#a8a0ff", W: "#5a4ab8" });
   SMALL.crystal_bat = SMALL.bat;
   SMALL_PAL.crystal_bat = palWith({ M: "#24406a", L: "#80d0ff", K: "#e4faff", H: "#ffffff" });
+  // しずみの湖底神殿（地方3。段階2、2026-11-18 Claude が描いた）
+  // しずみの神官は影の魔導士の絵で、色だけちがう
+  SMALL.stone_guard = SMALL.thief_sword;   // 盗賊の剣士の形を、青みがかった白い石の色にした（フードをかぶった剣士の像）。剣は enemies.js で重ねる
+  SMALL_PAL.stone_guard = { A: "#140c1c", l: "#6e8c8e", m: "#a8c4c0", s: "#c8dcd8", f: "#a8c4c0", n: "#6e8c8e", x: "#466068", z: "#466068", Z: "#6e8c8e",
+                            h: "#2a4048", p: "#2a4048", j: "#466068", k: "#7ff0ff", y: "#a8c4c0", o: "#6e8c8e", q: "#466068", r: "#6e8c8e" };
+  SMALL.priest = SMALL.shadow_mage;
+  SMALL_PAL.priest = palWith({ L: "#3a8ab0", M: "#1c4a6a", K: "#bff4ff", Y: "#c8a040" });
+  // 神殿ウツボ：床の石のすきまから、くねった体を出している。口を大きくあけて、歯が見える。正面の絵だけ（どの向きも同じ絵）
+  SMALL.moray = { down: [
+      "................",
+      "................",
+      "................",
+      ".....AAAAA......",
+      "....AyyyyyA.....",
+      "...AyekyyyYA....",
+      "...AyyyyyyYA....",
+      "..AwmwmwyyyA....",
+      "..AmmmmmmyyA....",
+      "..AwmwmwyyYA....",
+      "...AAAAyyyYA....",
+      "......AyYyyA....",
+      ".....AygyyYA....",
+      "....AygyyYA.....",
+      "...AygyYyA......",
+      "...AygyyyA......",
+      "...AyYyyyA......",
+      "....AgyyyYA.....",
+      ".....AgyYyyA....",
+      ".....AgyyyyA....",
+      "...AAAyyyyyAAA..",
+      "..AooAAAAAAAooA.",
+      "...AooooooooooA.",
+      "....AAAAAAAAAA.."
+    ] };
+  SMALL_PAL.moray = { A: "#140c1c", y: "#c8c048", Y: "#6a7a2a", g: "#ece88a", e: "#f8f8f0", k: "#140c1c", m: "#a03030", w: "#f8f8f0", o: "#0a2228" };
+  // 神殿クラゲ：まるいかさと、ゆれる足。正面の絵だけ（浮いているので、どの向きも同じ絵）
+  SMALL.jelly = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      ".....AAAAAA.....",
+      "...AAhhppppAA...",
+      "..AhhpppppppPA..",
+      ".AhpppppppppPPA.",
+      ".AppppppppppPPA.",
+      "AppppAppppAppPPA",
+      "APpppAppppAppPPA",
+      "APPpppppppppPPqA",
+      ".AqPPPPPPPPPPqA.",
+      ".AAqqqqqqqqqqAA.",
+      "..AtA.tA.At.AtA.",
+      "..At..tA.At..tA.",
+      "...At.At.tA.tA..",
+      "...At..tAt..tA..",
+      "..At...tAt...tA.",
+      "..At..At..tA.At.",
+      "...A..At..tA..A.",
+      "......A....A....",
+      "................",
+      "................"
+    ] };
+  SMALL_PAL.jelly = { A: "#140c1c", h: "#fff0fa", p: "#f0a0d8", P: "#c870b8", q: "#8a4a90", t: "#f8c8ec" };
   // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
   function palWith(o) { var r = {}, k; for (k in PAL) r[k] = PAL[k]; for (k in o) r[k] = o[k]; return r; }
   SMALL_PAL.harpy = { A: "#140c1c", h: "#3a3a8a", H: "#5a5ab8", s: "#f0c8a0", S: "#c8906a", e: "#140c1c", w: "#a8b8f0", W: "#6a7ac8", v: "#3e4a90", f: "#e8e0f8", y: "#f0c040", Y: "#a07820", k: "#d04648" };
@@ -4745,7 +4808,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "snowman" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "moray" && type !== "priest" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "snowman" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }

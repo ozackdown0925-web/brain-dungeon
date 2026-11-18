@@ -781,20 +781,21 @@
           t.wait = 1.5;
           run.gust = { dx: A.face.x / fl, dy: A.face.y / fl, t: SLIDE_TIME, slide: true };
           // ぬれた岩（水晶の鍾乳洞、2026-11-15）：すべる氷と同じ動き
-          say(t.type === "wet" ? "つるっ！ ぬれた岩ですべった！" : "つるっ！ 氷ですべった！"); Sound.play("trap");
+          say(t.type === "wet" ? (room.theme === "temple" ? "つるっ！ ぬれた石だたみですべった！" : "つるっ！ ぬれた岩ですべった！") : "つるっ！ 氷ですべった！"); Sound.play("trap");
         }
         continue;
       }
-      if (t.type === "rock" || t.type === "icicle" || t.type === "drip") {
+      if (t.type === "rock" || t.type === "icicle" || t.type === "drip" || t.type === "geyser") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
         if (!(t.wait > 0)) {
           t.wait = 2.5;
           // つらら（白銀の霊峰、2026-11-09）：落石と同じ。上から氷のつららが落ちてくる
           // 鍾乳石（水晶の鍾乳洞、2026-11-15）：落石と同じ。天井から、先に水晶のついた鍾乳石が落ちてくる
-          var icy = t.type === "icicle", drip = t.type === "drip";
-          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy, drip: drip });
-          say(icy ? "頭の上で、つららがきしむ音がした！" : drip ? "頭の上で、鍾乳石がぐらりとゆれた！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+          // 水の柱（しずみの湖底神殿、2026-11-18）：落石と同じ。足もとの石のすきまから、水がふき上がる
+          var icy = t.type === "icicle", drip = t.type === "drip", gey = t.type === "geyser";
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy, drip: drip, geyser: gey });
+          say(icy ? "頭の上で、つららがきしむ音がした！" : drip ? "頭の上で、鍾乳石がぐらりとゆれた！" : gey ? "足もとから、ごぼごぼと水の音がする！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
         }
         continue;
       }
@@ -854,7 +855,7 @@
             ch.hp = Math.max(1, ch.hp - dmg);
             A.hurtT = 0.3;
             Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
-            say(f.ice ? "つららに当たった！" : f.drip ? "鍾乳石に当たった！" : "落石に当たった！");
+            say(f.ice ? "つららに当たった！" : f.drip ? "鍾乳石に当たった！" : f.geyser ? "水の柱にふき飛ばされた！" : "落石に当たった！");
           }
         }
       } else f.dust -= dt;
@@ -917,7 +918,12 @@
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R * (0.5 + 0.5 * k), FALL_R * (0.5 + 0.5 * k) * 0.55, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(255,90,64," + (0.3 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R, FALL_R * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-        if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
+        if (f.geyser) {   // 水の柱：落ちてくるものはなく、印の中に泡がだんだん増える
+          for (var bq = 0; bq < 3 + Math.floor(k * 5); bq++) {
+            var ba = bq * 2.4 + k * 9, br = (bq % 3 + 1) * 3.5 * k;
+            Render.rect(Math.round(x + Math.cos(ba) * br) - 1, Math.round(y + Math.sin(ba) * br * 0.55) - 1, 2, 2, bq % 2 ? "#bff4ff" : "#4ab8d8");
+          }
+        } else if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
           var iy = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 3, iy - 10, 7, 4, "#140c1c"); Render.rect(x - 2, iy - 6, 5, 4, "#140c1c"); Render.rect(x - 1, iy - 2, 3, 3, "#140c1c"); Render.rect(x, iy + 1, 1, 2, "#140c1c");
           Render.rect(x - 2, iy - 9, 5, 3, "#b8dcf0"); Render.rect(x - 1, iy - 6, 3, 4, "#94c4e0"); Render.rect(x, iy - 2, 1, 3, "#6ea4c8");
@@ -938,7 +944,15 @@
         var kd = 1 - f.dust / 0.35;
         for (var i = 0; i < 8; i++) {
           var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
-          if (f.drip) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(128,208,255," + (1 - kd).toFixed(2) + ")" : "rgba(86,96,138," + (1 - kd).toFixed(2) + ")");   // くだけた石と水晶
+          if (f.geyser) {   // 水の柱：太い水の柱がふき上がって、しぶきが散る
+            if (i === 0) {
+              var gh = Math.round(46 * (1 - kd * kd)), gw = 9 - Math.round(kd * 4);
+              Render.rect(x - gw, y - gh, gw * 2, gh, "rgba(74,184,216," + (0.85 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - gw + 2, y - gh, 3, gh, "rgba(191,244,255," + (0.9 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - gw - 2, y - gh - 3, gw * 2 + 4, 4, "rgba(232,252,255," + (0.9 - kd * 0.7).toFixed(2) + ")");
+            }
+            Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(191,244,255," + (1 - kd).toFixed(2) + ")" : "rgba(74,184,216," + (1 - kd).toFixed(2) + ")");
+          } else if (f.drip) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(128,208,255," + (1 - kd).toFixed(2) + ")" : "rgba(86,96,138," + (1 - kd).toFixed(2) + ")");   // くだけた石と水晶
           else if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
           else Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
         }
@@ -1030,6 +1044,10 @@
         Render.rect(x + 3, y + 5, 4, 1, "#5aa0d8"); Render.rect(x + 9, y + 9, 3, 1, "#3a78b0");
         var rp = (glow * 0.9 + i * 0.37) % 1;
         if (rp < 0.4) { var rr2 = Math.round(1 + rp * 8); Render.rect(x + 8 - rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8 + rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8, y + 8 - Math.round(rr2 / 2), 1, 1, "#8ee4ff"); }
+      } else if (t.type === "geyser") {   // 水の柱（しずみの湖底神殿）：石だたみの割れ目と、ときどき上がる泡
+        Render.rect(x + 3, y + 7, 10, 2, "#0a2228"); Render.rect(x + 7, y + 4, 2, 9, "#0a2228"); Render.rect(x + 4, y + 7, 8, 1, "#1e5a68");
+        var gp = (glow * 1.1 + i * 0.41) % 1;
+        if (gp < 0.5) { var gyy = y + 7 - Math.round(gp * 10); Render.rect(x + 7, gyy, 2, 2, "#bff4ff"); if (gp > 0.2) Render.rect(x + 5, gyy + 3, 1, 1, "#4ab8d8"); }
       } else if (t.type === "drip") {   // 鍾乳石：落ちてくだけた石のかけらと水晶のかけら、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#56608a"); Render.rect(x + 10, y + 9, 2, 2, "#80d0ff"); Render.rect(x + 6, y + 12, 3, 1, "#3a4264");
         Render.rect(x + 4, y + 8, 1, 1, "#0e1020"); Render.rect(x + 5, y + 9, 1, 1, "#0e1020"); Render.rect(x + 6, y + 10, 2, 1, "#0e1020"); Render.rect(x + 10, y + 5, 1, 2, "#0e1020");

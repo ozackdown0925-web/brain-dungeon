@@ -381,7 +381,7 @@ var Enemies = (function () {
       if (zn.t <= 0) rivalZones.splice(z, 1);
     }
   }
-  var THIEF_WEAPON = { thief_sword: "sword", thief_archer: "bow", dwarf_axe: "axe", dwarf_hammer: "hammer" };   // ドワーフ（2026-11-07）も同じく重ねる
+  var THIEF_WEAPON = { thief_sword: "sword", thief_archer: "bow", dwarf_axe: "axe", dwarf_hammer: "hammer", stone_guard: "sword" };   // ドワーフ（2026-11-07）も同じく重ねる
   function remove(e) { var i = list.indexOf(e); if (i >= 0) list.splice(i, 1); }
   function drawRival(ctx, e, x, y) {
     var R = e.rival, moving = e.state === "chase";
@@ -866,6 +866,10 @@ var Enemies = (function () {
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 6 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 1.6, from: e, ally: !!e.charm, opts: { wind: true, magic: true } });
       return;
     }
+    if (d.water && d.kind === "caster") {   // しずみの神官の水の玉（しずみの湖底神殿、2026-11-18。魔法のダメージ）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { drop: true, big: true, magic: true } });
+      return;
+    }
     if (d.kind === "caster" || d.kind === "dwisp") {   // 闇の玉（魔法のダメージ。ダークウィスプも）
       arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { orb: true, magic: true } });
       return;
@@ -1034,13 +1038,23 @@ var Enemies = (function () {
         var rr3 = d.reach + e.r;
         if (e.state === "windup") {   // とどく範囲が、だんだん濃くなる
           var kw = 1 - e.t / d.windup;
-          ctx.fillStyle = (d.glow ? "rgba(240,208,112," : "rgba(150,100,200,") + (0.08 + 0.2 * kw).toFixed(2) + ")";   // 光の精は金色
+          ctx.fillStyle = (d.glow ? "rgba(240,208,112," : d.zap ? "rgba(240,232,120," : "rgba(150,100,200,") + (0.08 + 0.2 * kw).toFixed(2) + ")";   // 光の精は金色、神殿クラゲは黄色い電気
           ctx.beginPath(); ctx.arc(x, y - 2, rr3, 0, Math.PI * 2); ctx.fill();
         }
         if (e.burst > 0) {   // はじける瘴気の輪
           var kb = 1 - e.burst / 0.4;
-          ctx.strokeStyle = (d.glow ? "rgba(255,242,160," : "rgba(200,154,224,") + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
+          ctx.strokeStyle = (d.glow ? "rgba(255,242,160," : d.zap ? "rgba(255,250,170," : "rgba(200,154,224,") + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(x, y - 2, rr3 * (0.5 + 0.6 * kb), 0, Math.PI * 2); ctx.stroke();
+          if (d.zap) {   // 神殿クラゲ：ぎざぎざの電気が4本のびる
+            ctx.strokeStyle = "rgba(255,255,220," + (1 - kb).toFixed(2) + ")"; ctx.lineWidth = 1;
+            for (var zq = 0; zq < 4; zq++) {
+              var za = zq * Math.PI / 2 + 0.4 + kb, zr = rr3 * (0.4 + 0.7 * kb);
+              ctx.beginPath(); ctx.moveTo(x, y - 2);
+              ctx.lineTo(x + Math.cos(za + 0.3) * zr * 0.5, y - 2 + Math.sin(za + 0.3) * zr * 0.5);
+              ctx.lineTo(x + Math.cos(za - 0.2) * zr * 0.75, y - 2 + Math.sin(za - 0.2) * zr * 0.75);
+              ctx.lineTo(x + Math.cos(za) * zr, y - 2 + Math.sin(za) * zr); ctx.stroke();
+            }
+          }
         }
       }
       if (d.kind === "spore" && !e.dead) {
@@ -1181,6 +1195,11 @@ var Enemies = (function () {
         Combat.glowDot(ctx, x, y, 6, "#ffe066", "#f8a040", 0.85);
         Render.rect(Math.round(x - a.vx * 0.04) - 1, Math.round(y - a.vy * 0.04) - 1, 2, 2, "rgba(208,70,72,0.6)");
         Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#fff2a0");
+        return;
+      }
+      if (a.opts && a.opts.drop && a.opts.big) {   // しずみの神官の水の玉：水のつぶより大きく、まわりがうすく光る
+        Combat.glowDot(ctx, x, y, 7, "#bff4ff", "#4ab8d8", 0.7);
+        Render.rect(Math.round(x) - 3, Math.round(y) - 3, 6, 6, "#2a7ab0"); Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#4ab8d8"); Render.rect(Math.round(x) - 2, Math.round(y) - 2, 2, 2, "#e8fcff");
         return;
       }
       if (a.opts && a.opts.drop) {   // 水のスライムの水のつぶ：青と白
