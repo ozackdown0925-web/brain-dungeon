@@ -1017,6 +1017,31 @@ var GameData = (function () {
     reach: 12, windup: 0.3, cooldown: 1.2, lunge: 8, color: "#7ad8f8"
   };
 
+  // 大ダコ（しずみの湖底神殿6階・中ボス。段階3、2026-11-18 Claude の案。数字は仮）：水の祭壇にすむ、大きな赤むらさきのタコ。
+  //   決め手は「床から出てきた足を、全部切る」（ヨロイガニ＝打でわる、大グモ＝影から落ちる場所を見る、とはちがう答え）。
+  //   足ばらい：近くにいると、2本の足で2回なぎはらう。
+  //   足のたたきつけ（slamEvery 秒ごと）：こちらへ足をふり上げ（赤い帯で予告）、床にたたきつける。HP 半分から扇に3本。
+  //   墨はき（inkEvery 秒ごと。少しはなれているとき）：扇の形に墨をはく（予告あり）。当たると、墨でべたべたになって守りが下がることがある（防御ダウン）。
+  //   足を出す（armEvery 秒ごと）：床の石のすきまから、足を armCount 本（HP 半分から armCountHalf 本）出す。足はその場でむちのように打つ（つる草の魔物と同じ動き。しびれることがある）。
+  //     出た足を全部切ると、大ダコがいたがってひるむ（stunTime 秒。そのあいだは受けるダメージが stunMult 倍）。armLife 秒たつと、のこった足は引っこむ。
+  //   斬が弱点（足を切る）、打はいまひとつ（やわらかい）、水は効かない。
+  //   強さ：神殿6階（Lv55 くらい・プラチナ）で、剣で約45振り（ヨロイガニの鍾乳洞と同じくらい）。ふつうの一撃が体力の約6%（tools/balance.js のボスの表）
+  ENEMIES.octo_boss = {
+    name: "大ダコ", kind: "octo_boss", boss: true, hp: 16000, patk: 120, matk: 0, pdef: 12, mdef: 10,
+    res: { slash: 1.3, strike: 0.75, water: 0 }, speed: 22, speedHalf: 28, r: 18, color: "#c05a8a",
+    reach: 26, windup: 0.55, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, sweepMult: 0.9, sweepGap: 0.3,
+    slamEvery: 8, slamEveryHalf: 6.5, slamWarn: 0.9, slamLen: 120, slamW: 18, slamMult: 1.6, slams: 1, slamsHalf: 3, slamSpread: 0.45, slamTime: 0.4,
+    inkEvery: 9, inkEveryHalf: 7, inkWarn: 0.8, inkLen: 110, inkSpread: 0.5, inkMult: 1.2,
+    armFirst: 5, armEvery: 18, armEveryHalf: 15, armCount: 3, armCountHalf: 4, armHp: 420, armAtk: 80, armLife: 12, stunTime: 4, stunMult: 1.3
+  };
+  // 大ダコの足（大ダコが床から出す）：動かずに、むちのように打つ。しびれることがある。斬がよく効く
+  ENEMIES.octo_arm = {
+    name: "大ダコの足", kind: "vine", hp: 30, patk: 8, pdef: 3, mdef: 3,
+    res: { slash: 1.5, strike: 0.75, water: 0 }, speed: 0, r: 6,
+    reach: 34, windup: 0.6, cooldown: 1.8, color: "#c05a8a", arm: true,
+    onHit: { type: "para", chance: 0.2, dur: 1.5 }
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -1300,7 +1325,7 @@ var GameData = (function () {
     //   深さは鍾乳洞の続き（85＋階）。部屋は湖の底にしずんだ神殿の型（theme: temple。青緑の石だたみ・水路・石柱・海藻）。
     //   装備の段は、はじめからプラチナ（tier: 4。2026-11-17 段階5で決めた形）。
     //   敵は段階2（2026-11-18）で作った（神殿の石像兵・神殿ウツボ・神殿クラゲ・しずみの神官。地底の半魚人も出る）。
-    //   ボスはまだ仮：ヨロイガニと水晶の大グモ（段階3・4で作る。案は大ダコ → 水竜）。
+    //   6階のボスは大ダコ（段階3、2026-11-18）。12階はまだ仮：水晶の大グモ（段階4で水竜にする案）。
     //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
     kotei: {
       id: "kotei", tagline: "湖の底にしずんだ、古い神殿。", intro: ["湖のまんなかの底にしずんだ、古い神殿。", "ふしぎな力で水が入らない神殿の中には、湖の魔物がすみついているという。"],
@@ -1309,9 +1334,9 @@ var GameData = (function () {
       //   tools/balance.js で、地底の半魚人が剣で約3.4振り・受けて約22回（鍾乳洞は約3.9振り・約22回）。石像兵は斬が半減なので、HP を少し小さく
       foeHp: 1.8, foeAtk: 1.05, foeType: { stone_guard: { hp: 0.8 } },
       bosses: {
-        6: { enemy: "crab_boss", title: "神殿の水路をすすみし者", room: "altar",   // 仮のボス（段階3で大ダコにする案）。部屋は水の祭壇
-             before: ["神殿の広間のまんなかに、大きな水たまりがある。", "水の中で、何かが動いた！"],
-             after: ["魔物は、水の底へしずんでいった。", "神殿の奥へ、道が続いている。"] },
+        6: { enemy: "octo_boss", title: "大ダコの足を切りし者", room: "altar",   // 大ダコ（段階3、2026-11-18）。部屋は水の祭壇。前後の文は Claude が書いた仮の文
+             before: ["神殿の奥に、大きな水の祭壇がある。", "水の中から、赤むらさきの足が何本ものびてきた！", "大ダコが、祭壇からはい上がってきた！"],
+             after: ["大ダコは、墨をはきながら、祭壇の水の底へにげていった。", "神殿の奥へ、道が続いている。"] },
         12: { enemy: "spider_boss", title: "湖底神殿をきわめし者",   // 仮のボス（段階4で水竜にする案）
               before: ["神殿のいちばん奥は、まるい水の広間だ。", "水面が大きくもり上がった……。"],
               after: ["神殿に、静けさがもどった。", "湖の向こうに、赤い火山が見えている。"] }

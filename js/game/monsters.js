@@ -1928,6 +1928,7 @@ var Monsters = (function () {
     roc_boss: { A: "#140c1c", "1": "#3a2414", "2": "#5e3a20", "3": "#8a5a32", "4": "#b8844a", "5": "#e0b878", f: "#2a1a10", w: "#f4f0e8", W: "#c8c4bc", g: "#8a8a96", y: "#f0c040", Y: "#b07a20", r: "#e03030", R: "#801818", b: "#6a7a8a", B: "#9aaabc" },   // 大怪鳥（2026-11-09）
     raff_boss: { A: "#140c1c", "1": "#5a1420", "2": "#8a2030", "3": "#c83a3a", "4": "#e86a5a", "5": "#f8a890", w: "#f4e8d8", W: "#c8b8a8", c: "#2a0e1a", C: "#5a2a3a", D: "#3a1626", s: "#e8d8c0", g: "#2e5c34", G: "#4e8a40", h: "#8ac85a", p: "#b46ad8", P: "#e0b0ff" },   // ラフレシア（2026-11-08）
     spider_boss: { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a", w: "#e8e0d0" },   // 水晶の大グモ（2026-11-15）
+    octo_boss: { A: "#140c1c", m: "#e08ab8", M: "#c05a8a", N: "#7a2a5a", s: "#f8c8e4", t: "#c05a8a", T: "#7a2a5a", w: "#f8d8ea", e: "#f0e060", k: "#140c1c" },   // 大ダコ（2026-11-18）
     crab_boss: { A: "#140c1c", r: "#c84a3a", R: "#7a2424", o: "#f08a6a", p: "#d85a40", P: "#8a2a2a", w: "#ffc0a0", l: "#b04a3a", L: "#6a2020", e: "#f0e060", k: "#140c1c", c: "#5aa8e8", C: "#c8f0ff" },   // ヨロイガニ（2026-11-15）
     dwarf_boss: { A: "#140c1c", o: "#f0d070", O: "#c8a040", Q: "#8a6a2a", g: "#b8c0cc", G: "#7a8494", K: "#4a5060", s: "#e4a672", S: "#b86f50", r: "#d0502c", R: "#902a1c", c: "#a82a2a", C: "#5e1620", n: "#3e8948", N: "#265c42", b: "#8a5a32", B: "#5e3a20", e: "#3ad070", w: "#e6d5a2", W: "#a8905a" },   // ドワーフキング（2026-11-07）
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
@@ -4494,6 +4495,104 @@ var Monsters = (function () {
     }
     return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), pinch: make({ pinch: true }), shell: make({ shell: true }) };
   })();
+  // 大ダコ（しずみの湖底神殿6階・中ボス。段階3、2026-11-18 Claude が描いた、60×46）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足の先をくねらせる）、raise＝外がわの足を2本ふり上げた形（たたきつけ・足を床にもぐらせる）、ink＝頭をふくらませた形（墨はき）。
+  //   色：m・M・N・s＝頭（明るい→暗い・光）、t・T＝足、w＝吸盤、e・k＝目
+  var OCTOB = (function () {
+    var W = 60, H = 46;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny, x, y));
+      }
+    }
+    // 足：点をつないで、根もとが太く先が細い線。下がわに吸盤
+    function tent(g, pts, th0) {
+      var total = pts.length - 1;
+      for (var i = 0; i < total; i++) {
+        var a = pts[i], b = pts[i + 1], n = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))) * 2;
+        for (var j = 0; j <= n; j++) {
+          var u = (i + j / n) / total, x = a[0] + (b[0] - a[0]) * j / n, y = a[1] + (b[1] - a[1]) * j / n;
+          var th = Math.max(1, Math.round(th0 * (1 - u * 0.75)));
+          for (var dy = 0; dy < th; dy++) for (var dx = 0; dx < th; dx++) put(g, x - (th - 1) / 2 + dx, y - (th - 1) / 2 + dy, dx === 0 && th > 1 ? "t" : dy === th - 1 && th > 2 ? "T" : "t");
+          if (th >= 3 && j % 4 === 0) put(g, x, y + (th - 1) / 2, "w");
+        }
+      }
+    }
+    function mantle(nx, ny, x, y) {
+      if (nx < -0.25 && ny < -0.35 && nx * nx + ny * ny > 0.3) return "s";
+      if (ny > 0.6) return "N";
+      if (nx > 0.45 || ny > 0.35) return "M";
+      if ((x * 7 + y * 13) % 23 === 0) return "M";   // 小さなまだら
+      return "m";
+    }
+    function half(g, f) {
+      var sh = f.step === 1 ? 1 : f.step === 2 ? -1 : 0;
+      // 足（片がわ4本）。外から内へ
+      if (f.raise) tent(g, [[22, 26], [13, 21], [7, 13], [6, 6], [10, 3]], 5);
+      else tent(g, [[22, 26], [14, 30], [8, 36 + sh], [5, 41 + sh], [8, 44]], 5);
+      tent(g, [[25, 28], [19, 34], [15 + sh, 40], [17 + sh, 44]], 5);
+      tent(g, [[27, 29], [24, 36], [22 - sh, 41], [25 - sh, 44]], 4);
+      tent(g, [[29, 29], [28, 36], [28 + sh, 43]], 4);
+      // 頭（墨はきのときは、ふくらむ）
+      var rx = f.ink ? 16 : 14, ry = f.ink ? 15 : 13, cy = f.ink ? 13 : 15;
+      ell(g, 30, cy, rx, ry, mantle);
+      // 目（大きな黄色い目に、横長のひとみ）
+      var ey = cy + (f.ink ? 9 : 8);
+      ell(g, 22, ey, 4, 3.2, function () { return "e"; });
+      for (var px = 20; px <= 24; px++) put(g, px, ey, "k");
+      put(g, 21, ey - 2, "w");
+      // まぶた（目の上の暗い線）
+      for (var lx = 18; lx <= 25; lx++) put(g, lx, ey - 4, "N");
+    }
+    function make(f) {
+      var g = blank();
+      half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "s") g[y2][x2] = "m"; }   // 光は左上から
+      if (f.ink) {   // 墨をはく口（頭の下のまんなか）
+        for (var yy = 27; yy <= 30; yy++) for (var xx = 28; xx <= 31; xx++) g[yy][xx] = yy === 27 ? "N" : "k";
+      }
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), raise: make({ raise: true }), ink: make({ ink: true }) };
+  })();
+  // 大ダコの足（床の石のすきまから出ている足の先。16×24。正面の絵だけ）
+  SMALL.octo_arm = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".........AA.....",
+      "........AttA....",
+      ".......AtAAtA...",
+      ".......AtA.AtA..",
+      "........A..AtA..",
+      "...........AtA..",
+      "..........AttA..",
+      ".........AtwtA..",
+      "........AttTA...",
+      ".......AtwtA....",
+      "......AttTA.....",
+      "......AtwtA.....",
+      "......AttTA.....",
+      ".....AttwtTA....",
+      ".....AtttTTA....",
+      "...AAAAAAAAAAA..",
+      "..AooooooooooooA",
+      "...AAAAAAAAAAAA.",
+      "................"
+    ] };
+  SMALL_PAL.octo_arm = { A: "#140c1c", t: "#c05a8a", T: "#7a2a5a", w: "#f8d8ea", o: "#0a2228" };
   // 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15 Claude が描いた、64×46）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
   //   stand・walkA・walkB＝ふだん（足を動かす）、rear＝前足を振り上げて、きばを開いた形（かみつき・糸はき・光線）。
   //   色：c・C・b・B・v＝おしりの水晶（光る面と暗い面）、g・G・h＝頭と胸、l・L＝足、e＝赤い目、w＝きば
@@ -4832,7 +4931,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "octo_boss" ? OCTOB : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -4849,6 +4948,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "octo_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
