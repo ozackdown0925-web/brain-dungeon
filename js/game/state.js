@@ -131,7 +131,7 @@ var GameState = (function () {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
-      items: { potion: 0, hipotion: 0, xpotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
+      items: { potion: 0, hipotion: 0, xpotion: 0, ppotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [], dungeons: {} },
       masteryV2: true,   // 上級職の熟練度は、はじめから新しい数（75）で数える
       titles: [],
@@ -334,6 +334,9 @@ var GameState = (function () {
     potion:   { name: "回復薬", price: 60, hp: 60, tier: 0, note: "HP を 60 回復" },
     hipotion: { name: "上回復薬", price: 300, hp: 150, tier: 1, note: "HP を 150 回復" },
     xpotion:  { name: "特上回復薬", price: 1000, hp: 350, tier: 2, note: "HP を 350 回復" },
+    // 極上回復薬（2026-11-19 湖底神殿の段階5）：地方3では HP が 700〜800 になり、特上（350）では半分も回復しなくなったため。
+    //   お店にはプラチナの段（水晶の大グモをたおしたあと）から並ぶ。1回復あたりの値段は特上より少し高い（2.9G → 3.6G）
+    ppotion:  { name: "極上回復薬", price: 2500, hp: 700, tier: 4, note: "HP を 700 回復" },
     ether:    { name: "MP回復薬", price: 80, mp: 20, tier: 0, note: "MP を 20 回復" },   // MP は自然に回復しない（2026-10-18 決定）
     hiether:  { name: "上MP回復薬", price: 400, mp: 50, tier: 1, note: "MP を 50 回復" },
     xether:   { name: "特上MP回復薬", price: 1200, mp: 100, tier: 2, note: "MP を 100 回復" },
@@ -342,7 +345,7 @@ var GameState = (function () {
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
-  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
+  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ppotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
   // お店に並ぶ道具：強い回復薬は、ダンジョンが開くと並ぶ
   function shopTools() { var t = shopTier(); return TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) <= t; }); }
   var TOOL_MAX = 99;
