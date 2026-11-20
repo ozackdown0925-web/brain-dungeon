@@ -1093,6 +1093,26 @@ var GameData = (function () {
     riseWarn: 0.8, riseR: 34, riseMult: 1.4, tiredTime: 3
   };
 
+  // 炎の巨人（紅蓮の火山6階・中ボス。段階3、2026-11-20 Claude の案。数字は仮）：溶岩の岩の体に、燃える髪の巨人。
+  //   決め手は「炎のよろいを、たたいて消す（水だと早い）」（ヨロイガニ＝打でわる、大ダコ＝足を切る、水竜＝柱のかげ、とはちがう答え）。
+  //   こぶし：近くにいると、こぶしでなぐる。
+  //   地ならし（stompEvery 秒ごと。近くにいるとき）：両うでを上げて（まわりに赤い輪で予告）、地面をたたく。まわりから火がふき出す。
+  //   溶岩の岩投げ（ballEvery 秒ごと）：溶岩の岩を頭の上に持ち上げ、プレイヤーのまわりへ balls 個（HP 半分から ballsHalf 個）投げる。
+  //     落ちる場所に輪の予告。落ちたところは、少しのあいだ溶岩だまりになる（中にいると、ときどき少しダメージ）。
+  //   炎のよろい（flameEvery 秒ごと）：体の炎が燃え上がる。燃えているあいだは、受けるダメージが flameCut 倍で、近くにいると熱い（heatTick 秒ごとに少しダメージ）。
+  //     攻撃を flameHits 回当てると（水の攻撃は3回分）炎が消えて、stunTime 秒ふらつく（そのあいだは受けるダメージが stunMult 倍）。flameTime 秒たつと、自分で消える。
+  //   水が弱点、火は効かない、闇はいまひとつ。
+  //   強さ：火山6階（Lv62 くらい・プラチナ）で、剣で約50振り（大ダコより少し長い）＋炎のよろい。ふつうの一撃が体力の約6%
+  ENEMIES.giant_boss = {
+    name: "炎の巨人", kind: "giant_boss", boss: true, hp: 15500, patk: 128, matk: 0, pdef: 12, mdef: 10,
+    res: { water: 1.3, fire: 0, dark: 0.75 }, speed: 20, speedHalf: 26, r: 18, color: "#c84a20",
+    reach: 24, windup: 0.6, windupHalf: 0.5, cooldown: 1.5, cooldownHalf: 1.2, punchMult: 1.2,
+    stompEvery: 9, stompEveryHalf: 7, stompWarn: 1.0, stompR: 58, stompMult: 1.6,
+    ballFirst: 4, ballEvery: 8, ballEveryHalf: 6.5, ballLift: 0.7, ballWarn: 1.1, balls: 3, ballsHalf: 5, ballR: 16, ballMult: 1.3, poolTime: 4, poolMult: 0.35,
+    flameFirst: 10, flameEvery: 24, flameEveryHalf: 18, flameTime: 10, flameCut: 0.5, flameHits: 12, heatR: 30, heatMult: 0.3, heatTick: 0.9,
+    stunTime: 4, stunMult: 1.3
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -1402,9 +1422,9 @@ var GameData = (function () {
       region: "volcamarine", name: "紅蓮の火山", short: "火山", floors: 12, needs: "kotei", depthBase: 97, theme: "volcano", tier: 4,
       foeHp: 1.8, foeAtk: 1.05, foeType: { magma_golem: { hp: 0.8 } },   // 岩人形はかたくて HP が多いので少し減らす（湖底神殿の石像兵と同じ）
       bosses: {
-        6: { enemy: "octo_boss", title: "火山の中ほどをこえし者", room: "magma",   // 仮のボス（段階3で炎の巨人にする案）。部屋は炎の巨人の広間
-             before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、何かが近づいてくる！"],
-             after: ["魔物は、溶岩の向こうへにげていった。", "火山の上へ、道が続いている。"] },
+        6: { enemy: "giant_boss", title: "炎の巨人の火を消せし者", room: "magma",   // 炎の巨人（段階3、2026-11-20）。部屋は炎の巨人の広間。前後の文は Claude が書いた仮の文
+             before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、燃える髪の巨人が立ち上がった！"],
+             after: ["巨人の体の火が消え、ただの岩になってくずれた。", "火山の上へ、道が続いている。"] },
         12: { enemy: "wdragon_boss", title: "紅蓮の火山をきわめし者",   // 仮のボス（段階4で紅蓮の竜にする案）
               before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩が大きくもり上がった……。"],
               after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }

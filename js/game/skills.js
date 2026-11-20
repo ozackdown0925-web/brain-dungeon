@@ -77,6 +77,13 @@ var Combat = (function () {
       }
       // 大ダコ（2026-11-18）：床から出た足を全部切ると、ひるむ。ひるんでいるあいだは多く効く
       if (e.def.kind === "octo_boss") { var om = Bosses.octoMult(e); if (om !== 1) res.amount = Math.max(1, Math.round(res.amount * om)); }
+      // 炎の巨人（2026-11-20）：炎のよろいのあいだは、あまり効かない。当てた数で炎が消える（水は3回分）。消えてふらついているあいだは多く効く
+      if (e.def.kind === "giant_boss") {
+        var gm = Bosses.giantMult(e, elem);
+        Bosses.douse(e, elem);
+        if (gm < 1) res.crit = false;
+        if (gm !== 1) res.amount = Math.max(1, Math.round(res.amount * gm));
+      }
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;
