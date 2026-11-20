@@ -1359,9 +1359,26 @@ var GameData = (function () {
               before: ["神殿のいちばん奥は、水路にかこまれた広間だ。", "水面が大きくもり上がった……。", "青い水竜が、水しぶきを上げてあらわれた！"],
               after: ["神殿に、静けさがもどった。", "湖の向こうに、赤い火山が見えている。"] }
       }
+    },
+    // 紅蓮の火山（地方3の3つ目・最後のダンジョン。段階1、2026-11-20）：12階（6階・12階がボス）。水竜（湖底神殿の主）をたおすと開く。
+    //   深さは湖底神殿の続き（97＋階）。部屋は火山の型（theme: volcano。黒い溶岩の岩・赤く光るひび・溶岩の川・岩の柱）。装備の段はプラチナ（tier: 4）。
+    //   敵とボスはまだ仮：敵は湖底神殿の後半（石像兵・ウツボ・神官）、ボスは大ダコと水竜（段階2〜4で作る。案は炎の巨人 → 紅蓮の竜）。
+    //   主をたおすと、エルダースタッフとノクトガルドへの道（段階5で作る）。説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    kazan: {
+      id: "kazan", tagline: "燃える溶岩が流れる、赤い火山。", intro: ["湖の東にそびえる、赤い火山。", "溶岩の川が流れる山の中には、炎の魔物がすみついているという。"],
+      region: "volcamarine", name: "紅蓮の火山", short: "火山", floors: 12, needs: "kotei", depthBase: 97, theme: "volcano", tier: 4,
+      foeHp: 1.8, foeAtk: 1.05, foeType: { stone_guard: { hp: 0.8 } },   // 仮（段階2で敵といっしょに決める）
+      bosses: {
+        6: { enemy: "octo_boss", title: "火山の中ほどをこえし者", room: "magma",   // 仮のボス（段階3で炎の巨人にする案）。部屋は炎の巨人の広間
+             before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、何かが近づいてくる！"],
+             after: ["魔物は、溶岩の向こうへにげていった。", "火山の上へ、道が続いている。"] },
+        12: { enemy: "wdragon_boss", title: "紅蓮の火山をきわめし者",   // 仮のボス（段階4で紅蓮の竜にする案）
+              before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩が大きくもり上がった……。"],
+              after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei", "kazan"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }

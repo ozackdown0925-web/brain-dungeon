@@ -65,13 +65,13 @@ var Dungeon = (function () {
   // 立ち止まってよいところ（部屋の中心・入口でキャラが立つ場所）：通れて、毒の沼（P）でない
   function standable(ch) { return passable(ch) && ch !== "P"; }
   // ダンジョンの部屋の型（瘴気の森は沼の型、原生の秘境は遺跡と湖の型）とボスの部屋
-  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : th === "crystal" ? CrystalRooms : th === "temple" ? TempleRooms : ForestRooms; }
+  function roomsFor(dungeon) { var th = GameData.dungeonOf(dungeon).theme; return th === "swamp" ? SwampRooms : th === "wild" ? WildRooms : th === "cave" ? CaveRooms : th === "peak" ? PeakRooms : th === "snow" ? SnowRooms : th === "crystal" ? CrystalRooms : th === "temple" ? TempleRooms : th === "volcano" ? VolcanoRooms : ForestRooms; }
   // ボスごとにかえる部屋（data.js の bosses の room）。warm＝烈風の峰6階の湯けむりの谷（ラフレシア。2026-11-08）
   // snowfield＝白銀の霊峰6階の雪原の広場（スノーゴーレム。2026-11-09）
   // lakeside＝水晶の鍾乳洞5階の地底湖のほとり（2026-11-14）
   // altar＝しずみの湖底神殿6階の水の祭壇（2026-11-18）
-  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom, altar: TempleAltarBossRoom };
-  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : theme === "temple" ? TempleBossRoom : BossRoom; }
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom, altar: TempleAltarBossRoom, magma: VolcanoGiantBossRoom };   // magma＝紅蓮の火山6階の炎の巨人の広間（2026-11-20）
+  function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : theme === "temple" ? TempleBossRoom : theme === "volcano" ? VolcanoBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];
     for (var i = -1; i <= 1; i++) {
@@ -173,6 +173,7 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
+    if (theme === "volcano") { theme = "temple"; floor = 12; }   // 紅蓮の火山（段階1、2026-11-20）：火山の敵ができるまでの仮。湖底神殿の後半と同じ
     if (theme === "temple") {
       // しずみの湖底神殿（地方3の段階2、2026-11-18 Claude の案）：前半（1〜6階）は神殿の石像兵と地底の半魚人がかわりばんこの群れに、
       // 神殿ウツボ（3階から神殿クラゲ）。後半（7〜12階）は石像兵の群れに、ウツボ・クラゲ・しずみの神官・ときどき半魚人
@@ -384,7 +385,7 @@ var Dungeon = (function () {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
     var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞
-    var temple = GameData.dungeonOf(dungeon).theme === "temple";   // しずみの湖底神殿
+    var temple = GameData.dungeonOf(dungeon).theme === "temple" || GameData.dungeonOf(dungeon).theme === "volcano";   // しずみの湖底神殿（紅蓮の火山も、罠ができるまでの仮で同じ。2026-11-20）
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -549,6 +550,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
+    if (th === "volcano") return ["stone_guard", "moray", "priest"];   // 紅蓮の火山（仮。今は巣を置かない）
     if (th === "temple") return floor <= 6 ? ["stone_guard", "fishman", "moray"] : ["stone_guard", "moray", "priest"];   // しずみの湖底神殿（今は巣を置かない）
     if (th === "crystal") return floor <= 5 ? ["fishman", "cave_crab", "crystal_bat"] : ["fishman", "cave_crab", "crystal_sprite"];   // 水晶の鍾乳洞（今は巣を置かない）
     if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
