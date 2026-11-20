@@ -101,6 +101,28 @@ var Loot = (function () {
     if (item.r === 3) item.debuff = [];
     return true;
   }
+  // ---------- 最強武器（2026-11-21。game-design.md 3.5） ----------
+  // UR 固定・強化なし（鍛冶屋では何もできない・売れない）。強さは魔王城でいちばん深く行った階で育つ。
+  // 魔王城の前（0階）は「プラチナの段の UR＋10」と同じ強さ。25階で「ダイヤの段の UR＋10」まで。
+  // 今は 紅蓮の竜 をたおすと手に入る エルダースタッフ だけ。特別な効果は 敵をたおすとMPが2%回復（mpOnKill）。
+  var LEGENDS = {
+    elder: { slot: "weapon", base: "staff", name: "エルダースタッフ", from: "fdragon_boss", buff: ["matk", "mp"], fx: { mpOnKill: 0.02 }, sp: "敵をたおすとMPが2%回復" }
+  };
+  var LEGEND_DEPTH = 109;   // 紅蓮の火山 12階の深さ。魔王城の1階ごとに＋1
+  function legendGrow(item, floor) {
+    var L = LEGENDS[item.legend], def = L && GameData.WEAPONS[L.base];
+    if (!def) return item;
+    floor = Math.max(0, Math.min(25, floor || 0));
+    var ilv = LEGEND_DEPTH + floor, tm = TIER_MULT[4] + 0.6 * floor / 25;
+    var k = (1 + ILV_STEP * (ilv - 1)) * RARITY[3].mult * (1 + PLUS_STEP * PLUS_MAX) * tm;
+    var size = Math.round(2 + ilv * 0.5);
+    item.slot = L.slot; item.base = L.base; item.r = 3; item.ilv = ilv; item.tier = 4; item.plus = 0;
+    item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k);
+    item.buff = L.buff.map(function (s) { return [s, size]; }); item.debuff = []; item.sp = L.sp; item.name = L.name;
+    return item;
+  }
+  function makeLegend(key, floor) { return legendGrow({ legend: key }, floor); }
+
   // 宝玉が出る確率（2026-10-20 保護者と決定）
   // 2026-10-22 保護者の感想（宝玉が出にくい。レア度より強化のほうが強いので、レア度を上げるハードルを下げたい）で上げた。
   // 前は 4問正解15%・3問正解5%・金の宝箱10%・ボス50%
@@ -108,6 +130,7 @@ var Loot = (function () {
 
   // 装備の名前（例：「銅の剣」「銅の剣＋2〈SR〉」）。名前は種類から決める（前のセーブの装備も新しい名前で出る）
   function baseName(item) {
+    if (item.legend && LEGENDS[item.legend]) return LEGENDS[item.legend].name;   // 最強武器（2026-11-21）
     var def = item.slot === "weapon" ? GameData.WEAPONS[item.base] : GameData.ARMORS[item.base];
     var tn = GameData.TIER_NAMES[item.tier || 0];   // 鉄の段の名前（2026-10-22）
     if (tn && tn[item.base]) return tn[item.base];
@@ -190,6 +213,6 @@ var Loot = (function () {
 
   return {
     RARITY: RARITY, MATERIALS: MATERIALS, raiseRarity: raiseRarity, GEM_CHANCE: GEM_CHANCE, rarityWeights: rarityWeights, makeEquip: makeEquip, describe: describe,
-    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, TIER_MULT: TIER_MULT, ILV_STEP: ILV_STEP, PLUS_STEP: PLUS_STEP, PLUS_MAX: PLUS_MAX, typeName: typeName, STAT_NAMES: STAT_NAMES
+    chest: chest, enemyDrop: enemyDrop, clearGold: clearGold, rerollMods: rerollMods, label: label, LEGENDS: LEGENDS, legendGrow: legendGrow, makeLegend: makeLegend, TIER_MULT: TIER_MULT, ILV_STEP: ILV_STEP, PLUS_STEP: PLUS_STEP, PLUS_MAX: PLUS_MAX, typeName: typeName, STAT_NAMES: STAT_NAMES
   };
 })();
