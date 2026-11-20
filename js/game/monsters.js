@@ -1929,6 +1929,7 @@ var Monsters = (function () {
     raff_boss: { A: "#140c1c", "1": "#5a1420", "2": "#8a2030", "3": "#c83a3a", "4": "#e86a5a", "5": "#f8a890", w: "#f4e8d8", W: "#c8b8a8", c: "#2a0e1a", C: "#5a2a3a", D: "#3a1626", s: "#e8d8c0", g: "#2e5c34", G: "#4e8a40", h: "#8ac85a", p: "#b46ad8", P: "#e0b0ff" },   // ラフレシア（2026-11-08）
     spider_boss: { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a", w: "#e8e0d0" },   // 水晶の大グモ（2026-11-15）
     wdragon_boss: { A: "#140c1c", m: "#3a8ac8", M: "#22609a", N: "#143c6a", s: "#8cd0f0", b: "#d8ecd0", B: "#a8c4a8", f: "#48c8b8", F: "#2a8a88", h: "#e8dcb0", e: "#f8e060", w: "#f0f4f8", r: "#c84a5a", k: "#140c1c" },   // 水竜（2026-11-19）
+    fdragon_boss: { A: "#140c1c", m: "#c8381c", M: "#8a2014", N: "#5a120c", s: "#f07040", b: "#f0c060", B: "#c89040", f: "#3a1a1a", F: "#22100e", h: "#2a1a1a", e: "#ffe060", w: "#f8f0e0", r: "#ffb030", k: "#140c1c" },   // 紅蓮の竜（2026-11-20。水竜の絵の色ちがい）
     giant_boss: { A: "#140c1c", m: "#8a4430", M: "#62291e", N: "#3a1610", s: "#b8643e", g: "#ffb030", G: "#f06a18", f: "#fff2a0", F: "#ffb030", R: "#e8501a", e: "#fff2a0", k: "#2a0c08", b: "#3a2c2c", B: "#c8a040" },   // 炎の巨人（2026-11-20）
     octo_boss: { A: "#140c1c", m: "#e08ab8", M: "#c05a8a", N: "#7a2a5a", s: "#f8c8e4", t: "#c05a8a", T: "#7a2a5a", w: "#f8d8ea", e: "#f0e060", k: "#140c1c" },   // 大ダコ（2026-11-18）
     crab_boss: { A: "#140c1c", r: "#c84a3a", R: "#7a2424", o: "#f08a6a", p: "#d85a40", P: "#8a2a2a", w: "#ffc0a0", l: "#b04a3a", L: "#6a2020", e: "#f0e060", k: "#140c1c", c: "#5aa8e8", C: "#c8f0ff" },   // ヨロイガニ（2026-11-15）
@@ -5139,7 +5140,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "octo_boss" ? OCTOB : kind === "giant_boss" ? GIANT : kind === "wdragon_boss" ? WDRAG : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "octo_boss" ? OCTOB : kind === "giant_boss" ? GIANT : kind === "wdragon_boss" || kind === "fdragon_boss" ? WDRAG : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -5156,6 +5157,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "octo_boss" ? 14 : kind === "giant_boss" ? 14 : kind === "wdragon_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "octo_boss" ? 14 : kind === "giant_boss" ? 14 : kind === "wdragon_boss" || kind === "fdragon_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
