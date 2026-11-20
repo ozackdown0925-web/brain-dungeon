@@ -34,7 +34,8 @@ var Bosses = (function () {
              bubble: d.bubbleEvery ? 3 : 0, shell: d.shellEvery ? 8 : 0,
              web: d.webEvery ? 3 : 0, ceil: d.ceilEvery ? 9 : 0, beam: d.beamEvery ? 6 : 0,
              ink: d.inkEvery ? 5 : 0, arm: d.armFirst || 0,
-             jet: d.jetFirst || 0, wave: d.waveFirst || 0 };
+             jet: d.jetFirst || 0, wave: d.waveFirst || 0,
+             stomp: d.stompEvery ? 5 : 0, ball: d.ballFirst || 0, flame: d.flameFirst || 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
@@ -57,6 +58,10 @@ var Bosses = (function () {
       e.state = "recover"; e.t = 0.4;
       for (var wj = hazards.length - 1; wj >= 0; wj--) if (hazards[wj].from === e && hazards[wj].kind === "beam" && hazards[wj].t < hazards[wj].warn) hazards.splice(wj, 1);
     }
+    if (e.def.kind === "giant_boss" && (e.state === "stompWarn" || e.state === "lift")) {   // 炎の巨人：地ならし・岩投げをためている途中なら、やめる（地ならしの予告も消す）
+      e.state = "recover"; e.t = 0.4;
+      for (var gj = hazards.length - 1; gj >= 0; gj--) if (hazards[gj].from === e && hazards[gj].look === "flamering" && hazards[gj].t < hazards[gj].warn) hazards.splice(gj, 1);
+    }
     if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
       if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
       e.untouchable = false; e.leapsLeft = 0;
@@ -73,7 +78,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave", "stomp", "ball", "flame"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "icefang_boss") iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // 氷牙獣は大オオカミがもと
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -86,6 +91,7 @@ var Bosses = (function () {
     else if (d.kind === "spider_boss") spider(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "octo_boss") octo(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "wdragon_boss") wdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "giant_boss") giant(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -902,6 +908,125 @@ var Bosses = (function () {
     } else if (e.cd <= 0) {
       e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy }; e.hits = 0;
     }
+  }
+  // ---------- 炎の巨人（紅蓮の火山6階・中ボス。段階3、2026-11-20） ----------
+  // こぶし・地ならし（まわりから火がふき出す）・溶岩の岩投げ（落ちたところが少しのあいだ溶岩だまり）・炎のよろい（たたいて消す。水は3回分）
+  function giant(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.punchT = Math.max(0, (e.punchT || 0) - dt);
+    e.stun = Math.max(0, (e.stun || 0) - dt);
+    if (e.flame > 0) {   // 炎のよろい：近くにいると熱い。flameTime 秒で自分で消える
+      e.flame -= dt;
+      e.heatT = (e.heatT || 0) - dt;
+      var hx = p.x - e.x, hy = p.y - e.y, hd = Math.sqrt(hx * hx + hy * hy);
+      if (!p.down && e.heatT <= 0 && hd < e.r + p.r + d.heatR) { hurt(e, p.x, p.y - 8, { mult: d.heatMult }); e.heatT = d.heatTick; }
+      if (e.flame <= 0) {
+        e.flame = 0; e.ai.flame = half ? d.flameEveryHalf : d.flameEvery;
+        Battle.pop(e.x, e.y - 60, "炎がおさまった", "#c8d0dc", 8);
+      }
+    }
+    if (e.state === "windup") {   // こぶし
+      e.t -= dt;
+      if (e.t > 0.15 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        var px = p.x - e.x, py = p.y - e.y, pd = Math.sqrt(px * px + py * py) || 1;
+        if (!p.down && pd - e.r - p.r <= d.reach + 4 && (px * e.aim.x + py * e.aim.y) / pd > 0.2) hurt(e, p.x, p.y - 8, { mult: d.punchMult });
+        e.punchT = 0.22; e.punchFlip = !e.punchFlip; Sound.play("swing"); shake(1, 0.1);
+        e.state = "recover"; e.t = 0.5; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "stompWarn") {   // 両うでを上げて、ためる（まわりに赤い輪）→ 地面をたたく
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.state = "stomp"; e.t = 0.5; shake(3, 0.3); Sound.play("hit");
+        addWave(e.x, e.y + 8, 6, d.stompR, 0.4, 6);
+      }
+      return;
+    }
+    if (e.state === "stomp") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.6; } return; }
+    if (e.state === "lift") {   // 溶岩の岩を頭の上に持ち上げる → 投げる
+      e.t -= dt;
+      if (e.t <= 0) {
+        var n = half ? d.ballsHalf : d.balls, sx = e.x, sy = e.y - 52;
+        for (var k = 0; k < n; k++) {
+          var tx = p.x, ty = p.y, tries = 0;
+          if (k > 0) do { var a = Math.random() * Math.PI * 2, rr = 26 + Math.random() * 44; tx = p.x + Math.cos(a) * rr; ty = p.y + Math.sin(a) * rr * 0.8; tries++; }
+                       while (room.hitsWall(tx - 6, ty - 6, 12, 12) && tries < 8);
+          if (room.hitsWall(tx - 6, ty - 6, 12, 12)) continue;
+          hazards.push({ kind: "circle", look: "magma", from: e, x: tx, y: ty, sx: sx, sy: sy, r: d.ballR, t: 0, warn: d.ballWarn + k * 0.15, erupt: 0.4, hit: false,
+                         seed: Math.random() * 100, opts: { mult: d.ballMult, big: true } });
+        }
+        Sound.play("swing");
+        e.state = "throw"; e.t = 0.4; e.ai.ball = half ? d.ballEveryHalf : d.ballEvery;
+      }
+      return;
+    }
+    if (e.state === "throw") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.5; } return; }
+    if (e.state === "ignite") {   // ほえて、体の炎が燃え上がる
+      e.t -= dt;
+      if (e.t <= 0) {
+        e.flame = d.flameTime; e.flameHit = 0; e.heatT = 0.6;
+        shake(2, 0.3);
+        Battle.pop(e.x, e.y - 60, "炎のよろい！ たたいて消そう", "#ffb84a", 9);
+        e.state = "recover"; e.t = 0.4;
+      }
+      return;
+    }
+    if (e.state === "tired") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (e.ai.flame <= 0 && !(e.flame > 0)) {
+      e.state = "ignite"; e.t = 0.8; e.ai.flame = 99;
+      Battle.pop(e.x, e.y - 60, "グオオオ！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.stomp <= 0 && gap < d.stompR - 12) {
+      hazards.push({ kind: "circle", look: "flamering", from: e, x: e.x, y: e.y + 6, r: d.stompR, t: 0, warn: d.stompWarn, erupt: 0.5, hit: false,
+                     seed: Math.random() * 100, opts: { mult: d.stompMult, big: true } });
+      e.state = "stompWarn"; e.t = d.stompWarn; e.ai.stomp = half ? d.stompEveryHalf : d.stompEvery;
+      Battle.pop(e.x, e.y - 60, "地ならし！", "#ef5b5b", 9);
+      return;
+    }
+    if (e.ai.ball <= 0) {
+      e.state = "lift"; e.t = d.ballLift;
+      Battle.pop(e.x, e.y - 60, "溶岩の岩投げ！", "#ffb84a", 9);
+      return;
+    }
+    if (gap > d.reach - 2) {   // のっしのっしと近づく
+      var spd = half ? d.speedHalf : d.speed;
+      if (!e.status.para) {
+        var ow = Math.floor((e.walk || 0) / Math.PI);
+        room.move(e, ux * spd * dt, uy * spd * dt); e.walk = (e.walk || 0) + dt * 6;
+        if (Math.floor(e.walk / Math.PI) !== ow) { shake(1, 0.06); addDust(e.x + (ow % 2 ? 8 : -8), e.y + 12); }   // 一歩ごとに、ずしん
+      }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 炎の巨人に攻撃が当たった（skills.js の hitEnemy から）。炎のよろいのあいだは数を数えて、flameHits 回で消える（水は3回分）
+  function douse(e, elem) {
+    if (!(e.flame > 0)) return;
+    var d = e.def;
+    e.flameHit = (e.flameHit || 0) + (elem === "water" ? 3 : 1);
+    for (var i = 0; i < 3; i++) { var a = Math.random() * Math.PI * 2; chips.push({ x: e.x, y: e.y - 10, z: 14, vx: Math.cos(a) * 30, vy: Math.sin(a) * 18, vz: 50, t: 0, max: 0.5, c: elem === "water" ? "#e8f8ff" : "#ffb030", s: 2 }); }
+    if (e.flameHit < d.flameHits) {
+      if (!(e.dousePop > Date.now()) || elem === "water") { e.dousePop = Date.now() + 500; Battle.pop(e.x, e.y - 56, (elem === "water" ? "ジュワッ！ " : "ジュッ ") + Math.min(e.flameHit, d.flameHits) + "/" + d.flameHits, elem === "water" ? "#9fd8ff" : "#ffd24a", 8); }
+      return;
+    }
+    e.flame = 0; e.flameHit = 0; e.stun = d.stunTime;
+    if (e.state === "stompWarn" || e.state === "lift") interrupt(e);
+    e.state = "tired"; e.t = d.stunTime; e.ai.flame = e.hp <= e.maxHp / 2 ? d.flameEveryHalf : d.flameEvery;
+    shake(2, 0.3);
+    for (var j = 0; j < 12; j++) { var b = Math.random() * Math.PI * 2; chips.push({ x: e.x, y: e.y - 16, z: 20, vx: Math.cos(b) * 40, vy: Math.sin(b) * 24, vz: 60 + Math.random() * 50, t: 0, max: 0.9, c: j % 2 ? "#e8f0f4" : "#a8b0b8", s: 2 }); }
+    Battle.pop(e.x, e.y - 60, "炎が消えた！ 巨人がふらついた！", "#ffe066", 10);
+  }
+  // 受けるダメージの倍率：炎のよろいのあいだは flameCut（水はそのまま）、ふらついているあいだは stunMult
+  function giantMult(e, elem) {
+    if (e.flame > 0) return elem === "water" ? 1 : e.def.flameCut;
+    if (e.stun > 0) return e.def.stunMult;
+    return 1;
   }
   // ---------- 水竜（しずみの湖底神殿12階・主。段階4、2026-11-19） ----------
   // かみつき・水のブレス（HP 半分から、なぎはらい）・大波（水にもぐって、反対がわの水路から部屋いっぱいの波。柱のかげでよける）
@@ -2064,7 +2189,7 @@ var Bosses = (function () {
         if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
         continue;
       }
-      if (h.look === "fog" && h.t >= h.warn) {   // 毒の霧：のこっているあいだ、中にいると 0.7 秒ごとに少しダメージと毒
+      if ((h.look === "fog" || h.look === "lavapool") && h.t >= h.warn) {   // 毒の霧・溶岩だまり（炎の巨人）：のこっているあいだ、中にいると 0.7 秒ごとに少しダメージと毒
         h.hit = true; h.tick -= dt;
         var fin = (p.x - h.x) * (p.x - h.x) + (p.y - h.y) * (p.y - h.y) < (h.r + p.r * 0.5) * (h.r + p.r * 0.5);
         if (fin && h.tick <= 0 && !p.down && !h.from.dead) { hurt(h.from, p.x, p.y - 8, h.opts); h.tick = 0.7; }
@@ -2075,6 +2200,12 @@ var Bosses = (function () {
       if (h.t >= h.warn && !h.hit) {
         h.hit = true;
         if (h.look === "bomb") { Sound.play("hit"); addDust(h.x, h.y); }
+        if (h.look === "magma") {   // 溶岩の岩が落ちた：ずしん。少しのあいだ、溶岩だまりがのこる
+          Sound.play("hit"); shake(1, 0.1);
+          if (h.from && !h.from.dead) hazards.push({ kind: "circle", look: "lavapool", from: h.from, x: h.x, y: h.y, r: h.r * 0.9, t: 0, warn: 0.35, erupt: h.from.def.poolTime, hit: false, tick: 0.3,
+                                                     seed: Math.random() * 100, opts: { mult: h.from.def.poolMult } });
+        }
+        if (h.look === "flamering") shake(2, 0.15);
         if (h.look === "quake") shake(1, 0.06);
         if (h.look === "icicle") {   // つららがささる：ずしん。大きな氷のかけらが飛びちる
           shake(2, 0.12);
@@ -2197,7 +2328,9 @@ var Bosses = (function () {
     var x = h.x - cam.x, y = h.y - cam.y, k = Math.min(1, h.t / h.warn);
     var locked = h.look === "dive" && h.from && h.from.def.diveLock !== undefined && h.warn - h.t <= h.from.def.diveLock;
     if (h.look === "fog" && h.t >= h.warn) { drawFog(ctx, h, x, y, glow); return; }
-    var col = h.look === "fog" ? [170, 90, 220] : h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
+    if (h.look === "lavapool") { if (h.t >= h.warn) drawLavaPool(ctx, h, x, y, glow); return; }
+    if (h.look === "flamering" && h.t >= h.warn) { drawFlameRing(ctx, h, x, y, glow); return; }
+    var col = h.look === "magma" ? [255, 110, 40] : h.look === "flamering" ? [255, 80, 40] : h.look === "fog" ? [170, 90, 220] : h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.look === "quake") { drawQuake(ctx, h, x, y, glow); return; }
     if (h.look === "leap") { drawLeapMark(ctx, h, x, y, glow); return; }
@@ -2216,6 +2349,13 @@ var Bosses = (function () {
         ctx.fillStyle = "#9a5ad0"; ctx.fillRect(Math.round(x) - 2, Math.round(y - hy) - 4, 4, 5);
         ctx.fillStyle = "#b8e870"; ctx.fillRect(Math.round(x) - 1, Math.round(y - hy) - 3, 2, 2);
       }
+      if (h.look === "magma") {   // 炎の巨人の溶岩の岩：頭の上から、山なりに飛んでくる（光る岩と、火の粉の尾）
+        var mk = Math.min(1, h.t / Math.max(0.01, h.warn)), mx = (h.sx - cam.x) + (x - (h.sx - cam.x)) * mk, my = (h.sy - cam.y) + (y - (h.sy - cam.y)) * mk - Math.sin(mk * Math.PI) * 70;
+        for (var mt = 1; mt <= 3; mt++) Render.rect(Math.round(mx - mt * 3 * (x - (h.sx - cam.x)) / 200) - 1, Math.round(my + mt * 3) - 1, 2, 2, mt === 1 ? "#f8a040" : "rgba(216,68,16,0.6)");
+        Combat.glowDot(ctx, mx, my - 4, 9, "#ffe066", "#f06a18", 0.7);
+        ctx.fillStyle = "#3a1610"; ctx.beginPath(); ctx.arc(mx, my - 4, 5, 0, Math.PI * 2); ctx.fill();
+        Render.rect(Math.round(mx) - 3, Math.round(my) - 6, 3, 1, "#ffb030"); Render.rect(Math.round(mx), Math.round(my) - 3, 3, 1, "#f06a18"); Render.rect(Math.round(mx) - 1, Math.round(my) - 8, 2, 1, "#fff2a0");
+      }
       if (h.look === "bomb") {   // おかしらの爆弾：投げたところから、山なりに飛んでくる（導火線の火花つき）
         var bx2 = (h.sx - cam.x) + (x - (h.sx - cam.x)) * k, by2 = (h.sy - cam.y) + (y - (h.sy - cam.y)) * k - Math.sin(k * Math.PI) * 60;
         ctx.fillStyle = "#1e1a22"; ctx.beginPath(); ctx.arc(bx2, by2 - 4, 4, 0, Math.PI * 2); ctx.fill();
@@ -2229,7 +2369,7 @@ var Bosses = (function () {
       return;
     }
     var q = (h.t - h.warn) / h.erupt, fade = 1 - q;
-    if (h.look === "bomb") {   // 爆発：はじける火の玉と、広がる輪と、火花
+    if (h.look === "bomb" || h.look === "magma") {   // 爆発：はじける火の玉と、広がる輪と、火花（溶岩の岩も）
       var orr = h.r * (0.5 + 0.8 * Math.sqrt(q));
       Combat.glowDot(ctx, x, y - 4, orr, "#fff3c4", "#ff6a1f", 0.85 * fade);
       ctx.strokeStyle = "rgba(255,231,160," + (0.8 * fade).toFixed(2) + ")"; ctx.lineWidth = 2;
@@ -2254,6 +2394,37 @@ var Bosses = (function () {
     }
   }
 
+  // 炎の巨人の溶岩だまり：赤〜だいだいの光るたまりに、ぷくぷくの泡。終わりぎわは黒くかたまる
+  function drawLavaPool(ctx, h, x, y, glow) {
+    var q = (h.t - h.warn) / h.erupt, grow = Math.min(1, (h.t - h.warn) / 0.25), fade = q > 0.8 ? (1 - q) / 0.2 : 1;
+    var r = h.r * (0.6 + 0.4 * grow);
+    ctx.fillStyle = "rgba(40,14,10," + (0.7 * fade + 0.2).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, r + 2, (r + 2) * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(232,80,26," + (0.85 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(255,176,48," + (0.8 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x - r * 0.15, y - r * 0.08, r * 0.55, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    for (var b = 0; b < 3; b++) {   // 泡：ふくらんで、はじける
+      var ph = (glow * 1.6 + b / 3 + h.seed) % 1, bx = x + Math.sin(b * 2.3 + h.seed) * r * 0.5, by = y + Math.cos(b * 1.7 + h.seed) * r * 0.25;
+      if (ph < 0.8) Render.rect(Math.round(bx) - 1, Math.round(by) - 1, 2, 2, "rgba(255,242,160," + (fade * (1 - ph)).toFixed(2) + ")");
+    }
+  }
+  // 炎の巨人の地ならし：まわりの輪の上に、火の舌がいっせいに立つ
+  function drawFlameRing(ctx, h, x, y, glow) {
+    var q = Math.min(1, (h.t - h.warn) / h.erupt), fade = 1 - q;
+    ctx.fillStyle = "rgba(255,110,40," + (0.3 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    var n = 22;
+    for (var i = 0; i < n; i++) {
+      for (var ring = 0; ring < 2; ring++) {
+        var a = (i + ring * 0.5) / n * Math.PI * 2, rr = h.r * (ring ? 0.6 : 0.92), fx = x + Math.cos(a) * rr, fy = y + Math.sin(a) * rr * 0.62;
+        var hh = (14 + ((i * 7 + ring * 3) % 5) * 3) * Math.min(1, q * 6) * (0.6 + 0.4 * fade);
+        var g = ctx.createLinearGradient(0, fy - hh, 0, fy);
+        g.addColorStop(0, "rgba(232,80,26,0)"); g.addColorStop(0.5, "rgba(255,150,40," + (0.8 * fade).toFixed(2) + ")"); g.addColorStop(1, "rgba(255,242,160," + (0.95 * fade).toFixed(2) + ")");
+        ctx.fillStyle = g; ctx.fillRect(Math.round(fx) - 2, Math.round(fy - hh), 4, Math.round(hh));
+      }
+    }
+  }
   // ラフレシアの毒の霧：紫のもやが、ゆっくりうずを巻いてのこる。はじめはふわっと広がり、終わりぎわはうすくなる
   function drawFog(ctx, h, x, y, glow) {
     var q = (h.t - h.warn) / h.erupt, grow = Math.min(1, (h.t - h.warn) / 0.3), fade = q > 0.85 ? (1 - q) / 0.15 : 1, a = grow * fade;
@@ -2817,6 +2988,57 @@ var Bosses = (function () {
           Render.rect(ox2, oy2 - 1, 1, 3, "#ffe066"); Render.rect(ox2 - 1, oy2, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "giant_boss") {
+      // 炎の巨人（56×60、正面）：足もとは y＋14。地ならし・岩投げは「raise」、火が消えてふらつくときは「tired」
+      var burning = e.flame > 0;
+      if (burning) {   // 炎のよろい：足もとに熱の輪（この中にいると熱い）と、体のまわりの大きな炎
+        var hr = e.r + d.heatR;
+        ctx.fillStyle = "rgba(255,110,40," + (0.10 + 0.05 * Math.sin(glow * 8)).toFixed(2) + ")";
+        ctx.beginPath(); ctx.ellipse(x, y + 8, hr, hr * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255,150,60,0.55)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y + 8, hr, hr * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      Render.rect(x - 22, y + 9, 44, 7, "rgba(0,0,0,0.35)");
+      if (e.state === "windup" || e.state === "stompWarn" || e.state === "lift" || e.state === "ignite")
+        Combat.glowDot(ctx, x, y - 22, 28, "#ffffff", e.state === "lift" || e.state === "ignite" ? "#ffb030" : "#ef5b5b", 0.22 + 0.15 * Math.sin(glow * 20));
+      var gfr = Math.sin(glow * 10) > 0 ? "stand" : "stand2", gph = Math.sin(e.walk || 0);
+      if (e.state === "chase") gfr = gph > 0.3 ? "walkA" : gph < -0.3 ? "walkB" : gfr;
+      if (e.state === "stompWarn" || e.state === "stomp" || e.state === "lift" || e.state === "ignite") gfr = Math.sin(glow * 10) > 0 ? "raise" : "raise2";
+      if (e.state === "tired") gfr = "tired";
+      var gsh = e.state === "tired" || e.state === "stompWarn" || e.state === "ignite" ? Math.round(Math.sin(glow * 24)) : 0;
+      var gy = e.state === "stomp" ? y + 16 : y + 14;
+      Monsters.drawBoss(ctx, e, x + gsh, gy, gfr);
+      if (burning) {   // 体から立ちのぼる炎
+        // 炎の舌：かた・うで・こしのまわりから、ゆらゆら立ちのぼる（外が赤、中が黄色）
+        var FL = [[-24, -26], [-17, -34], [-8, -40], [8, -40], [17, -34], [24, -26], [-26, -12], [26, -12], [-14, -16], [14, -16]];
+        for (var gf = 0; gf < FL.length; gf++) {
+          var gx = x + FL[gf][0], gb = gy + FL[gf][1], gh = 10 + (gf % 3) * 3 + Math.sin(glow * 12 + gf * 1.7) * 3, sw2 = Math.sin(glow * 9 + gf * 2.3) * 3;
+          for (var lay = 0; lay < 2; lay++) {
+            var fw = lay ? 2 : 4, fh = lay ? gh * 0.6 : gh;
+            ctx.fillStyle = lay ? "rgba(255,242,160,0.85)" : "rgba(240,106,24,0.75)";
+            ctx.beginPath(); ctx.moveTo(gx - fw, gb);
+            ctx.quadraticCurveTo(gx - fw * 1.2, gb - fh * 0.55, gx + sw2, gb - fh);
+            ctx.quadraticCurveTo(gx + fw * 1.2, gb - fh * 0.55, gx + fw, gb);
+            ctx.closePath(); ctx.fill();
+          }
+        }
+        Render.text("炎 " + Math.max(0, d.flameHits - (e.flameHit || 0)), x, y + 26, { size: 8, align: "center", bold: true, color: "#ffb84a" });
+      }
+      if (e.state === "lift") {   // 頭の上の溶岩の岩（だんだん大きく光る）
+        var lk = 1 - Math.max(0, e.t) / d.ballLift;
+        Combat.glowDot(ctx, x, gy - 64, 12 + lk * 4, "#ffe066", "#f06a18", 0.6 + 0.3 * lk);
+        ctx.fillStyle = "#3a1610"; ctx.beginPath(); ctx.arc(x, gy - 64, 8, 0, Math.PI * 2); ctx.fill();
+        Render.rect(x - 5, gy - 67, 5, 1, "#ffb030"); Render.rect(x, gy - 62, 4, 1, "#f06a18"); Render.rect(x - 2, gy - 70, 3, 1, "#fff2a0"); Render.rect(x + 3, gy - 66, 1, 3, "#ffb030");
+      }
+      if (e.punchT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 8, e.aim, 0.9, d.reach + e.r, "#ffb030", 1 - e.punchT / 0.22, e.punchFlip);
+      if (e.state === "windup" || e.state === "stompWarn") Render.text("！", x, y - 62, { size: 11, align: "center", bold: true, color: e.state === "stompWarn" ? "#ef5b5b" : "#ffd24a" });
+      if (e.state === "tired") {   // ふらついている：白いけむりと、頭の上で黄色い星
+        for (var gs = 0; gs < 4; gs++) { var sp2 = (glow * 0.8 + gs / 4) % 1; Render.rect(Math.round(x - 6 + gs * 4 + Math.sin(sp2 * 6 + gs) * 2), Math.round(y - 44 - sp2 * 18), 3, 3, "rgba(220,224,230," + (0.7 * (1 - sp2)).toFixed(2) + ")"); }
+        for (var gt = 0; gt < 3; gt++) {
+          var ga = glow * 4 + gt * 2.1, gx2 = Math.round(x + Math.cos(ga) * 14), gy2 = Math.round(y - 48 + Math.sin(ga) * 3);
+          Render.rect(gx2, gy2 - 1, 1, 3, "#ffe066"); Render.rect(gx2 - 1, gy2, 3, 1, "#ffe066");
+        }
+      }
     } else if (d.kind === "wdragon_boss") {
       // 水竜（64×56、正面）：足もとは y＋14。もぐる・飛び出すときは、下から水にしずむ（sink：0〜1）
       var sink = 0;
@@ -3085,6 +3307,6 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
+           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, douse: douse, giantMult: giantMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
            frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();
