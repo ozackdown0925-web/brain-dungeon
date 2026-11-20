@@ -822,6 +822,39 @@ var GameData = (function () {
       res: { light: 1.3, dark: 0, water: 0 }, speed: 24, r: 6,
       keepMin: 70, keepMax: 130, windup: 0.8, cooldown: 2.4, orbSpeed: 95, color: "#3a8ab0", water: true
     },
+    // ---- 紅蓮の火山の敵（地方3の3つ目のダンジョン。段階2、2026-11-20 Claude の案）。数字は遊んでみてから直す ----
+    // どれも火は効かない。弱点がかたよらないように、水（溶岩スライム・火トカゲ）・打（溶岩の岩人形）・刺（炎のコウモリ）・闇（炎の精）に分けた
+    // 溶岩スライム：はねて動き、火のつぶを吐く。たおすと、小さい2つに分かれる（氷のスライムと同じ）。水が弱点、斬・刺はいまひとつ
+    lava_slime: {
+      name: "溶岩スライム", kind: "frog", hp: 46, patk: 9, pdef: 3, mdef: 3,
+      res: { water: 1.3, slash: 0.75, pierce: 0.75, fire: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#f06a18", fire: true, split: "lava_slime_mini"
+    },
+    lava_slime_mini: {
+      name: "溶岩スライムの子", kind: "frog", hp: 16, patk: 6, pdef: 2, mdef: 2,
+      res: { water: 1.3, slash: 0.75, pierce: 0.75, fire: 0 }, speed: 0, r: 4,
+      reach: 50, keep: 30, hopSpeed: 90, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.6, spitSpeed: 100, color: "#f06a18", fire: true
+    },
+    // 炎のコウモリ：飛んで（溶岩の上も通る）、じぐざぐに近づいてかみつく。刺が弱点（矢で落とす）、打はいまひとつ
+    flame_bat: {
+      name: "炎のコウモリ", kind: "bee", fly: true, hp: 22, patk: 8, pdef: 2, mdef: 2,
+      res: { pierce: 1.3, strike: 0.75, fire: 0 }, speed: 54, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.4, color: "#d84410"
+    },
+    // 溶岩の岩人形：体のすきまに溶岩が光る岩の人形。のろいが、かたくて HP が多い。打が弱点、斬と刺は半減
+    magma_golem: {
+      name: "溶岩の岩人形", kind: "melee", hp: 64, patk: 11, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5, fire: 0 }, speed: 14, r: 7,
+      reach: 14, windup: 0.7, cooldown: 1.9, lunge: 4, color: "#584440"
+    },
+    // 炎の精（3階から）：ふわふわ浮いて、はなれたところから大きな火の玉を撃つ（魔法のダメージ）。闇が弱点、刺は半減
+    fire_sprite: {
+      name: "炎の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 4, mdef: 5,
+      res: { dark: 1.3, pierce: 0.5, fire: 0 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 120, color: "#f08a28", fire: true
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -1367,7 +1400,7 @@ var GameData = (function () {
     kazan: {
       id: "kazan", tagline: "燃える溶岩が流れる、赤い火山。", intro: ["湖の東にそびえる、赤い火山。", "溶岩の川が流れる山の中には、炎の魔物がすみついているという。"],
       region: "volcamarine", name: "紅蓮の火山", short: "火山", floors: 12, needs: "kotei", depthBase: 97, theme: "volcano", tier: 4,
-      foeHp: 1.8, foeAtk: 1.05, foeType: { stone_guard: { hp: 0.8 } },   // 仮（段階2で敵といっしょに決める）
+      foeHp: 1.8, foeAtk: 1.05, foeType: { magma_golem: { hp: 0.8 } },   // 岩人形はかたくて HP が多いので少し減らす（湖底神殿の石像兵と同じ）
       bosses: {
         6: { enemy: "octo_boss", title: "火山の中ほどをこえし者", room: "magma",   // 仮のボス（段階3で炎の巨人にする案）。部屋は炎の巨人の広間
              before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、何かが近づいてくる！"],
