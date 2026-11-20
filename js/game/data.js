@@ -1113,6 +1113,25 @@ var GameData = (function () {
     stunTime: 4, stunMult: 1.3
   };
 
+  // 紅蓮の竜（紅蓮の火山12階・主。段階4、2026-11-20 Claude の案。数字は仮）：火口にすむ、つばさのある赤い竜。地方3の最後の主。
+  //   決め手は「空からの突進を、岩の柱にぶつけさせる」（ヨロイガニ＝打でわる、大ダコ＝足を切る、水竜＝柱のかげ、炎の巨人＝炎を消す、とはちがう答え）。
+  //   かみつき：近くにいると、かみつく。
+  //   炎の息（fbreathEvery 秒ごと）：扇の形に予告してから、炎をはく。HP 半分から扇が広くなる。
+  //   噴火（eruptEvery 秒ごと）：ほえると、火口の溶岩から溶岩の岩が erupts 個（HP 半分から eruptsHalf 個）ふってくる。落ちる場所に輪の予告。落ちたところは少しのあいだ溶岩だまり。
+  //   空からの突進（soarEvery 秒ごと）：空へ舞い上がり（攻撃が当たらない）、赤い線で予告してから、線の先へまっすぐ突っこむ（溶岩の上も飛ぶ）。
+  //     線の先に岩の柱（I）があると、柱にぶつかって crashTime 秒目を回す（そのあいだは受けるダメージが crashMult 倍）。線は、柱の前に立つと柱まで、そうでなければ壁までのびる。
+  //     HP 半分からは、柱にぶつからなければ2回続けて突っこむ。
+  //   水が弱点、火は効かない。
+  //   強さ：火山12階（Lv65 くらい・プラチナ）で、剣で約65振り（水竜より少し長い。地方3の最後の主）。ふつうの一撃が体力の約6%
+  ENEMIES.fdragon_boss = {
+    name: "紅蓮の竜", kind: "fdragon_boss", boss: true, hp: 20500, patk: 132, matk: 0, pdef: 13, mdef: 12,
+    res: { water: 1.3, fire: 0 }, speed: 28, speedHalf: 34, r: 18, color: "#c8381c",
+    reach: 24, windup: 0.5, windupHalf: 0.4, cooldown: 1.3, cooldownHalf: 1.0, biteMult: 1.2,
+    fbreathFirst: 4, fbreathEvery: 8, fbreathEveryHalf: 6.5, fbreathWarn: 0.9, fbreathLen: 125, fbreathSpread: 0.42, fbreathSpreadHalf: 0.62, fbreathMult: 1.5,
+    eruptFirst: 8, eruptEvery: 15, eruptEveryHalf: 12, eruptWarn: 1.3, erupts: 5, eruptsHalf: 8, ballR: 16, eruptMult: 1.3, poolTime: 4, poolMult: 0.35,
+    soarFirst: 13, soarEvery: 20, soarEveryHalf: 16, soarTime: 0.8, diveWarn: 1.4, diveSpeed: 300, diveMult: 2.0, dives: 1, divesHalf: 2, crashTime: 4.5, crashMult: 1.3, landTime: 0.8
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -1425,8 +1444,8 @@ var GameData = (function () {
         6: { enemy: "giant_boss", title: "炎の巨人の火を消せし者", room: "magma",   // 炎の巨人（段階3、2026-11-20）。部屋は炎の巨人の広間。前後の文は Claude が書いた仮の文
              before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、燃える髪の巨人が立ち上がった！"],
              after: ["巨人の体の火が消え、ただの岩になってくずれた。", "火山の上へ、道が続いている。"] },
-        12: { enemy: "wdragon_boss", title: "紅蓮の火山をきわめし者",   // 仮のボス（段階4で紅蓮の竜にする案）
-              before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩が大きくもり上がった……。"],
+        12: { enemy: "fdragon_boss", title: "紅蓮の火山をきわめし者",   // 紅蓮の竜（段階4、2026-11-20）。前後の文は Claude が書いた仮の文
+              before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩の中から、赤いつばさの竜が舞い上がった！"],
               after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }
       }
     }

@@ -78,6 +78,8 @@ var Combat = (function () {
       // 大ダコ（2026-11-18）：床から出た足を全部切ると、ひるむ。ひるんでいるあいだは多く効く
       if (e.def.kind === "octo_boss") { var om = Bosses.octoMult(e); if (om !== 1) res.amount = Math.max(1, Math.round(res.amount * om)); }
       // 炎の巨人（2026-11-20）：炎のよろいのあいだは、あまり効かない。当てた数で炎が消える（水は3回分）。消えてふらついているあいだは多く効く
+      // 紅蓮の竜（2026-11-20）：柱にぶつかって目を回しているあいだは多く効く
+      if (e.def.kind === "fdragon_boss") { var fm = Bosses.fdragonMult(e); if (fm !== 1) res.amount = Math.max(1, Math.round(res.amount * fm)); }
       if (e.def.kind === "giant_boss") {
         var gm = Bosses.giantMult(e, elem);
         Bosses.douse(e, elem);

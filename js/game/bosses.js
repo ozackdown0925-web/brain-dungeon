@@ -35,7 +35,8 @@ var Bosses = (function () {
              web: d.webEvery ? 3 : 0, ceil: d.ceilEvery ? 9 : 0, beam: d.beamEvery ? 6 : 0,
              ink: d.inkEvery ? 5 : 0, arm: d.armFirst || 0,
              jet: d.jetFirst || 0, wave: d.waveFirst || 0,
-             stomp: d.stompEvery ? 5 : 0, ball: d.ballFirst || 0, flame: d.flameFirst || 0 };
+             stomp: d.stompEvery ? 5 : 0, ball: d.ballFirst || 0, flame: d.flameFirst || 0,
+             fbreath: d.fbreathFirst || 0, erupt: d.eruptFirst || 0, soar: d.soarFirst || 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
@@ -62,6 +63,11 @@ var Bosses = (function () {
       e.state = "recover"; e.t = 0.4;
       for (var gj = hazards.length - 1; gj >= 0; gj--) if (hazards[gj].from === e && hazards[gj].look === "flamering" && hazards[gj].t < hazards[gj].warn) hazards.splice(gj, 1);
     }
+    if (e.def.kind === "fdragon_boss") {   // 紅蓮の竜：空にいたら下りる。炎の息をためている途中なら、やめる
+      if (e.state === "soar" || e.state === "dvwarn" || e.state === "dvdash") { landDragon(e, null); e.state = "recover"; e.t = 0.4; }
+      if (e.state === "fbreathWarn") { e.state = "recover"; e.t = 0.4; }
+      for (var fj = hazards.length - 1; fj >= 0; fj--) if (hazards[fj].from === e && hazards[fj].kind === "cone" && hazards[fj].t < hazards[fj].warn) hazards.splice(fj, 1);
+    }
     if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
       if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
       e.untouchable = false; e.leapsLeft = 0;
@@ -78,7 +84,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave", "stomp", "ball", "flame"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave", "stomp", "ball", "flame", "fbreath", "erupt", "soar"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "icefang_boss") iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // 氷牙獣は大オオカミがもと
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -92,6 +98,7 @@ var Bosses = (function () {
     else if (d.kind === "octo_boss") octo(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "wdragon_boss") wdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "giant_boss") giant(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "fdragon_boss") fdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -1028,6 +1035,146 @@ var Bosses = (function () {
     if (e.stun > 0) return e.def.stunMult;
     return 1;
   }
+  // ---------- 紅蓮の竜（紅蓮の火山12階・主。段階4、2026-11-20） ----------
+  // かみつき・炎の息（扇）・噴火（溶岩の岩がふる）・空からの突進（線の先の岩の柱にぶつかると目を回す）
+  function fdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.biteT = Math.max(0, (e.biteT || 0) - dt);
+    e.crash = Math.max(0, (e.crash || 0) - dt);
+    if (e.state === "windup") {   // かみつき
+      e.t -= dt;
+      if (e.t > 0.12 && !p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; }
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.reach + 4) hurt(e, p.x, p.y - 8, { mult: d.biteMult });
+        e.biteT = 0.2; Sound.play("swing");
+        e.state = "recover"; e.t = 0.5; e.cd = half ? d.cooldownHalf : d.cooldown;
+      }
+      return;
+    }
+    if (e.state === "fbreathWarn") { e.t -= dt; if (e.t <= 0) { e.state = "fbreath"; e.t = 0.5; Sound.play("hit"); } return; }
+    if (e.state === "fbreath") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.6; } return; }
+    if (e.state === "roar") {   // ほえる → 火口から溶岩の岩がふってくる
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!e.lava) {   // 溶岩のマス（岩が飛び出すところ）
+          e.lava = [];
+          for (var ty = 0; ty * TILE < room.pxH; ty++) for (var tx = 0; tx * TILE < room.pxW; tx++) if (room.tile(tx, ty) === "~") e.lava.push({ x: tx * TILE + 8, y: ty * TILE + 8 });
+        }
+        var n = half ? d.eruptsHalf : d.erupts;
+        for (var k = 0; k < n; k++) {
+          var tx2 = p.x, ty2 = p.y, tries = 0;
+          if (k > 0) do { var a = Math.random() * Math.PI * 2, rr = 24 + Math.random() * 90; tx2 = p.x + Math.cos(a) * rr; ty2 = p.y + Math.sin(a) * rr * 0.8; tries++; }
+                       while (room.hitsWall(tx2 - 6, ty2 - 6, 12, 12) && tries < 8);
+          if (room.hitsWall(tx2 - 6, ty2 - 6, 12, 12)) continue;
+          var src = e.lava.length ? e.lava[Math.floor(Math.random() * e.lava.length)] : { x: e.x, y: e.y };
+          hazards.push({ kind: "circle", look: "magma", from: e, x: tx2, y: ty2, sx: src.x, sy: src.y, r: d.ballR, t: 0, warn: d.eruptWarn + k * 0.12, erupt: 0.4, hit: false,
+                         seed: Math.random() * 100, opts: { mult: d.eruptMult, big: true } });
+        }
+        shake(2, 0.4);
+        e.state = "recover"; e.t = 0.6; e.ai.erupt = half ? d.eruptEveryHalf : d.eruptEvery;
+      }
+      return;
+    }
+    if (e.state === "soar") {   // 空へ舞い上がる（攻撃が当たらない）
+      e.t -= dt;
+      e.alt = Math.min(34, (e.alt || 0) + dt * 60);
+      if (e.t <= 0) aimDive(e, room, p);
+      return;
+    }
+    if (e.state === "dvwarn") {   // 突進の予告：赤い線。走り出す 0.4 秒前までは、プレイヤーのほうへ向きを合わせ直す
+      e.t -= dt;
+      if (e.t > 0.4 && !p.down) setDiveLine(e, room, p.x - e.x, p.y - e.y);
+      if (e.t <= 0) { e.state = "dvdash"; e.travel = 0; e.hitDone = false; e.untouchable = false; Sound.play("swing"); }
+      return;
+    }
+    if (e.state === "dvdash") {   // 線の先へ、まっすぐ突っこむ（溶岩の上も飛ぶ）
+      var step = d.diveSpeed * dt, bx = e.x, by = e.y;
+      e.alt = Math.max(8, (e.alt || 0) - dt * 120);
+      e.fly = true; room.move(e, e.aim.x * step, e.aim.y * step); e.fly = false;
+      var moved = Math.abs(e.x - bx) + Math.abs(e.y - by);
+      e.travel += step;
+      var px = p.x - e.x, py = p.y - e.y;
+      if (!e.hitDone && !p.down && px * px + py * py < (e.r + p.r + 3) * (e.r + p.r + 3)) { e.hitDone = true; hurt(e, p.x, p.y - 8, { mult: d.diveMult, big: true }); }
+      if (moved < step * 0.4 || e.travel >= e.diveLen) {
+        var hx = e.x + e.aim.x * (e.r + 6), hy = e.y + e.aim.y * (e.r + 6);
+        var pillar = room.tile(Math.floor(hx / TILE), Math.floor(hy / TILE)) === "I" || e.diveHit === "I";
+        landDragon(e, room);
+        if (pillar) {   // 柱にぶつかった：目を回す（すきあり）
+          e.crash = d.crashTime; e.state = "tired"; e.t = d.crashTime; e.divesLeft = 0;
+          shake(3, 0.4);
+          addWave(hx, hy + 6, 4, 26, 0.4, 5);
+          for (var c = 0; c < 12; c++) { var ca = Math.random() * Math.PI * 2; chips.push({ x: hx, y: hy, z: 12, vx: Math.cos(ca) * 50, vy: Math.sin(ca) * 30, vz: 60 + Math.random() * 50, t: 0, max: 0.8, c: c % 2 ? "#4a3a36" : "#8a7468", s: 2 }); }
+          Battle.pop(e.x, e.y - 56, "柱にぶつかった！ 竜が目を回している！", "#ffe066", 10);
+        } else {
+          shake(2, 0.2); addWave(e.x, e.y + 8, 6, 30, 0.4, 3);
+          e.divesLeft = (e.divesLeft || 1) - 1;
+          if (e.divesLeft > 0 && !p.down) { e.state = "soar"; e.t = 0.5; e.untouchable = true; e.alt = 10; }
+          else { e.state = "recover"; e.t = d.landTime; }
+        }
+      }
+      return;
+    }
+    if (e.state === "tired" || e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (e.ai.soar <= 0) {
+      e.state = "soar"; e.t = d.soarTime; e.untouchable = true; e.alt = 0;
+      e.divesLeft = half ? d.divesHalf : d.dives;
+      e.ai.soar = half ? d.soarEveryHalf : d.soarEvery;
+      e.ai.fbreath = Math.max(e.ai.fbreath, 3); e.ai.erupt = Math.max(e.ai.erupt, 4);
+      Battle.pop(e.x, e.y - 56, "紅蓮の竜が空へ舞い上がった！", "#ffd24a", 9);
+      return;
+    }
+    if (e.ai.erupt <= 0) {
+      e.state = "roar"; e.t = 0.8;
+      Battle.pop(e.x, e.y - 56, "ガアアア！ 火口が噴火した！", "#ffb84a", 9);
+      return;
+    }
+    if (e.ai.fbreath <= 0 && dist < d.fbreathLen + 20) {
+      hazards.push({ kind: "cone", look: "fire", from: e, x: e.x + ux * 12, y: e.y - 6 + uy * 8, ang: Math.atan2(uy, ux), spread: half ? d.fbreathSpreadHalf : d.fbreathSpread, len: d.fbreathLen,
+                     t: 0, warn: d.fbreathWarn, erupt: 0.5, hit: false, seed: Math.random() * 100, opts: { mult: d.fbreathMult, big: true } });
+      e.state = "fbreathWarn"; e.t = d.fbreathWarn; e.ai.fbreath = half ? d.fbreathEveryHalf : d.fbreathEvery;
+      Battle.pop(e.x, e.y - 56, "炎の息！", "#ef5b5b", 9);
+      return;
+    }
+    if (gap > d.reach - 2) {
+      var spd = half ? d.speedHalf : d.speed;
+      if (!e.status.para) { room.move(e, ux * spd * dt, uy * spd * dt); e.walk = (e.walk || 0) + dt * 7; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 突進の線を (ax, ay) の向きに引く。溶岩の上は通りぬけ、岩の柱か壁で止まる（diveHit に止まったマス）
+  function setDiveLine(e, room, ax, ay) {
+    var al = Math.sqrt(ax * ax + ay * ay) || 1;
+    ax /= al; ay /= al;
+    e.aim = { x: ax, y: ay }; e.face = { x: ax, y: ay };
+    room._fly = true;
+    var len = Math.min(330, rayLength(room, e.x, e.y, ax, ay, e.r - 4));
+    room._fly = false;
+    var ex = e.x + ax * (len + e.r + 2), ey = e.y + ay * (len + e.r + 2);
+    e.diveHit = room.tile(Math.floor(ex / TILE), Math.floor(ey / TILE));
+    e.diveLen = len + 4;
+    if (!e.chargeLine) { e.chargeLine = { kind: "line", from: e, w: e.r * 2 + 4, t: 0, warn: e.def.diveWarn }; hazards.push(e.chargeLine); }
+    e.chargeLine.x1 = e.x; e.chargeLine.y1 = e.y; e.chargeLine.x2 = e.x + ax * len; e.chargeLine.y2 = e.y + ay * len;
+  }
+  function aimDive(e, room, p) {
+    e.chargeLine = null;
+    setDiveLine(e, room, p.x - e.x, p.y - e.y);
+    e.state = "dvwarn"; e.t = e.def.diveWarn;
+    Battle.pop(e.x, e.y - 60, "突進の構え！ 柱の前でよけよう", "#ef5b5b", 9);
+  }
+  // 地面に下りる（溶岩の上なら、来た向きへもどって岩の上に下りる）
+  function landDragon(e, room) {
+    e.alt = 0; e.untouchable = false; e.fly = false;
+    removeLines(e); e.chargeLine = null;
+    if (room && e.aim) {
+      for (var i = 0; i < 40 && room.hitsWall(e.x - e.r, e.y - e.r, e.r * 2, e.r * 2); i++) { e.x -= e.aim.x * 8; e.y -= e.aim.y * 8; }
+      room.keepInside(e);
+    }
+  }
+  // 受けるダメージの倍率：柱にぶつかって目を回しているあいだ
+  function fdragonMult(e) { return e.crash > 0 ? e.def.crashMult : 1; }
   // ---------- 水竜（しずみの湖底神殿12階・主。段階4、2026-11-19） ----------
   // かみつき・水のブレス（HP 半分から、なぎはらい）・大波（水にもぐって、反対がわの水路から部屋いっぱいの波。柱のかげでよける）
   function wdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
@@ -2265,7 +2412,7 @@ var Bosses = (function () {
     frost.forEach(function (f) { drawFrost(ctx, f, cam, glow); });
     waves.forEach(function (w) { drawWave(ctx, w, cam); });
     hazards.forEach(function (h) {
-      if (h.kind === "cone") { if (h.look === "ink") drawInk(ctx, h, cam, glow); else drawCone(ctx, h, cam, glow); return; }
+      if (h.kind === "cone") { if (h.look === "ink") drawInk(ctx, h, cam, glow); else if (h.look === "fire") drawFireCone(ctx, h, cam, glow); else drawCone(ctx, h, cam, glow); return; }
       if (h.kind === "line") { drawChargeLine(ctx, h, cam, glow); return; }
       if (h.kind === "circle") { drawCircle(ctx, h, cam, glow); return; }
       if (h.kind === "tornado") { drawTornado(ctx, h, cam, glow); return; }
@@ -2601,6 +2748,28 @@ var Bosses = (function () {
     }
   }
   // 大ダコの墨はき：予告はうすむらさきの扇（外へ広がる線が外のはしに着くと、はく）。本番は黒い墨のつぶが広がる
+  // 紅蓮の竜の炎の息：予告は赤い扇。はくと、扇いっぱいに炎がふくらんで広がる
+  function drawFireCone(ctx, h, cam, glow) {
+    var x = h.x - cam.x, y = h.y - cam.y;
+    if (h.t < h.warn) {
+      var k = h.t / h.warn;
+      ctx.fillStyle = "rgba(255,90,40," + (0.12 + 0.22 * k + 0.05 * Math.sin(glow * 16)).toFixed(2) + ")";
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, h.len, h.ang - h.spread, h.ang + h.spread); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,230,140,0.8)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, h.len * k, h.ang - h.spread, h.ang + h.spread); ctx.stroke();
+      return;
+    }
+    var q = (h.t - h.warn) / h.erupt, fade = 1 - q, reach = h.len * Math.min(1, q * 1.8);
+    ctx.fillStyle = "rgba(240,106,24," + (0.4 * fade).toFixed(2) + ")";
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, reach, h.ang - h.spread, h.ang + h.spread); ctx.closePath(); ctx.fill();
+    for (var i = 0; i < 60; i++) {   // 火の玉のつぶ：手前は黄色、先は赤
+      var r1 = rnd(h.seed + i), r2 = rnd(h.seed + i * 3.7);
+      var dd = reach * (0.1 + 0.9 * r1), aa = h.ang + (r2 * 2 - 1) * h.spread * (0.3 + 0.7 * r1);
+      var sz = Math.round(3 + (1 - r1) * 5), col = r1 < 0.35 ? "#fff2a0" : r1 < 0.7 ? "#ffb030" : "#e8501a";
+      Combat.glowDot(ctx, x + Math.cos(aa) * dd, y + Math.sin(aa) * dd, sz, col, "#f06a18", fade);
+    }
+  }
   function drawInk(ctx, h, cam, glow) {
     var x = h.x - cam.x, y = h.y - cam.y;
     if (h.t < h.warn) {
@@ -3039,6 +3208,33 @@ var Bosses = (function () {
           Render.rect(gx2, gy2 - 1, 1, 3, "#ffe066"); Render.rect(gx2 - 1, gy2, 3, 1, "#ffe066");
         }
       }
+    } else if (d.kind === "fdragon_boss") {
+      // 紅蓮の竜（78×62、横向き。絵は左向きで、右を向くときは裏返す）：足もとは y＋14。空にいるあいだは alt だけ上に描き、地面にかげ
+      var alt = Math.round(e.alt || 0), flying = alt > 0, fdir = e.face.x > 0 ? 1 : -1;
+      Render.rect(x - 28 + Math.round(alt * 0.3), y + 9, 56 - Math.round(alt * 0.6), 7, "rgba(0,0,0," + (flying ? 0.25 : 0.35) + ")");
+      if (e.state === "windup" || e.state === "fbreathWarn" || e.state === "roar")
+        Combat.glowDot(ctx, x, y - 22 - alt, 26, "#ffffff", e.state === "roar" ? "#ffb030" : "#ef5b5b", 0.22 + 0.15 * Math.sin(glow * 20));
+      var fy = y + 14 - alt, mouthX = x + fdir * 34, mouthY = fy - 44;   // 口のあたり（炎がたまるところ）
+      var ff = "stand", fph = Math.sin(e.walk || 0);
+      if (e.state === "chase") ff = fph > 0.3 ? "walkA" : fph < -0.3 ? "walkB" : "stand";
+      if (e.state === "windup" || e.biteT > 0 || e.state === "fbreathWarn" || e.state === "fbreath") ff = "open";
+      if (e.state === "roar") ff = "roar";
+      if (flying) ff = e.state === "dvdash" ? "flyB" : Math.sin(glow * 14) > 0 ? "flyA" : "flyB";   // 空では、つばさを上げ下げ
+      if (e.state === "tired") ff = "tired";
+      var fshake = e.state === "roar" ? Math.round(Math.sin(glow * 30)) : 0;
+      Monsters.drawBoss(ctx, e, x + fshake, fy, ff);
+      if (e.state === "fbreathWarn" || e.state === "fbreath") {   // 口に炎がたまる
+        var kf = e.state === "fbreath" ? 1 : 1 - Math.max(0, e.t) / (d.fbreathWarn + 0.4);
+        Combat.glowDot(ctx, mouthX, mouthY, 6 + kf * 8, "#fff2a0", "#f06a18", 0.4 + 0.5 * kf);
+      }
+      if (e.biteT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 6, e.aim, 0.7, d.reach + e.r, "#ffb030", 1 - e.biteT / 0.2, false);
+      if (e.state === "windup" || e.state === "fbreathWarn" || e.state === "dvwarn") Render.text("！", x, fy - 72, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+      if (e.state === "tired") {
+        for (var fs = 0; fs < 3; fs++) {
+          var fa = glow * 4 + fs * 2.1, fx = Math.round(x + fdir * 26 + Math.cos(fa) * 10), fy2 = Math.round(fy - 32 + Math.sin(fa) * 3);   // 下げた頭の上
+          Render.rect(fx, fy2 - 1, 1, 3, "#ffe066"); Render.rect(fx - 1, fy2, 3, 1, "#ffe066");
+        }
+      }
     } else if (d.kind === "wdragon_boss") {
       // 水竜（64×56、正面）：足もとは y＋14。もぐる・飛び出すときは、下から水にしずむ（sink：0〜1）
       var sink = 0;
@@ -3307,6 +3503,6 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, douse: douse, giantMult: giantMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
+           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, douse: douse, giantMult: giantMult, fdragonMult: fdragonMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
            frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();
