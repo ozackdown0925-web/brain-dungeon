@@ -867,7 +867,11 @@ var Enemies = (function () {
       return;
     }
     if (d.water && d.kind === "caster") {   // しずみの神官の水の玉（しずみの湖底神殿、2026-11-18。魔法のダメージ）
-      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { drop: true, big: true, magic: true } });
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 4 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.6, from: e, ally: !!e.charm, opts: { drop: true, large: true, magic: true } });
+      return;
+    }
+    if (d.fire && d.kind === "caster") {   // 炎の精の大きな火の玉（紅蓮の火山、2026-11-20。魔法のダメージ）
+      arrows.push({ x: e.x + e.aim.x * 7, y: e.y - 6 + e.aim.y * 7, vx: e.aim.x * d.orbSpeed, vy: e.aim.y * d.orbSpeed, life: 2.0, from: e, ally: !!e.charm, opts: { fire: true, large: true, magic: true } });
       return;
     }
     if (d.kind === "caster" || d.kind === "dwisp") {   // 闇の玉（魔法のダメージ。ダークウィスプも）
@@ -880,7 +884,7 @@ var Enemies = (function () {
       return;
     }
     if (d.kind === "frog") {   // 毒のつば（当たると毒になることがある：onHit）。水のスライムは水のつぶ
-      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: d.ice ? { shard: true } : d.water ? { drop: true } : { spit: true } });
+      arrows.push({ x: e.x + e.aim.x * 6, y: e.y - 2 + e.aim.y * 6, vx: e.aim.x * d.spitSpeed, vy: e.aim.y * d.spitSpeed, life: 1.4, from: e, ally: !!e.charm, opts: d.ice ? { shard: true } : d.water ? { drop: true } : d.fire ? { fire: true } : { spit: true } });
       return;
     }
     if (d.kind === "lizard") {   // 火トカゲの火の玉（とどく距離は短い）
@@ -910,7 +914,7 @@ var Enemies = (function () {
     else if (d.kind === "melee" || d.kind === "wolf") fxs.push({ kind: e.type === "wolf_pup" || d.kind === "wolf" ? "bite" : "slash", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });
     else if (d.kind === "boar") fxs.push({ kind: "slash", col: "#f0e6c8", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // 牙のつき上げ（白っぽい）
     else if (d.kind === "bee" && e.type === "harpy") fxs.push({ kind: "slash", col: "#e8f0ff", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2, flip: Math.random() < 0.5 });   // ハーピーはかぎづめで引っかく
-    else if (d.kind === "bee" && (e.type === "bat" || e.type === "crystal_bat")) fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
+    else if (d.kind === "bee" && (e.type === "bat" || e.type === "crystal_bat" || e.type === "flame_bat")) fxs.push({ kind: "bite", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.2, max: 0.2 });   // 大コウモリはかみつく
     else if (d.kind === "bee") fxs.push({ kind: "sting", e: e, aim: { x: e.aim.x, y: e.aim.y }, reach: d.reach, t: 0.18, max: 0.18 });
   }
 
@@ -994,7 +998,7 @@ var Enemies = (function () {
       }
       var lift = e.hop > 0 ? Math.round(Math.sin((1 - e.hop / d.hopTime) * Math.PI) * 7) : 0;   // 毒ガエルがはねる高さ
       if (d.kind === "frog" && e.state === "windup" && !e.dead) lift = -1;                      // つばを吐く前は、少しかがむ
-      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || (d.ice && d.fly)) {   // 瘴気の霊・ダークウィスプ・風の精・氷の精：ふわふわ上下にゆれて、少しすけている
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || ((d.ice || d.fire) && d.fly)) {   // 瘴気の霊・ダークウィスプ・風の精・氷の精：ふわふわ上下にゆれて、少しすけている
         lift = 3 + Math.round(Math.sin(clock * 3 + e.x * 0.1) * 2);
         ctx.globalAlpha = ctx.globalAlpha * 0.85;
       }
@@ -1019,11 +1023,14 @@ var Enemies = (function () {
         Render.rect(bx4 - 2, by4 - 2, 4, 4, "#f4f8fc"); Render.rect(bx4 + 1, by4, 1, 2, "#a8b8cc");
       }
       if (tw && !e.dead && !tBehind) Sprites.drawWeapon(ctx, tw, e.face, x, y + 6 - lift, tMode, 0);
-      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || (d.ice && d.fly)) ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
+      if (d.kind === "wisp" || d.kind === "dwisp" || d.wind || ((d.ice || d.fire) && d.fly)) ctx.globalAlpha = e.dead ? Math.max(0, e.fade / 0.4) : 1;
       if ((d.kind === "caster" || d.kind === "dwisp") && e.state === "windup" && !e.dead) {   // 闇の玉をためる：手の先で、だんだん大きくなる
         var kc = 1 - e.t / d.windup, ox2 = x + e.face.x * 8, oy2 = y - 8 + e.face.y * 6;
         if (d.ice) {   // 氷の精：手の先に、水色の氷の粒が集まる
           Combat.glowDot(ctx, ox2, oy2, 3 + kc * 5, "#f0faff", "#7ac8f0", 0.5 + 0.5 * kc);
+        } else if (d.fire) {   // 炎の精：手の先に、ゆらゆらゆれる火がだんだん大きくなる
+          Combat.glowDot(ctx, ox2, oy2 + Math.sin(clock * 20) * 0.6, 4 + kc * 7, "#fff2a0", "#f08a28", 0.6 + 0.4 * kc);
+          Render.rect(Math.round(ox2) - 1, Math.round(oy2) - 1, 2, 2, "#ffffff");
         } else if (d.wind) {   // 風の精：緑がかった白い風が、まわりをくるくる回って集まる
           for (var wv = 0; wv < 6; wv++) {
             var wa = clock * 9 + wv * 1.05, wr = 12 - kc * 7;
@@ -1191,13 +1198,19 @@ var Enemies = (function () {
         Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#2a1040");
         return;
       }
+      if (a.opts && a.opts.fire && a.opts.large) {   // 炎の精の大きな火の玉：火トカゲのより大きく、後ろに火の粉
+        Combat.glowDot(ctx, x, y, 9, "#fff2a0", "#f06a18", 0.85);
+        for (var fq = 1; fq <= 3; fq++) Render.rect(Math.round(x - a.vx * 0.03 * fq + Math.sin(clock * 17 + fq) * 1.5) - 1, Math.round(y - a.vy * 0.03 * fq) - 1, 2, 2, fq === 1 ? "#f8a040" : "rgba(216,68,16,0.6)");
+        Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#ffe066"); Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#ffffff");
+        return;
+      }
       if (a.opts && a.opts.fire) {   // 火トカゲの火の玉：赤いふちに、黄色い芯
         Combat.glowDot(ctx, x, y, 6, "#ffe066", "#f8a040", 0.85);
         Render.rect(Math.round(x - a.vx * 0.04) - 1, Math.round(y - a.vy * 0.04) - 1, 2, 2, "rgba(208,70,72,0.6)");
         Render.rect(Math.round(x) - 1, Math.round(y) - 1, 2, 2, "#fff2a0");
         return;
       }
-      if (a.opts && a.opts.drop && a.opts.big) {   // しずみの神官の水の玉：水のつぶより大きく、まわりがうすく光る
+      if (a.opts && a.opts.drop && a.opts.large) {   // しずみの神官の水の玉：水のつぶより大きく、まわりがうすく光る
         Combat.glowDot(ctx, x, y, 7, "#bff4ff", "#4ab8d8", 0.7);
         Render.rect(Math.round(x) - 3, Math.round(y) - 3, 6, 6, "#2a7ab0"); Render.rect(Math.round(x) - 2, Math.round(y) - 2, 4, 4, "#4ab8d8"); Render.rect(Math.round(x) - 2, Math.round(y) - 2, 2, 2, "#e8fcff");
         return;

@@ -4060,6 +4060,18 @@ var Monsters = (function () {
   SMALL_PAL.ice_slime_mini = SMALL_PAL.ice_slime;
   SMALL_PAL.snowman = { A: "#140c1c", w: "#f4f8fc", W: "#c8d4e4", g: "#8a9ab4", e: "#140c1c", o: "#f08030", k: "#d04648", b: "#2a2a34", t: "#6a4a2a" };
   SMALL_PAL.ice_sprite = palWith({ H: "#d8f0ff", B: "#4aa0e0", W: "#1e4a8a" });
+  // 紅蓮の火山（地方3。段階2、2026-11-20 Claude が描いた）。どれも前の敵の絵で、色だけちがう
+  // 溶岩スライムは水のスライム、炎のコウモリは大コウモリ、炎の精は光の精、溶岩の岩人形は岩の子ゴーレム（こけのところが、光る溶岩のすじ）
+  SMALL.lava_slime = SMALL.slime;
+  SMALL_PAL.lava_slime = palWith({ H: "#ffe060", I: "#f06a18", J: "#9a1e08" });
+  SMALL.lava_slime_mini = SMALL.ice_slime_mini;
+  SMALL_PAL.lava_slime_mini = SMALL_PAL.lava_slime;
+  SMALL.flame_bat = SMALL.bat;
+  SMALL_PAL.flame_bat = palWith({ M: "#c03a14", L: "#f8a040", K: "#ffe060", H: "#ffffff" });
+  SMALL.fire_sprite = SMALL.light_sprite;
+  SMALL_PAL.fire_sprite = palWith({ H: "#ffe060", B: "#f06a18", W: "#b02a10" });
+  SMALL.magma_golem = SMALL.golem_kid;
+  SMALL_PAL.magma_golem = { A: "#140c1c", r: "#9a8478", R: "#6e5a52", q: "#4a3a36", Q: "#2e2220", m: "#f06a18", M: "#d84410", e: "#ffe060", E: "#f06a18" };
   // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
   // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
   var PLACEHOLDER = {};
@@ -5007,7 +5019,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "moray" && type !== "priest" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "snowman" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "moray" && type !== "priest" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "fire_sprite" && type !== "snowman" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
@@ -5020,7 +5032,7 @@ var Monsters = (function () {
     var d = dirOf(e.face), ph = Math.sin(e.walk || 0), moving = e.def.speed > 0 && (e.state === "chase" || e.state === "charge");
     var frame = !moving ? "stand" : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
     if (e.type === "vine" || e.type === "raff_bud") d = { dir: "down", flip: false };
-    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "crystal_bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
+    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "crystal_bat" || e.type === "flame_bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
     var img = small(e.type, d.dir, frame, e.flash > 0);
     ctx.save();
     if (d.flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -8, Math.round(y) - img.height); }

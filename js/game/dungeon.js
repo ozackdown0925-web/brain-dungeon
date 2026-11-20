@@ -173,8 +173,20 @@ var Dungeon = (function () {
   // avoid：近くに置かない場所（入口の部屋のスタート地点。タイルの座標）
   function placeEnemies(rnd, room, doors, floor, avoid, dungeon) {
     var n = enemyCount(rnd, floor), types = [], theme = GameData.dungeonOf(dungeon).theme;
-    if (theme === "volcano") { theme = "temple"; floor = 12; }   // 紅蓮の火山（段階1、2026-11-20）：火山の敵ができるまでの仮。湖底神殿の後半と同じ
-    if (theme === "temple") {
+    if (theme === "volcano") {
+      // 紅蓮の火山（地方3の段階2、2026-11-20 Claude の案）：前半（1〜6階）は溶岩スライムと溶岩の岩人形がかわりばんこの群れに、
+      // 炎のコウモリ（3階から炎の精）。後半（7〜12階）は岩人形と火トカゲがかわりばんこの群れに、炎の精・炎のコウモリ・ときどき溶岩スライム
+      if (floor <= 6) {
+        for (var vj = 0; vj < n; vj++) types.push(vj % 2 ? "magma_golem" : "lava_slime");   // スライムは分かれるので、岩人形とかわりばんこ
+        if (rnd() < 0.5) types[types.length - 1] = "flame_bat";
+        if (floor >= 3 && rnd() < 0.4) types[1] = "fire_sprite";
+      } else {
+        for (var vk = 0; vk < n; vk++) types.push(vk % 2 ? "fire_lizard" : "magma_golem");
+        if (rnd() < 0.5) types[types.length - 1] = "fire_sprite";
+        if (n >= 4 && rnd() < 0.5) types[1] = rnd() < 0.6 ? "flame_bat" : "lava_slime";
+        if (n >= 5 && rnd() < 0.3) types[2] = "flame_bat";
+      }
+    } else if (theme === "temple") {
       // しずみの湖底神殿（地方3の段階2、2026-11-18 Claude の案）：前半（1〜6階）は神殿の石像兵と地底の半魚人がかわりばんこの群れに、
       // 神殿ウツボ（3階から神殿クラゲ）。後半（7〜12階）は石像兵の群れに、ウツボ・クラゲ・しずみの神官・ときどき半魚人
       if (floor <= 6) {
@@ -385,7 +397,8 @@ var Dungeon = (function () {
     var swamp = GameData.dungeonOf(dungeon).theme === "swamp", wild = GameData.dungeonOf(dungeon).theme === "wild", cave = GameData.dungeonOf(dungeon).theme === "cave", peak = GameData.dungeonOf(dungeon).theme === "peak";
     var snow = GameData.dungeonOf(dungeon).theme === "snow";   // 白銀の霊峰
     var crystal = GameData.dungeonOf(dungeon).theme === "crystal";   // 水晶の鍾乳洞
-    var temple = GameData.dungeonOf(dungeon).theme === "temple" || GameData.dungeonOf(dungeon).theme === "volcano";   // しずみの湖底神殿（紅蓮の火山も、罠ができるまでの仮で同じ。2026-11-20）
+    var temple = GameData.dungeonOf(dungeon).theme === "temple";   // しずみの湖底神殿
+    var volcano = GameData.dungeonOf(dungeon).theme === "volcano";   // 紅蓮の火山
     var rnd = rng((seed ^ 0x5bd1e995) >>> 0);
     var keys = Object.keys(dg.cells);
     var used = {}; // 物を置いたタイル（部屋ごと）
@@ -509,16 +522,17 @@ var Dungeon = (function () {
       // 水晶の鍾乳洞（2026-11-15）：鍾乳石（drip。落石と同じ）4割・ぬれた岩（wet。すべる氷と同じ）3割・落とし穴3割。毒の沼はなし
       // しずみの湖底神殿（2026-11-18）：水がふき出す床（geyser。ふむと、少しあとに水の柱が上がる）4割・ぬれた石だたみ（wet）3割・落とし穴3割
       //   水の柱は落石と同じく、ふんだところに印が出て、少しあとに水がふき上がる
+      // 紅蓮の火山（2026-11-20）：火がふき出す床（flame。水の柱と同じ動き）4割・火山弾（vbomb。落石と同じく、影が出てから空から落ちる）3割・落とし穴3割
       var wetLike = crystal || temple;
-      var rv = rnd(), rock = (cave && rv < 0.4) || (snow && rv < 0.35) || (wetLike && rv < 0.4), wind = peak && rv < 0.4, ice = (snow && rv >= 0.35 && rv < 0.7) || (wetLike && rv >= 0.4 && rv < 0.7);
-      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow || wetLike ? !ice : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
+      var rv = rnd(), rock = (cave && rv < 0.4) || (snow && rv < 0.35) || (wetLike && rv < 0.4) || (volcano && rv < 0.7), wind = peak && rv < 0.4, ice = (snow && rv >= 0.35 && rv < 0.7) || (wetLike && rv >= 0.4 && rv < 0.7);
+      var pit = !rock && !wind && (cave || peak ? rv < 0.8 : snow || wetLike || volcano ? !ice : rv < (swamp ? 0.25 : wild ? 0.7 : 0.45));
       // 落とし穴と落石はまわり1マスも通れるところだけ（せまい道をふさがないように）
       var one = pit || rock || wind || ice;
       var ts = one ? spots(tk, 1, 1, 4, true) : spots(tk, 2, 2, 3, false);
       if (!ts.length) continue;
       var tp = pick(rnd, ts);
       // 突風（烈風の峰）：ふむと、決まった向き（dir：上下左右）へ少しのあいだ押し流される。見つけた突風の罠は、向きの矢印で見える
-      var tr = { type: rock ? (snow ? "icicle" : crystal ? "drip" : temple ? "geyser" : "rock") : wind ? "wind" : ice ? (wetLike ? "wet" : "ice") : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
+      var tr = { type: rock ? (snow ? "icicle" : crystal ? "drip" : temple ? "geyser" : volcano ? (rv < 0.4 ? "flame" : "vbomb") : "rock") : wind ? "wind" : ice ? (wetLike ? "wet" : "ice") : pit ? "pit" : "swamp", tx: tp.x, ty: tp.y, w: one ? 1 : 2, h: one ? 1 : 2, hidden: rnd() < 0.35, found: false };
       if (wind) tr.dir = ["n", "s", "e", "w"][Math.floor(rnd() * 4)];
       dg.cells[tk].traps.push(tr);
       mark(tk, tp.x, tp.y, one ? 1 : 2, one ? 1 : 2, 1);
@@ -550,7 +564,7 @@ var Dungeon = (function () {
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
     var th = GameData.dungeonOf(dungeon).theme, pool;
-    if (th === "volcano") return ["stone_guard", "moray", "priest"];   // 紅蓮の火山（仮。今は巣を置かない）
+    if (th === "volcano") return floor <= 6 ? ["lava_slime", "magma_golem", "flame_bat"] : ["magma_golem", "fire_lizard", "fire_sprite"];   // 紅蓮の火山（今は巣を置かない）
     if (th === "temple") return floor <= 6 ? ["stone_guard", "fishman", "moray"] : ["stone_guard", "moray", "priest"];   // しずみの湖底神殿（今は巣を置かない）
     if (th === "crystal") return floor <= 5 ? ["fishman", "cave_crab", "crystal_bat"] : ["fishman", "cave_crab", "crystal_sprite"];   // 水晶の鍾乳洞（今は巣を置かない）
     if (th === "snow") return floor <= 6 ? ["ice_slime", "yeti", "penguin"] : ["penguin", "yeti", "ice_sprite"];   // 白銀の霊峰（今は巣を置かない）
