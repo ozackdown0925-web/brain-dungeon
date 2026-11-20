@@ -3209,42 +3209,29 @@ var Bosses = (function () {
         }
       }
     } else if (d.kind === "fdragon_boss") {
-      // 紅蓮の竜（水竜の絵の赤い色＋うしろに大きなつばさ。64×56、正面）：足もとは y＋14。空にいるあいだは alt だけ上に描き、地面にかげ
-      var alt = Math.round(e.alt || 0), flying = alt > 0;
-      Render.rect(x - 26 + Math.round(alt * 0.3), y + 9, 52 - Math.round(alt * 0.6), 7, "rgba(0,0,0," + (flying ? 0.25 : 0.35) + ")");
+      // 紅蓮の竜（78×62、横向き。絵は左向きで、右を向くときは裏返す）：足もとは y＋14。空にいるあいだは alt だけ上に描き、地面にかげ
+      var alt = Math.round(e.alt || 0), flying = alt > 0, fdir = e.face.x > 0 ? 1 : -1;
+      Render.rect(x - 28 + Math.round(alt * 0.3), y + 9, 56 - Math.round(alt * 0.6), 7, "rgba(0,0,0," + (flying ? 0.25 : 0.35) + ")");
       if (e.state === "windup" || e.state === "fbreathWarn" || e.state === "roar")
-        Combat.glowDot(ctx, x, y - 26 - alt, 22, "#ffffff", e.state === "roar" ? "#ffb030" : "#ef5b5b", 0.22 + 0.15 * Math.sin(glow * 20));
-      var fy = y + 14 - alt;
-      // つばさ：かたから左右へ。空にいるときは大きくはばたく
-      var flap = flying ? Math.sin(glow * 14) : Math.sin(glow * 3) * 0.25, tired2 = e.state === "tired";
-      for (var side = -1; side <= 1; side += 2) {
-        var sx2 = x + side * 10, sy2 = fy - 38, tipx = x + side * 50, tipy = fy - 52 - flap * 14 + (tired2 ? 22 : 0);
-        var p1x = x + side * 40, p1y = fy - 22 - flap * 6 + (tired2 ? 10 : 0), p2x = x + side * 26, p2y = fy - 18 + (tired2 ? 6 : 0);
-        ctx.fillStyle = "#140c1c";
-        ctx.beginPath(); ctx.moveTo(sx2, sy2 - 2); ctx.lineTo(tipx + side, tipy - 1); ctx.lineTo(p1x + side, p1y + 1); ctx.lineTo(p2x, p2y + 2); ctx.lineTo(sx2, sy2 + 8); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#7a1a10";
-        ctx.beginPath(); ctx.moveTo(sx2, sy2); ctx.lineTo(tipx, tipy); ctx.lineTo(p1x, p1y); ctx.lineTo(p2x, p2y); ctx.lineTo(sx2, sy2 + 6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#a82a16";   // まく（明るいところ）
-        ctx.beginPath(); ctx.moveTo(sx2, sy2 + 2); ctx.lineTo((sx2 + tipx) / 2, (sy2 + tipy) / 2 + 2); ctx.lineTo(p1x, p1y); ctx.lineTo(p2x, p2y); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = "#3a0e0a"; ctx.lineWidth = 2;   // ほね
-        ctx.beginPath(); ctx.moveTo(sx2, sy2); ctx.lineTo(tipx, tipy); ctx.moveTo((sx2 + tipx) / 2, (sy2 + tipy) / 2); ctx.lineTo(p1x, p1y); ctx.stroke();
-      }
+        Combat.glowDot(ctx, x, y - 22 - alt, 26, "#ffffff", e.state === "roar" ? "#ffb030" : "#ef5b5b", 0.22 + 0.15 * Math.sin(glow * 20));
+      var fy = y + 14 - alt, mouthX = x + fdir * 34, mouthY = fy - 44;   // 口のあたり（炎がたまるところ）
       var ff = "stand", fph = Math.sin(e.walk || 0);
       if (e.state === "chase") ff = fph > 0.3 ? "walkA" : fph < -0.3 ? "walkB" : "stand";
       if (e.state === "windup" || e.biteT > 0 || e.state === "fbreathWarn" || e.state === "fbreath") ff = "open";
-      if (e.state === "roar" || e.state === "soar" || e.state === "dvwarn") ff = "roar";
+      if (e.state === "roar") ff = "roar";
+      if (flying) ff = e.state === "dvdash" ? "flyB" : Math.sin(glow * 14) > 0 ? "flyA" : "flyB";   // 空では、つばさを上げ下げ
       if (e.state === "tired") ff = "tired";
       var fshake = e.state === "roar" ? Math.round(Math.sin(glow * 30)) : 0;
       Monsters.drawBoss(ctx, e, x + fshake, fy, ff);
       if (e.state === "fbreathWarn" || e.state === "fbreath") {   // 口に炎がたまる
         var kf = e.state === "fbreath" ? 1 : 1 - Math.max(0, e.t) / (d.fbreathWarn + 0.4);
-        Combat.glowDot(ctx, x, fy - 36, 6 + kf * 8, "#fff2a0", "#f06a18", 0.4 + 0.5 * kf);
+        Combat.glowDot(ctx, mouthX, mouthY, 6 + kf * 8, "#fff2a0", "#f06a18", 0.4 + 0.5 * kf);
       }
       if (e.biteT > 0 && e.aim) Combat.drawSlash(ctx, x, y - 6, e.aim, 0.7, d.reach + e.r, "#ffb030", 1 - e.biteT / 0.2, false);
       if (e.state === "windup" || e.state === "fbreathWarn" || e.state === "dvwarn") Render.text("！", x, fy - 72, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
       if (e.state === "tired") {
         for (var fs = 0; fs < 3; fs++) {
-          var fa = glow * 4 + fs * 2.1, fx = Math.round(x + Math.cos(fa) * 14), fy2 = Math.round(y - 50 + Math.sin(fa) * 3);
+          var fa = glow * 4 + fs * 2.1, fx = Math.round(x + fdir * 26 + Math.cos(fa) * 10), fy2 = Math.round(fy - 32 + Math.sin(fa) * 3);   // 下げた頭の上
           Render.rect(fx, fy2 - 1, 1, 3, "#ffe066"); Render.rect(fx - 1, fy2, 3, 1, "#ffe066");
         }
       }
