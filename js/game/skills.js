@@ -498,8 +498,8 @@ var Combat = (function () {
         summon(c, f);
         break;
       case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
-        if (f.beam && !f.back) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ（もどりは反対へ）
-        if (f.back) a.face = { x: -a.face.x, y: -a.face.y };   // ディバインエンドのもどり（2026-11-22 保護者「往復」）
+        if (f.beam) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ
+        if (f.time) { slowDash(c, f); break; }   // ディバインエンド：見えるように、時間をかけて進む（2026-11-22 保護者「一瞬すぎて」）
         var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
         for (var st = 0; st < stepN; st++) {
           var bx = a.x, by = a.y;
@@ -604,11 +604,14 @@ var Combat = (function () {
           for (var d0 = 8; !f.noWall && d0 < f.length; d0 += 4) {   // かべで止まる（キングスブレードは太いのでかべも木もこえる。2026-11-22）
             if (hooks.room.blocksShot(Math.floor((bx0 + ux * d0) / World.TILE), Math.floor((by0 + 4 + uy * d0) / World.TILE))) { len = d0; break; }
           }
-          effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, t: 0.55, max: 0.55, color: f.color });
+          var show = f.show || 0.55, growT = show * (f.grow || 0.12);   // キングスブレードはゆっくり見せる（2026-11-22 保護者「一瞬すぎて」）
+          effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, grow: f.grow, t: show, max: show, color: f.color });
           Sound.play("hit");
           Enemies.hostile().forEach(function (e) {
             var ex = e.x - bx0, ey = (e.y - 3) - by0, along = ex * ux + ey * uy, side = Math.abs(-ex * uy + ey * ux);
-            if (along > -e.r && along < len + e.r && side <= f.width / 2 + e.r) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6, color: f.color }, bx0, by0);
+            if (!(along > -e.r && along < len + e.r && side <= f.width / 2 + e.r)) return;
+            var hitNow = function () { if (!e.dead) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6, color: f.color }, bx0, by0); };
+            if (f.grow) later(growT * Math.max(0, along) / len, hitNow); else hitNow();   // 光の先がとどいたときに当たる
           });
         });
         break;
@@ -694,7 +697,7 @@ var Combat = (function () {
     var up = f.up || LEAP.up, down = f.down || LEAP.down;   // ドラゴンダイブは速く（2026-11-22 保護者）
     var a = A(), x0 = a.x, y0 = a.y, air = up + down;
     var tgt = f.stay ? null : autoTarget(f.range);   // stay：その場でとぶ（スカイリープ・メテオストライク。2026-11-16）
-    a.airT = air; a.airMax = air; a.airUp = up / air; a.airH = LEAP.height;
+    a.airT = air; a.airMax = air; a.airUp = up / air; a.airH = f.height || LEAP.height;   // ドラゴンダイブは画面の上まで（2026-11-22 保護者）
     a.inv = Math.max(a.inv, air + 0.1); a.busy = Math.max(a.busy, air + 0.25);
     effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
     later(up, function () {   // いちばん高いところで、ねらった敵の上へ
@@ -724,6 +727,32 @@ var Combat = (function () {
         Sound.play("hit");
         hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: f.ground || "#ff8a3d" }, a.x, a.y, f.radius);
       });
+    });
+  }
+  // ディバインエンド（2026-11-22）：f.time 秒かけて進み、通った敵に当たる。通ったあとに光の帯
+  function slowDash(c, f) {
+    var a = A(), px0 = a.x, py0 = a.y, fx = a.face.x, fy = a.face.y, hitList = [], stepN = Math.ceil(f.dist / 3), dt = f.time / stepN, stopped = false;
+    a.inv = Math.max(a.inv, f.time + 0.4); a.busy = Math.max(a.busy, f.time + 0.2);
+    Sound.play("skill");
+    for (var st = 0; st < stepN; st++) later(st * dt, function () {
+      if (stopped || Party.current() !== c || c.down) return;
+      var bx = a.x, by = a.y;
+      a.face = { x: fx, y: fy };
+      hooks.room.move(a, fx * 3, fy * 3);
+      if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.5) { stopped = true; return; }   // かべ
+      effects.push({ kind: "lance", reach: 22, t: 0.12, max: 0.12 });
+      Enemies.hostile().forEach(function (e) {
+        if (hitList.indexOf(e) >= 0) return;
+        var ddx = e.x - a.x, ddy = e.y - a.y;
+        if (ddx * ddx + ddy * ddy <= (e.r + a.r + 4) * (e.r + a.r + 4)) { hitList.push(e); hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, px0, py0); }
+      });
+    });
+    later(f.time, function () {
+      if (Party.current() !== c || c.down) return;
+      var bl = Math.sqrt((a.x - px0) * (a.x - px0) + (a.y - py0) * (a.y - py0));
+      effects.push({ kind: "trail", x0: px0, y0: py0, x1: a.x, y1: a.y, t: 0.6, max: 0.6 });
+      effects.push({ kind: "beam", x: px0, y: py0 - 4, ang: Math.atan2(fy, fx), len: bl + 10, w: 24, grow: 0.25, t: 1.1, max: 1.1, color: f.color });
+      Sound.play("hit");
     });
   }
   // 空にいるあいだの高さ（core.js がキャラを上にずらして描く）
@@ -1585,7 +1614,7 @@ var Combat = (function () {
       return;
     }
     if (ef.kind === "beam") {   // グランドクロス：前へのびる太い光のビーム（出たときがいちばん太く、だんだん細くなって消える）
-      var bx = ef.x - cam.x, by = ef.y - cam.y, grow = Math.min(1, q / 0.12), L = ef.len * grow, W = ef.w * (q < 0.15 ? 1.15 : p * 1.1);
+      var bx = ef.x - cam.x, by = ef.y - cam.y, grow = Math.min(1, q / (ef.grow || 0.12)), L = ef.len * grow, W = ef.w * (q < 0.15 ? 1.15 : p * 1.1);
       ctx.save(); ctx.translate(bx, by); ctx.rotate(ef.ang);
       var lg = ctx.createLinearGradient(0, -W, 0, W);
       lg.addColorStop(0, rgba(ef.color, 0)); lg.addColorStop(0.3, rgba(ef.color, 0.55)); lg.addColorStop(0.5, rgba("#ffffff", 0.95));

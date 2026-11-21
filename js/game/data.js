@@ -399,7 +399,7 @@ var GameData = (function () {
     { id: "kk.order", job: "knightking", star: 6, name: "王の号令", desc: "仲間みんなの物攻と魔攻が、60秒のあいだ15%上がる。交代しても続く。", short: "号令", cond: null, mp: 14, ct: 30,
       fx: [{ t: "buff", stat: "patk", pct: 0.15, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.15, dur: 60, party: true }] },
     { id: "x.kings",  job: "knightking", star: 7, name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る大きな光の帯を放つ。太さは画面の上下の半分くらい、帯の中の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knightking", weapons: ["sword"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.2, elem: "light", length: 280, width: 135, noCross: true, noWall: true, color: "#ffd75a" }] },   // 2026-11-22 保護者：太さを画面の縦半分（64→135）、十字なし。広くなったので ×4.6→×4.2
+      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.2, elem: "light", length: 280, width: 135, noCross: true, noWall: true, show: 1.4, grow: 0.3, color: "#ffd75a" }] },   // 2026-11-22 保護者：太さを画面の縦半分（64→135）、十字なし。広くなったので ×4.6→×4.2
     // 大魔導師：大きな攻撃魔法
     { id: "am.bind",  job: "archmage", star: 1, name: "バインド", desc: "まわりの敵を光の鎖でしばり、4秒動けなくする。", short: "バインド", cond: { line: "archmage" }, mp: 10, ct: 12,
       fx: [{ t: "around", stat: "m", mult: 0.3, radius: 52, elem: "none", color: "#c9a8ff", status: { type: "para", chance: 1, dur: 4 } }] },
@@ -479,7 +479,7 @@ var GameData = (function () {
     { id: "dg.roar",  job: "dragoon", star: 6, name: "竜の咆哮", desc: "まわりの敵をしびれさせることがある。仲間みんなの物攻が、60秒のあいだ10%上がる。", short: "咆哮", cond: null, mp: 14, ct: 30,
       fx: [{ t: "around", stat: "p", mult: 0, radius: 56, elem: "none", color: "#7fc8ff", status: { type: "para", chance: 0.5, dur: 2 } }, { t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }] },
     { id: "x.dive",   job: "dragoon", star: 7, name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "dragoon", weapons: ["spear"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
+      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, height: 170, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
     // グラディエーター：大剣
     { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回しながら、前へ進む。まわりの敵に4回当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
       fx: [{ t: "rapid", count: 4, interval: 0.2, step: 8, hit: { t: "around", vis: "spin", stat: "p", mult: 0.7, radius: 28, elem: "weapon" } }] },
@@ -507,9 +507,8 @@ var GameData = (function () {
     { id: "hl.armor", job: "holylancer", star: 5, name: "聖なる鎧", desc: "魔防がいつも15%上がり、魔法の攻撃のダメージが30%へる。", short: "聖なる鎧", cond: null, passive: { mdef: 0.15, darkCut: 0.3 } },
     { id: "hl.field", job: "holylancer", star: 6, name: "聖槍陣", desc: "槍を地面に立てて光を広げ、まわりの敵をおし返す（光）。10秒のあいだ、仲間みんなの受けるダメージが15%へる。", short: "聖槍陣", cond: { weapons: ["spear"] }, mp: 16, ct: 20,
       fx: [{ t: "around", stat: "p", mult: 1.5, radius: 36, elem: "light", push: 25, color: "#fff2a0" }, { t: "buff", stat: "cut", pct: 0.15, dur: 10, party: true }] },
-    { id: "x.divine", job: "holylancer", star: 7, name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進し、また突進してもどってくる。通った敵みんなを行きと帰りでつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "holylancer", weapons: ["spear"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 2.6, elem: "light", dist: 300, beam: true, color: "#fff2a0" },
-           { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 2.6, elem: "light", dist: 300, beam: true, back: true, color: "#fff2a0" }] },   // 2026-11-22 保護者「往復」：行きと帰りで1回ずつ（×5.0→×2.6×2）
+    { id: "x.divine", job: "holylancer", star: 7, name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "holylancer", weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, time: 0.55, color: "#fff2a0" }] },   // 2026-11-22 保護者：往復はやめ、0.55秒かけて進んで見えるように
     // 時の賢者：時間をあやつる魔法
     { id: "ts.delay", job: "timesage", star: 1, name: "ディレイ", desc: "まわりの敵の動きと攻撃を、15秒のあいだ半分の速さにする。", short: "ディレイ", cond: { line: "timesage" }, mp: 10, ct: 15,
       fx: [{ t: "around", stat: "m", mult: 0, radius: 64, elem: "none", color: "#8ad8ff", status: { type: "slow", chance: 1, dur: 15 } }] },
