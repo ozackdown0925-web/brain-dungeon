@@ -294,7 +294,17 @@
       Battle.pop(e.x, e.y - 52, "宝玉 +1", "#ff9ad0", 9);
     }
     Battle.pop(e.x, e.y - 40, "+" + g + "G", "#f2c14e", 9);
-    var after = dg.bossInfo.after.concat(["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
+    // 最強武器（2026-11-21）：紅蓮の竜をたおすとエルダースタッフ（1つだけ。試しモードではもらえない）
+    var legendLine = [];
+    Object.keys(Loot.LEGENDS).forEach(function (key) {
+      if (Loot.LEGENDS[key].from !== e.type || trial.tryMode) return;
+      var lg = GameState.newLegend(key);
+      if (!lg || run.got.some(function (x) { return x.legend === key; })) return;
+      run.got.push(lg);
+      Battle.pop(e.x, e.y - 64, lg.name + "！", "#f2c14e", 10);
+      legendLine = ["", "最強の杖「" + lg.name + "」を手に入れた！", "（魔王城の深い階へ行くほど強くなる。鍛冶屋では強くできない）"];
+    });
+    var after = dg.bossInfo.after.concat(legendLine, ["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
     showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
     snapshot();
   }
