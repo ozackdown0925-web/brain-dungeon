@@ -498,7 +498,8 @@ var Combat = (function () {
         summon(c, f);
         break;
       case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
-        if (f.beam) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ
+        if (f.beam && !f.back) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ（もどりは反対へ）
+        if (f.back) a.face = { x: -a.face.x, y: -a.face.y };   // ディバインエンドのもどり（2026-11-22 保護者「往復」）
         var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
         for (var st = 0; st < stepN; st++) {
           var bx = a.x, by = a.y;
@@ -596,11 +597,11 @@ var Combat = (function () {
         faceNearest(f.length);
         a.busy = Math.max(a.busy, 0.75);
         var bang = Math.atan2(a.face.y, a.face.x), bx0 = a.x, by0 = a.y - 4;
-        effects.push({ kind: "crossflash", t: 0.35, max: 0.35, color: f.color });
-        later(0.3, function () {
+        if (!f.noCross) effects.push({ kind: "crossflash", t: 0.35, max: 0.35, color: f.color });   // キングスブレードは十字なし（2026-11-22 保護者）
+        later(f.noCross ? 0.05 : 0.3, function () {
           if (Party.current() !== c || c.down) return;
           var ux = Math.cos(bang), uy = Math.sin(bang), len = f.length;
-          for (var d0 = 8; d0 < f.length; d0 += 4) {   // かべで止まる
+          for (var d0 = 8; !f.noWall && d0 < f.length; d0 += 4) {   // かべで止まる（キングスブレードは太いのでかべも木もこえる。2026-11-22）
             if (hooks.room.blocksShot(Math.floor((bx0 + ux * d0) / World.TILE), Math.floor((by0 + 4 + uy * d0) / World.TILE))) { len = d0; break; }
           }
           effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, t: 0.55, max: 0.55, color: f.color });
@@ -690,14 +691,15 @@ var Combat = (function () {
   // 高くとび（空中は当たらない）、いちばん高いところで敵の上へ動き、落ちてとびこむ。とびこんだ敵に1回、着地のまわりに1回
   var LEAP = { up: 0.5, down: 0.4, height: 80 };
   function leap(c, f) {
-    var a = A(), x0 = a.x, y0 = a.y, air = LEAP.up + LEAP.down;
+    var up = f.up || LEAP.up, down = f.down || LEAP.down;   // ドラゴンダイブは速く（2026-11-22 保護者）
+    var a = A(), x0 = a.x, y0 = a.y, air = up + down;
     var tgt = f.stay ? null : autoTarget(f.range);   // stay：その場でとぶ（スカイリープ・メテオストライク。2026-11-16）
-    a.airT = air; a.airMax = air; a.airUp = LEAP.up / air; a.airH = LEAP.height;
+    a.airT = air; a.airMax = air; a.airUp = up / air; a.airH = LEAP.height;
     a.inv = Math.max(a.inv, air + 0.1); a.busy = Math.max(a.busy, air + 0.25);
-    effects.push({ kind: "jump", x: x0, y: y0, t: LEAP.up, max: LEAP.up, color: f.color });
-    later(LEAP.up, function () {   // いちばん高いところで、ねらった敵の上へ
+    effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
+    later(up, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
-      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: LEAP.down + 0.1, max: LEAP.down + 0.1, color: f.ground || "#ff8a3d" }); return; }
+      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
       var tx, ty;
       if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -708,7 +710,7 @@ var Combat = (function () {
         hooks.room.move(a, a.face.x * Math.min(3, go - i * 3), a.face.y * Math.min(3, go - i * 3));
         if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.3) break;
       }
-      effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: LEAP.down + 0.1, max: LEAP.down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
+      effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
     });
     later(air, function () {   // 着地
       if (Party.current() !== c || c.down) return;
@@ -718,7 +720,7 @@ var Combat = (function () {
         if (Party.current() !== c || c.down) return;
         if (!f.ground) effects.push({ kind: "pillar", fire: true, x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, color: "#ff8a3d" });   // 火柱（ドラゴンダイブだけ）
         effects.push({ kind: "shock", x: a.x, y: a.y, r: f.radius, t: 0.55, max: 0.55, color: f.ground || "#ffb84a" });
-        effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(Math.random() * 6, f.radius, Math.PI), t: 0.8, max: 0.8 });
+        effects.push({ kind: "crack", x: a.x, y: a.y, lines: f.crack ? crackLines(Math.random() * 6, f.crack, 0, 9) : crackLines(Math.random() * 6, f.radius, Math.PI), t: f.crack ? 1.1 : 0.8, max: f.crack ? 1.1 : 0.8 });
         Sound.play("hit");
         hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: f.ground || "#ff8a3d" }, a.x, a.y, f.radius);
       });
@@ -1241,11 +1243,13 @@ var Combat = (function () {
     }
   }
   // 大地斬りの割れめ：前の扇の中に、ぎざぎざの線を3本（作るときに形を決める）
-  function crackLines(ang, len, arc) {
+  // count：まわりじゅうに何本も（ドラゴンダイブの地割れ。2026-11-22）
+  function crackLines(ang, len, arc, count) {
     var out = [];
-    for (var i = 0; i < 3; i++) {
-      var a0 = ang + (i - 1) * arc * 0.55, pts = [{ d: 4, o: 0 }], n = 6;
-      for (var k = 1; k <= n; k++) pts.push({ d: 4 + len * k / n, o: (Math.random() - 0.5) * 6 });
+    for (var i = 0; i < (count || 3); i++) {
+      var a0 = count ? ang + i / count * Math.PI * 2 + (Math.random() - 0.5) * 0.3 : ang + (i - 1) * arc * 0.55, pts = [{ d: 4, o: 0 }], n = 6;
+      var ln = count ? len * (0.75 + Math.random() * 0.4) : len;
+      for (var k = 1; k <= n; k++) pts.push({ d: 4 + ln * k / n, o: (Math.random() - 0.5) * (count ? 10 : 6) });
       out.push({ ang: a0, pts: pts });
     }
     return out;
