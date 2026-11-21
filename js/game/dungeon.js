@@ -314,13 +314,15 @@ var Dungeon = (function () {
 
   // ---------- 階層を作る ----------
   // dungeon：ダンジョンの id（省くと新緑の樹海）
+  // 魔王城（2026-11-21）は、階ごとにもとのダンジョン（look）の部屋・敵・罠にする。強さの深さとボスは魔王城のもの
   function generate(floor, seed, dungeon) {
     dungeon = GameData.dungeonOf(dungeon).id;
     if (GameData.isBossFloor(dungeon, floor)) return tagDungeon(generateBoss(floor, seed, dungeon), dungeon);
+    var look = GameData.lookOf(dungeon, floor), dark = look.dungeon !== dungeon, lf = look.floor, ld = look.dungeon;
     var rnd = rng(seed);
     var lay = layout(rnd);
     var cells = {};
-    var ROOMS = roomsFor(dungeon), theme = GameData.dungeonOf(dungeon).theme;
+    var ROOMS = roomsFor(ld), theme = GameData.dungeonOf(ld).theme;
     var order = ROOMS.map(function (r, i) { return i; });
     for (var i = order.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)); var t = order[i]; order[i] = order[j]; order[j] = t; }
     var all = lay.path.concat(lay.branches);
@@ -341,16 +343,17 @@ var Dungeon = (function () {
       var c = cells[kk];
       c.room = buildRoom(ROOMS[c.tpl], c.doors);
       c.room.theme = theme;
+      if (dark) c.room.dark = true;
       c.name = ROOMS[c.tpl].name;
       c.center = centerSpot(c.room);
-      c.enemies = placeEnemies(rnd, c.room, c.doors, floor, c.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
+      c.enemies = placeEnemies(rnd, c.room, c.doors, lf, c.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, ld);
       c.visited = false;
     });
     var dg = {
       floor: floor, seed: seed, cells: cells, start: key(start.x, start.y), exit: key(exit.x, exit.y),
       boss: false, lock: null, hasKey: false, hasCKey: false
     };
-    placeThings(dg, floor, seed, dungeon);
+    placeThings(dg, lf, seed, ld);
     return tagDungeon(dg, dungeon);
   }
   // どのダンジョンの階か（dungeon）と、強さの深さ（power：敵の強さ・ごほうび・拾う装備のレベルに使う）
@@ -361,8 +364,9 @@ var Dungeon = (function () {
   function generateBoss(floor, seed, dungeon) {
     var rnd = rng(seed);
     var info = GameData.bossInfo(dungeon, floor);
+    var look = GameData.lookOf(dungeon, floor), dark = look.dungeon !== dungeon, lf = look.floor, ld = look.dungeon;
     var cells = {};
-    var ROOMS = roomsFor(dungeon), theme = GameData.dungeonOf(dungeon).theme;
+    var ROOMS = roomsFor(ld), theme = GameData.dungeonOf(ld).theme;
     var mid = Math.floor(rnd() * ROOMS.length);
     if (mid === 0) mid = 1; // 入口の部屋（ひろば）とちがう型にする
     var plan = [
@@ -374,8 +378,9 @@ var Dungeon = (function () {
       var c = { x: p.x, y: p.y, kind: p.kind, doors: p.doors, name: p.tpl.name, visited: false, chests: [], key: null, traps: [] };
       c.room = buildRoom(p.tpl, p.doors);
       c.room.theme = p.theme || theme;
+      if (dark) c.room.dark = true;
       c.center = centerSpot(c.room);
-      c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, floor, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, dungeon);
+      c.enemies = p.kind === "exit" ? [] : placeEnemies(rnd, c.room, c.doors, lf, p.kind === "start" ? { x: c.center.x / World.TILE, y: c.center.y / World.TILE } : null, ld);
       cells[key(p.x, p.y)] = c;
     });
     var bc = cells[key(3, 1)];
@@ -563,6 +568,7 @@ var Dungeon = (function () {
 
   // 巣から出てくる敵（その階に出る敵。core.js が使う）
   function nestPool(dungeon, floor) {
+    var look = GameData.lookOf(dungeon, floor); dungeon = look.dungeon; floor = look.floor;   // 魔王城は、もとのダンジョンの巣（2026-11-21）
     var th = GameData.dungeonOf(dungeon).theme, pool;
     if (th === "volcano") return floor <= 6 ? ["lava_slime", "magma_golem", "flame_bat"] : ["magma_golem", "fire_lizard", "fire_sprite"];   // 紅蓮の火山（今は巣を置かない）
     if (th === "temple") return floor <= 6 ? ["stone_guard", "fishman", "moray"] : ["stone_guard", "moray", "priest"];   // しずみの湖底神殿（今は巣を置かない）

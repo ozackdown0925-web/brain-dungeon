@@ -518,7 +518,7 @@
     if (drop.gold) Battle.pop(e.x, e.y - 30, "+" + drop.gold + "G", "#f2c14e", 7);
     if (drop.mat) { run.mat[drop.mat]++; Battle.pop(e.x, e.y - 40, Loot.MATERIALS[drop.mat] + " +1", "#cfd6e6", 7); }
     // 瘴気の森：敵がときどき（3%）毒消しを落とす（2026-10-21 保護者の案）
-    if (!drop.tool && GameData.dungeonOf(dg.dungeon).theme === "swamp" && Math.random() < 0.03) drop.tool = "antidote";
+    if (!drop.tool && GameData.dungeonOf(GameData.lookOf(dg.dungeon, dg.floor).dungeon).theme === "swamp" && Math.random() < 0.03) drop.tool = "antidote";
     if (drop.tool && GameState.gainTool(drop.tool)) Battle.pop(e.x, e.y - 50, GameState.TOOLS[drop.tool].name + " +1", "#9fe0a8", 7);
   };
 
@@ -1606,7 +1606,8 @@
   function toughen(e) {
     var D = dg && !dg.training && !dg.arena ? GameData.dungeonOf(dg.dungeon) : null;
     if (!D || e.def.boss) return;
-    var t = (D.foeType && D.foeType[e.type]) || {};   // 敵の種類ごとの上のせ（オオカミなど）
+    var G = D.groups ? GameData.lookOf(dg.dungeon, dg.floor).group : null;   // 魔王城は、4階ひと組ごとの上のせ（2026-11-21）
+    var t = (G && G.foeType && G.foeType[e.type]) || (D.foeType && D.foeType[e.type]) || {};   // 敵の種類ごとの上のせ（オオカミなど）
     var hm = (D.foeHp || 1) * (t.hp || 1), am = (D.foeAtk || 1) * (t.atk || 1);
     if (hm !== 1) { e.maxHp = Math.round(e.maxHp * hm); e.hp = e.maxHp; }
     if (am !== 1) { e.patk = Math.round(e.patk * am * 10) / 10; e.matk = Math.round(e.matk * am * 10) / 10; }
