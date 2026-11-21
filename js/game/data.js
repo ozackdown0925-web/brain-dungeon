@@ -1285,9 +1285,16 @@ var GameData = (function () {
     volcamarine: { id: "volcamarine", name: "ヴォルカマリン", base: "湖畔の街リムネ", gate: "湖の門", needs: "shonyu", art: { town: "town3", world: "world3" },
       intro: ["白い峰を越えると、あたたかい風がふいてきた。", "青く広い湖と、赤くけむりをはく火山。火と水がとなりあう不思議な土地、ヴォルカマリン。", "魔王城へ続く道は、この湖と火山の向こうにあるという。"],
       lore: ["大きな湖のほとりにある、漁と交易でにぎわう街。", "ちかごろ湖の底から光がもれ、火山がけむりをふき始めたと、人々はうわさしている。"],
-      road: "ワールドマップの東のはしの道から行ける" }
+      road: "ワールドマップの東のはしの道から行ける" },
+    // ノクトガルド（地方4。魔王の地方。2026-11-21 段階1）：ダンジョンは魔王城だけ。紅蓮の竜（紅蓮の火山の主）をたおすと行ける。
+    //   拠点は「最果ての村ノルン」（2026-11-21 保護者と決定。がけ下の小さな村。地図の左の廃墟は、むかしの城下町）。
+    //   町と地図の絵は保護者が Gemini で作ったもの（2026-11-21）。intro と lore は Claude が書いた仮の文（保護者があとで直す）
+    noctgard: { id: "noctgard", name: "ノクトガルド", base: "最果ての村ノルン", gate: "がけの坂道", needs: "castle", art: { town: "town4", world: "world4" },
+      intro: ["火山をこえると、空は暗い雲におおわれていた。", "溶岩の光にてらされて、くずれた町の向こうに、黒い城がそびえている。", "魔王城。長い旅の終わりは、もうすぐそこだ。"],
+      lore: ["がけの下にひっそりとある、世界のはての小さな村。", "むかしは魔王城のふもとに大きな城下町があったが、魔王がよみがえった夜にほろびたという。", "生きのこった人々が、がけの下にこの村を作った。"],
+      road: "ワールドマップの右上の、ノクトガルドへの道から行ける" }
   };
-  var REGION_ORDER = ["forestveil", "frostcrest", "volcamarine"];
+  var REGION_ORDER = ["forestveil", "frostcrest", "volcamarine", "noctgard"];
   // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
   //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
@@ -1448,9 +1455,60 @@ var GameData = (function () {
               before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩の中から、赤いつばさの竜が舞い上がった！"],
               after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }
       }
+    },
+    // 魔王城（地方4のダンジョン。段階1、2026-11-21）：25階。地方1・2の6つのダンジョンを4階ずつふり返る（2026-11-09 保護者の案）。
+    //   4階ひと組：1・3階目はそのダンジョンの部屋と敵（強い版）、2階目にそのダンジョンの中ボス、4階目に主。25階は玉座の間の魔王。
+    //   深さは紅蓮の火山の続き（109＋階）。装備の段はダイヤ（tier: 5）。
+    //   部屋は、もとのダンジョンの部屋を、魔王の力でむらさきがかった暗い色にしたもの（dark。tiles.js）。どのダンジョンの部屋と敵かは lookOf で決める。
+    //   ボスはまだ仮（もとのボスのまま。段階2〜4で、大技を1つ足して魔王城の強さにする）。25階の魔王もまだ仮（紅蓮の竜。段階5で作る）。
+    //   groups：4階ひと組のもとのダンジョン（from）。foeHp・foeAtk・foeType はその組のふつうの敵の上のせ（段階2〜4で決める。今は仮）
+    //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    castle: {
+      id: "castle", tagline: "魔王がすむ、黒い城。", intro: ["溶岩の上にそびえる、黒い城。", "城の中では、魔王の力で、これまでの旅で通ってきた場所がよみがえっているという。", "たおしたはずの魔物たちも、また待ちかまえている……。"],
+      region: "noctgard", name: "魔王城", short: "魔王城", floors: 25, needs: "kazan", depthBase: 109, theme: "forest", tier: 5,
+      foeHp: 1.9, foeAtk: 1.1,
+      groups: [
+        { from: "forest1" },
+        { from: "shouki" },
+        { from: "hikyo", foeType: { wolf: { hp: 1.3, atk: 1.1 } } },
+        { from: "kodo", foeType: { dwarf_axe: { hp: 0.75, atk: 0.9 }, dwarf_hammer: { hp: 0.75, atk: 0.85 }, rock_worm: { hp: 0.75 } } },
+        { from: "yama", foeType: { golem_kid: { hp: 0.75 } } },
+        { from: "yuki", foeType: { yeti: { hp: 0.85, atk: 0.85 } } }
+      ],
+      throne: "kazan",   // 25階の部屋（玉座の間は段階5で作る。今は紅蓮の火山の火口）
+      bosses: {}   // 下の castleBosses() で、もとのダンジョンのボスから作る
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei", "kazan"];
+  // 魔王城のボス（2・4階目ごと）：もとのダンジョンの中ボスと主（部屋も同じ）。title と前後の文は魔王城のもの（仮の文）
+  (function castleBosses() {
+    var C = DUNGEONS.castle;
+    C.groups.forEach(function (g, i) {
+      var D = DUNGEONS[g.from], fl = Object.keys(D.bosses).map(Number).sort(function (a, b) { return a - b; });
+      [0, 1].forEach(function (j) {
+        var B = D.bosses[fl[j]], n = ENEMIES[B.enemy].name;
+        C.bosses[i * 4 + 2 + j * 2] = { enemy: B.enemy, room: B.room, theme: B.theme,
+          title: j ? "よみがえった" + n + "をたおせし者" : "よみがえった" + n + "をしずめし者",
+          before: [D.name + "の景色が、暗い城の中に広がっている。", "たおしたはずの" + n + "が、魔王の力でよみがえった！"],
+          after: [n + "は、黒いけむりになって消えた。", "城の上へ、階段が続いている。"] };
+      });
+    });
+    C.bosses[25] = { enemy: "fdragon_boss", title: "魔王をたおせし者",   // 仮（段階5で魔王を作る）
+      before: ["城のいちばん上、玉座の間に出た。", "玉座から、黒いかげが立ち上がった……！"],
+      after: ["城をおおっていた黒い雲が、晴れていく。", "長い旅が、終わった。"] };
+  })();
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei", "kazan", "castle"];
+  // どのダンジョンの部屋・敵・罠にするか（魔王城だけ、階ごとにもとのダンジョンに変わる。2026-11-21）
+  //   { dungeon：もとのダンジョンの id, floor：もとのダンジョンでの階（前半・後半の敵や罠の数に使う）, group：魔王城の組（ほかは null）}
+  //   1階目→もとの3割の階、2階目→中ボスの階、3階目→8割の階、4階目→主の階。25階は throne のダンジョンのいちばん上
+  function lookOf(id, floor) {
+    var D = dungeonOf(id);
+    if (!D.groups) return { dungeon: D.id, floor: floor, group: null };
+    var gi = Math.floor((floor - 1) / 4);
+    if (gi >= D.groups.length) return { dungeon: D.throne, floor: DUNGEONS[D.throne].floors, group: null };
+    var g = D.groups[gi], S = DUNGEONS[g.from], n = (floor - 1) % 4, fl = Object.keys(S.bosses).map(Number).sort(function (a, b) { return a - b; });
+    var sf = n === 0 ? Math.max(1, Math.round(S.floors * 0.3)) : n === 1 ? fl[0] : n === 2 ? Math.round(S.floors * 0.8) : fl[1];
+    return { dungeon: S.id, floor: sf, group: g };
+  }
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
@@ -1467,9 +1525,12 @@ var GameData = (function () {
          heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" },
     // プラチナの段（地方3。2026-11-17。水晶の大グモ（鍾乳洞の主）をたおすと、宝箱とお店がプラチナになる）。名前は 2026-11-10 保護者と決めたもの
     4: { sword: "プラチナの剣", greatsword: "プラチナの大剣", axe: "プラチナの斧", bow: "プラチナの弓", spear: "プラチナの槍", fist: "プラチナのこて", staff: "太陽の杖",
-         heavy: "プラチナのよろい", light: "プラチナの鎖かたびら", magic: "プラチナのローブ" }
+         heavy: "プラチナのよろい", light: "プラチナの鎖かたびら", magic: "プラチナのローブ" },
+    // ダイヤの段（魔王城。2026-11-21 段階1。はじめからダイヤ）。名前は 2026-11-10 保護者と決めたもの
+    5: { sword: "ダイヤの剣", greatsword: "ダイヤの大剣", axe: "ダイヤの斧", bow: "ダイヤの弓", spear: "ダイヤの槍", fist: "ダイヤのこて", staff: "ダイヤの杖",
+         heavy: "ダイヤのよろい", light: "ダイヤの鎖かたびら", magic: "ダイヤのローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル", "プラチナ"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル", "プラチナ", "ダイヤ"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
@@ -1506,6 +1567,6 @@ var GameData = (function () {
     ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, TOP_ORDER: TOP_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
-    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, REGIONS: REGIONS, REGION_ORDER: REGION_ORDER, regionOf: regionOf, dungeonsIn: dungeonsIn, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
+    DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, REGIONS: REGIONS, REGION_ORDER: REGION_ORDER, regionOf: regionOf, dungeonsIn: dungeonsIn, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, lookOf: lookOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText
   };
 })();

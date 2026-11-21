@@ -1,5 +1,6 @@
 // 拠点の町とワールドマップの絵（段階7-2d）。
 // エルム村とフォレストヴェールの絵は、保護者が Gemini で作ったもの（2026-10-18）。Claude が 320×180 点にちぢめて、色を128色にへらした（assets/maps/）。
+// 最果ての村ノルンとノクトガルドの絵（地方4。2026-11-21）も、保護者が Gemini で作ったもの。同じように 320×180 点・128色にした。
 // 湖畔の街リムネとヴォルカマリンの絵（地方3。2026-11-14）も、保護者が Gemini で作ったもの。同じように 320×180 点・128色にした（町の絵は横を少しちぢめた）。
 // 鉱山の町ボルダとフロストクレストの絵（地方2）も、保護者が Gemini で作ったもの（2026-10-27）。同じように 320×180 点・128色にした。
 //   町の絵は横長だったので、横を少しちぢめている。建物の場所は base.js の LAYOUTS、地図の場所は worldmap.js の SPOTS で絵に合わせた。
@@ -10,7 +11,8 @@
 var MapArt = (function () {
   var FILES = { town: "assets/maps/elm_village.png?v=1", world: "assets/maps/forestveil.png?v=1",
     town2: "assets/maps/borda.png?v=1", world2: "assets/maps/frostcrest.png?v=1",
-    town3: "assets/maps/limne.png?v=1", world3: "assets/maps/volcamarine.png?v=1" };
+    town3: "assets/maps/limne.png?v=1", world3: "assets/maps/volcamarine.png?v=1",
+    town4: "assets/maps/norn.png?v=1", world4: "assets/maps/noctgard.png?v=1" };
   var imgs = {}, waiting = {};
   var W = 320, H = 180;
 

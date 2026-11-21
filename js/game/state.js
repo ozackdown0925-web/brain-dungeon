@@ -313,7 +313,7 @@ var GameState = (function () {
       learnSkills(h).forEach(function (n) { report[i].lines.push("スキル「" + n + "」を覚えた！"); });
     });
     if (r.title && game.titles.indexOf(r.title) < 0) game.titles.push(r.title);
-    var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier(), kazan0 = progressOf("kazan").deepest;
+    var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier();
     if (r.cleared) {
       var pg = progressOf(r.dungeon);
       pg.deepest = Math.max(pg.deepest, r.floor);
@@ -332,9 +332,6 @@ var GameState = (function () {
         }
         report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });
       });
-      // 紅蓮の竜をはじめてたおした（2026-11-21）：地図に、ノクトガルドへの道（まだ通れない）が見える
-      if (r.dungeon === "kazan" && r.boss && r.floor === GameData.dungeonOf("kazan").floors && kazan0 < r.floor)
-        report.push({ name: "", raw: true, lines: ["火山の向こうに、ノクトガルドへの道が見えた！（ワールドマップの右上。まだ先へは進めない）"], exp: 0 });
       var st = shopTier();
       if (st > shop0) {
         var newTools = TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) > shop0 && (TOOLS[k].tier || 0) <= st; }).map(function (k) { return TOOLS[k].name; });

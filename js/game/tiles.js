@@ -1011,6 +1011,8 @@ var Tiles = (function () {
       }
     }
 
+    // 魔王城の部屋（room.dark。2026-11-21）：もとのダンジョンの絵を、魔王の力でむらさきがかった暗い色にする（地面も木の葉の帯も）
+    if (room.dark) { duskify(D); duskify(over); }
     ctx.putImageData(img, 0, 0);
     // 木の葉の帯を、行ごとに別の絵にする
     var bands = [], byRow = {};
@@ -1038,6 +1040,14 @@ var Tiles = (function () {
     return { ground: cv, bands: bands };
   }
 
+  // むらさきがかった暗い色にする（もとの色は残して暗くし、赤と青を少し足す。もとの場所だとわかるように）
+  function duskify(A) {
+    for (var i = 0; i < A.length; i += 4) {
+      A[i] = Math.round(A[i] * 0.6 + 14);
+      A[i + 1] = Math.round(A[i + 1] * 0.58 + 4);
+      A[i + 2] = Math.round(A[i + 2] * 0.64 + 32);
+    }
+  }
   // 部屋ごとに覚えておく（扉を開けるなどでタイルが変わったら、描き直す）。{ ground：地面の絵, bands：木の葉の帯 }
   function canvasFor(room) {
     var ver = room.ver || 0;
