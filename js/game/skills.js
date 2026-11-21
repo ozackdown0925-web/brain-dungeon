@@ -733,6 +733,8 @@ var Combat = (function () {
   function slowDash(c, f) {
     var a = A(), px0 = a.x, py0 = a.y, fx = a.face.x, fy = a.face.y, hitList = [], stepN = Math.ceil(f.dist / 3), dt = f.time / stepN, stopped = false;
     a.inv = Math.max(a.inv, f.time + 0.4); a.busy = Math.max(a.busy, f.time + 0.2);
+    var band = { kind: "beam", x: px0, y: py0 - 4, ang: Math.atan2(fy, fx), len: 0, w: 24, grow: 0.001, t: 0.9, max: 0.9, color: f.color };   // 光の帯はキャラについてのびる（2026-11-22 保護者「移動とエフェクトの速さがあってない」）
+    effects.push(band);
     Sound.play("skill");
     for (var st = 0; st < stepN; st++) later(st * dt, function () {
       if (stopped || Party.current() !== c || c.down) return;
@@ -740,6 +742,7 @@ var Combat = (function () {
       a.face = { x: fx, y: fy };
       hooks.room.move(a, fx * 3, fy * 3);
       if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.5) { stopped = true; return; }   // かべ
+      band.len = Math.sqrt((a.x - px0) * (a.x - px0) + (a.y - py0) * (a.y - py0)) + 10; band.t = band.max;   // 進むあいだは太いまま。止まると細くなって消える
       effects.push({ kind: "lance", reach: 22, t: 0.12, max: 0.12 });
       Enemies.hostile().forEach(function (e) {
         if (hitList.indexOf(e) >= 0) return;
@@ -747,13 +750,7 @@ var Combat = (function () {
         if (ddx * ddx + ddy * ddy <= (e.r + a.r + 4) * (e.r + a.r + 4)) { hitList.push(e); hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, px0, py0); }
       });
     });
-    later(f.time, function () {
-      if (Party.current() !== c || c.down) return;
-      var bl = Math.sqrt((a.x - px0) * (a.x - px0) + (a.y - py0) * (a.y - py0));
-      effects.push({ kind: "trail", x0: px0, y0: py0, x1: a.x, y1: a.y, t: 0.6, max: 0.6 });
-      effects.push({ kind: "beam", x: px0, y: py0 - 4, ang: Math.atan2(fy, fx), len: bl + 10, w: 24, grow: 0.25, t: 1.1, max: 1.1, color: f.color });
-      Sound.play("hit");
-    });
+    later(f.time, function () { if (Party.current() === c && !c.down) Sound.play("hit"); });
   }
   // 空にいるあいだの高さ（core.js がキャラを上にずらして描く）
   function airLift(a) {
