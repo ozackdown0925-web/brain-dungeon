@@ -1498,7 +1498,7 @@ var Combat = (function () {
       x = ef.x - cam.x; y = ef.y - cam.y;
       ctx.fillStyle = rgba("#000000", 0.35 * p);
       ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 10, 8 * p + 2, 3 * p + 1, 0, 0, Math.PI * 2); else ctx.arc(x, y + 10, 6, 0, Math.PI * 2); ctx.fill();
-      var top = y - 10 - 90 * q;
+      var top = y - 10 - (y + 10) * q;   // 画面の上まで光がのびる（2026-11-22 保護者）
       var jg = ctx.createLinearGradient(0, top, 0, y);
       jg.addColorStop(0, rgba("#ffffff", 0.9)); jg.addColorStop(1, rgba(ef.color, 0));
       ctx.fillStyle = jg; ctx.fillRect(x - 3, top, 6, y - top);
@@ -1507,9 +1507,10 @@ var Combat = (function () {
     }
     if (ef.kind === "dive") {   // ドラゴンダイブ：空から落ちてくる光
       x = ef.x - cam.x; y = ef.y - cam.y;
-      var dg = ctx.createLinearGradient(0, y - 110, 0, y);
-      dg.addColorStop(0, rgba(ef.color, 0)); dg.addColorStop(1, rgba("#ffffff", 0.95 * p));
-      ctx.fillStyle = dg; ctx.fillRect(x - 5 * p - 1, y - 110, 10 * p + 2, 110);
+      var dh = Math.max(110, y + 10);   // 画面の上から落ちてくる（2026-11-22 保護者）
+      var dg = ctx.createLinearGradient(0, y - dh, 0, y);
+      dg.addColorStop(0, rgba(ef.color, 0.35 * p)); dg.addColorStop(1, rgba("#ffffff", 0.95 * p));
+      ctx.fillStyle = dg; ctx.fillRect(x - 5 * p - 1, y - dh, 10 * p + 2, dh);
       glowDot(ctx, x, y - 4, 16, "#ffffff", ef.color, p);
       return true;
     }
