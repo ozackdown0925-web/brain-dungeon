@@ -695,16 +695,23 @@ var Combat = (function () {
   var LEAP = { up: 0.5, down: 0.4, height: 80 };
   function leap(c, f) {
     var up = f.up || LEAP.up, down = f.down || LEAP.down;   // ドラゴンダイブは速く（2026-11-22 保護者）
-    var a = A(), x0 = a.x, y0 = a.y, air = up + down;
+    var hang = f.hang || 0;   // 画面の上に消えてから待つ時間（2026-11-22 保護者「1秒くらい待ってから降りて」）
+    var a = A(), x0 = a.x, y0 = a.y, air = up + hang + down;
     var tgt = f.stay ? null : autoTarget(f.range);   // stay：その場でとぶ（スカイリープ・メテオストライク。2026-11-16）
-    a.airT = air; a.airMax = air; a.airUp = up / air; a.airH = f.height || LEAP.height;   // ドラゴンダイブは画面の上まで（2026-11-22 保護者）
+    a.airT = air; a.airMax = air; a.airUp = up / air; a.airHang = hang / air; a.airH = f.height || LEAP.height;   // ドラゴンダイブは画面の上まで（2026-11-22 保護者）
     a.inv = Math.max(a.inv, air + 0.1); a.busy = Math.max(a.busy, air + 0.25);
     effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
-    later(up, function () {   // いちばん高いところで、ねらった敵の上へ
+    var tx, ty;
+    if (hang) later(up, function () {   // 空で待つあいだ、落ちるところに印
+      if (Party.current() !== c || c.down) return;
+      if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: "#ff8a3d" });
+    });
+    later(up + hang, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
       if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
-      var tx, ty;
-      if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
+      else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
       a.face = { x: dx / d, y: dy / d };
       var go = Math.max(0, d - (tgt ? tgt.r + a.r - 2 : 0)), n = Math.ceil(go / 3);
@@ -713,7 +720,7 @@ var Combat = (function () {
         hooks.room.move(a, a.face.x * Math.min(3, go - i * 3), a.face.y * Math.min(3, go - i * 3));
         if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.3) break;
       }
-      effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
+      if (!hang) effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
     });
     later(air, function () {   // 着地
       if (Party.current() !== c || c.down) return;
@@ -755,9 +762,10 @@ var Combat = (function () {
   // 空にいるあいだの高さ（core.js がキャラを上にずらして描く）
   function airLift(a) {
     if (!(a.airT > 0)) return 0;
-    var q = 1 - a.airT / a.airMax, u = a.airUp || 0.5;
+    var q = 1 - a.airT / a.airMax, u = a.airUp || 0.5, h = a.airHang || 0;
     if (q < u) return a.airH * Math.sin(q / u * Math.PI / 2);
-    var k = (q - u) / (1 - u);
+    if (q < u + h) return a.airH;   // 空で待つ
+    var k = (q - u - h) / (1 - u - h);
     return a.airH * (1 - k * k);
   }
   // アビスゲート（2026-11-08。2026-11-09 保護者の希望で、吸いこみを足し、開いている時間を長く）：

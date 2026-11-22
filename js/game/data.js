@@ -479,7 +479,7 @@ var GameData = (function () {
     { id: "dg.roar",  job: "dragoon", star: 6, name: "竜の咆哮", desc: "まわりの敵をしびれさせることがある。仲間みんなの物攻が、60秒のあいだ10%上がる。", short: "咆哮", cond: null, mp: 14, ct: 30,
       fx: [{ t: "around", stat: "p", mult: 0, radius: 56, elem: "none", color: "#7fc8ff", status: { type: "para", chance: 0.5, dur: 2 } }, { t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }] },
     { id: "x.dive",   job: "dragoon", star: 7, name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "dragoon", weapons: ["spear"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, height: 170, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
+      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, height: 170, hang: 1.0, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
     // グラディエーター：大剣
     { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回しながら、前へ進む。まわりの敵に4回当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
       fx: [{ t: "rapid", count: 4, interval: 0.2, step: 8, hit: { t: "around", vis: "spin", stat: "p", mult: 0.7, radius: 28, elem: "weapon" } }] },
