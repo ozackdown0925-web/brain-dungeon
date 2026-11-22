@@ -291,7 +291,7 @@ var Enemies = (function () {
           var an = a0 + (li - 1) * 0.38, ux = Math.cos(an), uy = Math.sin(an);
           for (var dd = 24, j = 0; dd <= 210; dd += 22, j++) {
             var qx = e.x + ux * dd, qy = e.y + 6 + uy * dd;
-            if (room.hitsWall(qx - 4, qy - 4, 8, 8)) break;
+            if (qx < 8 || qy < 8 || qx > room.pxW - 8 || qy > room.pxH - 8) break;   // 木や岩は通りぬける（2026-11-22）
             hz.push({ kind: "circle", look: "quake", from: e, x: qx, y: qy, r: 13, t: 0, warn: 0.6 + j * 0.06, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: o });
           }
         }
@@ -299,7 +299,7 @@ var Enemies = (function () {
         for (var ti = 0; ti < 2; ti++) {
           var ta = Math.random() * Math.PI * 2, tx = pp.x + Math.cos(ta) * 60, ty = pp.y + Math.sin(ta) * 40;
           if (room.hitsWall(tx - 8, ty - 8, 16, 16)) { tx = e.x; ty = e.y; }
-          hz.push({ kind: "tornado", from: e, x: tx, y: ty, r: 13, t: 0, warn: 0.9, life: 4, tick: 0, seed: Math.random() * 100, push: 0,
+          hz.push({ kind: "tornado", from: e, x: tx, y: ty, r: 20, t: 0, warn: 0.9, life: 4, tick: 0, seed: Math.random() * 100, push: 0,
                     def: { tornadoSpeed: 42, tornadoPush: 70 }, opts: { atk: o.atk, mult: o.mult, magic: o.magic, big: false } });
         }
       } else if (f.boss === "icefang_boss") {   // つらら：こちらの足もとに1本、まわりに3本（まわりは半分の強さ。2026-11-22）
