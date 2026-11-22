@@ -6,6 +6,7 @@
 //   プレイヤー用の鍵（PLAYER_KEYS、プレイヤーごとに1つ）：check・drillQuestions・image・history・saveAnswer・shelfQuestions・shelfHistory・saveShelfAnswer
 //     鍵からプレイヤー（child／parent）を決め、そのプレイヤーの記録だけを読み書きする。画面からは player を送らせない。
 //     例外：childHistory は、どちらの鍵でも子どもの記録を返す（保護者の iPad で子どもの正解率を見るため。2026-10-29）。
+//     childShelfHistory も同じく、どちらの鍵でも子どもの書庫の記録を返す（保護者画面の「書庫の結果」。2026-11-16）。
 //   管理用の鍵（EXPORT_KEY）：上のすべて＋ questions・saveQuestion・deleteQuestion・uploadImage・export・shelfExport
 // ・Claude 用：記録の書き出し（?action=export）、問題の書き出し（?action=questions）、問題の取りこみ（POST action=import）
 //   いずれも管理用の鍵が必要。成績管理フォルダの upload.py・mark_misses.py が使うので形を変えない。
@@ -127,6 +128,8 @@ const PLAYER_ACTIONS = {
   history: function (p, role, player) { return { records: readRecords_(player), player: player }; },
   // 子どもの記録（保護者画面の正解率のグラフ用。2026-10-29）：子ども・保護者どちらの鍵でも、子どもの記録だけを返す
   childHistory: function () { return { records: readRecords_(DEFAULT_PLAYER) }; },
+  // 子どもの書庫の記録（保護者画面の「書庫の結果」用。2026-11-16）：どちらの鍵でも、子どもの記録だけ
+  childShelfHistory: function () { return { records: readShelfRecords_(DEFAULT_PLAYER) }; },
   saveAnswer: function (p, role, player) { saveAnswer_(p.record, player); return {}; },
   // ゲーム（段階G-1）
   // セーブの枠（2026-10-29）：保護者は slot='debug' で「デバッグ用」の枠を使える。ふだん（slot なし）は「対戦用」
