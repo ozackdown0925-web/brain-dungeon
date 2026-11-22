@@ -12,7 +12,7 @@ var Parent = (function () {
   var SUBJECTS = [
     { id: "math", name: "算数" }, { id: "japanese", name: "国語" }, { id: "science", name: "理科" }, { id: "social", name: "社会" }
   ];
-  var KIND = { clear: "クリア", timeout: "時間切れ", wipe: "3人ともたおれた", quit: "やめた" };
+  var KIND = { clear: "クリア", timeout: "時間切れ", wipe: "3人ともたおれた", quit: "やめた", refused: "扉が開かなかった（試練を急いで答えた）" };
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);

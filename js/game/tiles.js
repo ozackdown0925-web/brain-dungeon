@@ -8,6 +8,8 @@
 //   wild（原生の秘境。2026-10-25 保護者と決定：樹海の絵を、少し深く暗い緑にして「奥地」らしく。水は深い青緑、岩は苔むした灰色）
 //   cave（黒鉄の坑道。2026-10-27：暗い岩の床。まわりの壁も岩のがけ）
 //   crystal（水晶の鍾乳洞。2026-11-14：青紫の暗い岩の床に、光る水晶（K）と光る地底湖。まわりの壁も岩のがけ）
+//   volcano（紅蓮の火山。2026-11-20：黒い溶岩の岩の床に、赤く光るひび。水のかわりに溶岩。まわりの壁も黒い岩のがけ）
+//   temple（しずみの湖底神殿。2026-11-18：青緑の石だたみの床に、白い石柱（I）と水路、海藻。まわりの壁も石のがけ）
 //   peak（烈風の峰。2026-11-08：茶色がかった岩の地面に、うすく雪がのる。がけの上は雪。木は暗い緑の針葉樹の色。まわりの壁も岩のがけ）
 // 壁は2種類：部屋のまわりの壁（外とつながっている）は「森のしげみ」、部屋の中の壁は「岩のがけ」（上が草、南の面が岩）。
 // 水・草むら・木・壁のさかい目は、となりのタイルを見て丸くつなぐ。光は左上から（影は右下）。
@@ -132,7 +134,36 @@ var Tiles = (function () {
       WITHER: null,
       CRYSTAL: pal(["#14204a", "#24509a", "#3c8ad8", "#80d0ff", "#e4faff"]),
       CRYSTAL2: pal(["#24164a", "#4a3296", "#7a5ad8", "#bc9cff", "#f4ecff"])
+    },
+    // しずみの湖底神殿（地方3の2つ目のダンジョン。段階1、2026-11-18）：湖の底にしずんだ古い神殿。
+    // 床は青緑の石だたみ（GRASS。四角い石のつなぎ目は「地面の模様」で描く）。草むらは海藻、花のかわりに小さな貝と泡。
+    // 水は神殿の水路（明るい青緑）。石柱（I）とかべは青みがかった白い石（ROCK）。木とつるは使わない
+    temple: {
+      GRASS: pal(["#0c2228", "#163238", "#1e4248", "#2a5458", "#3e6e6e"]),
+      DIRT: pal(["#14282c", "#1e363a", "#2a464a", "#38585a"]),
+      TALL: pal(["#06180e", "#0c2c1a", "#164428", "#26663a", "#56a060"]),
+      WATER: pal(["#03182a", "#062a44", "#0a4462", "#18708a", "#9ef0f0"]),
+      LEAF: pal(["#0a1a1c", "#12282a", "#1c3a3a", "#284e4c", "#3a6a64"]),
+      BARK: pal(["#1e1814", "#33291f", "#4a3c2c", "#64523c"]),
+      ROCK: pal(["#16262e", "#2a4048", "#466068", "#6e8c8e", "#a8c4c0"]),
+      FLOWER: pal(["#f0b0a0", "#fff0d8", "#bff4ff"]),
+      VINE: pal(["#06180e", "#0c2c1a", "#164428", "#26663a"]),
+      WITHER: null
     }
+  };
+  // 紅蓮の火山（地方3の3つ目のダンジョン。段階1、2026-11-20）：床は黒っぽい溶岩の岩（GRASS）に、赤く光るひび（地面の模様で描く）。
+  // 水のかわりに溶岩（WATER。赤〜だいだい〜黄色に光る）。草むらは焦げた草、花のかわりに火の粉と灰。岩の柱（I）とかべは黒い岩（ROCK）
+  THEMES.volcano = {
+    GRASS: pal(["#140c0c", "#1e1412", "#2a1c18", "#36261f", "#4a3428"]),
+    DIRT: pal(["#1a100c", "#281812", "#3a2218", "#4e2e1e"]),
+    TALL: pal(["#120a06", "#26160c", "#3e2412", "#5a361a", "#7a4e26"]),
+    WATER: pal(["#3a0a04", "#9a1e08", "#d84410", "#f88a1c", "#ffe060"]),
+    LEAF: pal(["#1a0e0a", "#2a1810", "#3a2216", "#4e2e1c", "#64402a"]),
+    BARK: pal(["#1e1814", "#33291f", "#4a3c2c", "#64523c"]),
+    ROCK: pal(["#100a0a", "#22181a", "#3a2c2c", "#584440", "#7a6058"]),
+    FLOWER: pal(["#d83a10", "#ff9a28", "#8a8078"]),
+    VINE: pal(["#120a06", "#26160c", "#3e2412", "#5a361a"]),
+    WITHER: null
   };
   var GRASS, DIRT, TALL, WATER, LEAF, BARK, ROCK, FLOWER, VINE, WITHER, SNOW, ICE, CRYSTAL, CRYSTAL2, THEME = "forest";
   var ICE0 = pal(["#3a6a90", "#6ea4c8", "#94c4e0", "#b8dcf0", "#e8f6ff"]);   // 凍った湖（テーマに ICE がないとき）
@@ -217,7 +248,7 @@ var Tiles = (function () {
       stack.push([p[0] + 1, p[1]], [p[0] - 1, p[1]], [p[0], p[1] + 1], [p[0], p[1] - 1]);
     }
     // 部屋のまわりの壁：ふつうは森のしげみ。坑道（cave）は岩のがけ
-    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" || THEME === "snow" || THEME === "crystal" ? "rock" : "forest";
+    var OUTER = THEME === "cave" || THEME === "peak" || THEME === "peakwarm" || THEME === "snow" || THEME === "crystal" || THEME === "temple" || THEME === "volcano" ? "rock" : "forest";
     // 種類：forest（しげみ）・rock（がけ）・tree・water・tall・path・ground など
     // 種類は先に表にしておく（まわり2マスぶんも）。何度も聞くので速くする
     var KB = 2, KW = w + KB * 2, kindGrid = [];
@@ -332,6 +363,24 @@ var Tiles = (function () {
         c = dv < 0.35 ? DIRT[1] : dv < 0.75 ? DIRT[2] : DIRT[3];
         if (pa > lim - 2) c = GRASS[1];
       }
+      // しずみの湖底神殿：石だたみ（たて8点・よこ16点の石。1段ごとに半分ずらす）。つなぎ目は暗く、石の左上のふちは明るい。
+      //   石ごとに少し明るさがちがい、ところどころ欠けている
+      if (THEME === "temple") {
+        var row8 = Math.floor(y / 8), sx16 = x + (row8 % 2) * 8, col16 = Math.floor(sx16 / 16);
+        var lx = sx16 - col16 * 16, ly = y - row8 * 8, sv = hash(col16, row8, 43);
+        if (pa >= lim) c = sv < 0.3 ? GRASS[2] : sv < 0.8 ? GRASS[3] : GRASS[4];
+        if (pa >= lim && dither(noise(x / 6, y / 6, 5), x, y) < 0.22) c = GRASS[2];   // しみ
+        if (lx === 15 || ly === 7) c = GRASS[0];
+        else if ((lx === 0 || ly === 0) && sv < 0.85) c = pa < lim ? DIRT[3] : GRASS[4];
+        if (hash(col16, row8, 44) < 0.06 && lx > 3 && lx < 11 && ly > 1 && ly < 6 && hash(x, y, 45) < 0.5) c = GRASS[1];   // 欠け
+      }
+      // 紅蓮の火山：黒い岩に、赤く光るひび（なめらかな模様の「さかい目」をひびにする。まわりは少し赤くにじむ）
+      if (THEME === "volcano") {
+        var cr = Math.abs(noise(x / 11, y / 11, 47) - 0.5) + (hash(x, y, 48) - 0.5) * 0.004;
+        if (cr < 0.009) c = FLOWER[0];
+        else if (cr < 0.016) c = WATER[0];
+        else if (pa >= lim && dither(noise(x / 5, y / 5, 49), x, y) < 0.18) c = GRASS[0];
+      }
       put(x, y, c);
     }
     // 小さな草・花・小石
@@ -345,6 +394,17 @@ var Tiles = (function () {
           if (r0 < 0.3 && !onDirt) put(px, py, GRASS[4]);
           else if (r0 < 0.42 && !onDirt) { put(px, py, GRASS[1]); put(px + 1, py, GRASS[2]); put(px, py - 1, GRASS[4]); }
           else if (r0 < 0.47) { put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py - 1, GRASS[4]); put(px + 1, py - 1, GRASS[4]); }   // 雪から頭を出した小石
+          continue;
+        }
+        if (THEME === "volcano") {         // 紅蓮の火山：草のかわりに、火の粉（だいだいの点）と灰（灰色の点）と、黒い小石
+          if (r0 < 0.06 && !onDirt) put(px, py, FLOWER[1]);
+          else if (r0 < 0.16) put(px, py, FLOWER[2]);
+          else if (r0 < 0.22) { put(px, py, ROCK[3]); put(px + 1, py, ROCK[2]); put(px, py + 1, ROCK[1]); put(px + 1, py + 1, ROCK[0]); }
+          continue;
+        }
+        if (THEME === "temple") {          // しずみの湖底神殿：草のかわりに、小さな貝（2点）と泡（白い点）
+          if (r0 < 0.07 && !onDirt) { put(px, py, FLOWER[0]); put(px + 1, py, FLOWER[1]); put(px, py + 1, GRASS[0]); put(px + 1, py + 1, GRASS[0]); }
+          else if (r0 < 0.14) put(px, py, FLOWER[2]);
           continue;
         }
         if (THEME === "crystal") {         // 水晶の鍾乳洞：草のかわりに、小さな水晶のかけら（とがった2〜3点）と、光る粒

@@ -87,3 +87,6 @@ textarea.dq-in { width: 100%; font-size: 1.1rem; min-height: 5em; resize: vertic
   .dq-keypad [data-k="7"] { order: 8; } .dq-keypad [data-k="8"] { order: 9; } .dq-keypad [data-k="9"] { order: 10; }
   .dq-keypad [data-k="0"] { order: 11; } .dq-keypad [data-k="dot"] { order: 12; } .dq-keypad [data-k="clear"] { order: 13; }
 }
+/* 「わからない」ボタン（知恵の試練。2026-11-16） */
+.dq-dontknow { margin-left: auto; }
+.dq-dontknow-note { font-weight: 700; }

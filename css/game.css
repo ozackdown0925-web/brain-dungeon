@@ -549,3 +549,10 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books.map-books { gap: 1px; }
 .shelf-books.map-books .book { width: 5px; }
 #dlgNote { white-space: pre-line; line-height: 1.7; }   /* ダンジョンの説明とボスの階のお知らせ（2026-11-04） */
+/* 「わからない」と言った問い（保護者画面。2026-11-16） */
+.dc-dk { margin-top: 12px; border: 1px solid var(--btn-line); border-radius: 10px; padding: 10px; }
+/* 「わからない」をそのままにしない（知恵の試練の入り口。2026-11-16） */
+.ttech { padding: 12px; overflow: auto; }
+.ttech h3 { margin: 0 0 6px; }
+.ttech-q { margin: 12px 0; padding: 10px; border: 1px solid var(--btn-line); border-radius: 10px; background: rgba(0,0,0,.2); }
+.ttech-q > b { display: block; margin-bottom: 6px; }

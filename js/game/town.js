@@ -345,6 +345,7 @@ var Town = (function () {
       var row = itemLine(it);
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
+      if (it.legend) { row.appendChild(el("span", "item-extra", "最強武器：売れない・鍛冶屋で強くできない（魔王城の深い階へ行くほど強くなる）")); bodyEl.appendChild(row); return; }
       var v = GameState.releaseValue(it);
       row.appendChild(button("売却（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
         // 強化してあって、同じ種類の装備に移せるときは、売る前に確かめる（2026-10-18 保護者の希望）
@@ -411,6 +412,8 @@ var Town = (function () {
     });
     bodyEl.appendChild(tabs);
     var all = GameState.allItems();
+    if (!all.length) { bodyEl.appendChild(el("p", "", "強くできる装備がない。宝箱やお店で装備を手に入れよう。")); return; }
+    all = all.filter(function (x) { return !x.item.legend; });   // 最強武器（エルダースタッフなど）は鍛冶屋では何もできない（2026-11-21）
     if (!all.length) { bodyEl.appendChild(el("p", "", "強くできる装備がない。宝箱やお店で装備を手に入れよう。")); return; }
     all.sort(function (a, b) { return (b.who ? 1 : 0) - (a.who ? 1 : 0) || b.item.r - a.item.r || (b.item.plus || 0) - (a.item.plus || 0); });
     // 種類でしぼりこむ（強化を移すの「② 移す先」は、もとと同じ種類だけなので、しぼりこまない）

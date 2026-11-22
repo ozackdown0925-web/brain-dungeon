@@ -51,7 +51,7 @@ function row(label, depth, tier, D, type) {
 }
 var head = ["場所", "Lv", "物攻", "1振り", "敵", "敵HP", "敵物防", "何振りで", "受ける", "HP", "何回で", "守りで減る"];
 var rows = [];
-var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword", yama: "harpy", yuki: "penguin", shonyu: "fishman" };
+var REP = { forest1: "goblin_sword", shouki: "skeleton_sword", hikyo: "goblin_sword", kodo: "thief_sword", yama: "harpy", yuki: "penguin", shonyu: "fishman", kotei: "fishman", kazan: "lava_slime" };
 G.DUNGEON_ORDER.forEach(function (id) {
   var D = G.DUNGEONS[id];
   [1, D.floors].forEach(function (f) {
@@ -69,3 +69,18 @@ console.log("強化 ＋" + PLUS + "・レア度 R・戦士（剣）で計算" + 
 console.log("| " + head.join(" | ") + " |");
 console.log("|" + head.map(function () { return "---"; }).join("|") + "|");
 rows.forEach(function (r) { console.log("| " + r.join(" | ") + " |"); });
+
+// ボス（2026-11-17）：その階に来るころの戦士（剣）で、何振りでたおせるか・大技でない一撃が体力の何%か（ボスは深さで強くならない）
+console.log("\n| ボス | 場所 | Lv | 1振り | ボスHP | 何振りで | 一撃（体力の%） |");
+console.log("|---|---|---|---|---|---|---|");
+G.DUNGEON_ORDER.forEach(function (id) {
+  var D = G.DUNGEONS[id];
+  Object.keys(D.bosses || {}).forEach(function (f) {
+    var b = G.ENEMIES[D.bosses[f].enemy], depth = D.depthBase + Number(f);
+    if (!b) return;
+    var sw = hero("warrior", "sword", depth, D.tier || 0), W = G.WEAPONS.sword;
+    var el = b.res && b.res.hasOwnProperty("slash") ? b.res.slash : 1, dmg = hit(sw.patk, W.power, b.pdef, el);
+    var taken = Math.max(b.patk - sw.pdef * 0.5, b.patk * 0.3);
+    console.log("| " + b.name + " | " + D.short + " " + f + "階 | Lv" + sw.level + " | " + Math.round(dmg) + " | " + b.hp + " | " + (b.hp / dmg).toFixed(0) + " | " + Math.round(taken / sw.hp * 100) + "% |");
+  });
+});
