@@ -41,6 +41,9 @@ var GameState = (function () {
       // パッシブの枠（2026-10-19）：前はアクティブだったスキルがパッシブに変わったので、スキル1〜3から外してパッシブの枠へ
       fitPassiveSlots(h);
       h.learned = h.learned.filter(function (id) { return !!GameData.SKILL[id]; });
+      // なくなったスキルはセットBとパッシブの枠からも外す（2026-11-22 最上級職のスキルをしぼった）
+      h.setB = h.setB.map(function (id) { return id && GameData.SKILL[id] && !GameData.SKILL[id].passive ? id : null; });
+      h.pset = h.pset.map(function (id) { return id && GameData.SKILL[id] ? id : null; });
       h.set = h.set.map(function (id) {
         var sk = id && GameData.SKILL[id];
         if (!sk) return null;
