@@ -266,6 +266,7 @@ var Enemies = (function () {
   }
   // 魔物使いの呼び出し：主の絵が出て、仲間が呼んだときと同じ大技を、こちらへ使う
   //   大木の魔物＝こちらを中心に十字の根、沼の魔女＝こちらの足もとに瘴気の柱、ダークエルフ＝闇の玉を6つ撃つ
+  //   ドワーフキング＝こちらの方へ大地たたき、大怪鳥＝竜巻2つ、氷牙獣＝こちらの足もとにつらら（2026-11-22）
   function rivalSummon(e, f, P) {
     var o = rivalOpts(e, f), S = Combat.SUMMON;
     var sx = e.x - e.aim.x * 20, sy = e.y - e.aim.y * 14;
@@ -283,6 +284,29 @@ var Enemies = (function () {
         for (var i = 0; i < 3; i++) {
           var a = Math.random() * Math.PI * 2, rr = i === 0 ? 0 : 30 + Math.random() * 30;
           hz.push({ kind: "circle", look: "pillar", from: e, x: pp.x + Math.cos(a) * rr, y: pp.y + Math.sin(a) * rr, r: 18, t: 0, warn: 0.6, erupt: 0.5, hit: false, opts: i === 0 ? o : { atk: o.atk, mult: o.mult * 0.5, magic: o.magic, status: o.status } });
+        }
+      } else if (f.boss === "dwarf_boss") {   // 大地たたき：こちらの方へ扇に3本（2026-11-22）
+        var a0 = Math.atan2(pp.y - e.y, pp.x - e.x);
+        for (var li = 0; li < 3; li++) {
+          var an = a0 + (li - 1) * 0.38, ux = Math.cos(an), uy = Math.sin(an);
+          for (var dd = 24, j = 0; dd <= 210; dd += 22, j++) {
+            var qx = e.x + ux * dd, qy = e.y + 6 + uy * dd;
+            if (room.hitsWall(qx - 4, qy - 4, 8, 8)) break;
+            hz.push({ kind: "circle", look: "quake", from: e, x: qx, y: qy, r: 13, t: 0, warn: 0.6 + j * 0.06, erupt: 0.4, hit: false, seed: Math.random() * 100, opts: o });
+          }
+        }
+      } else if (f.boss === "roc_boss") {   // 竜巻：こちらのそばに2つ。追いかけてくる（2026-11-22）
+        for (var ti = 0; ti < 2; ti++) {
+          var ta = Math.random() * Math.PI * 2, tx = pp.x + Math.cos(ta) * 60, ty = pp.y + Math.sin(ta) * 40;
+          if (room.hitsWall(tx - 8, ty - 8, 16, 16)) { tx = e.x; ty = e.y; }
+          hz.push({ kind: "tornado", from: e, x: tx, y: ty, r: 13, t: 0, warn: 0.9, life: 4, tick: 0, seed: Math.random() * 100, push: 0,
+                    def: { tornadoSpeed: 42, tornadoPush: 70 }, opts: { atk: o.atk, mult: o.mult, magic: o.magic, big: false } });
+        }
+      } else if (f.boss === "icefang_boss") {   // つらら：こちらの足もとに1本、まわりに3本（まわりは半分の強さ。2026-11-22）
+        for (var ii = 0; ii < 4; ii++) {
+          var ia = Math.random() * Math.PI * 2, ir = ii === 0 ? 0 : 30 + Math.random() * 40;
+          hz.push({ kind: "circle", look: "icicle", from: e, x: pp.x + Math.cos(ia) * ir, y: pp.y + Math.sin(ia) * ir * 0.8, r: 22, t: 0, warn: 0.8 + ii * 0.14, erupt: 0.45, hit: false,
+                    seed: Math.random() * 100, opts: ii === 0 ? o : { atk: o.atk, mult: o.mult * 0.5, magic: o.magic, status: o.status } });
         }
       } else {
         for (var k = 0; k < 6; k++) (function (k2) {

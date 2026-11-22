@@ -864,6 +864,10 @@ var Combat = (function () {
   //   大木の魔物：根の大波（敵がいちばん多く入るところを中心に十字。2026-11-12 から自動。部屋のはしからはしまでの横と縦の帯）
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
   //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して（さわった敵にも当たる）、少し回ってから近くの敵を1体ずつねらって撃つ。敵をつらぬく）
+  //   （地方2の主。2026-11-22 保護者と決定。ため・MP・待ち時間は地方1の3体と同じ決まり）
+  //   ドワーフキング：大地たたき（いちばん近い敵の方へ、扇に3本。光の柱が根もとから順に立つ）
+  //   大怪鳥：竜巻（近くの敵のそばに2つ。敵を追いかけて、巻きこむ。1体に当たるのは2つ合わせて1秒に1回）
+  //   氷牙獣：つらら（近くの敵の足もとに、つららが次々に落ちる。1体に当たるのは1回だけ。おそくなることがある）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
   var SUMMON = { appear: 0.3, stay: 1.4, stand: 0.6 };   // 2026-10-26：当たるまでを早く（あらわれる 0.5→0.3秒）
   function summon(c, f) {
@@ -882,6 +886,9 @@ var Combat = (function () {
     later(SUMMON.appear, function () {
       if (f.boss === "tree_boss") summonRoots(c, spec, a);
       else if (f.boss === "witch_boss") summonPillars(c, spec, a);
+      else if (f.boss === "dwarf_boss") summonQuake(c, spec, a);
+      else if (f.boss === "roc_boss") summonTornado(c, spec, a);
+      else if (f.boss === "icefang_boss") summonIcicles(c, spec, a);
       else if (f.boss === "elf_boss") {
         for (var n = 0; n < ELF_ORB.n; n++) later(ELF_ORB.gather + ELF_ORB.orbit + n * ELF_ORB.gap, (function (k) { return function () { summonOrbShot(c, spec, s, k); }; })(n));
       }
@@ -917,6 +924,87 @@ var Combat = (function () {
       });
     });
     return best;
+  }
+  function nearestFoes(x, y, n) {
+    return Enemies.hostile().slice().sort(function (p, q) {
+      return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) - (q.x - x) * (q.x - x) - (q.y - y) * (q.y - y);
+    }).slice(0, n);
+  }
+  // ドワーフキングの大地たたき：いちばん近い敵の方へ扇に3本。光の柱が根もとから順に立つ。1体に当たるのは1回だけ
+  var QUAKE = { lines: 3, spread: 0.38, near: 24, len: 210, step: 22, r: 13, warn: 0.3, gap: 0.06 };
+  function summonQuake(c, spec, a) {
+    var room = hooks.room, t = nearestFoes(a.x, a.y, 1)[0], done = [];
+    var a0 = t ? Math.atan2(t.y - a.y, t.x - a.x) : Math.atan2(a.face.y, a.face.x);
+    for (var i = 0; i < QUAKE.lines; i++) {
+      var an = a0 + (i - (QUAKE.lines - 1) / 2) * QUAKE.spread, ux = Math.cos(an), uy = Math.sin(an);
+      for (var d = QUAKE.near, j = 0; d <= QUAKE.len; d += QUAKE.step, j++) {
+        var x = a.x + ux * d, y = a.y + 6 + uy * d;
+        if (room.hitsWall(x - 4, y - 4, 8, 8)) break;   // 壁で止まる
+        var h = { kind: "circle", look: "quake", x: x, y: y, r: QUAKE.r, warn: QUAKE.warn + j * QUAKE.gap, erupt: 0.4 };
+        h.ally = function (hz) {
+          Enemies.hostile().forEach(function (e) {
+            if (done.indexOf(e) >= 0) return;
+            var dx = e.x - hz.x, dy = e.y - hz.y;
+            if (dx * dx + dy * dy < (hz.r + e.r) * (hz.r + e.r)) { done.push(e); Sound.play("hit"); hitEnemy(e, c, spec, a.x, a.y); }
+          });
+        };
+        Bosses.addAlly(h);
+      }
+    }
+  }
+  // 大怪鳥の竜巻：近くの敵のそばに2つ。いちばん近い敵へふらふら寄っていき、さわった敵に当たる（1体に当たるのは2つ合わせて TORNADO.tick 秒に1回）
+  var TORNADO = { n: 2, r: 13, warn: 0.5, life: 4, speed: 55, tick: 1.0 };
+  function summonTornado(c, spec, a) {
+    var room = hooks.room, foes = nearestFoes(a.x, a.y, TORNADO.n), last = [];
+    for (var k = 0; k < TORNADO.n; k++) {
+      var t = foes.length ? foes[k % foes.length] : null, x = a.x + a.face.x * 40, y = a.y + a.face.y * 40;
+      if (t) { var an = Math.random() * Math.PI * 2; x = t.x + Math.cos(an) * 24; y = t.y + Math.sin(an) * 16; }
+      if (room.hitsWall(x - 6, y - 6, 12, 12)) { x = t ? t.x : a.x; y = t ? t.y : a.y; }
+      var h = { kind: "tornado", x: x, y: y, r: TORNADO.r, warn: TORNADO.warn, life: TORNADO.life, tick: 0, push: 0 };
+      h.ally = true;
+      h.allyMove = function (hz, dt) {
+        var g = nearestFoes(hz.x, hz.y, 1)[0];
+        if (g) {
+          var an2 = Math.atan2(g.y - hz.y, g.x - hz.x) + Math.sin(hz.t * 1.3 + hz.seed) * 0.6;
+          var nx = hz.x + Math.cos(an2) * TORNADO.speed * dt, ny = hz.y + Math.sin(an2) * TORNADO.speed * dt;
+          if (!room.hitsWall(nx - 6, ny - 6, 12, 12)) { hz.x = nx; hz.y = ny; }
+        }
+        Enemies.hostile().forEach(function (e) {
+          var dx = e.x - hz.x, dy = e.y - hz.y;
+          if (dx * dx + dy * dy >= (hz.r + e.r) * (hz.r + e.r)) return;
+          for (var m = 0; m < last.length; m++) if (last[m].e === e && hz.t - last[m].at < TORNADO.tick) return;   // 2つの竜巻は同時に出るので、t を共通の時計に使う
+          last = last.filter(function (l) { return l.e !== e; });
+          last.push({ e: e, at: hz.t });
+          Sound.play("hit");
+          hitEnemy(e, c, spec, hz.x, hz.y);
+        });
+      };
+      Bosses.addAlly(h);
+    }
+  }
+  // 氷牙獣のつらら：近くの敵（4体まで）の足もとと、そのまわりに7本。次々に落ちる。1体に当たるのは1回だけ
+  var ICICLE = { n: 7, aim: 4, r: 22, warn: 0.5, gap: 0.12 };
+  function summonIcicles(c, spec, a) {
+    var room = hooks.room, foes = nearestFoes(a.x, a.y, ICICLE.aim), done = [];
+    for (var i = 0; i < ICICLE.n; i++) {
+      var t = foes.length ? foes[i % foes.length] : null, bx = t ? t.x : a.x + a.face.x * 50, by = t ? t.y : a.y + a.face.y * 50, x = bx, y = by;
+      if (i >= foes.length) {   // ねらう敵の数より多い分は、まわりに散らす
+        for (var tries = 0; tries < 8; tries++) {
+          var an = Math.random() * Math.PI * 2, rr = 26 + Math.random() * 40;
+          x = bx + Math.cos(an) * rr; y = by + Math.sin(an) * rr * 0.8;
+          if (!room.hitsWall(x - 6, y - 6, 12, 12)) break;
+        }
+      }
+      var h = { kind: "circle", look: "icicle", x: x, y: y, r: ICICLE.r, warn: ICICLE.warn + i * ICICLE.gap, erupt: 0.45, track: i < foes.length ? t : null };
+      h.ally = function (hz) {
+        Enemies.hostile().forEach(function (e) {
+          if (done.indexOf(e) >= 0) return;
+          var dx = e.x - hz.x, dy = e.y - hz.y;
+          if (dx * dx + dy * dy < (hz.r + e.r) * (hz.r + e.r)) { done.push(e); Sound.play("hit"); hitEnemy(e, c, spec, hz.x, hz.y); }
+        });
+      };
+      Bosses.addAlly(h);
+    }
   }
   function summonPillars(c, spec, a) {
     var list = Enemies.hostile().slice().sort(function (p, q) {

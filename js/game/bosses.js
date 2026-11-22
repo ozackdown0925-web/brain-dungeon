@@ -1642,7 +1642,7 @@ var Bosses = (function () {
     hazards.push({ kind: "tornado", from: boss, x: x, y: y, r: d.tornadoR, t: 0, warn: d.stormWarn, life: d.stormTime - 0.5, tick: 0, seed: Math.random() * 100, push: 0 });
   }
   function updateTornado(h, dt, p, hurt, room) {
-    var d = h.from.def;
+    var d = h.def || h.from.def;   // h.def：闘技場の相手の魔物使いが呼んだ竜巻（2026-11-22）
     if (h.push > 0 && room) { h.push -= dt; room.move(p, h.px * d.tornadoPush / 0.3 * dt, h.py * d.tornadoPush / 0.3 * dt); }
     if (h.t < h.warn) return;
     // プレイヤーのほうへ、ふらふらと寄っていく
@@ -1653,7 +1653,7 @@ var Bosses = (function () {
     h.tick -= dt;
     var dx = p.x - h.x, dy = p.y - h.y, dd = Math.sqrt(dx * dx + dy * dy) || 0.001;
     if (h.tick <= 0 && !p.down && !h.from.dead && dd < h.r + p.r) {
-      hurt(h.from, p.x, p.y - 8, { mult: d.tornadoMult });
+      hurt(h.from, p.x, p.y - 8, h.opts || { mult: d.tornadoMult });
       h.tick = 1.0; h.push = 0.3; h.px = dx / dd; h.py = dy / dd;   // 外へはじき飛ばす
       Battle.pop(p.x, p.y - 30, "巻きこまれた！", "#cfe8ff", 8);
     }
@@ -2332,6 +2332,11 @@ var Bosses = (function () {
         continue;
       }
       if (h.kind === "tornado") {   // 大怪鳥の竜巻
+        if (h.ally) {   // 魔物使いが呼んだ大怪鳥の竜巻（2026-11-22）：敵を追いかけて当たる
+          if (h.t >= h.warn) h.allyMove(h, dt);
+          if (h.t >= h.warn + h.life) hazards.splice(i, 1);
+          continue;
+        }
         updateTornado(h, dt, p, hurt, room);
         if (h.t >= h.warn + h.life || h.from.dead) hazards.splice(i, 1);
         continue;

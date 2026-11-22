@@ -381,10 +381,13 @@ var GameData = (function () {
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
     { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ためてから、ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 40, ct: 60,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
-    // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
-    { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
+    // ★5〜★7：地方2の主（2026-11-22 保護者と決定）。ため・MP・待ち時間は地方1の3体と同じ決まり（MP は★ごとに＋2）。倍率は★が上がるほど少し強い
+    { id: "tm.dwarf", job: "tamer", star: 5, name: "よびだし：ドワーフキング", desc: "ためてから、ドワーフキングを呼ぶ。いちばん近い敵の方へ、扇の形に3本、地面から光の柱を順に立てる（打）。黒鉄の坑道の主をたおしていると覚える。", short: "ドワーフ", boss: "dwarf_boss", cond: { line: "tamer" }, mp: 42, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "dwarf_boss", stat: "best", color: "#7ae0a8", mult: 3.4, elem: "strike" }] },
+    { id: "tm.roc",   job: "tamer", star: 6, name: "よびだし：大怪鳥", desc: "ためてから、大怪鳥を呼ぶ。近くの敵のそばに竜巻を2つ起こす。竜巻は4秒のあいだ敵を追いかけて、巻きこむ（1体に当たるのは1秒に1回）。烈風の峰の主をたおしていると覚える。", short: "大怪鳥", boss: "roc_boss", cond: { line: "tamer" }, mp: 44, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "roc_boss", stat: "best", color: "#7ae0a8", mult: 0.9, elem: "none" }] },
+    { id: "tm.icefang",job: "tamer", star: 7, name: "よびだし：氷牙獣", desc: "ためてから、氷牙獣を呼ぶ。近くの敵の足もとに、つららを7本次々に落とす（1体に当たるのは1回だけ。水）。おそくなることがある。白銀の霊峰の主をたおしていると覚える。", short: "氷牙獣", boss: "icefang_boss", cond: { line: "tamer" }, mp: 46, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "icefang_boss", stat: "best", color: "#7ae0a8", mult: 3.6, elem: "water", status: { type: "slow", chance: 0.4, dur: 3 } }] },
     // ---------- 最上級職（2026-11-16 暫定。名前は 2026-11-08 保護者の表と 2026-11-15 の案。数字はたたき台で、遊んでみて直す） ----------
     // ★7（star 7）の大技は職業専用（only。2026-11-09 決定）。★1〜★6 は条件が合えばほかの職でも使える
     // 騎士王：剣の大技
