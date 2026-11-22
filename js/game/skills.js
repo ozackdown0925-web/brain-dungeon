@@ -1024,28 +1024,21 @@ var Combat = (function () {
       Bosses.addAlly(h);
     }
   }
-  // 召喚士の幻獣ケルベロス（2026-11-22）：敵がいちばん多い方へ、3つの首から炎の扇を3本（あいだは少しあく）。1体に当たるのは1回だけ
-  var HELLB = { n: 3, gap: 0.5, spread: 0.26, len: 210, warn: 0.3 };
+  // 召喚士の幻獣ケルベロス（2026-11-22）：敵がいちばん多い方へ、3つの首から特大の火球を3発（3方向。2026-11-22 保護者：大きさと速さはゴーレムの岩石投げくらい）。
+  // 火球は敵をつらぬいて進む。3発合わせて、1体に当たるのは1回だけ
+  var HELLB = { n: 3, gap: 0.5, speed: 140, size: 10, life: 2.4, gapT: 0.12 };
   function summonHellBreath(c, spec, a, s) {
     var done = [], a0 = quakeAngle(a);
     s.face = { x: Math.cos(a0) >= 0 ? 1 : -1, y: 0 };
     s.frame = "breath";
-    for (var i = 0; i < HELLB.n; i++) {
-      var an = a0 + (i - (HELLB.n - 1) / 2) * HELLB.gap;
-      var h = { kind: "cone", look: "fire", x: s.x + Math.cos(an) * 8, y: s.y - 10 + Math.sin(an) * 6, ang: an, spread: HELLB.spread, len: HELLB.len, warn: HELLB.warn + i * 0.08, erupt: 0.5 };
-      h.ally = function (hz) {
-        Enemies.hostile().forEach(function (e) {
-          if (done.indexOf(e) >= 0) return;
-          var dx = e.x - hz.x, dy = e.y - hz.y, l = Math.sqrt(dx * dx + dy * dy);
-          if (l > hz.len + e.r) return;
-          var diff = Math.atan2(dy, dx) - hz.ang;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          if (l < 10 || Math.abs(diff) <= hz.spread + e.r / Math.max(l, 1)) { done.push(e); Sound.play("hit"); hitEnemy(e, c, spec, hz.x, hz.y); }
-        });
-      };
-      Bosses.addAlly(h);
-    }
+    for (var i = 0; i < HELLB.n; i++) (function (k) {
+      later(k * HELLB.gapT, function () {
+        var an = a0 + (k - (HELLB.n - 1) / 2) * HELLB.gap;
+        shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: "fire", pierce: true, bigFire: true, push: 6 }, hitIds: done,
+          x: s.x + Math.cos(an) * 10, y: s.y - 12 + Math.sin(an) * 6, vx: Math.cos(an) * HELLB.speed, vy: Math.sin(an) * HELLB.speed, life: HELLB.life, size: HELLB.size, color: "#ff6a1f", arrow: false });
+        Sound.play("skill");
+      });
+    })(i);
   }
   function summonPillars(c, spec, a) {
     var list = Enemies.hostile().slice().sort(function (p, q) {
@@ -1300,6 +1293,7 @@ var Combat = (function () {
         return;
       }
       if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
+      if (s.spec.bigFire) { Bosses.drawBigFireball(ctx, x, y, s.vx, s.vy, s.size); return; }   // 呼んだケルベロスの特大の火球（2026-11-22）
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
       if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）

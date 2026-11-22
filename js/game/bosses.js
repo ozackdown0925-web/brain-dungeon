@@ -69,9 +69,8 @@ var Bosses = (function () {
       if (e.state === "fbreathWarn") { e.state = "recover"; e.t = 0.4; }
       for (var fj = hazards.length - 1; fj >= 0; fj--) if (hazards[fj].from === e && hazards[fj].kind === "cone" && hazards[fj].t < hazards[fj].warn) hazards.splice(fj, 1);
     }
-    if (e.def.kind === "cerberus_gj" && (e.state === "tbreathWarn" || e.state === "hellHowl" || e.state === "bite")) {   // ケルベロス：炎をためている・ほえている・かみついている途中なら、やめる（炎の予告も消す）
+    if (e.def.kind === "cerberus_gj" && (e.state === "tbreathWarn" || e.state === "hellHowl" || e.state === "bite")) {   // ケルベロス：火球をためている・ほえている・かみついている途中なら、やめる
       e.state = "recover"; e.t = 0.4;
-      for (var cj = hazards.length - 1; cj >= 0; cj--) if (hazards[cj].from === e && hazards[cj].kind === "cone" && hazards[cj].t < hazards[cj].warn) hazards.splice(cj, 1);
     }
     if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
       if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
@@ -1172,10 +1171,9 @@ var Bosses = (function () {
     if (e.state === "tbreathWarn") {
       e.t -= dt;
       if (e.t <= 0) {
-        Sound.play("hit");
-        if (e.secondBreath) {   // HP 半分から：すきまをうめる2回目
-          e.secondBreath = false;
-          addTriBreath(e, e.breathAng + d.tbreathGap / 2, 0.55);
+        triFire(e, api, e.breathAng, half);
+        if (e.secondBreath) {   // HP 半分から：0.55秒あとに、すきまをねらう2回目
+          e.secondBreath = false; e.breathAng += d.tbreathGap / 2;
           e.state = "tbreathWarn"; e.t = 0.55;
         } else { e.state = "tbreath"; e.t = 0.5; }
       }
@@ -1199,12 +1197,11 @@ var Bosses = (function () {
       return;
     }
     if (e.ai.charge <= 0) { startCharge(e, room, ux, uy); e.ai.tbreath = Math.max(e.ai.tbreath, 2); return; }
-    if (e.ai.tbreath <= 0 && dist < d.tbreathLen + 30) {
+    if (e.ai.tbreath <= 0) {
       e.breathAng = Math.atan2(uy, ux);
-      addTriBreath(e, e.breathAng, d.tbreathWarn);
       e.secondBreath = half;
       e.state = "tbreathWarn"; e.t = d.tbreathWarn; e.ai.tbreath = half ? d.tbreathEveryHalf : d.tbreathEvery;
-      Battle.pop(e.x, e.y - 60, "三つ首の炎！ すきまへ！", "#ef5b5b", 9);
+      Battle.pop(e.x, e.y - 60, "三つ首の火球！ すきまへ！", "#ef5b5b", 9);
       return;
     }
     if (gap > d.reach - 2) {
@@ -1214,14 +1211,11 @@ var Bosses = (function () {
       e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy };
     }
   }
-  // 3本の炎の扇（まんなかが ang。あいだは tbreathGap）
-  function addTriBreath(e, ang, warn) {
+  // 三つ首の炎：3方向に特大の火球を1発ずつ（まんなかが ang。あいだは tbreathGap。大きさと速さはゴーレムの岩石投げくらい。2026-11-22 保護者）
+  function triFire(e, api, ang, half) {
     var d = e.def;
-    for (var i = -1; i <= 1; i++) {
-      var an = ang + i * d.tbreathGap;
-      hazards.push({ kind: "cone", look: "fire", from: e, x: e.x + Math.cos(an) * 14, y: e.y - 6 + Math.sin(an) * 8, ang: an, spread: d.tbreathSpread, len: d.tbreathLen,
-                     t: 0, warn: warn, erupt: 0.5, hit: false, seed: Math.random() * 100, opts: { mult: d.tbreathMult, big: true } });
-    }
+    for (var i = -1; i <= 1; i++) api.addArrow(e, ang + i * d.tbreathGap, half ? d.fireSpeedHalf : d.fireSpeed, { bigFire: true, big: true, mult: d.tbreathMult, rad: d.fireR, dy: -10, life: 3 });
+    Sound.play("skill");
   }
   // 地獄の炎：部屋の床に、ななめの格子で火柱の場所を置き、組（k）ごとに順に立つ（組のあいだは hellStep 秒）。
   // 同じ組の場所どうしは、はなれていて、そのあいだは安全
@@ -2676,6 +2670,23 @@ var Bosses = (function () {
       }
     }
   }
+  // ケルベロスの特大の火球（2026-11-22）：ゴーレムの岩くらいの大きさ（r）。燃える玉と、うしろに長い炎の尾と火の粉
+  function drawBigFireball(ctx, x, y, vx, vy, r) {
+    var l = Math.sqrt(vx * vx + vy * vy) || 1, ux = vx / l, uy = vy / l, t = Date.now() / 1000;
+    Render.rect(Math.round(x) - r, Math.round(y) + 20, r * 2, 4, "rgba(0,0,0,0.3)");   // 地面のかげ
+    for (var i = 6; i >= 1; i--) {   // 尾：うしろほど小さく赤く
+      var k = i / 6, jx = Math.sin(t * 30 + i * 1.7) * 2;
+      Combat.glowDot(ctx, x - ux * i * r * 0.55 + jx * uy, y - uy * i * r * 0.55 - jx * ux, r * (1.2 - 0.12 * i), "#ffb030", "#c82a10", 0.55 * (1 - k * 0.6));
+    }
+    var p = 1 + 0.08 * Math.sin(t * 40);
+    Combat.glowDot(ctx, x, y, r * 2.2 * p, "#ffe080", "#ff5a1a", 0.95);
+    ctx.fillStyle = "#ffb030"; ctx.beginPath(); ctx.arc(x, y, r * 0.95, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff2a0"; ctx.beginPath(); ctx.arc(x + ux * r * 0.2 - 1, y + uy * r * 0.2 - 2, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    for (var s2 = 0; s2 < 5; s2++) {   // 火の粉
+      var ph = (t * 2.5 + s2 / 5) % 1, a = s2 * 1.3 + t;
+      Render.rect(Math.round(x - ux * ph * r * 3 + Math.cos(a) * r), Math.round(y - uy * ph * r * 3 + Math.sin(a) * r - ph * 6), 2, 2, "rgba(255,220,120," + (1 - ph).toFixed(2) + ")");
+    }
+  }
   // ケルベロスの地獄の炎（2026-11-22）：自分の組の番が近づくと、床に赤い輪がうかび（show から）、だんだん明るくなる。
   // 立つと、黒い炎のふちどりの赤い火柱が、ふくらんで消える
   function drawHellFire(ctx, h, x, y, glow) {
@@ -3651,6 +3662,6 @@ var Bosses = (function () {
 
   return { hazards: function () { return hazards; }, clear: clear, isBoss: isBoss, update: update, updateHazards: updateHazards, drawHazards: drawHazards, draw: draw, interrupt: interrupt, bossDown: bossDown,
            rayLength: rayLength, drawChargeLine: drawChargeLine, addDust: addDust, drawRock: drawRock, drawDarkArrow: drawDarkArrow,
-           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, douse: douse, giantMult: giantMult, fdragonMult: fdragonMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
+           rockBreak: rockBreak, guardFront: guardFront, crackShell: crackShell, shellMult: shellMult, octoMult: octoMult, douse: douse, giantMult: giantMult, fdragonMult: fdragonMult, drawBubble: drawBubble, drawWeb: drawWeb, drawTomahawk: drawTomahawk, shakeOffset: shakeOffset, addAlly: addAlly, drawDarkBolt: drawDarkBolt, drawBigFireball: drawBigFireball, drawDarkOrb: drawDarkOrb, addFog: addFog, blizzard: blizzard,
            frost: function () { return frost; }, meltArmor: meltArmor, armorMult: armorMult, icicleImg: icicleImg };
 })();
