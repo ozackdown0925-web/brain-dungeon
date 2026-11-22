@@ -865,7 +865,7 @@ var Combat = (function () {
   //   沼の魔女：瘴気の柱（近くの敵5体の足もと。毒になることがある）
   //   ダークエルフ：ダークアロー（まわりに闇の玉を6つ回して（さわった敵にも当たる）、少し回ってから近くの敵を1体ずつねらって撃つ。敵をつらぬく）
   //   （地方2の主。2026-11-22 保護者と決定。ため・MP・待ち時間は地方1の3体と同じ決まり）
-  //   ドワーフキング：大地たたき（いちばん近い敵の方へ、扇に3本。光の柱が根もとから順に立つ）
+  //   ドワーフキング：大地たたき（敵がいちばん多い方へ、扇に3本。光の柱が根もとから順に立つ。木や岩は通りぬける）
   //   大怪鳥：竜巻（近くの敵のそばに2つ。敵を追いかけて、巻きこむ。1体に当たるのは2つ合わせて1秒に1回）
   //   氷牙獣：つらら（近くの敵の足もとに、つららが次々に落ちる。1体に当たるのは1回だけ。おそくなることがある）
   var summons = [];   // 呼んだ主の絵：{ kind, x, y, t, max, face }
@@ -930,16 +930,33 @@ var Combat = (function () {
       return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) - (q.x - x) * (q.x - x) - (q.y - y) * (q.y - y);
     }).slice(0, n);
   }
-  // ドワーフキングの大地たたき：いちばん近い敵の方へ扇に3本。光の柱が根もとから順に立つ。1体に当たるのは1回だけ
+  // ドワーフキングの大地たたき：敵がいちばん多い方へ扇に3本。光の柱が根もとから順に立つ。1体に当たるのは1回だけ
+  // 2026-11-22 保護者と決定：森の木や岩で柱が止まって外れやすかったので、木や岩は通りぬけ（部屋のはしで止まる）、向きは敵がいちばん多く入る方へ
   var QUAKE = { lines: 3, spread: 0.38, near: 24, len: 210, step: 22, r: 13, warn: 0.3, gap: 0.06 };
+  function quakeAngle(a) {
+    var foes = Enemies.hostile(), best = Math.atan2(a.face.y, a.face.x), bestN = 0, bestD = 1e9;
+    foes.forEach(function (t) {
+      var a0 = Math.atan2(t.y - a.y, t.x - a.x), n = 0;
+      foes.forEach(function (e) {
+        var dx = e.x - a.x, dy = e.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (d > QUAKE.len + e.r) return;
+        var diff = Math.atan2(dy, dx) - a0;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) <= QUAKE.spread + Math.atan2(QUAKE.r + e.r, d)) n++;   // 扇の中（はしの線の柱にふれる分も入れる）
+      });
+      var td = (t.x - a.x) * (t.x - a.x) + (t.y - a.y) * (t.y - a.y);
+      if (n > bestN || (n === bestN && td < bestD)) { bestN = n; bestD = td; best = a0; }
+    });
+    return best;
+  }
   function summonQuake(c, spec, a) {
-    var room = hooks.room, t = nearestFoes(a.x, a.y, 1)[0], done = [];
-    var a0 = t ? Math.atan2(t.y - a.y, t.x - a.x) : Math.atan2(a.face.y, a.face.x);
+    var room = hooks.room, done = [], a0 = quakeAngle(a);
     for (var i = 0; i < QUAKE.lines; i++) {
       var an = a0 + (i - (QUAKE.lines - 1) / 2) * QUAKE.spread, ux = Math.cos(an), uy = Math.sin(an);
       for (var d = QUAKE.near, j = 0; d <= QUAKE.len; d += QUAKE.step, j++) {
         var x = a.x + ux * d, y = a.y + 6 + uy * d;
-        if (room.hitsWall(x - 4, y - 4, 8, 8)) break;   // 壁で止まる
+        if (x < 8 || y < 8 || x > room.pxW - 8 || y > room.pxH - 8) break;   // 部屋のはしで止まる（木や岩は通りぬける）
         var h = { kind: "circle", look: "quake", x: x, y: y, r: QUAKE.r, warn: QUAKE.warn + j * QUAKE.gap, erupt: 0.4 };
         h.ally = function (hz) {
           Enemies.hostile().forEach(function (e) {
@@ -952,8 +969,8 @@ var Combat = (function () {
       }
     }
   }
-  // 大怪鳥の竜巻：近くの敵のそばに2つ。いちばん近い敵へふらふら寄っていき、さわった敵に当たる（1体に当たるのは2つ合わせて TORNADO.tick 秒に1回）
-  var TORNADO = { n: 2, r: 13, warn: 0.5, life: 4, speed: 55, tick: 1.0 };
+  // 大怪鳥の竜巻（2026-11-22：群れに当たりにくかったので、半径 13→20）：近くの敵のそばに2つ。いちばん近い敵へふらふら寄っていき、さわった敵に当たる（1体に当たるのは2つ合わせて TORNADO.tick 秒に1回）
+  var TORNADO = { n: 2, r: 20, warn: 0.5, life: 4, speed: 55, tick: 1.0 };
   function summonTornado(c, spec, a) {
     var room = hooks.room, foes = nearestFoes(a.x, a.y, TORNADO.n), last = [];
     for (var k = 0; k < TORNADO.n; k++) {
@@ -1011,15 +1028,18 @@ var Combat = (function () {
       return (p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y) - (q.x - a.x) * (q.x - a.x) - (q.y - a.y) * (q.y - a.y);
     }).slice(0, 5);
     var spots = list.map(function (e) { return { x: e.x, y: e.y, e: e }; });
+    var done = [];
     if (!spots.length) spots.push({ x: a.x + a.face.x * 40, y: a.y + a.face.y * 40 });
     spots.forEach(function (sp) {
       // 予告 0.6→0.4秒。予告のあいだ、輪がねらった敵についていく（2026-10-26：動く敵に外れないように）
       var h = { kind: "circle", look: "pillar", x: sp.x, y: sp.y, r: 18, warn: 0.4, erupt: 0.5, track: sp.e || null };
+      // 2026-11-22 保護者と決定：かたまった敵には柱が重なって1体に2〜3回当たっていたので、1回の呼び出しで1体に当たるのは1回だけ
       h.ally = function (hz) {
         Sound.play("hit");
         Enemies.hostile().forEach(function (e) {
+          if (done.indexOf(e) >= 0) return;
           var dx = e.x - hz.x, dy = e.y - hz.y;
-          if (dx * dx + dy * dy < (hz.r + e.r) * (hz.r + e.r)) hitEnemy(e, c, spec, hz.x, hz.y);
+          if (dx * dx + dy * dy < (hz.r + e.r) * (hz.r + e.r)) { done.push(e); hitEnemy(e, c, spec, hz.x, hz.y); }
         });
       };
       Bosses.addAlly(h);
