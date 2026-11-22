@@ -499,6 +499,7 @@ var Combat = (function () {
         break;
       case "pierceDash":   // グランドチャージ：敵を通りぬけて突進し、通った敵みんなに1回ずつ当てる（かべでは止まる）
         if (f.beam) faceNearest(f.dist);   // ディバインエンド：ねらった敵の方へ
+        if (f.time) { slowDash(c, f); break; }   // ディバインエンド：見えるように、時間をかけて進む（2026-11-22 保護者「一瞬すぎて」）
         var px0 = a.x, py0 = a.y, hitList = [], stepN = Math.ceil(f.dist / 3);
         for (var st = 0; st < stepN; st++) {
           var bx = a.x, by = a.y;
@@ -596,18 +597,21 @@ var Combat = (function () {
         faceNearest(f.length);
         a.busy = Math.max(a.busy, 0.75);
         var bang = Math.atan2(a.face.y, a.face.x), bx0 = a.x, by0 = a.y - 4;
-        effects.push({ kind: "crossflash", t: 0.35, max: 0.35, color: f.color });
-        later(0.3, function () {
+        if (!f.noCross) effects.push({ kind: "crossflash", t: 0.35, max: 0.35, color: f.color });   // キングスブレードは十字なし（2026-11-22 保護者）
+        later(f.noCross ? 0.05 : 0.3, function () {
           if (Party.current() !== c || c.down) return;
           var ux = Math.cos(bang), uy = Math.sin(bang), len = f.length;
-          for (var d0 = 8; d0 < f.length; d0 += 4) {   // かべで止まる
+          for (var d0 = 8; !f.noWall && d0 < f.length; d0 += 4) {   // かべで止まる（キングスブレードは太いのでかべも木もこえる。2026-11-22）
             if (hooks.room.blocksShot(Math.floor((bx0 + ux * d0) / World.TILE), Math.floor((by0 + 4 + uy * d0) / World.TILE))) { len = d0; break; }
           }
-          effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, t: 0.55, max: 0.55, color: f.color });
+          var show = f.show || 0.55, growT = show * (f.grow || 0.12);   // キングスブレードはゆっくり見せる（2026-11-22 保護者「一瞬すぎて」）
+          effects.push({ kind: "beam", x: bx0, y: by0, ang: bang, len: len, w: f.width, grow: f.grow, t: show, max: show, color: f.color });
           Sound.play("hit");
           Enemies.hostile().forEach(function (e) {
             var ex = e.x - bx0, ey = (e.y - 3) - by0, along = ex * ux + ey * uy, side = Math.abs(-ex * uy + ey * ux);
-            if (along > -e.r && along < len + e.r && side <= f.width / 2 + e.r) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6, color: f.color }, bx0, by0);
+            if (!(along > -e.r && along < len + e.r && side <= f.width / 2 + e.r)) return;
+            var hitNow = function () { if (!e.dead) hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6, color: f.color }, bx0, by0); };
+            if (f.grow) later(growT * Math.max(0, along) / len, hitNow); else hitNow();   // 光の先がとどいたときに当たる
           });
         });
         break;
@@ -690,16 +694,24 @@ var Combat = (function () {
   // 高くとび（空中は当たらない）、いちばん高いところで敵の上へ動き、落ちてとびこむ。とびこんだ敵に1回、着地のまわりに1回
   var LEAP = { up: 0.5, down: 0.4, height: 80 };
   function leap(c, f) {
-    var a = A(), x0 = a.x, y0 = a.y, air = LEAP.up + LEAP.down;
+    var up = f.up || LEAP.up, down = f.down || LEAP.down;   // ドラゴンダイブは速く（2026-11-22 保護者）
+    var hang = f.hang || 0;   // 画面の上に消えてから待つ時間（2026-11-22 保護者「1秒くらい待ってから降りて」）
+    var a = A(), x0 = a.x, y0 = a.y, air = up + hang + down;
     var tgt = f.stay ? null : autoTarget(f.range);   // stay：その場でとぶ（スカイリープ・メテオストライク。2026-11-16）
-    a.airT = air; a.airMax = air; a.airUp = LEAP.up / air; a.airH = LEAP.height;
+    a.airT = air; a.airMax = air; a.airUp = up / air; a.airHang = hang / air; a.airH = f.height || LEAP.height;   // ドラゴンダイブは画面の上まで（2026-11-22 保護者）
     a.inv = Math.max(a.inv, air + 0.1); a.busy = Math.max(a.busy, air + 0.25);
-    effects.push({ kind: "jump", x: x0, y: y0, t: LEAP.up, max: LEAP.up, color: f.color });
-    later(LEAP.up, function () {   // いちばん高いところで、ねらった敵の上へ
+    effects.push({ kind: "jump", x: x0, y: y0, t: up, max: up, color: f.color });
+    var tx, ty;
+    if (hang) later(up, function () {   // 空で待つあいだ、落ちるところに印
       if (Party.current() !== c || c.down) return;
-      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: LEAP.down + 0.1, max: LEAP.down + 0.1, color: f.ground || "#ff8a3d" }); return; }
-      var tx, ty;
       if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: "#ff8a3d" });
+    });
+    later(up + hang, function () {   // いちばん高いところで、ねらった敵の上へ
+      if (Party.current() !== c || c.down) return;
+      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
+      if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
+      else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
       a.face = { x: dx / d, y: dy / d };
       var go = Math.max(0, d - (tgt ? tgt.r + a.r - 2 : 0)), n = Math.ceil(go / 3);
@@ -708,7 +720,7 @@ var Combat = (function () {
         hooks.room.move(a, a.face.x * Math.min(3, go - i * 3), a.face.y * Math.min(3, go - i * 3));
         if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.3) break;
       }
-      effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: LEAP.down + 0.1, max: LEAP.down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
+      if (!hang) effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: "#ff8a3d" });   // 落ちるところの印
     });
     later(air, function () {   // 着地
       if (Party.current() !== c || c.down) return;
@@ -718,18 +730,42 @@ var Combat = (function () {
         if (Party.current() !== c || c.down) return;
         if (!f.ground) effects.push({ kind: "pillar", fire: true, x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, color: "#ff8a3d" });   // 火柱（ドラゴンダイブだけ）
         effects.push({ kind: "shock", x: a.x, y: a.y, r: f.radius, t: 0.55, max: 0.55, color: f.ground || "#ffb84a" });
-        effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(Math.random() * 6, f.radius, Math.PI), t: 0.8, max: 0.8 });
+        effects.push({ kind: "crack", x: a.x, y: a.y, lines: f.crack ? crackLines(Math.random() * 6, f.crack, 0, 9) : crackLines(Math.random() * 6, f.radius, Math.PI), t: f.crack ? 1.1 : 0.8, max: f.crack ? 1.1 : 0.8 });
         Sound.play("hit");
         hitAround(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 8, color: f.ground || "#ff8a3d" }, a.x, a.y, f.radius);
       });
     });
   }
+  // ディバインエンド（2026-11-22）：f.time 秒かけて進み、通った敵に当たる。通ったあとに光の帯
+  function slowDash(c, f) {
+    var a = A(), px0 = a.x, py0 = a.y, fx = a.face.x, fy = a.face.y, hitList = [], stepN = Math.ceil(f.dist / 3), dt = f.time / stepN, stopped = false;
+    a.inv = Math.max(a.inv, f.time + 0.4); a.busy = Math.max(a.busy, f.time + 0.2);
+    var band = { kind: "beam", x: px0, y: py0 - 4, ang: Math.atan2(fy, fx), len: 0, w: 24, grow: 0.001, t: 0.9, max: 0.9, color: f.color };   // 光の帯はキャラについてのびる（2026-11-22 保護者「移動とエフェクトの速さがあってない」）
+    effects.push(band);
+    Sound.play("skill");
+    for (var st = 0; st < stepN; st++) later(st * dt, function () {
+      if (stopped || Party.current() !== c || c.down) return;
+      var bx = a.x, by = a.y;
+      a.face = { x: fx, y: fy };
+      hooks.room.move(a, fx * 3, fy * 3);
+      if (Math.abs(a.x - bx) + Math.abs(a.y - by) < 0.5) { stopped = true; return; }   // かべ
+      band.len = Math.sqrt((a.x - px0) * (a.x - px0) + (a.y - py0) * (a.y - py0)) + 10; band.t = band.max;   // 進むあいだは太いまま。止まると細くなって消える
+      effects.push({ kind: "lance", reach: 22, t: 0.12, max: 0.12 });
+      Enemies.hostile().forEach(function (e) {
+        if (hitList.indexOf(e) >= 0) return;
+        var ddx = e.x - a.x, ddy = e.y - a.y;
+        if (ddx * ddx + ddy * ddy <= (e.r + a.r + 4) * (e.r + a.r + 4)) { hitList.push(e); hitEnemy(e, c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 6 }, px0, py0); }
+      });
+    });
+    later(f.time, function () { if (Party.current() === c && !c.down) Sound.play("hit"); });
+  }
   // 空にいるあいだの高さ（core.js がキャラを上にずらして描く）
   function airLift(a) {
     if (!(a.airT > 0)) return 0;
-    var q = 1 - a.airT / a.airMax, u = a.airUp || 0.5;
+    var q = 1 - a.airT / a.airMax, u = a.airUp || 0.5, h = a.airHang || 0;
     if (q < u) return a.airH * Math.sin(q / u * Math.PI / 2);
-    var k = (q - u) / (1 - u);
+    if (q < u + h) return a.airH;   // 空で待つ
+    var k = (q - u - h) / (1 - u - h);
     return a.airH * (1 - k * k);
   }
   // アビスゲート（2026-11-08。2026-11-09 保護者の希望で、吸いこみを足し、開いている時間を長く）：
@@ -1241,11 +1277,13 @@ var Combat = (function () {
     }
   }
   // 大地斬りの割れめ：前の扇の中に、ぎざぎざの線を3本（作るときに形を決める）
-  function crackLines(ang, len, arc) {
+  // count：まわりじゅうに何本も（ドラゴンダイブの地割れ。2026-11-22）
+  function crackLines(ang, len, arc, count) {
     var out = [];
-    for (var i = 0; i < 3; i++) {
-      var a0 = ang + (i - 1) * arc * 0.55, pts = [{ d: 4, o: 0 }], n = 6;
-      for (var k = 1; k <= n; k++) pts.push({ d: 4 + len * k / n, o: (Math.random() - 0.5) * 6 });
+    for (var i = 0; i < (count || 3); i++) {
+      var a0 = count ? ang + i / count * Math.PI * 2 + (Math.random() - 0.5) * 0.3 : ang + (i - 1) * arc * 0.55, pts = [{ d: 4, o: 0 }], n = 6;
+      var ln = count ? len * (0.75 + Math.random() * 0.4) : len;
+      for (var k = 1; k <= n; k++) pts.push({ d: 4 + ln * k / n, o: (Math.random() - 0.5) * (count ? 10 : 6) });
       out.push({ ang: a0, pts: pts });
     }
     return out;
@@ -1468,7 +1506,7 @@ var Combat = (function () {
       x = ef.x - cam.x; y = ef.y - cam.y;
       ctx.fillStyle = rgba("#000000", 0.35 * p);
       ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y + 10, 8 * p + 2, 3 * p + 1, 0, 0, Math.PI * 2); else ctx.arc(x, y + 10, 6, 0, Math.PI * 2); ctx.fill();
-      var top = y - 10 - 90 * q;
+      var top = y - 10 - (y + 10) * q;   // 画面の上まで光がのびる（2026-11-22 保護者）
       var jg = ctx.createLinearGradient(0, top, 0, y);
       jg.addColorStop(0, rgba("#ffffff", 0.9)); jg.addColorStop(1, rgba(ef.color, 0));
       ctx.fillStyle = jg; ctx.fillRect(x - 3, top, 6, y - top);
@@ -1477,9 +1515,10 @@ var Combat = (function () {
     }
     if (ef.kind === "dive") {   // ドラゴンダイブ：空から落ちてくる光
       x = ef.x - cam.x; y = ef.y - cam.y;
-      var dg = ctx.createLinearGradient(0, y - 110, 0, y);
-      dg.addColorStop(0, rgba(ef.color, 0)); dg.addColorStop(1, rgba("#ffffff", 0.95 * p));
-      ctx.fillStyle = dg; ctx.fillRect(x - 5 * p - 1, y - 110, 10 * p + 2, 110);
+      var dh = Math.max(110, y + 10);   // 画面の上から落ちてくる（2026-11-22 保護者）
+      var dg = ctx.createLinearGradient(0, y - dh, 0, y);
+      dg.addColorStop(0, rgba(ef.color, 0.35 * p)); dg.addColorStop(1, rgba("#ffffff", 0.95 * p));
+      ctx.fillStyle = dg; ctx.fillRect(x - 5 * p - 1, y - dh, 10 * p + 2, dh);
       glowDot(ctx, x, y - 4, 16, "#ffffff", ef.color, p);
       return true;
     }
@@ -1581,7 +1620,7 @@ var Combat = (function () {
       return;
     }
     if (ef.kind === "beam") {   // グランドクロス：前へのびる太い光のビーム（出たときがいちばん太く、だんだん細くなって消える）
-      var bx = ef.x - cam.x, by = ef.y - cam.y, grow = Math.min(1, q / 0.12), L = ef.len * grow, W = ef.w * (q < 0.15 ? 1.15 : p * 1.1);
+      var bx = ef.x - cam.x, by = ef.y - cam.y, grow = Math.min(1, q / (ef.grow || 0.12)), L = ef.len * grow, W = ef.w * (q < 0.15 ? 1.15 : p * 1.1);
       ctx.save(); ctx.translate(bx, by); ctx.rotate(ef.ang);
       var lg = ctx.createLinearGradient(0, -W, 0, W);
       lg.addColorStop(0, rgba(ef.color, 0)); lg.addColorStop(0.3, rgba(ef.color, 0.55)); lg.addColorStop(0.5, rgba("#ffffff", 0.95));
