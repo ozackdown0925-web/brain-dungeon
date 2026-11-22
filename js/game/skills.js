@@ -1024,21 +1024,36 @@ var Combat = (function () {
       Bosses.addAlly(h);
     }
   }
-  // 召喚士の幻獣ケルベロス（2026-11-22）：敵がいちばん多い方へ、3つの首から特大の火球を3発（3方向。2026-11-22 保護者：大きさと速さはゴーレムの岩石投げくらい）。
-  // 火球は敵をつらぬいて進む。3発合わせて、1体に当たるのは1回だけ
-  var HELLB = { n: 3, gap: 0.5, speed: 140, size: 10, life: 2.4, gapT: 0.12 };
+  // 召喚士の幻獣ケルベロス（2026-11-22）：特大の火球（大きさと速さはゴーレムの岩石投げくらい）を、まんなかの1発がいちばん近い敵をねらい、その上下に1発ずつ。
+  // これを3回（合わせて9発。2026-11-22 保護者）。火球は敵をつらぬいて進む。1回の3発で1体に当たるのは1回だけ（3回とも当たると mult の合計になる）
+  var HELLB = { volleys: 3, gap: 0.5, speed: 140, size: 10, life: 2.4, every: 0.4 };
+  function hellAim(s, a, first) {
+    var best = null, bd = 1e9;
+    Enemies.hostile().forEach(function (e) {
+      var d = (e.x - s.x) * (e.x - s.x) + (e.y - s.y) * (e.y - s.y);
+      if (d < bd) { bd = d; best = e; }
+    });
+    if (best) return Math.atan2(best.y - (s.y - 12), best.x - s.x);
+    return first ? quakeAngle(a) : null;
+  }
   function summonHellBreath(c, spec, a, s) {
-    var done = [], a0 = quakeAngle(a);
-    s.face = { x: Math.cos(a0) >= 0 ? 1 : -1, y: 0 };
     s.frame = "breath";
-    for (var i = 0; i < HELLB.n; i++) (function (k) {
-      later(k * HELLB.gapT, function () {
-        var an = a0 + (k - (HELLB.n - 1) / 2) * HELLB.gap;
-        shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult, elem: "fire", pierce: true, bigFire: true, push: 6 }, hitIds: done,
-          x: s.x + Math.cos(an) * 10, y: s.y - 12 + Math.sin(an) * 6, vx: Math.cos(an) * HELLB.speed, vy: Math.sin(an) * HELLB.speed, life: HELLB.life, size: HELLB.size, color: "#ff6a1f", arrow: false });
+    var last = quakeAngle(a);
+    for (var v = 0; v < HELLB.volleys; v++) (function (k) {
+      later(k * HELLB.every, function () {
+        var a0 = hellAim(s, a, k === 0);
+        if (a0 === null) a0 = last;
+        last = a0;
+        s.face = { x: Math.cos(a0) >= 0 ? 1 : -1, y: 0 };
+        var done = [];
+        for (var i = -1; i <= 1; i++) {
+          var an = a0 + i * HELLB.gap;
+          shots.push({ c: c, spec: { stat: spec.stat, mult: spec.mult / HELLB.volleys, elem: "fire", pierce: true, bigFire: true, push: 6 }, hitIds: done,
+            x: s.x + Math.cos(an) * 10, y: s.y - 12 + Math.sin(an) * 6, vx: Math.cos(an) * HELLB.speed, vy: Math.sin(an) * HELLB.speed, life: HELLB.life, size: HELLB.size, color: "#ff6a1f", arrow: false });
+        }
         Sound.play("skill");
       });
-    })(i);
+    })(v);
   }
   function summonPillars(c, spec, a) {
     var list = Enemies.hostile().slice().sort(function (p, q) {

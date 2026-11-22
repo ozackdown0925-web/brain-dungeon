@@ -1168,14 +1168,14 @@ var Bosses = (function () {
     }
     if (e.state === "windup") { e.t -= dt; if (e.t <= 0) { e.state = "bite"; e.t = 0; e.bitesLeft = d.bites; } return; }
     if (wolfCharge(e, dt, room, p, hurt)) return;
-    if (e.state === "tbreathWarn") {
+    if (e.state === "tbreathWarn") {   // 三つ首の火球：予告の線がこちらを追い、最後の tbreathLock 秒は止まる。そのあと3発。これを3回
       e.t -= dt;
+      if (e.t > d.tbreathLock && !p.down) { e.breathAng = Math.atan2(uy, ux); e.face = { x: ux, y: uy }; }
       if (e.t <= 0) {
         triFire(e, api, e.breathAng, half);
-        if (e.secondBreath) {   // HP 半分から：0.55秒あとに、すきまをねらう2回目
-          e.secondBreath = false; e.breathAng += d.tbreathGap / 2;
-          e.state = "tbreathWarn"; e.t = 0.55;
-        } else { e.state = "tbreath"; e.t = 0.5; }
+        e.volleysLeft--;
+        if (e.volleysLeft > 0) { e.state = "tbreathWarn"; e.t = half ? d.tbreathNextHalf : d.tbreathNext; }
+        else { e.state = "tbreath"; e.t = 0.5; }
       }
       return;
     }
@@ -1199,9 +1199,9 @@ var Bosses = (function () {
     if (e.ai.charge <= 0) { startCharge(e, room, ux, uy); e.ai.tbreath = Math.max(e.ai.tbreath, 2); return; }
     if (e.ai.tbreath <= 0) {
       e.breathAng = Math.atan2(uy, ux);
-      e.secondBreath = half;
+      e.volleysLeft = d.tbreathVolleys;
       e.state = "tbreathWarn"; e.t = d.tbreathWarn; e.ai.tbreath = half ? d.tbreathEveryHalf : d.tbreathEvery;
-      Battle.pop(e.x, e.y - 60, "三つ首の火球！ すきまへ！", "#ef5b5b", 9);
+      Battle.pop(e.x, e.y - 60, "三つ首の火球！ 線のあいだへ！", "#ef5b5b", 9);
       return;
     }
     if (gap > d.reach - 2) {
@@ -1211,7 +1211,7 @@ var Bosses = (function () {
       e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy };
     }
   }
-  // 三つ首の炎：3方向に特大の火球を1発ずつ（まんなかが ang。あいだは tbreathGap。大きさと速さはゴーレムの岩石投げくらい。2026-11-22 保護者）
+  // 三つ首の火球：まんなかの1発がねらった向き（ang）、その上下に1発ずつ（1回で3発。これを3回で合わせて9発。2026-11-22 保護者）。あいだは tbreathGap。大きさと速さはゴーレムの岩石投げくらい。2026-11-22 保護者）
   function triFire(e, api, ang, half) {
     var d = e.def;
     for (var i = -1; i <= 1; i++) api.addArrow(e, ang + i * d.tbreathGap, half ? d.fireSpeedHalf : d.fireSpeed, { bigFire: true, big: true, mult: d.tbreathMult, rad: d.fireR, dy: -10, life: 3 });
@@ -3508,6 +3508,17 @@ var Bosses = (function () {
       var ctk = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
       Render.rect(x - 26, y + 10, 52, 6, "rgba(0,0,0,0.35)");
       Monsters.drawBoss(ctx, e, x + ctk, y + 14, cf);
+      if (e.state === "tbreathWarn" && e.breathAng !== undefined) {   // 予告の線：火球が飛ぶ3本の道。止まったら（もうすぐ撃つ）赤く光る
+        var lock = e.t <= d.tbreathLock, la = lock ? 0.55 + 0.35 * Math.abs(Math.sin(glow * 25)) : 0.35;
+        ctx.save(); ctx.lineWidth = lock ? 2 : 1;
+        ctx.strokeStyle = lock ? "rgba(255,70,50," + la.toFixed(2) + ")" : "rgba(255,170,90," + la.toFixed(2) + ")";
+        if (!lock) ctx.setLineDash([4, 3]);
+        for (var cl = -1; cl <= 1; cl++) {
+          var can = e.breathAng + cl * d.tbreathGap, cx0 = x + Math.cos(can) * 16, cy0 = y - 10 + Math.sin(can) * 10;
+          ctx.beginPath(); ctx.moveTo(cx0, cy0); ctx.lineTo(cx0 + Math.cos(can) * 300, cy0 + Math.sin(can) * 300); ctx.stroke();
+        }
+        ctx.restore();
+      }
       if (e.state === "tbreathWarn" || e.state === "hellHowl") {   // 3つの口もとに火の光
         var fl = e.face.x > 0 ? -1 : 1;
         [[-22, -10], [-17, -22], [-4, -33]].forEach(function (m) { Combat.glowDot(ctx, x + m[0] * fl, y + 14 + m[1] - 6, 4 + Math.sin(glow * 30), "#fff0a0", "#ff6a1f", 0.8); });

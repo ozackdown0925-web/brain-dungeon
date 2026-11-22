@@ -528,7 +528,7 @@ var GameData = (function () {
     // 召喚士：幻獣を呼ぶ（幻獣は魔王城の主をたおすと開く祠でたおす。まだない）
     { id: "sm.bond",  job: "summoner", star: 1, name: "幻獣の絆", desc: "呼び出しのスキルの待ち時間が、いつも20%短い。", short: "絆", cond: null, passive: { summonCt: 0.2 } },
     // 幻獣を呼ぶ（2026-11-22 から1体ずつ）：魔物使いの呼び出しと同じ形（ため・その幻獣を祠でたおしていると覚える）。魔物使いより一段強く、MP も多い
-    { id: "sm.cerberus", job: "summoner", star: 2, name: "よびだし：ケルベロス", desc: "ためてから、幻獣ケルベロスを呼ぶ。敵がいちばん多い方へ、3つの首から特大の火球を3方向に撃つ。火球は敵をつらぬく（1体に当たるのは1回だけ。火）。ケルベロスの祠でケルベロスをたおしていると覚える。", short: "ケルベロス", boss: "cerberus_gj", cond: { line: "summoner" }, mp: 50, ct: 60,
+    { id: "sm.cerberus", job: "summoner", star: 2, name: "よびだし：ケルベロス", desc: "ためてから、幻獣ケルベロスを呼ぶ。特大の火球を、まんなかの1発が近くの敵をねらい、その上下に1発ずつ。これを3回撃つ。火球は敵をつらぬく（1回の3発で1体に当たるのは1回だけ。火）。ケルベロスの祠でケルベロスをたおしていると覚える。", short: "ケルベロス", boss: "cerberus_gj", cond: { line: "summoner" }, mp: 50, ct: 60,
       fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "cerberus_gj", stat: "best", color: "#ffa030", mult: 4.2, elem: "fire" }] },
     { id: "sm.garuda", job: "summoner", star: 3, name: "ガルーダ", desc: "幻獣ガルーダを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガルーダ", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
     { id: "sm.levia", job: "summoner", star: 4, name: "リヴァイアサン", desc: "幻獣リヴァイアサンを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "リヴァイア", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
@@ -1144,7 +1144,7 @@ var GameData = (function () {
   //   決め手は「3つの首の炎は、首と首のすきまでよける」と「地獄の炎は、光っていない床へ」。
   //   三連がみ：近くにいると、3つの首で続けてかみつく（1回ずつは弱い）。
   //   大突進：大オオカミと同じ（赤い線で予告）。
-  //   三つ首の炎（tbreathEvery 秒ごと）：3つの首から、3方向に特大の火球を1発ずつ（2026-11-22 保護者：大きさと速さはゴーレムの岩石投げくらい。あいだのすきまでよける）。HP 半分から、すきまをねらう2回目が続く。
+  //   三つ首の火球（tbreathEvery 秒ごと）：まんなかの1発がこちらをねらい、その上下に1発ずつ。これを tbreathVolleys 回（2026-11-22 保護者：合わせて9発・予告の線つき。大きさと速さはゴーレムの岩石投げくらい）。線は tbreathLock 秒前まで追ってきて、そのあと止まる。
   //   地獄の炎（hellEvery 秒ごと）：ほえると、床のあちこち（2組）が順に光って火柱が立つ。1組目が終わると2組目。光っていない場所へ動けばよけられる。
   //     終わると、つかれて少し動かない（すきあり）。HP 半分から3組。
   //   水が弱点、火は効かない。
@@ -1153,7 +1153,7 @@ var GameData = (function () {
     res: { water: 1.3, fire: 0 }, speed: 34, speedHalf: 40, r: 18, color: "#3a3250",
     reach: 22, windup: 0.45, cooldown: 1.4, cooldownHalf: 1.1, biteMult: 0.55, bites: 3, biteGap: 0.18,
     chargeWarn: 0.85, chargeSpeed: 300, chargeMult: 1.8, chargeEvery: 9,
-    tbreathFirst: 4, tbreathEvery: 8, tbreathEveryHalf: 6.5, tbreathWarn: 0.9, tbreathGap: 0.5, tbreathMult: 1.6, fireSpeed: 140, fireSpeedHalf: 160, fireR: 10,
+    tbreathFirst: 4, tbreathEvery: 9, tbreathEveryHalf: 7.5, tbreathWarn: 1.0, tbreathNext: 0.75, tbreathNextHalf: 0.6, tbreathLock: 0.3, tbreathVolleys: 3, tbreathGap: 0.5, tbreathMult: 1.3, fireSpeed: 140, fireSpeedHalf: 160, fireR: 10,
     hellFirst: 12, hellEvery: 20, hellEveryHalf: 16, hellHowl: 0.9, hellWarn: 1.3, hellStep: 1.2, hellR: 24, hellMult: 2.0, hellSets: 2, hellSetsHalf: 3, tired: 3
   };
 
