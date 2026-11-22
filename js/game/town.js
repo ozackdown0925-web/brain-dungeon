@@ -785,7 +785,7 @@ var Town = (function () {
     bodyEl.appendChild(tabs);
     var lead = { base: "基本職どうしは、いつでも転職できる。熟練度（★）は職業ごとに残る。",
                  upper: "上級職は、もとの職の★で開く。一本道はもとの職を★7、組み合わせは2つの職を★5。もとの職のスキルもセットできる。パッシブは3つまで。",
-                 top: "最上級職は、上級職から一段上がる。もとの上級職を★7にして、地方2をクリアすると開く。パッシブは4つまで。★6の大技は、その職だけのもの。" }[jobTab];
+                 top: "最上級職は、上級職から一段上がる。もとの上級職を★7にして、地方2をクリアすると開く。パッシブは4つまで。覚えるスキルは5つ（パッシブ1つと、★6の大技をふくむアクティブ4つ）。★6の大技は、その職だけのもの。" }[jobTab];
     bodyEl.appendChild(el("p", "sub", lead));
     var wrap = el("div", "sk-wrap"), list = el("div", "sk-list"), det = el("div", "sk-detail");
     if (jobTab === "base") jobBase(h, list, det);
