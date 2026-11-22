@@ -308,6 +308,13 @@ var Enemies = (function () {
           hz.push({ kind: "circle", look: "icicle", from: e, x: pp.x + Math.cos(ia) * ir, y: pp.y + Math.sin(ia) * ir * 0.8, r: 22, t: 0, warn: 0.8 + ii * 0.14, erupt: 0.45, hit: false,
                     seed: Math.random() * 100, opts: ii === 0 ? o : { atk: o.atk, mult: o.mult * 0.5, magic: o.magic, status: o.status } });
         }
+      } else if (f.boss === "cerberus_gj") {   // 召喚士のケルベロス：こちらの方へ炎の扇を3本（すきまでよけられる。2026-11-22）
+        var ca = Math.atan2(pp.y - sy, pp.x - sx);
+        for (var ci = -1; ci <= 1; ci++) {
+          var can = ca + ci * 0.5;
+          hz.push({ kind: "cone", look: "fire", from: e, x: sx + Math.cos(can) * 8, y: sy - 10 + Math.sin(can) * 6, ang: can, spread: 0.24, len: 150, t: 0, warn: 0.8, erupt: 0.5, hit: false,
+                    seed: Math.random() * 100, opts: o });
+        }
       } else {
         for (var k = 0; k < 6; k++) (function (k2) {
           rivalLater.push({ t: 0.4 + k2 * 0.22, fn: function (p2) {

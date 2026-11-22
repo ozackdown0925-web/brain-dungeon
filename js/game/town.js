@@ -345,7 +345,7 @@ var Town = (function () {
       var row = itemLine(it);
       var who = g.party.filter(function (h) { return GameState.canEquip(h, it); }).map(function (h) { return h.name; });
       row.appendChild(el("span", "item-extra", who.length ? "装備できる：" + who.join("・") : "いまの3人は装備できない"));
-      if (it.legend) { row.appendChild(el("span", "item-extra", "最強武器：売れない・鍛冶屋で強くできない（魔王城の深い階へ行くほど強くなる）")); bodyEl.appendChild(row); return; }
+      if (it.legend) { row.appendChild(el("span", "item-extra", (it.slot === "armor" ? "最強の防具：" : "最強武器：") + "売れない・鍛冶屋で強くできない（魔王城の深い階へ行くほど強くなる）")); bodyEl.appendChild(row); return; }
       var v = GameState.releaseValue(it);
       row.appendChild(button("売却（+" + v.gold + "G" + (v.n ? "・" + Loot.MATERIALS[v.mat] + "+" + v.n : "") + "）", function () {
         // 強化してあって、同じ種類の装備に移せるときは、売る前に確かめる（2026-10-18 保護者の希望）
@@ -744,7 +744,8 @@ var Town = (function () {
       }
       line("条件", GameData.condText(sk) + (sk.passive ? "（ほかの職でもつけられる）" : ""));
       det.appendChild(info);
-      if (!got) det.appendChild(el("p", "sk-why", sk.future ? "まだ覚えられない（これから作る）。" : GameData.JOBS[sk.job].name + (sk.star === 1 ? "になると覚える。" : "の熟練度が★" + (sk.star - 1) + "になると覚える。")));
+      if (!got) det.appendChild(el("p", "sk-why", sk.future ? "まだ覚えられない（これから作る）。" : GameData.JOBS[sk.job].name + (sk.star === 1 ? "になって" : "の熟練度が★" + (sk.star - 1) + "になって") +
+        (sk.boss ? "、" + GameData.ENEMIES[sk.boss].name + "をたおしていると覚える。" : "覚える。").replace("になって覚える", "になると覚える")));   // 呼び出しのスキルは、その主・幻獣をたおすことも要る
       else if (!ok) det.appendChild(el("p", "sk-why", "いまはセットできない（" + GameData.condText(sk) + "）"));
       else {
         var row = el("div", "sk-btns");

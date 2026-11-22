@@ -527,7 +527,9 @@ var GameData = (function () {
       fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] },
     // 召喚士：幻獣を呼ぶ（幻獣は魔王城の主をたおすと開く祠でたおす。まだない）
     { id: "sm.bond",  job: "summoner", star: 1, name: "幻獣の絆", desc: "呼び出しのスキルの待ち時間が、いつも20%短い。", short: "絆", cond: null, passive: { summonCt: 0.2 } },
-    { id: "sm.cerberus", job: "summoner", star: 2, name: "ケルベロス", desc: "幻獣ケルベロスを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ケルベロス", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    // 幻獣を呼ぶ（2026-11-22 から1体ずつ）：魔物使いの呼び出しと同じ形（ため・その幻獣を祠でたおしていると覚える）。魔物使いより一段強く、MP も多い
+    { id: "sm.cerberus", job: "summoner", star: 2, name: "よびだし：ケルベロス", desc: "ためてから、幻獣ケルベロスを呼ぶ。敵がいちばん多い方へ、3つの首から炎の扇を3本はく（1体に当たるのは1回だけ。火）。ケルベロスの祠でケルベロスをたおしていると覚える。", short: "ケルベロス", boss: "cerberus_gj", cond: { line: "summoner" }, mp: 50, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "cerberus_gj", stat: "best", color: "#ffa030", mult: 4.2, elem: "fire" }] },
     { id: "sm.garuda", job: "summoner", star: 3, name: "ガルーダ", desc: "幻獣ガルーダを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガルーダ", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
     { id: "sm.levia", job: "summoner", star: 4, name: "リヴァイアサン", desc: "幻獣リヴァイアサンを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "リヴァイア", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
     { id: "sm.phoenix", job: "summoner", star: 5, name: "フェニックス", desc: "幻獣フェニックスを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "フェニックス", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
@@ -1135,6 +1137,26 @@ var GameData = (function () {
     soarFirst: 13, soarEvery: 20, soarEveryHalf: 16, soarTime: 0.8, diveWarn: 1.4, diveSpeed: 300, diveMult: 2.0, dives: 1, divesHalf: 2, crashTime: 4.5, crashMult: 1.3, landTime: 0.8
   };
 
+  // ---- 幻獣（召喚士の幻獣の祠。2026-11-22 保護者と決定：祠のボス戦と呼び出しのスキルを1体ずつ作る） ----
+  // 祠は魔王城の主をたおすと開く（魔王城ができるまでは、デバッグ用のセーブと全開放の試しからだけ入れる）。たおすと、最強の防具かアクセサリ（loot.js の LEGENDS）と、
+  // 召喚士の★が足りていれば、その幻獣を呼ぶスキル。強さは魔王城の4階目（最強武器を持っている前提）より少し上。数字は仮（遊んでみて直す）
+  // ケルベロス（★2。大木の魔物（魔王城4階）をたおすと祠が開く。2026-11-22 Claude の案）：3つの首を持つ、地獄の番犬。
+  //   決め手は「3つの首の炎は、首と首のすきまでよける」と「地獄の炎は、光っていない床へ」。
+  //   三連がみ：近くにいると、3つの首で続けてかみつく（1回ずつは弱い）。
+  //   大突進：大オオカミと同じ（赤い線で予告）。
+  //   三つ首の炎（tbreathEvery 秒ごと）：3つの首から、少しずつ向きのちがう3本の炎の扇（あいだにすきま）。HP 半分から、すきまをうめる2回目が続く。
+  //   地獄の炎（hellEvery 秒ごと）：ほえると、床のあちこち（2組）が順に光って火柱が立つ。1組目が終わると2組目。光っていない場所へ動けばよけられる。
+  //     終わると、つかれて少し動かない（すきあり）。HP 半分から3組。
+  //   水が弱点、火は効かない。
+  ENEMIES.cerberus_gj = {
+    name: "ケルベロス", kind: "cerberus_gj", boss: true, genju: true, hp: 24000, patk: 140, matk: 0, pdef: 13, mdef: 12,
+    res: { water: 1.3, fire: 0 }, speed: 34, speedHalf: 40, r: 18, color: "#3a3250",
+    reach: 22, windup: 0.45, cooldown: 1.4, cooldownHalf: 1.1, biteMult: 0.55, bites: 3, biteGap: 0.18,
+    chargeWarn: 0.85, chargeSpeed: 300, chargeMult: 1.8, chargeEvery: 9,
+    tbreathFirst: 4, tbreathEvery: 8, tbreathEveryHalf: 6.5, tbreathWarn: 0.9, tbreathLen: 130, tbreathSpread: 0.2, tbreathGap: 0.62, tbreathMult: 1.5,
+    hellFirst: 12, hellEvery: 20, hellEveryHalf: 16, hellHowl: 0.9, hellWarn: 1.3, hellStep: 1.2, hellR: 24, hellMult: 2.0, hellSets: 2, hellSetsHalf: 3, tired: 3
+  };
+
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
   // 2026-10-26 見直し（保護者：簡単すぎるので強く、見た目を豪華に）：ゴーレムは HP・攻撃・岩の数を上げ、HP 半分から3回攻撃が4回、
   // 投げた岩は壁で3つのかけらに割れてはね返る（chipMult）。ダークエルフは HP を上げた。ダークアローは 2026-10-26 に、回る闇の玉を1つずつ撃つ形に作りなおした（上の ENEMIES.elf_boss）
@@ -1450,6 +1472,21 @@ var GameData = (function () {
         12: { enemy: "fdragon_boss", title: "紅蓮の火山をきわめし者",   // 紅蓮の竜（段階4、2026-11-20）。前後の文は Claude が書いた仮の文
               before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩の中から、赤いつばさの竜が舞い上がった！"],
               after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }
+      }
+    },
+    // ---- 幻獣の祠（召喚士。2026-11-22 から1体ずつ作る） ----
+    //   1階だけ（入口 → 祠の守りの魔物の部屋 → 幻獣の広間）。DUNGEON_ORDER には入れない（ワールドマップの祠の印から入る）。
+    //   castle：魔王城のこの階（主の階）をたおすと開く。魔王城ができるまでは、デバッグ用のセーブと全開放の試しからだけ入れる（worldmap.js）。
+    //   深さは魔王城の主の階のあたり（紅蓮の火山12階＝109 の続き）。部屋の型と道中の敵は、今は湖底神殿のもの（theme: temple）。装備の段はプラチナ（ダイヤの段ができたら上げる）。
+    //   前後の文は Claude が書いた仮の文（保護者があとで直す）
+    gj_cerberus: {
+      id: "gj_cerberus", shrine: true, genju: "cerberus_gj", castle: 4, tagline: "地獄の番犬がねむる祠。", intro: ["古い石の祠。奥から、低いうなり声がひびいてくる。", "ここには、3つの首を持つ地獄の番犬がいるという。"],
+      region: "noctgard", name: "ケルベロスの祠", short: "ケルベロス", floors: 1, needs: null, depthBase: 112, theme: "temple", tier: 4,
+      foeHp: 1.8, foeAtk: 1.1, foeType: { stone_guard: { hp: 0.8 } },
+      bosses: {
+        1: { enemy: "cerberus_gj", title: "地獄の番犬をしずめし者", room: "shrine",
+             before: ["祠の奥の広間に、黒い大きな犬がねそべっている。", "3つの首が、いっせいにこちらを向いた！", "ケルベロスが、炎をまとって立ち上がった！"],
+             after: ["ケルベロスは、しずかに頭を下げた。", "3つの首が、こちらを主とみとめたように見つめている……。"] }
       }
     }
   };

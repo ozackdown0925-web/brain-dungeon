@@ -62,15 +62,26 @@ var WorldMap = (function () {
       // 地方4ノクトガルドへの道（2026-11-21 紅蓮の火山の段階5）：右上の暗い雲（いなずまの空）。紅蓮の竜をたおすと地図に出る。
       // 地方4はまだ作っていないので、通れない（soon：このダンジョンの主をたおすと見える、まだ通れない道）
       { id: "to_noct", kind: "road", to: "noctgard", soon: "kazan", x: 262, y: 14, name: "ノクトガルド",
-        note: "暗い雲におおわれた土地、ノクトガルド。魔王城は、この先にあるという。けれど道はまだ闇にとざされていて、先へは進めない。" }
+        note: "暗い雲におおわれた土地、ノクトガルド。魔王城は、この先にあるという。けれど道はまだ闇にとざされていて、先へは進めない。" },
+      // 幻獣の祠（2026-11-22 から1体ずつ）：本当は魔王城の主をたおすと開く（ノクトガルドの地図に置く）。魔王城ができるまでは、
+      // 試すために、ここ（湖の南の古い村あと）に置き、デバッグ用のセーブと全開放の試しのときだけ見せる（shrine。下の isOpen・spots）
+      { id: "gj_cerberus", kind: "dungeon", shrine: true, x: 190, y: 134,
+        note: "幻獣ケルベロスがいる。たおすと最強の防具が手に入り、召喚士が呼べるようになる。" }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }
-  function spots() { return SPOTS[region().id] || SPOTS.forestveil; }
+  function spots() { return (SPOTS[region().id] || SPOTS.forestveil).filter(function (s) { return !s.shrine || isOpen(s); }); }   // 開いていない幻獣の祠は出さない
+  // 幻獣の祠が開いているか：魔王城のその階（主）をたおしている。魔王城ができるまでは、デバッグ用のセーブと全開放の試しのときだけ開く
+  function shrineOpen(id) {
+    var D = GameData.dungeonOf(id);
+    if (GameData.DUNGEONS.castle && GameState.castleFloor() >= D.castle) return true;
+    return GameState.inSandbox() || !!(window.Sync && Sync.isDebug());
+  }
   // 開いているか（作っていない場所はいつも閉じている）と、地図に出す名前
   function isOpen(s) {
     if (s.kind === "base") return true;
     if (s.soon) return GameState.progressOf(s.soon).deepest >= GameData.dungeonOf(s.soon).floors;
+    if (s.shrine) return shrineOpen(s.id);
     if (s.kind === "road") return GameState.regionOpen(s.to);
     return !s.locked && GameState.unlocked(s.id);
   }

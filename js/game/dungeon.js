@@ -70,7 +70,7 @@ var Dungeon = (function () {
   // snowfield＝白銀の霊峰6階の雪原の広場（スノーゴーレム。2026-11-09）
   // lakeside＝水晶の鍾乳洞5階の地底湖のほとり（2026-11-14）
   // altar＝しずみの湖底神殿6階の水の祭壇（2026-11-18）
-  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom, altar: TempleAltarBossRoom, magma: VolcanoGiantBossRoom };   // magma＝紅蓮の火山6階の炎の巨人の広間（2026-11-20）
+  var BOSS_ROOMS = { warm: PeakWarmBossRoom, snowfield: SnowFieldBossRoom, lakeside: CrystalLakeBossRoom, altar: TempleAltarBossRoom, magma: VolcanoGiantBossRoom, shrine: ShrineBossRoom };   // shrine＝幻獣の祠の広間（2026-11-22）   // magma＝紅蓮の火山6階の炎の巨人の広間（2026-11-20）
   function bossRoomFor(theme) { return theme === "swamp" ? SwampBossRoom : theme === "wild" ? WildBossRoom : theme === "cave" ? CaveBossRoom : theme === "peak" ? PeakBossRoom : theme === "snow" ? SnowBossRoom : theme === "crystal" ? CrystalBossRoom : theme === "temple" ? TempleBossRoom : theme === "volcano" ? VolcanoBossRoom : BossRoom; }
   function doorTiles(w, h, d) {
     var mx = Math.floor(w / 2), my = Math.floor(h / 2), t = [];

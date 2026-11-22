@@ -36,7 +36,8 @@ var Bosses = (function () {
              ink: d.inkEvery ? 5 : 0, arm: d.armFirst || 0,
              jet: d.jetFirst || 0, wave: d.waveFirst || 0,
              stomp: d.stompEvery ? 5 : 0, ball: d.ballFirst || 0, flame: d.flameFirst || 0,
-             fbreath: d.fbreathFirst || 0, erupt: d.eruptFirst || 0, soar: d.soarFirst || 0 };
+             fbreath: d.fbreathFirst || 0, erupt: d.eruptFirst || 0, soar: d.soarFirst || 0,
+             tbreath: d.tbreathFirst || 0, hell: d.hellFirst || 0 };
   }
 
   // 眠り・しびれで大技が止まったとき
@@ -68,6 +69,10 @@ var Bosses = (function () {
       if (e.state === "fbreathWarn") { e.state = "recover"; e.t = 0.4; }
       for (var fj = hazards.length - 1; fj >= 0; fj--) if (hazards[fj].from === e && hazards[fj].kind === "cone" && hazards[fj].t < hazards[fj].warn) hazards.splice(fj, 1);
     }
+    if (e.def.kind === "cerberus_gj" && (e.state === "tbreathWarn" || e.state === "hellHowl" || e.state === "bite")) {   // ケルベロス：炎をためている・ほえている・かみついている途中なら、やめる（炎の予告も消す）
+      e.state = "recover"; e.t = 0.4;
+      for (var cj = hazards.length - 1; cj >= 0; cj--) if (hazards[cj].from === e && hazards[cj].kind === "cone" && hazards[cj].t < hazards[cj].warn) hazards.splice(cj, 1);
+    }
     if (e.def.kind === "icefang_boss") {   // 氷牙獣：大ジャンプ・こおりの息の途中なら、その場でやめる（空にいたら下りる）
       if (e.state === "crouch" || e.state === "air" || e.state === "breathWarn" || e.state === "bighowl") { e.state = "recover"; e.t = 0.4; }
       e.untouchable = false; e.leapsLeft = 0;
@@ -84,7 +89,7 @@ var Bosses = (function () {
     var ux = dx / dist, uy = dy / dist, gap = dist - e.r - p.r;
     var d = e.def;
     e.cd = Math.max(0, e.cd - dt);
-    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave", "stomp", "ball", "flame", "fbreath", "erupt", "soar"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
+    ["charge", "howl", "roots", "pollen", "dive", "rain", "pillar", "blink", "summon", "hop", "rock", "combo", "orb", "spin", "da", "dash", "bomb", "guard", "slam", "toss", "fog", "inhale", "bud", "storm", "leap", "breath", "icerain", "bubble", "shell", "web", "ceil", "beam", "ink", "arm", "jet", "wave", "stomp", "ball", "flame", "fbreath", "erupt", "soar", "tbreath", "hell"].forEach(function (k) { e.ai[k] = Math.max(0, e.ai[k] - dt); });
     if (d.kind === "wolf_boss") wolf(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "icefang_boss") iceFang(e, dt, room, p, hurt, api, ux, uy, gap, dist);   // 氷牙獣は大オオカミがもと
     else if (d.kind === "frog_boss") frogBoss(e, dt, room, p, hurt, api, ux, uy, gap, dist);
@@ -101,6 +106,7 @@ var Bosses = (function () {
     else if (d.kind === "fdragon_boss") fdragon(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "raff_boss") raff(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else if (d.kind === "roc_boss") roc(e, dt, room, p, hurt, api, ux, uy, gap, dist);
+    else if (d.kind === "cerberus_gj") cerberus(e, dt, room, p, hurt, api, ux, uy, gap, dist);
     else tree(e, dt, room, p, hurt, api, ux, uy, gap, dist);
   }
 
@@ -1142,6 +1148,93 @@ var Bosses = (function () {
       if (!e.status.para) { room.move(e, ux * spd * dt, uy * spd * dt); e.walk = (e.walk || 0) + dt * 7; }
     } else if (e.cd <= 0) {
       e.state = "windup"; e.t = half ? d.windupHalf : d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // ---------- ケルベロス（幻獣の祠。2026-11-22 Claude の案） ----------
+  // 三連がみ・大突進（大オオカミと同じ）・三つ首の炎（3本の扇。すきまでよける。HP 半分から、すきまをうめる2回目）・
+  // 地獄の炎（床のあちこちが組ごとに順に光って火柱。光っていない場所へ。終わるとつかれて、すきあり）
+  function cerberus(e, dt, room, p, hurt, api, ux, uy, gap, dist) {
+    var d = e.def, half = e.hp <= e.maxHp / 2;
+    e.biteT = Math.max(0, (e.biteT || 0) - dt);
+    if (e.state === "bite") {   // 三連がみ：biteGap 秒ごとに1回ずつ
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!p.down && gap <= d.reach + 6) hurt(e, p.x, p.y - 8, { mult: d.biteMult });
+        e.biteT = 0.15; Sound.play("swing");
+        e.bitesLeft--;
+        if (e.bitesLeft > 0) { e.t = d.biteGap; if (!p.down) { e.aim = { x: ux, y: uy }; e.face = { x: ux, y: uy }; } }
+        else { e.state = "recover"; e.t = 0.5; e.cd = half ? d.cooldownHalf : d.cooldown; }
+      }
+      return;
+    }
+    if (e.state === "windup") { e.t -= dt; if (e.t <= 0) { e.state = "bite"; e.t = 0; e.bitesLeft = d.bites; } return; }
+    if (wolfCharge(e, dt, room, p, hurt)) return;
+    if (e.state === "tbreathWarn") {
+      e.t -= dt;
+      if (e.t <= 0) {
+        Sound.play("hit");
+        if (e.secondBreath) {   // HP 半分から：すきまをうめる2回目
+          e.secondBreath = false;
+          addTriBreath(e, e.breathAng + d.tbreathGap / 2, 0.55);
+          e.state = "tbreathWarn"; e.t = 0.55;
+        } else { e.state = "tbreath"; e.t = 0.5; }
+      }
+      return;
+    }
+    if (e.state === "tbreath") { e.t -= dt; if (e.t <= 0) { e.state = "recover"; e.t = 0.6; } return; }
+    if (e.state === "hellHowl") {   // 地獄の炎：ほえているあいだに、床の組ごとに予告が出る
+      e.t -= dt;
+      if (e.t <= 0) { e.state = "hell"; e.t = (half ? d.hellSetsHalf : d.hellSets) * d.hellStep + d.hellWarn - d.hellStep + 0.6; }
+      return;
+    }
+    if (e.state === "hell") { e.t -= dt; if (e.t <= 0) tire(e); return; }
+    if (e.state === "tired" || e.state === "recover") { e.t -= dt; if (e.t <= 0) e.state = "chase"; return; }
+    if (p.down) return;
+    e.face = { x: ux, y: uy };
+    if (e.ai.hell <= 0) {
+      startHellFire(e, room, p, half);
+      e.state = "hellHowl"; e.t = d.hellHowl; e.ai.hell = half ? d.hellEveryHalf : d.hellEvery;
+      e.ai.tbreath = Math.max(e.ai.tbreath, 3); e.ai.charge = Math.max(e.ai.charge, 4);
+      Battle.pop(e.x, e.y - 60, "ウォォォン！ 地獄の炎！ 光っていない床へ！", "#ff8a4a", 10);
+      return;
+    }
+    if (e.ai.charge <= 0) { startCharge(e, room, ux, uy); e.ai.tbreath = Math.max(e.ai.tbreath, 2); return; }
+    if (e.ai.tbreath <= 0 && dist < d.tbreathLen + 30) {
+      e.breathAng = Math.atan2(uy, ux);
+      addTriBreath(e, e.breathAng, d.tbreathWarn);
+      e.secondBreath = half;
+      e.state = "tbreathWarn"; e.t = d.tbreathWarn; e.ai.tbreath = half ? d.tbreathEveryHalf : d.tbreathEvery;
+      Battle.pop(e.x, e.y - 60, "三つ首の炎！ すきまへ！", "#ef5b5b", 9);
+      return;
+    }
+    if (gap > d.reach - 2) {
+      var spd = half ? d.speedHalf : d.speed;
+      if (!e.status.para) { room.move(e, ux * spd * dt, uy * spd * dt); e.walk = (e.walk || 0) + dt * 8; }
+    } else if (e.cd <= 0) {
+      e.state = "windup"; e.t = d.windup; e.aim = { x: ux, y: uy };
+    }
+  }
+  // 3本の炎の扇（まんなかが ang。あいだは tbreathGap）
+  function addTriBreath(e, ang, warn) {
+    var d = e.def;
+    for (var i = -1; i <= 1; i++) {
+      var an = ang + i * d.tbreathGap;
+      hazards.push({ kind: "cone", look: "fire", from: e, x: e.x + Math.cos(an) * 14, y: e.y - 6 + Math.sin(an) * 8, ang: an, spread: d.tbreathSpread, len: d.tbreathLen,
+                     t: 0, warn: warn, erupt: 0.5, hit: false, seed: Math.random() * 100, opts: { mult: d.tbreathMult, big: true } });
+    }
+  }
+  // 地獄の炎：部屋の床に、ななめの格子で火柱の場所を置き、組（k）ごとに順に立つ（組のあいだは hellStep 秒）。
+  // 同じ組の場所どうしは、はなれていて、そのあいだは安全
+  function startHellFire(e, room, p, half) {
+    var d = e.def, sets = half ? d.hellSetsHalf : d.hellSets, step = d.hellR * 2;
+    var shift = Math.floor(Math.random() * sets);
+    for (var gy = 0, y = 40; y < room.pxH - 24; y += step, gy++) {
+      for (var gx = 0, x = 40 + (gy % 2) * (step / 2); x < room.pxW - 24; x += step, gx++) {
+        if (room.hitsWall(x - 6, y - 6, 12, 12)) continue;
+        var k = (gx + gy + shift) % sets;
+        hazards.push({ kind: "circle", look: "hellfire", from: e, x: x, y: y, r: d.hellR * 0.82, t: 0, warn: d.hellWarn + k * d.hellStep, show: k * d.hellStep, erupt: 0.45, hit: false,
+                       seed: Math.random() * 100, opts: { mult: d.hellMult, big: true } });
+      }
     }
   }
   // 突進の線を (ax, ay) の向きに引く。溶岩の上は通りぬけ、岩の柱か壁で止まる（diveHit に止まったマス）
@@ -2318,6 +2411,11 @@ var Bosses = (function () {
         continue;
       }
       if (h.kind === "cone") {   // 氷牙獣のこおりの息
+        if (h.ally) {   // 召喚士が呼んだケルベロスの炎（2026-11-22）：敵に当たる
+          if (h.t >= h.warn && !h.hit) { h.hit = true; h.ally(h); }
+          if (h.t >= h.warn + h.erupt) hazards.splice(i, 1);
+          continue;
+        }
         if (h.t >= h.warn && !h.hit) { h.hit = true; breathHit(h, p, hurt, room); }
         if (h.t >= h.warn + h.erupt || h.from.dead) hazards.splice(i, 1);
         continue;
@@ -2485,6 +2583,7 @@ var Bosses = (function () {
     var col = h.look === "magma" ? [255, 110, 40] : h.look === "flamering" ? [255, 80, 40] : h.look === "fog" ? [170, 90, 220] : h.look === "pillar" ? [180, 90, 230] : h.look === "drop" ? [150, 200, 90] : h.look === "bomb" ? [255, 110, 60] : locked ? [255, 60, 50] : [240, 150, 90];
     function c(a) { return "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + a.toFixed(2) + ")"; }
     if (h.look === "quake") { drawQuake(ctx, h, x, y, glow); return; }
+    if (h.look === "hellfire") { drawHellFire(ctx, h, x, y, glow); return; }
     if (h.look === "leap") { drawLeapMark(ctx, h, x, y, glow); return; }
     if (h.look === "spike") { drawSpike(ctx, h, x, y, glow); return; }
     if (h.look === "icicle") { drawIcicleDrop(ctx, h, x, y, glow); return; }
@@ -2575,6 +2674,29 @@ var Bosses = (function () {
         g.addColorStop(0, "rgba(232,80,26,0)"); g.addColorStop(0.5, "rgba(255,150,40," + (0.8 * fade).toFixed(2) + ")"); g.addColorStop(1, "rgba(255,242,160," + (0.95 * fade).toFixed(2) + ")");
         ctx.fillStyle = g; ctx.fillRect(Math.round(fx) - 2, Math.round(fy - hh), 4, Math.round(hh));
       }
+    }
+  }
+  // ケルベロスの地獄の炎（2026-11-22）：自分の組の番が近づくと、床に赤い輪がうかび（show から）、だんだん明るくなる。
+  // 立つと、黒い炎のふちどりの赤い火柱が、ふくらんで消える
+  function drawHellFire(ctx, h, x, y, glow) {
+    if (h.t < (h.show || 0)) return;
+    if (h.t < h.warn) {
+      var k = (h.t - (h.show || 0)) / Math.max(0.01, h.warn - (h.show || 0));
+      ctx.fillStyle = "rgba(255,60,30," + (0.10 + 0.30 * k + 0.06 * Math.sin(glow * 18)).toFixed(2) + ")";
+      ctx.beginPath(); ctx.ellipse(x, y, h.r, h.r * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,140,60," + (0.5 + 0.45 * k).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      var rr = h.r * (1 - k) + 2;   // ちぢむ輪：0になったときに火柱が立つ
+      ctx.strokeStyle = "rgba(255,230,160,0.85)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x, y, rr, rr * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+      return;
+    }
+    var q = Math.min(1, (h.t - h.warn) / h.erupt), fade = 1 - q, hh = 54 * Math.min(1, q * 5) * (0.5 + 0.5 * fade);
+    var g = ctx.createLinearGradient(0, y - hh, 0, y);
+    g.addColorStop(0, "rgba(120,20,20,0)"); g.addColorStop(0.35, "rgba(232,70,28," + (0.75 * fade).toFixed(2) + ")"); g.addColorStop(1, "rgba(255,230,140," + (0.95 * fade).toFixed(2) + ")");
+    ctx.fillStyle = g; ctx.fillRect(Math.round(x - h.r * 0.7), Math.round(y - hh), Math.round(h.r * 1.4), Math.round(hh));
+    for (var i = 0; i < 6; i++) {   // 火の粉
+      var a = rnd(h.seed + i) * Math.PI * 2, rr2 = h.r * (0.3 + 0.7 * q);
+      Render.rect(Math.round(x + Math.cos(a) * rr2), Math.round(y - q * 30 - rnd(h.seed * 2 + i) * 20), 2, 2, "rgba(255,200,90," + fade.toFixed(2) + ")");
     }
   }
   // ラフレシアの毒の霧：紫のもやが、ゆっくりうずを巻いてのこる。はじめはふわっと広がり、終わりぎわはうすくなる
@@ -2758,9 +2880,10 @@ var Bosses = (function () {
     var x = h.x - cam.x, y = h.y - cam.y;
     if (h.t < h.warn) {
       var k = h.t / h.warn;
-      ctx.fillStyle = "rgba(255,90,40," + (0.12 + 0.22 * k + 0.05 * Math.sin(glow * 16)).toFixed(2) + ")";
+      var ac = h.ally ? "255,200,80" : "255,90,40", al2 = h.ally ? "255,220,120" : "239,91,91";   // 召喚士のケルベロスの炎（味方）は、金色の予告
+      ctx.fillStyle = "rgba(" + ac + "," + (0.12 + 0.22 * k + 0.05 * Math.sin(glow * 16)).toFixed(2) + ")";
       ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, h.len, h.ang - h.spread, h.ang + h.spread); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(239,91,91," + (0.4 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "rgba(" + al2 + "," + (0.4 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 2; ctx.stroke();
       ctx.strokeStyle = "rgba(255,230,140,0.8)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(x, y, h.len * k, h.ang - h.spread, h.ang + h.spread); ctx.stroke();
       return;
@@ -3367,6 +3490,26 @@ var Bosses = (function () {
         ctx.beginPath(); ctx.ellipse(x, y + 2, wr - 2, (wr - 2) * 0.75, 0, kwp * 6, kwp * 6 + Math.PI * 1.3); ctx.stroke();
       }
       if (e.state === "windup" || e.state === "breath") Render.text("！", x, y - 40, { size: 11, align: "center", bold: true, color: e.state === "windup" ? "#ffd24a" : "#ef5b5b" });
+    } else if (d.kind === "cerberus_gj") {
+      // ケルベロス（69×50、左向き）：足もとは y＋14。炎をはく・ほえる・かみつくあいだは、口をあけた絵
+      var cph = Math.sin(e.walk || 0), cmove = e.state === "chase" || e.state === "charge";
+      var cf = e.state === "tbreathWarn" || e.state === "tbreath" || e.state === "hellHowl" || e.state === "bite" || e.biteT > 0 ? "breath" : !cmove ? "stand" : cph > 0 ? "walkA" : "walkB";
+      var ctk = e.state === "tired" ? Math.round(Math.sin(glow * 20)) : 0;
+      Render.rect(x - 26, y + 10, 52, 6, "rgba(0,0,0,0.35)");
+      Monsters.drawBoss(ctx, e, x + ctk, y + 14, cf);
+      if (e.state === "tbreathWarn" || e.state === "hellHowl") {   // 3つの口もとに火の光
+        var fl = e.face.x > 0 ? -1 : 1;
+        [[-22, -10], [-17, -22], [-4, -33]].forEach(function (m) { Combat.glowDot(ctx, x + m[0] * fl, y + 14 + m[1] - 6, 4 + Math.sin(glow * 30), "#fff0a0", "#ff6a1f", 0.8); });
+      }
+      if (e.state === "tired") {   // ふらついている：頭の上で、黄色い星がまわる
+        for (var cs = 0; cs < 3; cs++) {
+          var cta = glow * 4 + cs * 2.1, ctx2 = Math.round(x + Math.cos(cta) * 14), cty = Math.round(y - 42 + Math.sin(cta) * 3);
+          Render.rect(ctx2, cty - 1, 1, 3, "#ffe066"); Render.rect(ctx2 - 1, cty, 3, 1, "#ffe066");
+        }
+      }
+      if (e.state === "warn") Render.text("！", x, y - 46, { size: 12, align: "center", bold: true, color: "#ef5b5b" });
+      if (e.state === "windup") Render.text("！", x, y - 46, { size: 11, align: "center", bold: true, color: "#ffd24a" });
+      if (e.state === "hellHowl") Render.text("ウォォォン！", x, y - 48, { size: 9, align: "center", bold: true, color: "#ff8a4a" });
     } else if (d.kind === "roc_boss") {
       // 大怪鳥（飛ぶ）：絵は e.alt だけ上に描く。地面の影は、崖の外の空の上では描かない
       var alt = Math.round(e.alt || 10) + Math.round(Math.sin(glow * 4) * 2);

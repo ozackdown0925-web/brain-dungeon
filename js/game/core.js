@@ -302,7 +302,8 @@
       if (!lg || run.got.some(function (x) { return x.legend === key; })) return;
       run.got.push(lg);
       Battle.pop(e.x, e.y - 64, lg.name + "！", "#f2c14e", 10);
-      legendLine = ["", "最強の杖「" + lg.name + "」を手に入れた！", "（魔王城の深い階へ行くほど強くなる。鍛冶屋では強くできない）"];
+      var kindName = Loot.LEGENDS[key].slot === "armor" ? "防具" : (GameData.WEAPONS[Loot.LEGENDS[key].base] || { name: "武器" }).name;   // 幻獣は最強の防具（2026-11-22）
+      legendLine = ["", "最強の" + kindName + "「" + lg.name + "」を手に入れた！（" + Loot.LEGENDS[key].sp + "）", "（魔王城の深い階へ行くほど強くなる。鍛冶屋では強くできない）"];
     });
     var after = dg.bossInfo.after.concat(legendLine, ["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
     showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
