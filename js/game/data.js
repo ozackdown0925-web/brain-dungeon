@@ -408,7 +408,7 @@ var GameData = (function () {
     { id: "am.prom",  job: "archmage", star: 1, name: "プロミネンス", desc: "前へ、炎の柱が次々にふき上がる（火）。", short: "プロミネンス", cond: { line: "archmage" }, mp: 14, ct: 6,
       fx: [{ t: "blasts", stat: "m", mult: 3, elem: "fire", count: 4, gap: 22, radius: 20, interval: 0.12, color: "#ff8a3d" }] },
     { id: "am.elem",  job: "archmage", star: 2, name: "属性の極意", desc: "弱点をついたときのダメージが、×1.3 から ×1.5 になる。", short: "属性", cond: null, passive: { weak: 0.2 } },
-    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "敵がいちばん多く入るところを中心に、横と縦に十字の太い根を地面からつき上げる（草）。1体に当たるのは1回だけ。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
+    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "敵がいちばん多く入るところを中心に、十字の形に太い根を地面からつき上げる（草）。1体に当たるのは1回だけ。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
       fx: [{ t: "roots", stat: "m", mult: 3.5, elem: "grass" }] },   // 2026-11-24 保護者：ダークホールの色ちがいだったので、大木の魔物の根の大波に
     { id: "am.diamond", job: "archmage", star: 5, name: "ダイヤモンドダスト", desc: "まわりの広いところに氷のつぶをふらせる。当たった敵は6秒おそくなる（水）。", short: "ダスト", cond: { line: "archmage" }, mp: 20, ct: 14,
       fx: [{ t: "around", vis: "dust", stat: "m", mult: 4, radius: 110, elem: "water", color: "#bfe8ff", status: { type: "slow", chance: 1, dur: 6 } }] },
