@@ -137,7 +137,7 @@ var GameData = (function () {
     { id: "archbishop", need: [["whitemage", 7]], name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
       skills: ["サンクチュアリ", "天の恵み", "リザレクション", null, "アストラルオーラ", null, "セイクレッド"] },
     { id: "swordsaint", need: [["magicknight", 7]], name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
-      skills: ["聖光剣", "魔剣の極意", "アクアオーブ", null, "スペルブレイク", null, "魔炎連舞"] },
+      skills: ["聖光剣", "魔剣の極意", "スプラッシュブレイド", null, "スペルブレイク", null, "魔炎連舞"] },
     { id: "dragoon", need: [["ninja", 7]], name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
       skills: ["ドラゴンランス", "竜の心", "ドラゴンラッシュ", null, "竜の咆哮", null, "ドラゴンダイブ"] },
     { id: "champion", need: [["gladiator", 7]], name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
@@ -450,8 +450,8 @@ var GameData = (function () {
     { id: "ss.light", job: "swordsaint", star: 1, name: "聖光剣", desc: "15秒のあいだ、剣の攻撃が光になる。", short: "聖光剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
       fx: [{ t: "enchant", elem: "light", dur: 15 }] },
     { id: "ss.art",   job: "swordsaint", star: 2, name: "魔剣の極意", desc: "剣に属性をのせる時間が2倍になり、火・水・草・光・闇のダメージがいつも15%強い。", short: "魔剣極意", cond: null, passive: { enchantMul: 1, elemDmg: 0.15 } },
-    { id: "ss.wave",  job: "swordsaint", star: 3, name: "アクアオーブ", desc: "自分のまわりに水の玉を6つよび出す。玉は回りながら、さわった敵に当たり、そのあと近くの敵へ1つずつ飛んでいく（水。つらぬく）。", short: "アクア", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 6,
-      fx: [{ t: "orbs", stat: "p", mult: 0.6, touch: 0.3, elem: "water", count: 6, color: "#5ab8ff" }] },   // 2026-11-24 保護者：斬空波は地味なので、ダークエルフの大技（回る玉）を水の色で
+    { id: "ss.wave",  job: "swordsaint", star: 3, name: "スプラッシュブレイド", desc: "自分のまわりに水の玉を6つよび出す。玉は回りながら、さわった敵に当たり、そのあと水の斬撃になって近くの敵へ1つずつ飛んでいく（水。つらぬく）。", short: "スプラッシュ", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 6,
+      fx: [{ t: "orbs", stat: "p", mult: 0.6, touch: 0.3, elem: "water", count: 6, color: "#5ab8ff" }] },   // 2026-11-24 保護者：斬空波は地味なので、ダークエルフの大技（回る玉）を水の色で。2026-11-24 名前をスプラッシュブレイドにし、撃つと水の斬撃
     { id: "ss.break", job: "swordsaint", star: 5, name: "スペルブレイク", desc: "斬った敵の魔防を、20秒のあいだ下げる。", short: "スペル", cond: { weapons: ["sword", "greatsword"] }, mp: 8, ct: 8,
       fx: [{ t: "arc", stat: "p", mult: 4, elem: "weapon", color: "#c070ff", status: { type: "mbreak", chance: 1, dur: 20 } }] },
     { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,

@@ -504,7 +504,7 @@ var Combat = (function () {
       case "pillar":    // セイクレッド
         pillar(c, f);
         break;
-      case "orbs":      // アクアオーブ（2026-11-24 保護者：ダークエルフの大技を水の色で）：まわりに水の玉が集まって回り、1つずつ近い敵へ撃つ
+      case "orbs":      // スプラッシュブレイド（2026-11-24 保護者：ダークエルフの大技を水の色で）：まわりに水の玉が集まって回り、1つずつ水の斬撃にして近い敵へ撃つ
         orbRing = { c: c, f: f, n: f.count || 6, slots: [], ang: Math.random() * Math.PI * 2, t: 0, hitT: [] };
         for (var on = 0; on < orbRing.n; on++) orbRing.slots.push(on);
         Sound.play("skill");
@@ -1174,7 +1174,7 @@ var Combat = (function () {
       x: o.x, y: o.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 220 / speed, size: 4, color: "#a040ff", arrow: false });
     Sound.play("skill");
   }
-  // アクアオーブ（2026-11-24）：自分のまわりを回る水の玉。そろってから回って、1つずつ近い敵へ撃つ。回る玉はさわった敵にも当たる
+  // スプラッシュブレイド（2026-11-24）：自分のまわりを回る水の玉。そろってから回って、1つずつ近い敵へ撃つ。回る玉はさわった敵にも当たる
   var ORB = { gather: 0.35, orbit: 0.7, gap: 0.16, R: 22, speed: 200 };
   var orbRing = null;
   function orbPos(i) {
@@ -1224,16 +1224,23 @@ var Combat = (function () {
     ctx.strokeStyle = "rgba(235,250,255,0.95)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(x - 2.5), Math.round(y - 2.5), 2, 2);
   }
-  function drawElemBolt(ctx, x, y, vx, vy, col) {
-    var ang = Math.atan2(vy, vx);
+  // 水の斬撃（2026-11-24 保護者）：飛ぶ向きに大きな三日月の水の刃。後ろに水しぶきの粒
+  function drawWaterSlash(ctx, x, y, vx, vy, col, life) {
+    var ang = Math.atan2(vy, vx), ph = (life || 0) * 40;
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-    var g = ctx.createLinearGradient(-30, 0, 0, 0);
-    g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.6, rgba(col, 0.55)); g.addColorStop(1, "rgba(235,250,255,0.9)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.closePath(); ctx.fill();   // 水の尾
+    for (var i = 1; i <= 6; i++) {   // しぶき
+      var dy = Math.sin(ph + i * 2.1) * (3 + i * 1.3), al = 0.75 - i * 0.1;
+      ctx.fillStyle = rgba(i % 2 ? "#ffffff" : col, al);
+      ctx.fillRect(Math.round(-6 - i * 5), Math.round(dy), i % 3 ? 2 : 3, i % 3 ? 2 : 3);
+    }
+    glowDot(ctx, -2, 0, 16, "#ffffff", col, 0.45);
+    ctx.fillStyle = rgba(col, 0.85);   // 水の刃（三日月）
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.25, 1.25); ctx.arc(-11, 0, 12, 1.15, -1.15, true); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(200,240,255,0.55)";
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.0, 1.0); ctx.arc(-9, 0, 12, 0.95, -0.95, true); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.05, 1.05); ctx.stroke();
     ctx.restore();
-    glowDot(ctx, x, y, 13, "#ffffff", col, 0.75);
-    ctx.fillStyle = rgba(col, 0.95); ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(x) , Math.round(y) - 2, 2, 2);
   }
   function drawOrbRing(ctx, cam) {
     if (!orbRing) return;
@@ -1461,7 +1468,7 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
-      if (s.spec.orbCol) { drawElemBolt(ctx, x, y, s.vx, s.vy, s.spec.orbCol); return; }   // アクアオーブの撃った水の玉
+      if (s.spec.orbCol) { drawWaterSlash(ctx, x, y, s.vx, s.vy, s.spec.orbCol, s.life); return; }   // スプラッシュブレイドの撃った水の斬撃
       if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
       if (s.spec.bigFire) { Bosses.drawBigFireball(ctx, x, y, s.vx, s.vy, s.size); return; }   // 呼んだケルベロスの特大の火球（2026-11-22）
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
