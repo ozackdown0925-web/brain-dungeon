@@ -395,11 +395,11 @@ var GameData = (function () {
     // 2026-11-22 保護者と決定：召喚士のほかは star 1・3・5 にアクティブ、star 2 にパッシブ（上級職とかぶらないもの）、star 7 に大技。上級職とかぶるパッシブなど20個を消し、残したアクティブ（★7 のほか）の倍率を ×1.1
     // 2026-11-24 保護者と決定：おすすめで上級職の★7（×2.4〜4.2）に負けて選ばれなかったので、ダメージのある技を、1回に出せる合計で ★1 ×3.0・★3 ×3.5・★5 ×4.0 にそろえた（大技はそのまま）
     // 騎士王：剣の大技
-    { id: "kk.counter", job: "knightking", star: 1, name: "斬り返し", desc: "1秒、剣を構える。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
-      fx: [{ t: "counter", time: 1.0, hit: { t: "around", vis: "spin", stat: "p", mult: 3, radius: 32, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.5, elem: "weapon" } }] },
+    { id: "kk.counter", job: "knightking", star: 1, name: "斬り返し", desc: "1.5秒、剣を構える（金色の盾が光る）。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
+      fx: [{ t: "counter", time: 1.5, hit: { t: "around", vis: "spin", stat: "p", mult: 3, radius: 40, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.5, elem: "weapon" } }] },   // 2026-11-24 保護者「何が起きてるかわからない」：構えを大きく見せ、1.0→1.5秒
     { id: "kk.aura",  job: "knightking", star: 2, name: "王者の威光", desc: "これをつけた人が仲間にいれば、仲間みんなの物防が8%上がる。", short: "威光", cond: null, passive: { teamPdef: 0.08 } },
     { id: "kk.cross", job: "knightking", star: 3, name: "クロスブレイク", desc: "十字に2回斬る。斬った敵の物防を15秒下げる。", short: "クロス", cond: { weapons: ["sword"] }, mp: 12, ct: 8,
-      fx: [{ t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.75, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },
+      fx: [{ t: "xslash", reach: 26, color: "#ffd75a" }, { t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.75, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },   // 2026-11-24 保護者：前に金色の X の斬りあと
     { id: "kk.order", job: "knightking", star: 5, name: "王の号令", desc: "仲間みんなの物攻と魔攻が、60秒のあいだ15%上がる。交代しても続く。", short: "号令", cond: null, mp: 14, ct: 30,
       fx: [{ t: "buff", stat: "patk", pct: 0.15, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.15, dur: 60, party: true }] },
     { id: "x.kings",  job: "knightking", star: 7, name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る大きな光の帯を放つ。太さは画面の上下の半分くらい、帯の中の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knightking", weapons: ["sword"] }, mp: 24, ct: 20,
@@ -408,18 +408,18 @@ var GameData = (function () {
     { id: "am.prom",  job: "archmage", star: 1, name: "プロミネンス", desc: "前へ、炎の柱が次々にふき上がる（火）。", short: "プロミネンス", cond: { line: "archmage" }, mp: 14, ct: 6,
       fx: [{ t: "blasts", stat: "m", mult: 3, elem: "fire", count: 4, gap: 22, radius: 20, interval: 0.12, color: "#ff8a3d" }] },
     { id: "am.elem",  job: "archmage", star: 2, name: "属性の極意", desc: "弱点をついたときのダメージが、×1.3 から ×1.5 になる。", short: "属性", cond: null, passive: { weak: 0.2 } },
-    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "自分のまわりに大きな竜巻を起こす。敵を吸いよせながら何回も当たる（草）。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
-      fx: [{ t: "zone", look: "storm", stat: "m", mult: 0.7, elem: "grass", dist: 0, radius: 44, dur: 2.5, tick: 0.5, pull: 50 }] },
+    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "敵がいちばん多く入るところを中心に、横と縦に十字の太い根を地面からつき上げる（草）。1体に当たるのは1回だけ。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
+      fx: [{ t: "roots", stat: "m", mult: 3.5, elem: "grass" }] },   // 2026-11-24 保護者：ダークホールの色ちがいだったので、大木の魔物の根の大波に
     { id: "am.diamond", job: "archmage", star: 5, name: "ダイヤモンドダスト", desc: "まわりの広いところに氷のつぶをふらせる。当たった敵は6秒おそくなる（水）。", short: "ダスト", cond: { line: "archmage" }, mp: 20, ct: 14,
       fx: [{ t: "around", vis: "dust", stat: "m", mult: 4, radius: 110, elem: "water", color: "#bfe8ff", status: { type: "slow", chance: 1, dur: 6 } }] },
     { id: "x.abyss",  job: "archmage", star: 7, name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "archmage" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
     // グランドアーチャー：風の矢と星の矢の雨
-    { id: "ga.storm", job: "grandarcher", star: 1, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬく（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
-      fx: [{ t: "shot", stat: "p", mult: 3, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a" }] },
+    { id: "ga.storm", job: "grandarcher", star: 1, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬき、はじめに当たったところ（当たらなければ矢の先）に竜巻を残す。竜巻は2.5秒、近くの敵を追いかける（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.5, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a", tornado: { mult: 0.75, life: 2.5 } }] },   // 2026-11-24 保護者：大怪鳥の竜巻を残す。矢 ×1.5＋竜巻 ×0.75 を1秒ごと
     { id: "ga.wind",  job: "grandarcher", star: 2, name: "風読み", desc: "飛ばす攻撃は、遠くの敵ほどダメージが大きい（最大30%）。", short: "風読み", cond: null, passive: { far: 0.3 } },
-    { id: "ga.chain", job: "grandarcher", star: 3, name: "チェインアロー", desc: "当たった敵から、近くの敵へ2回とびうつる矢。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
-      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 220, range: 180, size: 2, chain: 2, color: "#a8d8ff" }] },
+    { id: "ga.chain", job: "grandarcher", star: 3, name: "チェインアロー", desc: "当たった敵から、近くの敵へ4回とびうつる矢（とびうつるたびに少し弱くなる）。たおした敵からもとびうつる。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 200, range: 180, size: 2, chain: 4, chainRange: 120, chainDecay: 0.85, color: "#a8d8ff" }] },   // 2026-11-24 保護者：2→4回、とびうつる先を 80→120 に、光の線でつなぐ
     { id: "ga.rapid", job: "grandarcher", star: 5, name: "ラピッドショット", desc: "矢をすばやく6本撃つ。", short: "ラピッド", cond: { weapons: ["bow"] }, mp: 12, ct: 7,
       fx: [{ t: "rapid", count: 6, interval: 0.1, hit: { t: "shot", stat: "p", mult: 0.67, elem: "weapon", speed: 250, range: 180, size: 2, color: "#e8f4ff" } }] },
     { id: "x.astral", job: "grandarcher", star: 7, name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "grandarcher", weapons: ["bow"] }, mp: 24, ct: 20,

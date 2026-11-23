@@ -434,7 +434,7 @@ var Combat = (function () {
           // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず（2026-10-20）
           effects.push({ kind: "swirl", look: f.vis, x: a.x, y: a.y, r: f.radius, t: 0.8, max: 0.8, seed: Math.random() * 6 });
         } else if (f.vis === "dust") {   // ダイヤモンドダスト（2026-11-16）：まわりに氷のつぶ
-          effects.push({ kind: "dust", x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, seed: Math.random() * 100 });
+          effects.push({ kind: "dust", x: a.x, y: a.y, r: f.radius, t: 1.4, max: 1.4, seed: Math.random() * 100 });
         } else if (f.vis === "tidal") {
           effects.push({ kind: "tidal", x: a.x, y: a.y, r: f.radius, t: 0.7, max: 0.7, seed: Math.random() * 6 });
         } else {
@@ -504,6 +504,14 @@ var Combat = (function () {
       case "pillar":    // セイクレッド
         pillar(c, f);
         break;
+      case "xslash":    // クロスブレイク（2026-11-24）：前に金色の X の斬りあと
+        faceNearest((f.reach || 26) + 14);
+        var xr = f.reach || 26;
+        effects.push({ kind: "xslash", x: a.x + a.face.x * xr * 0.75, y: a.y - 4 + a.face.y * xr * 0.75, r: 14, t: 0.55, max: 0.55, color: f.color });
+        break;
+      case "roots":     // テンペスト（2026-11-24）：大木の魔物の根の大波（十字）を、自分の魔法で
+        summonRoots(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 4 }, a);
+        break;
       case "holyspear": // 聖槍陣（2026-11-24）：足もとに光の槍が立つ
         effects.push({ kind: "holyspear", x: a.x + a.face.x * 8, y: a.y + 2, t: f.time, max: f.time, color: f.color });
         break;
@@ -543,6 +551,7 @@ var Combat = (function () {
       case "counter":   // 斬り返し（2026-11-16）：構えているあいだに攻撃を受けると、ダメージなしで斬り返す（core.js の hurtActive）
         c.counter = { t: f.time, hit: f.hit, miss: f.miss };
         a.busy = Math.max(a.busy, f.time);
+        Battle.pop(a.x, a.y - 34, "かまえ！", "#ffd75a", 8);   // 2026-11-24：構えていることがわかるように
         effects.push({ kind: "guardpose", t: f.time, max: f.time, color: "#ffd75a" });
         later(f.time, function () {
           if (!c.counter || Party.current() !== c || c.down) { c.counter = null; return; }
@@ -1026,6 +1035,32 @@ var Combat = (function () {
       Bosses.addAlly(h);
     }
   }
+  // ストームアロー（2026-11-24）：大怪鳥の竜巻を1つ。近くの敵を追いかけ、さわった敵に1秒に1回当たる
+  function arrowTornado(c, spec, x, y) {
+    var room = hooks.room, last = [], tw = spec.tornado;
+    if (room.hitsWall(x - 6, y - 6, 12, 12)) return;
+    var h = { kind: "tornado", x: x, y: y, r: 16, warn: 0.15, life: tw.life, tick: 0, push: 0 };
+    var hs = { stat: spec.stat, mult: tw.mult, elem: spec.elem, push: 2 };
+    h.ally = true;
+    h.allyMove = function (hz, dt) {
+      var g = nearestFoes(hz.x, hz.y, 1)[0];
+      if (g) {
+        var an2 = Math.atan2(g.y - hz.y, g.x - hz.x) + Math.sin(hz.t * 1.3 + hz.seed) * 0.6;
+        var nx = hz.x + Math.cos(an2) * TORNADO.speed * dt, ny = hz.y + Math.sin(an2) * TORNADO.speed * dt;
+        if (!room.hitsWall(nx - 6, ny - 6, 12, 12)) { hz.x = nx; hz.y = ny; }
+      }
+      Enemies.hostile().forEach(function (e) {
+        var dx = e.x - hz.x, dy = e.y - hz.y;
+        if (dx * dx + dy * dy >= (hz.r + e.r) * (hz.r + e.r)) return;
+        for (var m = 0; m < last.length; m++) if (last[m].e === e && hz.t - last[m].at < TORNADO.tick) return;
+        last = last.filter(function (l) { return l.e !== e; });
+        last.push({ e: e, at: hz.t });
+        Sound.play("hit");
+        hitEnemy(e, c, hs, hz.x, hz.y);
+      });
+    };
+    Bosses.addAlly(h);
+  }
   // 氷牙獣のつらら：近くの敵（4体まで）の足もとと、そのまわりに7本。次々に落ちる。1体に当たるのは1回だけ
   var ICICLE = { n: 7, aim: 4, r: 22, warn: 0.5, gap: 0.12 };
   function summonIcicles(c, spec, a) {
@@ -1203,6 +1238,7 @@ var Combat = (function () {
         var dx = e.x - s.x, dy = (e.y - 3) - s.y;
         if (dx * dx + dy * dy <= (e.r + s.size + 1) * (e.r + s.size + 1)) hit = e;
       });
+      if (hit && s.spec.tornado && !s.tornadoDone) { s.tornadoDone = true; arrowTornado(s.c, s.spec, hit.x, hit.y); }   // ストームアロー：はじめに当たったところに竜巻
       if (hit && s.spec.pierce) {   // つらぬく矢：同じ敵には1回だけ当たって、そのまま飛ぶ
         s.hitIds = s.hitIds || [];
         if (s.hitIds.indexOf(hit) < 0) { s.hitIds.push(hit); hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy); }
@@ -1229,6 +1265,7 @@ var Combat = (function () {
       }
       if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) {
         if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：かべや地面に落ちても、くだける
+        if (s.spec.tornado && !s.tornadoDone) { s.tornadoDone = true; arrowTornado(s.c, s.spec, s.x - s.vx * 0.05, s.y - s.vy * 0.05); }   // 当たらなければ矢の先に
         shots.splice(i, 1);
       }
     }
@@ -1282,11 +1319,15 @@ var Combat = (function () {
     Enemies.hostile().forEach(function (e) {
       if (done.indexOf(e) >= 0) return;
       var dx = e.x - hit.x, dy = e.y - hit.y, d = Math.sqrt(dx * dx + dy * dy);
-      if (d <= 80 && (!best || d < bd)) { best = e; bd = d; }
+      if (d <= (s.spec.chainRange || 80) && (!best || d < bd)) { best = e; bd = d; }
     });
     if (!best) return;
     var sp = {}; for (var k in s.spec) sp[k] = s.spec[k];
     sp.chain = s.spec.chain - 1;
+    if (s.spec.chainDecay) sp.mult = s.spec.mult * s.spec.chainDecay;   // とびうつるたびに少し弱く（2026-11-24）
+    // 次の敵まで、光の線でつなぐ（どこへとんだかわかるように）
+    var lx = best.x - hit.x, ly = best.y - hit.y;
+    effects.push({ kind: "beam", x: hit.x, y: hit.y - 4, ang: Math.atan2(ly, lx), len: Math.sqrt(lx * lx + ly * ly), w: 3, t: 0.35, max: 0.35, color: s.spec.color || "#a8d8ff" });
     var ang = Math.atan2(best.y - hit.y, best.x - hit.x), v = s.spec.speed || 170;
     shots.push({ c: s.c, spec: sp, x: hit.x + Math.cos(ang) * (hit.r + 3), y: hit.y - 3 + Math.sin(ang) * (hit.r + 3), x0: s.x0, y0: s.y0,
       vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, life: 100 / v, size: s.size, color: s.color, arrow: s.arrow, chainHit: done });
@@ -1303,6 +1344,8 @@ var Combat = (function () {
   function counterHit(c) {
     if (!c.counter) return false;
     var f = c.counter; c.counter = null;
+    for (var gi = effects.length - 1; gi >= 0; gi--) if (effects[gi].kind === "guardpose" && !effects[gi].e) effects.splice(gi, 1);   // 構えの光は消す（2026-11-24）
+    effects.push({ kind: "lightring", x: A().x, y: A().y, r: 44, t: 0.4, max: 0.4, color: "#ffd75a" });
     A().inv = Math.max(A().inv, 0.5);
     Battle.pop(A().x, A().y - 34, "斬り返し！", "#ffd75a", 9);
     castFlash("#ffd75a");
@@ -1742,22 +1785,45 @@ var Combat = (function () {
     }
     if (ef.kind === "dust") {   // ダイヤモンドダスト（2026-11-16）：広いところに、きらきら光る氷のつぶが降る
       x = ef.x - cam.x; y = ef.y - cam.y;
-      glowDot(ctx, x, y - 4, ef.r * (0.5 + 0.5 * q), "#ffffff", "#8ad8ff", 0.25 * p);
-      for (i = 0; i < 40; i++) {
+      // 2026-11-24 保護者「エフェクトが無いように見える」：青白い冷気が広がり、雪の結晶（十字）がたくさん舞う
+      glowDot(ctx, x, y - 4, ef.r * (0.6 + 0.4 * q), "#ffffff", "#8ad8ff", 0.45 * p);
+      var R2 = ef.r * Math.min(1, q * 2.5);
+      ctx.strokeStyle = rgba("#e8f8ff", 0.8 * p); ctx.lineWidth = 2;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R2, R2 * 0.55, 0, 0, Math.PI * 2); else ctx.arc(x, y, R2, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 90; i++) {
         var rx = Math.sin(ef.seed + i * 12.99) * 0.5 + 0.5, ry = Math.sin(ef.seed + i * 78.23) * 0.5 + 0.5;
-        var fx2 = x + (rx - 0.5) * ef.r * 2, fall = ((q * 1.6 + ry) % 1), fy2 = y - ef.r * 0.6 + (ry - 0.5) * ef.r * 0.8 + fall * 30;
-        var tw = 0.5 + 0.5 * Math.sin(q * 30 + i);
-        ctx.fillStyle = rgba(i % 3 ? "#e8f8ff" : "#8ad8ff", p * tw);
-        ctx.fillRect(Math.round(fx2), Math.round(fy2), i % 4 ? 1 : 2, i % 4 ? 1 : 2);
+        var fx2 = x + (rx - 0.5) * ef.r * 2 * Math.min(1, q * 2.5), fall = ((q * 1.2 + ry) % 1), fy2 = y - ef.r * 0.7 + (ry - 0.5) * ef.r * 1.1 + fall * 36;
+        var tw = 0.55 + 0.45 * Math.sin(q * 30 + i), col = rgba(i % 3 ? "#ffffff" : "#8ad8ff", p * tw), sz = i % 5 === 0 ? 3 : i % 2 ? 2 : 1;
+        ctx.fillStyle = col;
+        var fxr = Math.round(fx2), fyr = Math.round(fy2);
+        ctx.fillRect(fxr - sz, fyr, sz * 2 + 1, 1); ctx.fillRect(fxr, fyr - sz, 1, sz * 2 + 1);   // 十字の雪の結晶
       }
       return true;
     }
-    if (ef.kind === "guardpose") {   // 斬り返し（2026-11-16）：構えているあいだ、体のまわりに金色の光
+    if (ef.kind === "guardpose") {   // 斬り返し：構えているあいだ、前に金色の盾、体のまわりに回る光（2026-11-24 大きく）
       x = a.x - cam.x; y = a.y - cam.y - 6;
       var pulse = 0.6 + 0.4 * Math.sin(q * 30);
-      ctx.strokeStyle = rgba(ef.color, 0.85 * pulse); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.stroke();
-      glowDot(ctx, x, y, 16, "#ffffff", ef.color, 0.25 * pulse);
+      glowDot(ctx, x, y, 24, "#ffffff", ef.color, 0.35 * pulse);
+      ctx.strokeStyle = rgba(ef.color, 0.9 * pulse); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 4; i++) { an = q * 14 + i * Math.PI / 2; glowDot(ctx, x + Math.cos(an) * 16, y + Math.sin(an) * 16, 4, "#ffffff", ef.color, pulse); }
+      var gx = x + a.face.x * 11, gy = y + a.face.y * 8;   // 前に構えた盾
+      ctx.fillStyle = rgba(ef.color, 0.55 * pulse);
+      ctx.beginPath(); ctx.moveTo(gx - 5, gy - 6); ctx.lineTo(gx + 5, gy - 6); ctx.lineTo(gx + 5, gy + 2); ctx.lineTo(gx, gy + 7); ctx.lineTo(gx - 5, gy + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rgba("#ffffff", 0.9 * pulse); ctx.lineWidth = 1; ctx.stroke();
+      return true;
+    }
+    if (ef.kind === "xslash") {   // クロスブレイク：金色の X。1本目、少しおくれて2本目がのび、光って消える
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var r0 = ef.r;
+      [[0, -1], [0.3, 1]].forEach(function (s2) {
+        var k2 = Math.max(0, Math.min(1, (q - s2[0]) / 0.25)); if (k2 <= 0) return;
+        var fade = q > 0.6 ? (1 - q) / 0.4 : 1;
+        ctx.strokeStyle = rgba(ef.color, 0.9 * fade); ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x - r0 * s2[1], y - r0); ctx.lineTo(x - r0 * s2[1] + 2 * r0 * s2[1] * k2, y - r0 + 2 * r0 * k2); ctx.stroke();
+        ctx.strokeStyle = rgba("#ffffff", fade); ctx.lineWidth = 1.5; ctx.stroke();
+      });
+      if (q > 0.3) glowDot(ctx, x, y, 16, "#ffffff", ef.color, 0.6 * p);
       return true;
     }
     if (ef.kind === "timefreeze") {   // タイムストップ（2026-11-16）：止まっているあいだ、止まった敵に青白い時計の輪
