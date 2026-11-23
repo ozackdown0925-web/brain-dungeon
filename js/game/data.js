@@ -107,6 +107,7 @@ var GameData = (function () {
   var TOP_ORDER = ["knightking", "archmage", "grandarcher", "wushen", "archbishop", "swordsaint", "dragoon", "champion", "holylancer", "timesage", "summoner"];   // 最上級職（2026-11-16 暫定）
   function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
+  // castle：魔王城のその階（主）をたおしていることも要る（召喚士＝4階。幻獣の祠が開くまで何もできないため。2026-11-24 保護者）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
   var UPPER_JOBS = [
     { id: "knight", name: "騎士",       need: [["warrior", 7]], arms: "剣・槍／重装備",               note: "槍も使える。守りが強い" },
@@ -144,7 +145,7 @@ var GameData = (function () {
       skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
     { id: "timesage", need: [["sage", 7]], name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
       skills: [null, null, null, null, null, null, "クロノフォール"] },
-    { id: "summoner", need: [["tamer", 7]], name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
+    { id: "summoner", need: [["tamer", 7]], castle: 4, name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
       skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
 

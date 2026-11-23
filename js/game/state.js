@@ -200,6 +200,7 @@ var GameState = (function () {
     var u = (top ? GameData.TOP_JOBS : GameData.UPPER_JOBS).filter(function (x) { return x.id === job; })[0];
     if (!u) return false;
     if (top && !region2Cleared()) return false;   // 最上級職：地方2のクリアも要る（2026-11-03 決定）
+    if (u.castle && !castleCleared(u.castle)) return false;   // 召喚士：魔王城4階の主も（2026-11-24）
     return u.need.every(function (n) { return stars(h, n[0]) >= n[1]; });
   }
   // 地方2（フロストクレスト）をクリアしたか：白銀の霊峰の主をたおした。全開放の試しのときは、クリアしたことにする
@@ -207,6 +208,11 @@ var GameState = (function () {
     if (sandbox) return true;
     var id = "yuki", dd = GameData.dungeonOf(id);
     return !!(game && dd && progressOf(id).deepest >= dd.floors);
+  }
+  // 魔王城のその階（主）をたおしたか。魔王城ができるまでは、デバッグ用のセーブと全開放の試しのときだけ、たおしたことにする
+  function castleCleared(floor) {
+    if (sandbox || (window.Sync && Sync.isDebug())) return true;
+    return castleFloor() >= floor;
   }
   // なれる最上級職の一覧（今の職はのぞく）
   function topList(h) { return GameData.TOP_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
@@ -1165,7 +1171,7 @@ var GameState = (function () {
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,
-    rarityUpCost: rarityUpCost, rarityUp: rarityUp, hasLegend: hasLegend, newLegend: newLegend, castleFloor: castleFloor,
+    rarityUpCost: rarityUpCost, rarityUp: rarityUp, hasLegend: hasLegend, newLegend: newLegend, castleFloor: castleFloor, castleCleared: castleCleared,
     upgradeCost: upgradeCost, upgradeItem: upgradeItem, transferCost: transferCost, transferTargets: transferTargets, transferPlus: transferPlus, rerollItem: rerollItem, allItems: allItems
   };
 })();

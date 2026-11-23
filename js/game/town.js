@@ -925,6 +925,7 @@ var Town = (function () {
     var need = t.need[0], st = GameState.stars(h, need[0]);
     detLine(det, "条件", GameData.JOBS[need[0]].name + " ★" + need[1] + "（いま★" + st + "）" + (st >= need[1] ? " ✓" : ""), st >= need[1] ? "ok" : "");
     detLine(det, "", "地方2（" + GameData.REGIONS.frostcrest.name + "）をクリア" + (r2 ? " ✓" : ""), r2 ? "ok" : "");
+    if (t.castle) { var cc = GameState.castleCleared(t.castle); detLine(det, "", "魔王城" + t.castle + "階の主をたおす" + (cc ? " ✓" : ""), cc ? "ok" : ""); }
     detLine(det, "装備", J.weapons.map(function (w) { return GameData.WEAPONS[w].name; }).join("・") + "／" + GameData.ARMORS[J.armor].name);
     detLine(det, "伸びる", growthText(J.growth) + "（レベルが上がるとき）");
     var st2 = GameState.stars(h, t.id), m2 = h.mastery[t.id] || 0;
