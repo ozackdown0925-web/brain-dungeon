@@ -346,7 +346,8 @@ var Enemies = (function () {
       for (var k = 0; k < n; k++) {
         var a = ang + (k - (n - 1) / 2) * spread;
         arrows.push({ x: e.x + Math.cos(a) * 6, y: e.y - 3 + Math.sin(a) * 6, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: range / speed, from: e,
-                      opts: { skillShot: true, spec: f, color: col, size: f.size || 1, arrow: !f.size, pierce: !!f.pierce, explode: f.explode || 0,
+                      opts: { skillShot: true, spec: f, color: col, size: f.size || 1, arrow: !f.size, pierce: !!f.pierce, explode: f.explode || 0, rock: !!f.rock, chip: false, rad: f.rock ? 8 : 0,   // 岩石投げはゴーレムの岩の絵（2026-11-24）
+                              
                               atk: o.atk, mult: o.mult, magic: o.magic, status: o.status, big: o.big, noDamage: o.noDamage } });
       }
       return;

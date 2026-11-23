@@ -55,10 +55,11 @@ var Combat = (function () {
         if (res.amount > soft) res.amount = Math.round(soft + (res.amount - soft) * BOSS_SOFT_RATE);
       }
       // ドワーフキングの盾がまえ（2026-11-07）：前からの攻撃は減る。横・後ろからはふつう
-      var guarded = Bosses.guardFront(e, ox, oy);
+      var guarded = !spec.noGuard && Bosses.guardFront(e, ox, oy);   // 斬鉄剣は盾もむし（2026-11-24）
       if (guarded) { res.amount = Math.max(1, Math.round(res.amount * e.def.guardCut)); res.crit = false; }
       // 氷牙獣の氷のよろい（2026-11-09）：受けるダメージ半分。火の攻撃を当てるととける（その1回はふつうに当たる）
-      if (e.armor > 0) {
+      if (e.armor > 0 && spec.noGuard) Bosses.meltArmor(e, true);   // 斬鉄剣：氷のよろいも斬りさく（2026-11-24）
+      else if (e.armor > 0) {
         if (elem === "fire") Bosses.meltArmor(e, true);
         else {
           res.amount = Math.max(1, Math.round(res.amount * Bosses.armorMult(e))); res.crit = false;
@@ -89,6 +90,7 @@ var Combat = (function () {
       dealt = res.amount;
       GameState.noteHit(e.type, elem, Battle.resOf(e, elem)); // 図鑑：試した属性の効き方
       e.hp -= res.amount; e.flash = 0.1;
+      if (spec.noGuard) Battle.pop(e.x, e.y - 44, "斬鉄！", "#e8f4ff", 9);
       e.swingsTaken = (e.swingsTaken || 0) + 1;
       Battle.showHit(e.x, e.y - 20, res, false);
       Sound.play("hit");
@@ -409,12 +411,16 @@ var Combat = (function () {
     switch (f.t) {
       case "arc":
         var rch = f.reach || w.reach || 18;
-        if (f.vis === "lance") { faceNearest(rch + 12); ang = Math.atan2(a.face.y, a.face.x); }   // 槍の突きのスキルも、近い敵の方を向く
+        if (f.vis === "lance" || f.vis === "issen") { faceNearest(rch + 12); ang = Math.atan2(a.face.y, a.face.x); }   // 斬鉄剣も、ためのあとに近い敵の方を向く（2026-11-24）   // 槍の突きのスキルも、近い敵の方を向く
         a.swing = 0.18; a.swingMax = 0.18; a.swingFlip = !a.swingFlip; a.swingArc = f.arc || w.arc || 1; a.swingReach = rch; a.swingColor = f.color || "#ffe7a0";
         var fistArc = c.weapon === "fist" && !f.vis;   // 拳で打つスキル（気の拳など）も、拳の衝撃（2026-10-22）
         a.swingKind = f.vis === "lance" ? "thrust" : fistArc ? "punch" : "";
         if (fistArc) effects.push({ kind: "punch", reach: rch, t: 0.22, max: 0.22, big: true, flip: a.swingFlip, color: f.color || "#fff3c4" });
         if (f.vis === "smash") effects.push({ kind: "smash", x: a.x + a.face.x * rch * 0.7, y: a.y + a.face.y * rch * 0.7, t: 0.45, max: 0.45 });
+        if (f.vis === "issen") {   // 斬鉄剣（2026-11-24）：前を横切る細い一閃の光
+          effects.push({ kind: "beam", x: a.x - a.face.x * 6, y: a.y - 4 - a.face.y * 6, ang: ang, len: rch * 2 + 12, w: 5, t: 0.35, max: 0.35, color: "#e8f4ff" });
+          effects.push({ kind: "smash", x: a.x + a.face.x * rch * 0.7, y: a.y + a.face.y * rch * 0.7, t: 0.45, max: 0.45 });
+        }
         if (f.vis === "lance") effects.push({ kind: "lance", reach: rch, t: 0.22, max: 0.22, color: f.color });
         if (f.vis === "quake") effects.push({ kind: "crack", x: a.x, y: a.y, lines: crackLines(ang, rch * 1.3, f.arc || 0.8), t: 0.7, max: 0.7 });
         hitArc(c, f, rch, f.arc || w.arc || 1);
@@ -458,8 +464,19 @@ var Combat = (function () {
         break;
       case "rapid":
         // hits：1回ごとにちがう斬り（エレメントブレイク）。step：1回ごとに前へ進む（迅雷斬。敵はすりぬけない）
+        var walk0 = f.spinWalk ? { x: a.face.x, y: a.face.y } : null;   // 大車輪：進む向きは変えずに、体の向きだけ回す（2026-11-24）
+        if (walk0) { var wt0 = nearestInFront(80, 0.3); if (!wt0) { var wn = autoTarget(80); if (wn) { var wd = Math.sqrt((wn.x - a.x) * (wn.x - a.x) + (wn.y - a.y) * (wn.y - a.y)) || 1; walk0 = { x: (wn.x - a.x) / wd, y: (wn.y - a.y) / wd }; } } }
         for (var r = 0; r < f.count; r++) later(r * f.interval, (function (r) { return function () {
           if (Party.current() !== c || c.down) return;
+          if (walk0) {
+            var wx0 = a.x, wy0 = a.y;
+            Enemies.moveBlocked(hooks.room, a, walk0.x * f.step, walk0.y * f.step);
+            effects.push({ kind: "trail", x0: wx0, y0: wy0, x1: a.x, y1: a.y, t: 0.25, max: 0.25 });
+            var wa = Math.atan2(walk0.y, walk0.x) + (r + 1) * Math.PI / 2;
+            apply(c, f.hit);
+            a.face = { x: Math.cos(wa), y: Math.sin(wa) };   // 向きが前・横・後ろ・横と回る
+            return;
+          }
           if (f.chase) chaseNearest(f.chase, (f.hit && (f.hit.reach || f.hit.radius)) || 18);   // 無双乱舞・魔炎連舞：敵を追いかけながら
           if (f.step) {   // 迅雷斬：一歩ふみこむ（残像を少し残す）
             var sx0 = a.x, sy0 = a.y;
@@ -486,6 +503,9 @@ var Combat = (function () {
         break;
       case "pillar":    // セイクレッド
         pillar(c, f);
+        break;
+      case "holyspear": // 聖槍陣（2026-11-24）：足もとに光の槍が立つ
+        effects.push({ kind: "holyspear", x: a.x + a.face.x * 8, y: a.y + 2, t: f.time, max: f.time, color: f.color });
         break;
       case "lightring": // ディバインエンド：自分のまわりに広がる光の輪（2026-11-09）
         effects.push({ kind: "lightring", x: a.x, y: a.y, r: f.radius, t: f.time, max: f.time, color: f.color });
@@ -704,12 +724,13 @@ var Combat = (function () {
     var tx, ty;
     if (hang) later(up, function () {   // 空で待つあいだ、落ちるところに印
       if (Party.current() !== c || c.down) return;
-      if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
-      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: "#ff8a3d" });
+      if (f.stay) { tx = a.x; ty = a.y; }   // メテオストライク：その場に落ちる（2026-11-24）
+      else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: f.stay ? (f.ground || "#ff8a3d") : "#ff8a3d" });
     });
     later(up + hang, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
-      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
+      if (f.stay) { if (!hang) effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
       if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
       else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -726,6 +747,11 @@ var Combat = (function () {
       if (Party.current() !== c || c.down) return;
       effects.push({ kind: "dive", x: a.x, y: a.y, t: 0.3, max: 0.3, color: f.color });
       if (tgt && !tgt.dead) hitEnemy(tgt, c, { stat: f.stat, mult: f.dive, elem: f.elem, push: 0, color: f.color }, a.x, a.y);
+      if (f.noArea) {   // ドラゴンランス（2026-11-24）：1体だけ。槍の光と火花
+        effects.push({ kind: "lance", reach: 18, t: 0.25, max: 0.25, color: f.color });
+        Sound.play("hit");
+        return;
+      }
       later(0.08, function () {
         if (Party.current() !== c || c.down) return;
         if (!f.ground) effects.push({ kind: "pillar", fire: true, x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, color: "#ff8a3d" });   // 火柱（ドラゴンダイブだけ）
@@ -1186,7 +1212,8 @@ var Combat = (function () {
       if (hit) {
         if (s.spec.chain) chainNext(s, hit);   // チェインアロー：次の敵へとびうつる
         if (s.spec.explode) {   // 当たると爆発：まわりの敵にもまとめて当てる
-          effects.push({ kind: "boom", x: s.x, y: s.y, r: s.spec.explode, t: 0.45, max: 0.45 });
+          if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：岩がくだける（かけら・土けむり・ゆれ）
+          else effects.push({ kind: "boom", x: s.x, y: s.y, r: s.spec.explode, t: 0.45, max: 0.45 });
           Sound.play("hit");
           hitAround(s.c, { stat: s.spec.stat, mult: s.spec.mult, elem: s.spec.elem, push: 8, color: s.spec.color }, s.x, s.y, s.spec.explode);
         } else {
@@ -1200,7 +1227,10 @@ var Combat = (function () {
         }
         shots.splice(i, 1); continue;
       }
-      if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) shots.splice(i, 1);
+      if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) {
+        if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：かべや地面に落ちても、くだける
+        shots.splice(i, 1);
+      }
     }
     for (var z = zones.length - 1; z >= 0; z--) {
       var zn = zones[z];
@@ -1310,6 +1340,11 @@ var Combat = (function () {
       if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
       if (s.spec.bigFire) { Bosses.drawBigFireball(ctx, x, y, s.vx, s.vy, s.size); return; }   // 呼んだケルベロスの特大の火球（2026-11-22）
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
+      if (s.spec.rock) {   // 岩石投げ（2026-11-24 保護者：ゴーレムの岩と同じ絵）：地面にかげ、回りながら飛ぶ
+        Render.rect(Math.round(x) - 9, Math.round(y) + 12, 18, 4, "rgba(0,0,0,0.35)");
+        Bosses.drawRock(ctx, x, y - 8, 10, (s.life || 0) * 9);
+        return;
+      }
       if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）
         drawBigArrow(ctx, s, x, y, cam);
@@ -1631,6 +1666,17 @@ var Combat = (function () {
         if (ef.fire) glowDot(ctx, x + Math.sin(i * 7.3 + el * 9) * W * 0.6, y - ph * H, 6 * (1 - ph) + 2, "#fff3c4", i % 2 ? "#ff5a1f" : "#ffb84a", 0.95 * Math.min(1, p * 1.5));
         else glowDot(ctx, x + Math.sin(i * 7.3) * ef.r * 0.7, y - ph * H, 3, "#ffffff", ef.color, Math.min(1, p * 1.6));
       }
+      return true;
+    }
+    if (ef.kind === "holyspear") {   // 聖槍陣：地面にささった光の槍（上から落ちてささり、光って消える）
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var drop = Math.max(0, 1 - q * 6), sy = y - 26 - drop * 40;
+      glowDot(ctx, x, y - 12, 14, "#ffffff", ef.color, 0.6 * p);
+      ctx.strokeStyle = rgba("#ffffff", p); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(x, sy + 30); ctx.stroke();
+      ctx.fillStyle = rgba(ef.color, p);
+      ctx.beginPath(); ctx.moveTo(x, sy - 7); ctx.lineTo(x - 3, sy); ctx.lineTo(x + 3, sy); ctx.closePath(); ctx.fill();
+      ctx.fillRect(Math.round(x) - 4, Math.round(sy) + 6, 8, 2);
       return true;
     }
     if (ef.kind === "lightring") {   // ディバインエンド：自分のまわりに広がる光の輪
