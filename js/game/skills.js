@@ -704,12 +704,13 @@ var Combat = (function () {
     var tx, ty;
     if (hang) later(up, function () {   // 空で待つあいだ、落ちるところに印
       if (Party.current() !== c || c.down) return;
-      if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
-      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: "#ff8a3d" });
+      if (f.stay) { tx = a.x; ty = a.y; }   // メテオストライク：その場に落ちる（2026-11-24）
+      else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
+      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: f.stay ? (f.ground || "#ff8a3d") : "#ff8a3d" });
     });
     later(up + hang, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
-      if (f.stay) { effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
+      if (f.stay) { if (!hang) effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
       if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
       else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -1186,7 +1187,8 @@ var Combat = (function () {
       if (hit) {
         if (s.spec.chain) chainNext(s, hit);   // チェインアロー：次の敵へとびうつる
         if (s.spec.explode) {   // 当たると爆発：まわりの敵にもまとめて当てる
-          effects.push({ kind: "boom", x: s.x, y: s.y, r: s.spec.explode, t: 0.45, max: 0.45 });
+          if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：岩がくだける（かけら・土けむり・ゆれ）
+          else effects.push({ kind: "boom", x: s.x, y: s.y, r: s.spec.explode, t: 0.45, max: 0.45 });
           Sound.play("hit");
           hitAround(s.c, { stat: s.spec.stat, mult: s.spec.mult, elem: s.spec.elem, push: 8, color: s.spec.color }, s.x, s.y, s.spec.explode);
         } else {
@@ -1200,7 +1202,10 @@ var Combat = (function () {
         }
         shots.splice(i, 1); continue;
       }
-      if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) shots.splice(i, 1);
+      if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) {
+        if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：かべや地面に落ちても、くだける
+        shots.splice(i, 1);
+      }
     }
     for (var z = zones.length - 1; z >= 0; z--) {
       var zn = zones[z];
@@ -1310,6 +1315,11 @@ var Combat = (function () {
       if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
       if (s.spec.bigFire) { Bosses.drawBigFireball(ctx, x, y, s.vx, s.vy, s.size); return; }   // 呼んだケルベロスの特大の火球（2026-11-22）
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
+      if (s.spec.rock) {   // 岩石投げ（2026-11-24 保護者：ゴーレムの岩と同じ絵）：地面にかげ、回りながら飛ぶ
+        Render.rect(Math.round(x) - 9, Math.round(y) + 12, 18, 4, "rgba(0,0,0,0.35)");
+        Bosses.drawRock(ctx, x, y - 8, 10, (s.life || 0) * 9);
+        return;
+      }
       if (s.spec.orb) { drawOrb(ctx, s, x, y, cam); return; }   // 気功波：気の玉
       if (s.spec.stat !== "m") {   // ねらい撃ちなどの大きな矢：光る矢と光の尾（2026-10-19）
         drawBigArrow(ctx, s, x, y, cam);

@@ -426,12 +426,12 @@ var GameData = (function () {
       fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.55, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
     // 武神：大きな一撃と、止まらない連続攻撃
     { id: "ws.rock",  job: "wushen", star: 1, name: "岩石投げ", desc: "大きな岩を投げる。当たると割れて、まわりの敵にも当たる（打）。", short: "岩石", cond: { weapons: ["fist"] }, mp: 10, ct: 6,
-      fx: [{ t: "shot", stat: "p", mult: 3, elem: "strike", speed: 130, range: 140, size: 6, orb: true, color: "#b08a60", explode: 22 }] },
+      fx: [{ t: "shot", stat: "p", mult: 3, elem: "strike", speed: 150, range: 150, size: 8, rock: true, color: "#b08a60", explode: 28 }] },
     { id: "ws.calm",  job: "wushen", star: 2, name: "不動心", desc: "しびれと眠りに、かからない。", short: "不動心", cond: null, passive: { steady: 1 } },
     { id: "ws.spirit", job: "wushen", star: 3, name: "闘気解放", desc: "15秒のあいだ、ふつうの攻撃の待ち時間が30%短くなる。", short: "闘気", cond: null, mp: 10, ct: 30,
       fx: [{ t: "buff", stat: "wait", pct: -0.30, dur: 15, color: "#ffb84a" }] },
     { id: "ws.meteor", job: "wushen", star: 5, name: "メテオストライク", desc: "高くとんで、拳で地面を打つ。まわりの敵に大きなダメージ（打）。空中は敵の攻撃が当たらない。", short: "メテオ", cond: { weapons: ["fist"] }, mp: 16, ct: 12,
-      fx: [{ t: "leap", stay: true, stat: "p", dive: 0, mult: 4, radius: 38, range: 0, elem: "strike", color: "#ffb84a", ground: "#ffb84a" }] },
+      fx: [{ t: "leap", stay: true, stat: "p", dive: 0, mult: 4, radius: 38, range: 0, up: 0.25, hang: 0.45, down: 0.16, height: 110, elem: "strike", color: "#ffb84a", ground: "#ffb84a" }] },
     { id: "x.musou",  job: "wushen", star: 7, name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "wushen", weapons: ["fist"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
     // 大司教：生きかえらせ、聖なる光で守る
