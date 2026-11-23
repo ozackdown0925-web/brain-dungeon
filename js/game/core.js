@@ -1248,8 +1248,9 @@
   }
 
   function buffName(b) {
-    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心", evade: "よける" };
-    return names[b.stat] + (b.pct > 0 ? "↑" : "↓");
+    if (b.stat === "cut") return "受けるダメージ↓";   // ファランクス・聖槍陣（2026-11-24 undefined になっていた）
+    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心", evade: "よける", speed: "速さ" };
+    return (names[b.stat] || b.stat) + (b.pct > 0 ? "↑" : "↓");
   }
 
   function drawActor() {
@@ -1262,6 +1263,13 @@
     if (!lift && A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
     Render.rect(px - 6, py + 5, 12, 3, "rgba(0,0,0,0.35)");
     py -= Math.round(lift);
+    // ファランクス・聖槍陣で守っているあいだ：体のまわりに光の盾（2026-11-24 保護者「何が起きてるかわからない」）
+    if (c && Party.eff(c, "cut") > 0) {
+      var sp = 0.75 + 0.25 * Math.sin(Date.now() / 120);
+      Combat.glowDot(ctx, px, py - 6, 15, "#ffffff", "#fff2a0", 0.3 * sp);
+      ctx.strokeStyle = "rgba(255,242,160," + (0.8 * sp).toFixed(2) + ")"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(px, py - 5, 11, 13, 0, 0, Math.PI * 2); else ctx.arc(px, py - 5, 12, 0, Math.PI * 2); ctx.stroke();
+    }
     // 段階7-2b：ドット絵（sprites.js）。歩く・走る・攻撃でコマを変える
     var ph = Math.sin(A.walk), moving = A.move > 0.1;
     var frame = A.swing > 0 ? "attack" : !moving ? "stand" : A.running ? (ph > 0 ? "runA" : "runB") : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";

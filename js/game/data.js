@@ -139,7 +139,7 @@ var GameData = (function () {
     { id: "swordsaint", need: [["magicknight", 7]], name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
       skills: ["聖光剣", "魔剣の極意", "斬空波", null, "スペルブレイク", null, "魔炎連舞"] },
     { id: "dragoon", need: [["ninja", 7]], name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
-      skills: ["竜牙突き", "竜の心", "ドラゴンラッシュ", null, "竜の咆哮", null, "ドラゴンダイブ"] },
+      skills: ["ドラゴンランス", "竜の心", "ドラゴンラッシュ", null, "竜の咆哮", null, "ドラゴンダイブ"] },
     { id: "champion", need: [["gladiator", 7]], name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
       skills: ["大車輪", "不屈の闘魂", "斬鉄剣", null, "地裂撃", null, "ヴォルテックス"] },
     { id: "holylancer", need: [["paladin", 7]], name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
@@ -457,8 +457,8 @@ var GameData = (function () {
     { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
     // 竜騎士：ジャンプと突進
-    { id: "dg.fang",  job: "dragoon", star: 1, name: "竜牙突き", desc: "槍で、すばやく3回突く。", short: "竜牙", cond: { weapons: ["spear"] }, mp: 8, ct: 4,
-      fx: [{ t: "rapid", count: 3, interval: 0.1, hit: { t: "arc", stat: "p", mult: 1, elem: "weapon", reach: 34, arc: 0.25, vis: "lance", color: "#7fc8ff" } }] },
+    { id: "dg.fang",  job: "dragoon", star: 1, name: "ドラゴンランス", desc: "とび上がって、近くの敵1体に槍ごととびこむ。ドラゴンダイブの小さい版で、まわりには当たらない。空中は敵の攻撃が当たらない。", short: "ランス", cond: { weapons: ["spear"] }, mp: 8, ct: 5,
+      fx: [{ t: "leap", stat: "p", dive: 3.0, mult: 0, noArea: true, radius: 14, up: 0.18, down: 0.14, height: 60, range: 130, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-24 保護者：竜牙突き（3回突く）は地味なので、1体へのジャンプ攻撃に
     { id: "dg.heart", job: "dragoon", star: 2, name: "竜の心", desc: "ボスへのダメージが、いつも15%大きい。", short: "竜の心", cond: null, passive: { bossDmg: 0.15 } },
     { id: "dg.rush",  job: "dragoon", star: 3, name: "ドラゴンラッシュ", desc: "敵を通りぬけて突進し、通った敵みんなに当たる。かべでは止まる。", short: "ラッシュ", cond: { weapons: ["spear"] }, mp: 12, ct: 7,
       fx: [{ t: "pierceDash", dist: 90, stat: "p", mult: 3.5, elem: "weapon" }] },
@@ -467,11 +467,11 @@ var GameData = (function () {
     { id: "x.dive",   job: "dragoon", star: 7, name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "dragoon", weapons: ["spear"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, height: 170, hang: 1.0, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
     // グラディエーター：大剣
-    { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回しながら、前へ進む。まわりの敵に4回当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
-      fx: [{ t: "rapid", count: 4, interval: 0.2, step: 8, hit: { t: "around", vis: "spin", stat: "p", mult: 0.75, radius: 28, elem: "weapon" } }] },
+    { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回してぐるぐる回りながら、1.6秒のあいだ前へ進む。まわりの敵に何回も当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
+      fx: [{ t: "rapid", count: 8, interval: 0.2, step: 7, spinWalk: true, hit: { t: "around", vis: "spin", stat: "p", mult: 0.375, radius: 28, elem: "weapon", push: 1 } }] },   // 2026-11-24 保護者：本当に回りながら進むように（向きが回る）
     { id: "ch.guts",  job: "champion", star: 2, name: "不屈の闘魂", desc: "HPが0になるときに1回だけ、HP1で持ちこたえる（1回の冒険で1回）。", short: "闘魂", cond: null, passive: { lastStand: 1 } },
-    { id: "ch.zantetsu", job: "champion", star: 3, name: "斬鉄剣", desc: "1秒ためて、一閃。敵の物防をむしして斬る。かたい敵に強い。", short: "斬鉄剣", cond: { weapons: ["greatsword", "sword"] }, mp: 12, ct: 9,
-      fx: [{ t: "charge", time: 1.0 }, { t: "arc", stat: "p", mult: 3.5, elem: "weapon", reach: 28, arc: 0.9, vis: "smash", noDef: true, color: "#e8f4ff" }] },
+    { id: "ch.zantetsu", job: "champion", star: 3, name: "斬鉄剣", desc: "1秒ためて、一閃。敵の物防をむしして斬る。盾・氷のよろいなどのかたい守りも斬りさく。", short: "斬鉄剣", cond: { weapons: ["greatsword", "sword"] }, mp: 12, ct: 9,
+      fx: [{ t: "charge", time: 1.0 }, { t: "arc", stat: "p", mult: 3.5, elem: "weapon", reach: 28, arc: 0.9, vis: "issen", noDef: true, noGuard: true, color: "#e8f4ff" }] },   // 2026-11-24 保護者「効果がわかりづらい」：守りの技（ドワーフキングの盾・氷のよろい）もむしし、一閃の光と「斬鉄！」を出す
     { id: "ch.rift",  job: "champion", star: 5, name: "地裂撃", desc: "前の地面を一直線に割る。とどくところの敵みんなに当たる。", short: "地裂撃", cond: { weapons: ["greatsword", "axe"] }, mp: 14, ct: 10,
       fx: [{ t: "arc", stat: "p", mult: 4, elem: "weapon", reach: 72, arc: 0.22, vis: "quake" }] },
     { id: "x.vortex", job: "champion", star: 7, name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "champion", weapons: ["greatsword"] }, mp: 24, ct: 20,
@@ -484,9 +484,10 @@ var GameData = (function () {
       fx: [{ t: "judge", stat: "p", mult: 3, elem: "light", range: 170, radius: 14, color: "#fff2a0" }] },
     { id: "hl.guard", job: "holylancer", star: 2, name: "守護者", desc: "これをつけた人が仲間にいれば、仲間みんなの受けるダメージが5%へる。", short: "守護者", cond: null, passive: { teamCut: 0.05 } },
     { id: "hl.phalanx", job: "holylancer", star: 3, name: "ファランクス", desc: "槍と盾を構えて守りをかためる。8秒のあいだ、受けるダメージが40%へる。", short: "ファランクス", cond: { weapons: ["spear"] }, mp: 10, ct: 25,
-      fx: [{ t: "buff", stat: "cut", pct: 0.40, dur: 8, color: "#fff2a0" }] },
+      fx: [{ t: "buff", stat: "cut", pct: 0.40, dur: 8, color: "#fff2a0" }] },   // 守っているあいだは体のまわりに光の盾（core.js）
     { id: "hl.field", job: "holylancer", star: 5, name: "聖槍陣", desc: "槍を地面に立てて光を広げ、まわりの敵をおし返す（光）。10秒のあいだ、仲間みんなの受けるダメージが15%へる。", short: "聖槍陣", cond: { weapons: ["spear"] }, mp: 16, ct: 20,
-      fx: [{ t: "around", stat: "p", mult: 4, radius: 36, elem: "light", push: 25, color: "#fff2a0" }, { t: "buff", stat: "cut", pct: 0.15, dur: 10, party: true }] },
+      fx: [{ t: "holyspear", time: 1.2, color: "#fff2a0" }, { t: "lightring", radius: 40, time: 0.45, color: "#fff2a0" },
+           { t: "around", stat: "p", mult: 4, radius: 40, elem: "light", push: 25, color: "#fff2a0" }, { t: "buff", stat: "cut", pct: 0.15, dur: 10, party: true }] },   // 2026-11-24 保護者「何が起きてるかわからない」：槍が立ち、光の輪が広がる
     { id: "x.divine", job: "holylancer", star: 7, name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "holylancer", weapons: ["spear"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, time: 0.55, color: "#fff2a0" }] },   // 2026-11-22 保護者：往復はやめ、0.55秒かけて進んで見えるように
     // 時の賢者：時間をあやつる魔法

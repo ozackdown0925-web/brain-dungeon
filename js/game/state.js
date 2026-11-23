@@ -825,6 +825,7 @@ var GameState = (function () {
       if (f.orbs) n *= f.orbs;    // 何回も当たるもの（呼んだダークエルフの闇の玉6つ。2026-10-26：おすすめで選ばれなかったため）
       p += f.mult * n;
     });
+    fxList(sk).forEach(function (x) { if (x.f.t === "leap" && x.f.dive) p += x.f.dive; });   // とびこみの1体分（ドラゴンランス・ドラゴンダイブ。2026-11-24）
     return p;
   }
   // 回復の効き目：HP・MP の回復の割合（仲間みんななら3倍）。治す・生き返らせるも少し足す
