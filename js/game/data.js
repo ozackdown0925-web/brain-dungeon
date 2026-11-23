@@ -457,7 +457,7 @@ var GameData = (function () {
     { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
     // 竜騎士：ジャンプと突進
-    { id: "dg.fang",  job: "dragoon", star: 1, name: "ドラゴンランス", desc: "とび上がって、近くの敵1体に槍ごととびこむ。ドラゴンダイブの小さい版で、まわりには当たらない。空中は敵の攻撃が当たらない。", short: "ランス", cond: { weapons: ["spear"] }, mp: 8, ct: 5,
+    { id: "dg.fang",  job: "dragoon", star: 1, name: "ドラゴンランス", desc: "とび上がって、近くの敵1体に槍ごととびこむ。ドラゴンダイブを小さくした技で、まわりには当たらない。空中は敵の攻撃が当たらない。", short: "ランス", cond: { weapons: ["spear"] }, mp: 8, ct: 5,
       fx: [{ t: "leap", stat: "p", dive: 3.0, mult: 0, noArea: true, radius: 14, up: 0.18, down: 0.14, height: 60, range: 130, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-24 保護者：竜牙突き（3回突く）は地味なので、1体へのジャンプ攻撃に
     { id: "dg.heart", job: "dragoon", star: 2, name: "竜の心", desc: "ボスへのダメージが、いつも15%大きい。", short: "竜の心", cond: null, passive: { bossDmg: 0.15 } },
     { id: "dg.rush",  job: "dragoon", star: 3, name: "ドラゴンラッシュ", desc: "敵を通りぬけて突進し、通った敵みんなに当たる。かべでは止まる。", short: "ラッシュ", cond: { weapons: ["spear"] }, mp: 12, ct: 7,
