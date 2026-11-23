@@ -135,7 +135,7 @@ var Trial = (function () {
       var d = days[r.date] || (days[r.date] = { date: r.date, lists: {} });
       (d.lists[r.subject] || (d.lists[r.subject] = [])).push(r); // 記録の順（古い順）
     });
-    // 前の日までに「わからない」と言って、まだおうちの人と直していない問いがあると、先に直す（2026-11-16 保護者の希望）
+    // 前の日までに2回続けてできなかった問い（わからない・まちがい）で、まだおうちの人と直していないものがあると、先に直す（2026-11-16、11-24 に変更）
     if (!rest && showTeach()) return;
     ready = true;
     SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); });
@@ -347,17 +347,29 @@ var Trial = (function () {
 
   // ---------- 「わからない」を放置しない（2026-11-16 保護者の希望） ----------
   // その日は試練を続けてよい。次の日からは、おうちの人といっしょに直して、暗証番号で「直した」にするまで試練に進めない
+  // 2026-11-24 に変えた（保護者の希望）：1回目の「わからない」・まちがいでは止めない。同じ問いが次に出たときも
+  // 「わからない」かまちがい（○でない）だったときだけ、おうちの人と直す。暗証番号は教科ごとに1回（その教科の問いをまとめて直したにする）。
+  // TEACH_FROM より前の記録は数えない（変える前の記録で急に止まらないように）。
+  var TEACH_FROM = "2026-11-24";
   function teachKey(r) { return r.date + "|" + r.qid; }
   function untaught() {
-    var out = [];
+    // 問いごとに、解いた順に並べる（日付・記録の順）
+    var byQ = {};
     Object.keys(days).sort().forEach(function (d) {
-      if (d >= today) return;
       SUBJECTS.forEach(function (s) {
-        (days[d].lists[s.key] || []).forEach(function (r) {
-          if (r && r.qid && isDontKnow(r) && !GameState.dkTaught(teachKey(r))) out.push(r);
-        });
+        (days[d].lists[s.key] || []).forEach(function (r) { if (r && r.qid) (byQ[r.qid] || (byQ[r.qid] = [])).push(r); });
       });
     });
+    var out = [];
+    Object.keys(byQ).forEach(function (qid) {
+      var list = byQ[qid];
+      for (var i = 1; i < list.length; i++) {
+        var r = list[i], prev = list[i - 1];
+        if (r.date >= today || r.date < TEACH_FROM) continue;
+        if (!r.correct && !prev.correct && !GameState.dkTaught(teachKey(r))) out.push(r);
+      }
+    });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     return out;
   }
   function teachBox() {
@@ -370,25 +382,31 @@ var Trial = (function () {
     box.textContent = "";
     if (!list.length) { box.hidden = true; $("trialBody").hidden = false; return false; }
     $("trialBody").hidden = true; box.hidden = false;
-    box.appendChild(el("h3", "", "「わからない」をそのままにしない"));
-    box.appendChild(el("p", "", "前の日に「わからない」と言った問いが " + list.length + "つある。おうちの人といっしょに解き直してから、おうちの人に暗証番号を入れてもらおう。全部直すと、今日の試練に進める。"));
-    list.forEach(function (r) {
-      var q = byId[r.qid], card = el("div", "ttech-q");
-      var sub = SUBJECTS.filter(function (s) { return s.key === r.subject; })[0];
-      card.appendChild(el("b", "", r.date.slice(5).replace("-", "/") + "　" + (sub ? sub.name : r.subject) + "　" + (r.unit || "")));
-      var holder = el("div");
-      card.appendChild(holder);
-      if (q) DrillCore.renderQuestion(holder, q, { imageLoader: loadImage, saved: r });
-      else holder.appendChild(el("p", "muted", "この問題は今は出していないので、問題文は出せない。"));
-      var ok = el("button", "dq-btn small", "おうちの人と直した（暗証番号）"); ok.type = "button";
+    box.appendChild(el("h3", "", "2回続けてできなかった問いを、おうちの人と直そう"));
+    box.appendChild(el("p", "", "「わからない」かまちがいが2回続いた問いが " + list.length + "つある。おうちの人といっしょに解き直してから、教科ごとに、おうちの人に暗証番号を入れてもらおう。全部直すと、今日の試練に進める。"));
+    SUBJECTS.forEach(function (s) {
+      var mine = list.filter(function (r) { return r.subject === s.key; });
+      if (!mine.length) return;
+      var sec = el("div", "ttech-s");
+      sec.appendChild(el("h4", "", s.name + "（" + mine.length + "つ）"));
+      mine.forEach(function (r) {
+        var q = byId[r.qid], card = el("div", "ttech-q");
+        card.appendChild(el("b", "", r.date.slice(5).replace("-", "/") + "　" + s.name + "　" + (r.unit || "") + "　" + (isDontKnow(r) ? "？ わからない" : "× まちがい")));
+        var holder = el("div");
+        card.appendChild(holder);
+        if (q) DrillCore.renderQuestion(holder, q, { imageLoader: loadImage, saved: r });
+        else holder.appendChild(el("p", "muted", "この問題は今は出していないので、問題文は出せない。"));
+        sec.appendChild(card);
+      });
+      var ok = el("button", "dq-btn small", s.name + "をおうちの人と直した（暗証番号）"); ok.type = "button";
       ok.addEventListener("click", function () {
         Parent.askPin(function () {
-          GameState.markTaught(teachKey(r));
-          if (!showTeach()) { ready = true; SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); }); var first = SUBJECTS.filter(function (s) { return picks[s.key] && !itemOf(s.key); })[0]; current = first ? first.key : "math"; renderAll(); }
+          mine.forEach(function (r) { GameState.markTaught(teachKey(r)); });
+          if (!showTeach()) { ready = true; SUBJECTS.forEach(function (x) { picks[x.key] = choose(x.key); }); var first = SUBJECTS.filter(function (x) { return picks[x.key] && !itemOf(x.key); })[0]; current = first ? first.key : "math"; renderAll(); }
         });
       });
-      card.appendChild(ok);
-      box.appendChild(card);
+      sec.appendChild(ok);
+      box.appendChild(sec);
     });
     return true;
   }
@@ -428,7 +446,7 @@ var Trial = (function () {
           var secs = secsOf(current);
           return secs >= DONTKNOW_SECS ? "" : "「わからない」は、" + DONTKNOW_SECS + "秒考えてから使えるよ（今 " + secs + "秒）。まずは問題をよく読んで、メモに書いて考えてみよう。";
         },
-        done: "わからないことを正直に言えたね。おうちの人に知らせたよ。正しい答えと解説を読んでおこう。"
+        done: "わからないことを正直に言えたね。おうちの人に知らせたよ。正しい答えと解説を読んでおこう。次に出たときにまたできなかったら、おうちの人といっしょに直そう。"
       } : null,
       checkGuard: function () {
         var need = needSecs(q), secs = secsOf(current);
