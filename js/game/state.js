@@ -859,8 +859,10 @@ var GameState = (function () {
       cand.sort(byRank);
       return h.pset.map(function (x, i) { return cand[i] ? cand[i].id : null; });
     }
+    // 今の職の技は ×1.5 で見る（2026-11-24 保護者：最上級職になっても、上級職の技ばかりおすすめに入ったため）
+    function own(sk) { return sk.job === h.job ? 1.5 : 1; }
     function sorted(fn) {
-      return cand.filter(function (sk) { return fn(sk) > 0; }).sort(function (a, b) { return fn(b) - fn(a) || byRank(a, b); });
+      return cand.filter(function (sk) { return fn(sk) > 0; }).sort(function (a, b) { return fn(b) * own(b) - fn(a) * own(a) || byRank(a, b); });
     }
     var used = [];
     function take(list) { for (var i = 0; i < list.length; i++) if (used.indexOf(list[i].id) < 0) { used.push(list[i].id); return list[i].id; } return null; }
