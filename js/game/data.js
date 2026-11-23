@@ -137,7 +137,7 @@ var GameData = (function () {
     { id: "archbishop", need: [["whitemage", 7]], name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
       skills: ["サンクチュアリ", "天の恵み", "リザレクション", null, "アストラルオーラ", null, "セイクレッド"] },
     { id: "swordsaint", need: [["magicknight", 7]], name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
-      skills: ["聖光剣", "魔剣の極意", "斬空波", null, "スペルブレイク", null, "魔炎連舞"] },
+      skills: ["聖光剣", "魔剣の極意", "スプラッシュブレイド", null, "スペルブレイク", null, "魔炎連舞"] },
     { id: "dragoon", need: [["ninja", 7]], name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
       skills: ["ドラゴンランス", "竜の心", "ドラゴンラッシュ", null, "竜の咆哮", null, "ドラゴンダイブ"] },
     { id: "champion", need: [["gladiator", 7]], name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
@@ -395,11 +395,11 @@ var GameData = (function () {
     // 2026-11-22 保護者と決定：召喚士のほかは star 1・3・5 にアクティブ、star 2 にパッシブ（上級職とかぶらないもの）、star 7 に大技。上級職とかぶるパッシブなど20個を消し、残したアクティブ（★7 のほか）の倍率を ×1.1
     // 2026-11-24 保護者と決定：おすすめで上級職の★7（×2.4〜4.2）に負けて選ばれなかったので、ダメージのある技を、1回に出せる合計で ★1 ×3.0・★3 ×3.5・★5 ×4.0 にそろえた（大技はそのまま）
     // 騎士王：剣の大技
-    { id: "kk.counter", job: "knightking", star: 1, name: "斬り返し", desc: "1秒、剣を構える。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
-      fx: [{ t: "counter", time: 1.0, hit: { t: "around", vis: "spin", stat: "p", mult: 3, radius: 32, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.5, elem: "weapon" } }] },
+    { id: "kk.counter", job: "knightking", star: 1, name: "斬り返し", desc: "1.5秒、剣を構える（金色の盾が光る）。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
+      fx: [{ t: "counter", time: 1.5, hit: { t: "around", vis: "spin", stat: "p", mult: 3, radius: 40, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.5, elem: "weapon" } }] },   // 2026-11-24 保護者「何が起きてるかわからない」：構えを大きく見せ、1.0→1.5秒
     { id: "kk.aura",  job: "knightking", star: 2, name: "王者の威光", desc: "これをつけた人が仲間にいれば、仲間みんなの物防が8%上がる。", short: "威光", cond: null, passive: { teamPdef: 0.08 } },
     { id: "kk.cross", job: "knightking", star: 3, name: "クロスブレイク", desc: "十字に2回斬る。斬った敵の物防を15秒下げる。", short: "クロス", cond: { weapons: ["sword"] }, mp: 12, ct: 8,
-      fx: [{ t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.75, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },
+      fx: [{ t: "xslash", reach: 26, color: "#ffd75a" }, { t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.75, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },   // 2026-11-24 保護者：前に金色の X の斬りあと
     { id: "kk.order", job: "knightking", star: 5, name: "王の号令", desc: "仲間みんなの物攻と魔攻が、60秒のあいだ15%上がる。交代しても続く。", short: "号令", cond: null, mp: 14, ct: 30,
       fx: [{ t: "buff", stat: "patk", pct: 0.15, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.15, dur: 60, party: true }] },
     { id: "x.kings",  job: "knightking", star: 7, name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る大きな光の帯を放つ。太さは画面の上下の半分くらい、帯の中の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knightking", weapons: ["sword"] }, mp: 24, ct: 20,
@@ -408,18 +408,18 @@ var GameData = (function () {
     { id: "am.prom",  job: "archmage", star: 1, name: "プロミネンス", desc: "前へ、炎の柱が次々にふき上がる（火）。", short: "プロミネンス", cond: { line: "archmage" }, mp: 14, ct: 6,
       fx: [{ t: "blasts", stat: "m", mult: 3, elem: "fire", count: 4, gap: 22, radius: 20, interval: 0.12, color: "#ff8a3d" }] },
     { id: "am.elem",  job: "archmage", star: 2, name: "属性の極意", desc: "弱点をついたときのダメージが、×1.3 から ×1.5 になる。", short: "属性", cond: null, passive: { weak: 0.2 } },
-    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "自分のまわりに大きな竜巻を起こす。敵を吸いよせながら何回も当たる（草）。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
-      fx: [{ t: "zone", look: "storm", stat: "m", mult: 0.7, elem: "grass", dist: 0, radius: 44, dur: 2.5, tick: 0.5, pull: 50 }] },
+    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "敵がいちばん多く入るところを中心に、十字の形に太い根を地面からつき上げる（草）。1体に当たるのは1回だけ。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
+      fx: [{ t: "roots", stat: "m", mult: 3.5, elem: "grass" }] },   // 2026-11-24 保護者：ダークホールの色ちがいだったので、大木の魔物の根の大波に
     { id: "am.diamond", job: "archmage", star: 5, name: "ダイヤモンドダスト", desc: "まわりの広いところに氷のつぶをふらせる。当たった敵は6秒おそくなる（水）。", short: "ダスト", cond: { line: "archmage" }, mp: 20, ct: 14,
       fx: [{ t: "around", vis: "dust", stat: "m", mult: 4, radius: 110, elem: "water", color: "#bfe8ff", status: { type: "slow", chance: 1, dur: 6 } }] },
     { id: "x.abyss",  job: "archmage", star: 7, name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "archmage" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
     // グランドアーチャー：風の矢と星の矢の雨
-    { id: "ga.storm", job: "grandarcher", star: 1, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬく（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
-      fx: [{ t: "shot", stat: "p", mult: 3, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a" }] },
+    { id: "ga.storm", job: "grandarcher", star: 1, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬき、はじめに当たったところ（当たらなければ矢の先）に竜巻を残す。竜巻は2.5秒、近くの敵を追いかける（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.5, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a", tornado: { mult: 0.75, life: 2.5 } }] },   // 2026-11-24 保護者：大怪鳥の竜巻を残す。矢 ×1.5＋竜巻 ×0.75 を1秒ごと
     { id: "ga.wind",  job: "grandarcher", star: 2, name: "風読み", desc: "飛ばす攻撃は、遠くの敵ほどダメージが大きい（最大30%）。", short: "風読み", cond: null, passive: { far: 0.3 } },
-    { id: "ga.chain", job: "grandarcher", star: 3, name: "チェインアロー", desc: "当たった敵から、近くの敵へ2回とびうつる矢。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
-      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 220, range: 180, size: 2, chain: 2, color: "#a8d8ff" }] },
+    { id: "ga.chain", job: "grandarcher", star: 3, name: "チェインアロー", desc: "当たった敵から、近くの敵へ4回とびうつる矢（とびうつるたびに少し弱くなる）。たおした敵からもとびうつる。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 200, range: 180, size: 2, chain: 4, chainRange: 120, chainDecay: 0.85, color: "#a8d8ff" }] },   // 2026-11-24 保護者：2→4回、とびうつる先を 80→120 に、光の線でつなぐ
     { id: "ga.rapid", job: "grandarcher", star: 5, name: "ラピッドショット", desc: "矢をすばやく6本撃つ。", short: "ラピッド", cond: { weapons: ["bow"] }, mp: 12, ct: 7,
       fx: [{ t: "rapid", count: 6, interval: 0.1, hit: { t: "shot", stat: "p", mult: 0.67, elem: "weapon", speed: 250, range: 180, size: 2, color: "#e8f4ff" } }] },
     { id: "x.astral", job: "grandarcher", star: 7, name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "grandarcher", weapons: ["bow"] }, mp: 24, ct: 20,
@@ -435,8 +435,8 @@ var GameData = (function () {
     { id: "x.musou",  job: "wushen", star: 7, name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "wushen", weapons: ["fist"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
     // 大司教：生きかえらせ、聖なる光で守る
-    { id: "ab.sanct", job: "archbishop", star: 1, name: "サンクチュアリ", desc: "その場に光の輪を20秒出す。中にいるとHPが少しずつ回復し、受けるダメージが15%へる。", short: "聖域", cond: { line: "archbishop" }, mp: 18, ct: 40,
-      fx: [{ t: "zone", look: "holy", stat: "m", mult: 0, elem: "light", dist: 0, radius: 40, dur: 20, tick: 1, sanct: { heal: 0.03, cut: 0.15 } }] },
+    { id: "ab.sanct", job: "archbishop", star: 1, name: "サンクチュアリ", desc: "その場に光の輪を20秒出す。中にいると1秒ごとにHPが5%回復し、受けるダメージが15%へる。", short: "聖域", cond: { line: "archbishop" }, mp: 18, ct: 40,
+      fx: [{ t: "zone", look: "holy", stat: "m", mult: 0, elem: "light", dist: 0, radius: 40, dur: 20, tick: 1, sanct: { heal: 0.05, cut: 0.15 } }] },   // 2026-11-24 保護者「回復が少なく見える」：1秒 3%→5%、回復のたびに緑に光る
     { id: "ab.grace", job: "archbishop", star: 2, name: "天の恵み", desc: "これをつけた人が仲間にいれば、部屋の敵を全部たおしたとき、仲間みんなのHPが5%回復する。", short: "恵み", cond: null, passive: { teamRoomHp: 0.05 } },
     { id: "ab.resur", job: "archbishop", star: 3, name: "リザレクション", desc: "たおれた仲間みんなを、HP50%でよみがえらせる。", short: "リザレク", cond: { line: "archbishop" }, mp: 40, ct: 120,
       fx: [{ t: "revive", pct: 0.5, all: true }] },
@@ -450,15 +450,15 @@ var GameData = (function () {
     { id: "ss.light", job: "swordsaint", star: 1, name: "聖光剣", desc: "15秒のあいだ、剣の攻撃が光になる。", short: "聖光剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
       fx: [{ t: "enchant", elem: "light", dur: 15 }] },
     { id: "ss.art",   job: "swordsaint", star: 2, name: "魔剣の極意", desc: "剣に属性をのせる時間が2倍になり、火・水・草・光・闇のダメージがいつも15%強い。", short: "魔剣極意", cond: null, passive: { enchantMul: 1, elemDmg: 0.15 } },
-    { id: "ss.wave",  job: "swordsaint", star: 3, name: "斬空波", desc: "剣の属性の斬撃を飛ばす。何体でもつらぬく。", short: "斬空波", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 5,
-      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 210, range: 150, size: 4, pierce: true, look: "crescent", color: "#c9a8ff", noAim: true }] },
+    { id: "ss.wave",  job: "swordsaint", star: 3, name: "スプラッシュブレイド", desc: "自分のまわりに水の玉を6つよび出す。玉は回りながら、さわった敵に当たり、そのあと水の斬撃になって近くの敵へ1つずつ飛んでいく（水。つらぬく）。", short: "スプラッシュ", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 6,
+      fx: [{ t: "orbs", stat: "p", mult: 0.6, touch: 0.3, elem: "water", count: 6, color: "#5ab8ff" }] },   // 2026-11-24 保護者：斬空波は地味なので、ダークエルフの大技（回る玉）を水の色で。2026-11-24 名前をスプラッシュブレイドにし、撃つと水の斬撃
     { id: "ss.break", job: "swordsaint", star: 5, name: "スペルブレイク", desc: "斬った敵の魔防を、20秒のあいだ下げる。", short: "スペル", cond: { weapons: ["sword", "greatsword"] }, mp: 8, ct: 8,
       fx: [{ t: "arc", stat: "p", mult: 4, elem: "weapon", color: "#c070ff", status: { type: "mbreak", chance: 1, dur: 20 } }] },
     { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
     // 竜騎士：ジャンプと突進
     { id: "dg.fang",  job: "dragoon", star: 1, name: "ドラゴンランス", desc: "とび上がって、近くの敵1体に槍ごととびこむ。ドラゴンダイブを小さくしたもので、まわりには当たらない。空中は敵の攻撃が当たらない。", short: "ランス", cond: { weapons: ["spear"] }, mp: 8, ct: 5,
-      fx: [{ t: "leap", stat: "p", dive: 3.0, mult: 0, noArea: true, radius: 14, up: 0.18, down: 0.14, height: 60, range: 130, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-24 保護者：竜牙突き（3回突く）は地味なので、1体へのジャンプ攻撃に
+      fx: [{ t: "leap", stat: "p", dive: 3, mult: 0, noArea: true, track: true, radius: 14, up: 0.2, hang: 0.5, down: 0.14, height: 170, range: 130, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-24 保護者：竜牙突き（3回突く）は地味なので、1体へのジャンプ攻撃に。画面の上に消えて0.5秒待ってから、ねらった敵を追ってとびこむ
     { id: "dg.heart", job: "dragoon", star: 2, name: "竜の心", desc: "ボスへのダメージが、いつも15%大きい。", short: "竜の心", cond: null, passive: { bossDmg: 0.15 } },
     { id: "dg.rush",  job: "dragoon", star: 3, name: "ドラゴンラッシュ", desc: "敵を通りぬけて突進し、通った敵みんなに当たる。かべでは止まる。", short: "ラッシュ", cond: { weapons: ["spear"] }, mp: 12, ct: 7,
       fx: [{ t: "pierceDash", dist: 90, stat: "p", mult: 3.5, elem: "weapon" }] },

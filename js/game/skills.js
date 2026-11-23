@@ -434,7 +434,7 @@ var Combat = (function () {
           // 火遁の術・ファイアストーム・リーフストーム：まわりを回るうず（2026-10-20）
           effects.push({ kind: "swirl", look: f.vis, x: a.x, y: a.y, r: f.radius, t: 0.8, max: 0.8, seed: Math.random() * 6 });
         } else if (f.vis === "dust") {   // ダイヤモンドダスト（2026-11-16）：まわりに氷のつぶ
-          effects.push({ kind: "dust", x: a.x, y: a.y, r: f.radius, t: 1.0, max: 1.0, seed: Math.random() * 100 });
+          effects.push({ kind: "dust", x: a.x, y: a.y, r: f.radius, t: 1.4, max: 1.4, seed: Math.random() * 100 });
         } else if (f.vis === "tidal") {
           effects.push({ kind: "tidal", x: a.x, y: a.y, r: f.radius, t: 0.7, max: 0.7, seed: Math.random() * 6 });
         } else {
@@ -504,6 +504,20 @@ var Combat = (function () {
       case "pillar":    // セイクレッド
         pillar(c, f);
         break;
+      case "orbs":      // スプラッシュブレイド（2026-11-24 保護者：ダークエルフの大技を水の色で）：まわりに水の玉が集まって回り、1つずつ水の斬撃にして近い敵へ撃つ
+        orbRing = { c: c, f: f, n: f.count || 6, slots: [], ang: Math.random() * Math.PI * 2, t: 0, hitT: [] };
+        for (var on = 0; on < orbRing.n; on++) orbRing.slots.push(on);
+        Sound.play("skill");
+        for (var on2 = 0; on2 < orbRing.n; on2++) later(ORB.gather + ORB.orbit + on2 * ORB.gap, orbShot);
+        break;
+      case "xslash":    // クロスブレイク（2026-11-24）：前に金色の X の斬りあと
+        faceNearest((f.reach || 26) + 14);
+        var xr = f.reach || 26;
+        effects.push({ kind: "xslash", x: a.x + a.face.x * xr * 0.75, y: a.y - 4 + a.face.y * xr * 0.75, r: 14, t: 0.55, max: 0.55, color: f.color });
+        break;
+      case "roots":     // テンペスト（2026-11-24）：大木の魔物の根の大波（十字）を、自分の魔法で
+        summonRoots(c, { stat: f.stat, mult: f.mult, elem: f.elem, push: 4 }, a);
+        break;
       case "holyspear": // 聖槍陣（2026-11-24）：足もとに光の槍が立つ
         effects.push({ kind: "holyspear", x: a.x + a.face.x * 8, y: a.y + 2, t: f.time, max: f.time, color: f.color });
         break;
@@ -543,6 +557,7 @@ var Combat = (function () {
       case "counter":   // 斬り返し（2026-11-16）：構えているあいだに攻撃を受けると、ダメージなしで斬り返す（core.js の hurtActive）
         c.counter = { t: f.time, hit: f.hit, miss: f.miss };
         a.busy = Math.max(a.busy, f.time);
+        Battle.pop(a.x, a.y - 34, "かまえ！", "#ffd75a", 8);   // 2026-11-24：構えていることがわかるように
         effects.push({ kind: "guardpose", t: f.time, max: f.time, color: "#ffd75a" });
         later(f.time, function () {
           if (!c.counter || Party.current() !== c || c.down) { c.counter = null; return; }
@@ -726,12 +741,17 @@ var Combat = (function () {
       if (Party.current() !== c || c.down) return;
       if (f.stay) { tx = a.x; ty = a.y; }   // メテオストライク：その場に落ちる（2026-11-24）
       else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
-      effects.push({ kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: f.stay ? (f.ground || "#ff8a3d") : "#ff8a3d" });
+      var ringEf = { kind: "ring", x: tx, y: ty, r: f.radius, t: hang + down + 0.1, max: hang + down + 0.1, color: f.stay ? (f.ground || "#ff8a3d") : "#ff8a3d" };
+      effects.push(ringEf);
+      if (f.track && tgt) for (var tk = 1; tk <= 10; tk++) later(hang * tk / 10, function () {   // ドラゴンランス：空で待つあいだ、印がねらった敵を追う（2026-11-24）
+        if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; ringEf.x = tx; ringEf.y = ty; }
+      });
     });
     later(up + hang, function () {   // いちばん高いところで、ねらった敵の上へ
       if (Party.current() !== c || c.down) return;
       if (f.stay) { if (!hang) effects.push({ kind: "ring", x: a.x, y: a.y, r: f.radius, t: down + 0.1, max: down + 0.1, color: f.ground || "#ff8a3d" }); return; }
-      if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
+      if (hang && f.track) { if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else tgt = null; }
+      else if (hang) { if (tgt && (tgt.dead || Math.abs(tgt.x - tx) + Math.abs(tgt.y - ty) > f.radius)) tgt = null; }   // 印のところに落ちる（敵がにげたら、とびこみは当たらない）
       else if (tgt && !tgt.dead) { tx = tgt.x; ty = tgt.y; } else { tx = a.x + a.face.x * 60; ty = a.y + a.face.y * 60; tgt = null; }
       var dx = tx - a.x, dy = ty - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
       a.face = { x: dx / d, y: dy / d };
@@ -1026,6 +1046,32 @@ var Combat = (function () {
       Bosses.addAlly(h);
     }
   }
+  // ストームアロー（2026-11-24）：大怪鳥の竜巻を1つ。近くの敵を追いかけ、さわった敵に1秒に1回当たる
+  function arrowTornado(c, spec, x, y) {
+    var room = hooks.room, last = [], tw = spec.tornado;
+    if (room.hitsWall(x - 6, y - 6, 12, 12)) return;
+    var h = { kind: "tornado", x: x, y: y, r: 16, warn: 0.15, life: tw.life, tick: 0, push: 0 };
+    var hs = { stat: spec.stat, mult: tw.mult, elem: spec.elem, push: 2 };
+    h.ally = true;
+    h.allyMove = function (hz, dt) {
+      var g = nearestFoes(hz.x, hz.y, 1)[0];
+      if (g) {
+        var an2 = Math.atan2(g.y - hz.y, g.x - hz.x) + Math.sin(hz.t * 1.3 + hz.seed) * 0.6;
+        var nx = hz.x + Math.cos(an2) * TORNADO.speed * dt, ny = hz.y + Math.sin(an2) * TORNADO.speed * dt;
+        if (!room.hitsWall(nx - 6, ny - 6, 12, 12)) { hz.x = nx; hz.y = ny; }
+      }
+      Enemies.hostile().forEach(function (e) {
+        var dx = e.x - hz.x, dy = e.y - hz.y;
+        if (dx * dx + dy * dy >= (hz.r + e.r) * (hz.r + e.r)) return;
+        for (var m = 0; m < last.length; m++) if (last[m].e === e && hz.t - last[m].at < TORNADO.tick) return;
+        last = last.filter(function (l) { return l.e !== e; });
+        last.push({ e: e, at: hz.t });
+        Sound.play("hit");
+        hitEnemy(e, c, hs, hz.x, hz.y);
+      });
+    };
+    Bosses.addAlly(h);
+  }
   // 氷牙獣のつらら：近くの敵（4体まで）の足もとと、そのまわりに7本。次々に落ちる。1体に当たるのは1回だけ
   var ICICLE = { n: 7, aim: 4, r: 22, warn: 0.5, gap: 0.12 };
   function summonIcicles(c, spec, a) {
@@ -1128,6 +1174,81 @@ var Combat = (function () {
       x: o.x, y: o.y, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 220 / speed, size: 4, color: "#a040ff", arrow: false });
     Sound.play("skill");
   }
+  // スプラッシュブレイド（2026-11-24）：自分のまわりを回る水の玉。そろってから回って、1つずつ近い敵へ撃つ。回る玉はさわった敵にも当たる
+  var ORB = { gather: 0.35, orbit: 0.7, gap: 0.16, R: 22, speed: 200 };
+  var orbRing = null;
+  function orbPos(i) {
+    var r = orbRing, a = r.ang + r.slots[i] / r.n * Math.PI * 2;
+    return { x: A().x + Math.cos(a) * ORB.R, y: A().y - 8 + Math.sin(a) * ORB.R * 0.6 };
+  }
+  function orbShown() { return Math.min(orbRing.slots.length, Math.ceil(orbRing.n * Math.min(1, (orbRing.t + 0.05) / ORB.gather))); }
+  function orbShot() {
+    var r = orbRing;
+    if (!r || !r.slots.length || Party.current() !== r.c || r.c.down) return;
+    var k = r.n - r.slots.length, list = nearestFoes(A().x, A().y, r.n);
+    var tgt = list.length ? list[k % list.length] : null, best = 0, bd = 1e9;
+    for (var i = 0; i < r.slots.length; i++) {
+      var op = orbPos(i), d2 = tgt ? (tgt.x - op.x) * (tgt.x - op.x) + (tgt.y - op.y) * (tgt.y - op.y) : 0;
+      if (d2 < bd) { bd = d2; best = i; }
+    }
+    var o = orbPos(best);
+    r.slots.splice(best, 1);
+    var ang = tgt ? Math.atan2(tgt.y - 3 - o.y, tgt.x - o.x) : Math.atan2(A().face.y, A().face.x);
+    shots.push({ c: r.c, spec: { stat: r.f.stat, mult: r.f.mult, elem: r.f.elem, pierce: true, orbCol: r.f.color, push: 4 },
+      x: o.x, y: o.y, vx: Math.cos(ang) * ORB.speed, vy: Math.sin(ang) * ORB.speed, life: 220 / ORB.speed, size: 4, color: r.f.color, arrow: false });
+    Sound.play("skill");
+    if (!r.slots.length) orbRing = null;
+  }
+  function updateOrbRing(dt) {
+    var r = orbRing;
+    if (!r) return;
+    if (Party.current() !== r.c || r.c.down) { orbRing = null; return; }
+    r.t += dt; r.ang += 3.6 * dt;
+    r.hitT = r.hitT.filter(function (h) { h.t -= dt; return h.t > 0; });
+    var shown = orbShown();
+    for (var i = 0; i < shown; i++) {
+      var op = orbPos(i), sl = r.slots[i];
+      Enemies.hostile().forEach(function (e) {
+        var dx = e.x - op.x, dy = (e.y - 3) - op.y;
+        if (dx * dx + dy * dy > (e.r + 6) * (e.r + 6)) return;
+        if (r.hitT.some(function (h) { return h.sl === sl && h.e === e; })) return;
+        r.hitT.push({ sl: sl, e: e, t: 0.6 });
+        hitEnemy(e, r.c, { stat: r.f.stat, mult: r.f.touch, elem: r.f.elem, push: 2, color: r.f.color }, op.x, op.y);
+      });
+    }
+  }
+  function drawElemOrb(ctx, x, y, col, glow) {
+    var pulse = 0.85 + 0.15 * Math.sin(glow * 12 + x * 0.1);
+    glowDot(ctx, x, y, 12 * pulse, "#ffffff", col, 0.7);
+    ctx.fillStyle = rgba(col, 0.9); ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(235,250,255,0.95)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(x - 2.5), Math.round(y - 2.5), 2, 2);
+  }
+  // 水の斬撃（2026-11-24 保護者）：飛ぶ向きに大きな三日月の水の刃。後ろに水しぶきの粒
+  function drawWaterSlash(ctx, x, y, vx, vy, col, life) {
+    var ang = Math.atan2(vy, vx), ph = (life || 0) * 40;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    for (var i = 1; i <= 6; i++) {   // しぶき
+      var dy = Math.sin(ph + i * 2.1) * (3 + i * 1.3), al = 0.75 - i * 0.1;
+      ctx.fillStyle = rgba(i % 2 ? "#ffffff" : col, al);
+      ctx.fillRect(Math.round(-6 - i * 5), Math.round(dy), i % 3 ? 2 : 3, i % 3 ? 2 : 3);
+    }
+    glowDot(ctx, -2, 0, 16, "#ffffff", col, 0.45);
+    ctx.fillStyle = rgba(col, 0.85);   // 水の刃（三日月）
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.25, 1.25); ctx.arc(-11, 0, 12, 1.15, -1.15, true); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(200,240,255,0.55)";
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.0, 1.0); ctx.arc(-9, 0, 12, 0.95, -0.95, true); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(-6, 0, 14, -1.05, 1.05); ctx.stroke();
+    ctx.restore();
+  }
+  function drawOrbRing(ctx, cam) {
+    if (!orbRing) return;
+    for (var i = 0; i < orbShown(); i++) {
+      var op = orbPos(i);
+      drawElemOrb(ctx, Math.round(op.x - cam.x), Math.round(op.y - cam.y), orbRing.f.color, clock);
+    }
+  }
   // 回っている玉：まわし、さわった敵に当てる（1つの玉が同じ敵に当たるのは0.6秒に1回まで）
   function updateSummonOrbs(s, dt) {
     if (!s.slots || !s.slots.length) return;
@@ -1187,6 +1308,7 @@ var Combat = (function () {
     clock += dt;
     if (cast) { cast.t -= dt; if (cast.t <= 0) cast = null; }
     if (A() && A().airT > 0) A().airT = Math.max(0, A().airT - dt);   // ドラゴンダイブで空にいる時間
+    updateOrbRing(dt);
     for (var q = queue.length - 1; q >= 0; q--) {
       queue[q].t -= dt;
       if (queue[q].t <= 0) { var fn = queue[q].fn; queue.splice(q, 1); fn(); }
@@ -1203,6 +1325,7 @@ var Combat = (function () {
         var dx = e.x - s.x, dy = (e.y - 3) - s.y;
         if (dx * dx + dy * dy <= (e.r + s.size + 1) * (e.r + s.size + 1)) hit = e;
       });
+      if (hit && s.spec.tornado && !s.tornadoDone) { s.tornadoDone = true; arrowTornado(s.c, s.spec, hit.x, hit.y); }   // ストームアロー：はじめに当たったところに竜巻
       if (hit && s.spec.pierce) {   // つらぬく矢：同じ敵には1回だけ当たって、そのまま飛ぶ
         s.hitIds = s.hitIds || [];
         if (s.hitIds.indexOf(hit) < 0) { s.hitIds.push(hit); hitEnemy(hit, s.c, s.spec, s.x - s.vx, s.y - s.vy); }
@@ -1229,6 +1352,7 @@ var Combat = (function () {
       }
       if (room.blocksShot(Math.floor(s.x / World.TILE), Math.floor(s.y / World.TILE)) || s.life <= 0) {
         if (s.spec.rock) Bosses.rockBreak(s.x, s.y + 4, true);   // 岩石投げ：かべや地面に落ちても、くだける
+        if (s.spec.tornado && !s.tornadoDone) { s.tornadoDone = true; arrowTornado(s.c, s.spec, s.x - s.vx * 0.05, s.y - s.vy * 0.05); }   // 当たらなければ矢の先に
         shots.splice(i, 1);
       }
     }
@@ -1240,7 +1364,7 @@ var Combat = (function () {
         if (zn.f.mult > 0 || zn.f.status) hitAround(zn.c, { stat: zn.f.stat, mult: zn.f.mult, elem: zn.f.elem, push: 0, status: zn.f.status }, zn.x, zn.y, zn.f.radius);
         if (zn.f.sanct && inZone(zn)) {   // サンクチュアリ：中にいる仲間（画面に出ている1人）が回復する
           var pc = Party.current();
-          if (pc && !pc.down) { var amt = Math.round(pc.stats.hp * zn.f.sanct.heal * (zn.c.stats.healMul || 1)); pc.hp = Math.min(pc.stats.hp, pc.hp + amt); Battle.pop(A().x, A().y - 20, "+" + amt, "#6fd08c", 8); }
+          if (pc && !pc.down) { var amt = Math.round(pc.stats.hp * zn.f.sanct.heal * (zn.c.stats.healMul || 1)); pc.hp = Math.min(pc.stats.hp, pc.hp + amt); Battle.pop(A().x, A().y - 20, "+" + amt, "#6fd08c", 11); effects.push({ kind: "glow", t: 0.45, max: 0.45, color: "#6fd08c" }); }   // 回復が見えるように大きな数字と光（2026-11-24 保護者）
         }
       }
       if (zn.f.pull && hooks.room) {   // ダークホール：まわりの敵を、まんなかへ吸いよせる
@@ -1282,11 +1406,15 @@ var Combat = (function () {
     Enemies.hostile().forEach(function (e) {
       if (done.indexOf(e) >= 0) return;
       var dx = e.x - hit.x, dy = e.y - hit.y, d = Math.sqrt(dx * dx + dy * dy);
-      if (d <= 80 && (!best || d < bd)) { best = e; bd = d; }
+      if (d <= (s.spec.chainRange || 80) && (!best || d < bd)) { best = e; bd = d; }
     });
     if (!best) return;
     var sp = {}; for (var k in s.spec) sp[k] = s.spec[k];
     sp.chain = s.spec.chain - 1;
+    if (s.spec.chainDecay) sp.mult = s.spec.mult * s.spec.chainDecay;   // とびうつるたびに少し弱く（2026-11-24）
+    // 次の敵まで、光の線でつなぐ（どこへとんだかわかるように）
+    var lx = best.x - hit.x, ly = best.y - hit.y;
+    effects.push({ kind: "beam", x: hit.x, y: hit.y - 4, ang: Math.atan2(ly, lx), len: Math.sqrt(lx * lx + ly * ly), w: 3, t: 0.35, max: 0.35, color: s.spec.color || "#a8d8ff" });
     var ang = Math.atan2(best.y - hit.y, best.x - hit.x), v = s.spec.speed || 170;
     shots.push({ c: s.c, spec: sp, x: hit.x + Math.cos(ang) * (hit.r + 3), y: hit.y - 3 + Math.sin(ang) * (hit.r + 3), x0: s.x0, y0: s.y0,
       vx: Math.cos(ang) * v, vy: Math.sin(ang) * v, life: 100 / v, size: s.size, color: s.color, arrow: s.arrow, chainHit: done });
@@ -1303,13 +1431,15 @@ var Combat = (function () {
   function counterHit(c) {
     if (!c.counter) return false;
     var f = c.counter; c.counter = null;
+    for (var gi = effects.length - 1; gi >= 0; gi--) if (effects[gi].kind === "guardpose" && !effects[gi].e) effects.splice(gi, 1);   // 構えの光は消す（2026-11-24）
+    effects.push({ kind: "lightring", x: A().x, y: A().y, r: 44, t: 0.4, max: 0.4, color: "#ffd75a" });
     A().inv = Math.max(A().inv, 0.5);
     Battle.pop(A().x, A().y - 34, "斬り返し！", "#ffd75a", 9);
     castFlash("#ffd75a");
     apply(c, f.hit);
     return true;
   }
-  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; summons.length = 0; cast = null; }
+  function clear() { shots.length = 0; zones.length = 0; queue.length = 0; effects.length = 0; summons.length = 0; cast = null; orbRing = null; }
 
   // ---------- 描画 ----------
   function draw(cam) {
@@ -1323,6 +1453,7 @@ var Combat = (function () {
     }
     zones.forEach(function (zn) { drawZone(ctx, zn, cam); });
     drawSummons(ctx, cam);
+    drawOrbRing(ctx, cam);
     shots.forEach(function (s) { drawShot(ctx, s, cam); });
     effects.forEach(function (ef) { drawEffect(ctx, ef, a, cam); });
     drawCastFront(ctx, cam);
@@ -1337,6 +1468,7 @@ var Combat = (function () {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - s.vx / len * 7, y - s.vy / len * 7); ctx.stroke();
         return;
       }
+      if (s.spec.orbCol) { drawWaterSlash(ctx, x, y, s.vx, s.vy, s.spec.orbCol, s.life); return; }   // スプラッシュブレイドの撃った水の斬撃
       if (s.spec.dark) { Bosses.drawDarkBolt(ctx, x, y, s.vx, s.vy, s.life); return; }   // 呼んだダークエルフの撃った闇の玉
       if (s.spec.bigFire) { Bosses.drawBigFireball(ctx, x, y, s.vx, s.vy, s.size); return; }   // 呼んだケルベロスの特大の火球（2026-11-22）
       if (s.spec.look) { drawLook(ctx, s, x, y, cam); return; }   // 手裏剣・破衝撃・グランドクロス（2026-10-20）
@@ -1742,22 +1874,45 @@ var Combat = (function () {
     }
     if (ef.kind === "dust") {   // ダイヤモンドダスト（2026-11-16）：広いところに、きらきら光る氷のつぶが降る
       x = ef.x - cam.x; y = ef.y - cam.y;
-      glowDot(ctx, x, y - 4, ef.r * (0.5 + 0.5 * q), "#ffffff", "#8ad8ff", 0.25 * p);
-      for (i = 0; i < 40; i++) {
+      // 2026-11-24 保護者「エフェクトが無いように見える」：青白い冷気が広がり、雪の結晶（十字）がたくさん舞う
+      glowDot(ctx, x, y - 4, ef.r * (0.6 + 0.4 * q), "#ffffff", "#8ad8ff", 0.45 * p);
+      var R2 = ef.r * Math.min(1, q * 2.5);
+      ctx.strokeStyle = rgba("#e8f8ff", 0.8 * p); ctx.lineWidth = 2;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(x, y, R2, R2 * 0.55, 0, 0, Math.PI * 2); else ctx.arc(x, y, R2, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 90; i++) {
         var rx = Math.sin(ef.seed + i * 12.99) * 0.5 + 0.5, ry = Math.sin(ef.seed + i * 78.23) * 0.5 + 0.5;
-        var fx2 = x + (rx - 0.5) * ef.r * 2, fall = ((q * 1.6 + ry) % 1), fy2 = y - ef.r * 0.6 + (ry - 0.5) * ef.r * 0.8 + fall * 30;
-        var tw = 0.5 + 0.5 * Math.sin(q * 30 + i);
-        ctx.fillStyle = rgba(i % 3 ? "#e8f8ff" : "#8ad8ff", p * tw);
-        ctx.fillRect(Math.round(fx2), Math.round(fy2), i % 4 ? 1 : 2, i % 4 ? 1 : 2);
+        var fx2 = x + (rx - 0.5) * ef.r * 2 * Math.min(1, q * 2.5), fall = ((q * 1.2 + ry) % 1), fy2 = y - ef.r * 0.7 + (ry - 0.5) * ef.r * 1.1 + fall * 36;
+        var tw = 0.55 + 0.45 * Math.sin(q * 30 + i), col = rgba(i % 3 ? "#ffffff" : "#8ad8ff", p * tw), sz = i % 5 === 0 ? 3 : i % 2 ? 2 : 1;
+        ctx.fillStyle = col;
+        var fxr = Math.round(fx2), fyr = Math.round(fy2);
+        ctx.fillRect(fxr - sz, fyr, sz * 2 + 1, 1); ctx.fillRect(fxr, fyr - sz, 1, sz * 2 + 1);   // 十字の雪の結晶
       }
       return true;
     }
-    if (ef.kind === "guardpose") {   // 斬り返し（2026-11-16）：構えているあいだ、体のまわりに金色の光
+    if (ef.kind === "guardpose") {   // 斬り返し：構えているあいだ、前に金色の盾、体のまわりに回る光（2026-11-24 大きく）
       x = a.x - cam.x; y = a.y - cam.y - 6;
       var pulse = 0.6 + 0.4 * Math.sin(q * 30);
-      ctx.strokeStyle = rgba(ef.color, 0.85 * pulse); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.stroke();
-      glowDot(ctx, x, y, 16, "#ffffff", ef.color, 0.25 * pulse);
+      glowDot(ctx, x, y, 24, "#ffffff", ef.color, 0.35 * pulse);
+      ctx.strokeStyle = rgba(ef.color, 0.9 * pulse); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 4; i++) { an = q * 14 + i * Math.PI / 2; glowDot(ctx, x + Math.cos(an) * 16, y + Math.sin(an) * 16, 4, "#ffffff", ef.color, pulse); }
+      var gx = x + a.face.x * 11, gy = y + a.face.y * 8;   // 前に構えた盾
+      ctx.fillStyle = rgba(ef.color, 0.55 * pulse);
+      ctx.beginPath(); ctx.moveTo(gx - 5, gy - 6); ctx.lineTo(gx + 5, gy - 6); ctx.lineTo(gx + 5, gy + 2); ctx.lineTo(gx, gy + 7); ctx.lineTo(gx - 5, gy + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rgba("#ffffff", 0.9 * pulse); ctx.lineWidth = 1; ctx.stroke();
+      return true;
+    }
+    if (ef.kind === "xslash") {   // クロスブレイク：金色の X。1本目、少しおくれて2本目がのび、光って消える
+      x = ef.x - cam.x; y = ef.y - cam.y;
+      var r0 = ef.r;
+      [[0, -1], [0.3, 1]].forEach(function (s2) {
+        var k2 = Math.max(0, Math.min(1, (q - s2[0]) / 0.25)); if (k2 <= 0) return;
+        var fade = q > 0.6 ? (1 - q) / 0.4 : 1;
+        ctx.strokeStyle = rgba(ef.color, 0.9 * fade); ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x - r0 * s2[1], y - r0); ctx.lineTo(x - r0 * s2[1] + 2 * r0 * s2[1] * k2, y - r0 + 2 * r0 * k2); ctx.stroke();
+        ctx.strokeStyle = rgba("#ffffff", fade); ctx.lineWidth = 1.5; ctx.stroke();
+      });
+      if (q > 0.3) glowDot(ctx, x, y, 16, "#ffffff", ef.color, 0.6 * p);
       return true;
     }
     if (ef.kind === "timefreeze") {   // タイムストップ（2026-11-16）：止まっているあいだ、止まった敵に青白い時計の輪
