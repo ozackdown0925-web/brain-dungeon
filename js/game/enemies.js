@@ -308,6 +308,18 @@ var Enemies = (function () {
           hz.push({ kind: "circle", look: "icicle", from: e, x: pp.x + Math.cos(ia) * ir, y: pp.y + Math.sin(ia) * ir * 0.8, r: 22, t: 0, warn: 0.8 + ii * 0.14, erupt: 0.45, hit: false,
                     seed: Math.random() * 100, opts: ii === 0 ? o : { atk: o.atk, mult: o.mult * 0.5, magic: o.magic, status: o.status } });
         }
+      } else if (f.boss === "cerberus_gj") {   // 召喚士のケルベロス：まんなかの1発がこちらをねらい、その上下に1発ずつ。これを3回（2026-11-22）
+        for (var cv = 0; cv < 3; cv++) (function (k2) {
+          rivalLater.push({ t: k2 * 0.45, fn: function (p2) {
+            if (!alive(e)) return;
+            var ca = Math.atan2(p2.y - (sy - 12), p2.x - sx);
+            for (var ci = -1; ci <= 1; ci++) {
+              var can = ca + ci * 0.5;
+              arrows.push({ x: sx + Math.cos(can) * 10, y: sy - 12 + Math.sin(can) * 6, vx: Math.cos(can) * 140, vy: Math.sin(can) * 140, life: 2.4, from: e,
+                            opts: { bigFire: true, rad: 10, atk: o.atk, mult: o.mult / 3, magic: o.magic, big: true } });
+            }
+          } });
+        })(cv);
       } else {
         for (var k = 0; k < 6; k++) (function (k2) {
           rivalLater.push({ t: 0.4 + k2 * 0.22, fn: function (p2) {
@@ -439,6 +451,8 @@ var Enemies = (function () {
     if (marks.length) Render.text(marks.map(function (k) { return GameData.STATUS[k].name; }).join(" "), x, y + 9, { size: 6, align: "center", color: GameData.STATUS[marks[0]].color });
   }
 
+  // 特大の火球が当たった・壁にぶつかった：はじける（見た目だけ。2026-11-22 ケルベロス）
+  function fireBurst(ar) { Combat.addEffect({ kind: "boom", x: ar.x, y: ar.y, r: (ar.opts.rad || 10) * 2.4, t: 0.45, max: 0.45 }); Sound.play("hit"); }
   // 飛ぶもの（弓兵の矢・大木の魔物の種）。opts はダメージの倍率など（hurt にそのまま渡す）
   function addArrow(e, angle, speed, opts) {
     // opts.dy：投げる高さ（ゴーレムは頭の上から）。opts.life：飛ぶ時間
@@ -738,9 +752,10 @@ var Enemies = (function () {
         if (ar.opts && ar.opts.explode) { Combat.addEffect({ kind: "boom", x: ar.x, y: ar.y, r: ar.opts.explode, t: 0.45, max: 0.45 }); Sound.play("hit"); }   // フレイムボムなど
         if (ar.opts && ar.opts.pierce) { ar.hitP = true; continue; }   // 貫通する矢（ダークアロー）は、当たってもそのまま飛ぶ
         if (ar.opts && ar.opts.rock) rockBreak(ar, false);
+        if (ar.opts && ar.opts.bigFire) fireBurst(ar);
         arrows.splice(k, 1); continue;
       }
-      if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockBreak(ar, hitWall); arrows.splice(k, 1); }
+      if (hitWall || ar.life <= 0) { if (ar.opts && ar.opts.rock) rockBreak(ar, hitWall); if (ar.opts && ar.opts.bigFire) fireBurst(ar); arrows.splice(k, 1); }
     }
 
     // 消えきった敵をのぞく
@@ -1159,6 +1174,7 @@ var Enemies = (function () {
     arrows.forEach(function (a) {
       var x = a.x - cam.x, y = a.y - cam.y;
       if (a.opts && a.opts.seed) { Render.rect(x - 2, y - 2, 4, 4, "#a8d070"); Render.rect(x - 1, y - 1, 2, 2, "#5a7a30"); return; }
+      if (a.opts && a.opts.bigFire) { Bosses.drawBigFireball(ctx, x, y, a.vx, a.vy, a.opts.rad); return; }   // ケルベロスの特大の火球（2026-11-22）
       if (a.opts && a.opts.rock) {   // ゴーレムの岩：地面にかげ、少しずつ回る
         var big = !a.opts.chip, sw = big ? 18 : 5;
         Render.rect(Math.round(x) - sw / 2, Math.round(y) + (big ? 20 : 8), sw, big ? 4 : 2, "rgba(0,0,0,0.35)");

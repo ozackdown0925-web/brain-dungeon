@@ -106,18 +106,21 @@ var Loot = (function () {
   // 魔王城の前（0階）は「プラチナの段の UR＋10」と同じ強さ。25階で「ダイヤの段の UR＋10」まで。
   // 今は 紅蓮の竜 をたおすと手に入る エルダースタッフ だけ。特別な効果は 敵をたおすとMPが2%回復（mpOnKill）。
   var LEGENDS = {
-    elder: { slot: "weapon", base: "staff", name: "エルダースタッフ", from: "fdragon_boss", buff: ["matk", "mp"], fx: { mpOnKill: 0.02 }, sp: "敵をたおすとMPが2%回復" }
+    elder: { slot: "weapon", base: "staff", name: "エルダースタッフ", from: "fdragon_boss", buff: ["matk", "mp"], fx: { mpOnKill: 0.02 }, sp: "敵をたおすとMPが2%回復" },
+    // 幻獣がくれる最強の防具（2026-11-22 から。武器と同じく UR 固定・強化なし・魔王城の階で育つ）。名前と効き目は仮（保護者があとで直す）
+    cerb: { slot: "armor", base: "light", name: "番犬の黒毛皮", from: "cerberus_gj", buff: ["pdef", "hp"], fx: { dodge: 0.08 }, sp: "8%の確率で敵の攻撃をよける" }
   };
   var LEGEND_DEPTH = 109;   // 紅蓮の火山 12階の深さ。魔王城の1階ごとに＋1
   function legendGrow(item, floor) {
-    var L = LEGENDS[item.legend], def = L && GameData.WEAPONS[L.base];
+    var L = LEGENDS[item.legend], def = L && (L.slot === "armor" ? GameData.ARMORS[L.base] : GameData.WEAPONS[L.base]);
     if (!def) return item;
     floor = Math.max(0, Math.min(25, floor || 0));
     var ilv = LEGEND_DEPTH + floor, tm = TIER_MULT[4] + 0.6 * floor / 25;
     var k = (1 + ILV_STEP * (ilv - 1)) * RARITY[3].mult * (1 + PLUS_STEP * PLUS_MAX) * tm;
     var size = Math.round(2 + ilv * 0.5);
     item.slot = L.slot; item.base = L.base; item.r = 3; item.ilv = ilv; item.tier = 4; item.plus = 0;
-    item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k);
+    if (L.slot === "armor") { item.pdef = Math.round(def.pdef * k); item.mdef = Math.round(def.mdef * k); }   // 最強の防具（幻獣。2026-11-22）
+    else { item.patk = Math.round(def.patk * k); item.matk = Math.round(def.matk * k); }
     item.buff = L.buff.map(function (s) { return [s, size]; }); item.debuff = []; item.sp = L.sp; item.name = L.name;
     return item;
   }
