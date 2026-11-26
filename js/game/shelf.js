@@ -9,6 +9,11 @@
 //   新しい問題は、塾でいちばん最近習った回のプリントから先に（2026-11-09。プリントの中は問題の順）。休んだ日があっても、たまるのは1周目の残りだけ。
 // ・日本地図の棚（2026-11-09）：47都道府県の名前と県庁所在地（js/game/chizu.js。問題はこのリポジトリで作る）。
 //   出し方は知識の棚と同じだが、1日 MAP_DAILY 問の別の枠にする（1,500問をこえる知識の棚にうもれないように）。記録は同じ「書庫の記録」（qid が "map-"）。
+// ・自分で○×をつける問題のごまかし対策（2026-11-27 保護者と決定）：
+//   ①「答えを見る」は、問題を出してから THINK_MS たつまで押せない（考えずに答えを見て○×をつけるのを止める）。
+//   ②「○ 思い出せた」にした問題の SPOT_RATE 問に1問を、SPOT_AFTER 日あとに4択で出し直す（抜き打ち。1日 SPOT_DAILY 問まで）。
+//     まちがいの選択肢は、同じ教科のほかの問題の答えから作る。4択で×なら「まちがえた」扱いにもどす（次の日にもう1回）。
+//     記録は同じ「書庫の記録」で、parts[0].spot が true（GAS は変えない）。保護者画面に「自分で○→4択で×」の数が出る。
 // ・保護者のデバッグ用の枠では、答えを GAS に送らない（この画面を開いているあいだだけ覚える）。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
 var Shelf = (function () {
@@ -16,6 +21,10 @@ var Shelf = (function () {
   var MAP_DAILY = 15;        // 日本地図の棚の1日の数（名前・県庁所在地・場所のタップなど、全部で159問。1周目は約11日）
   var KNOWN_CHECK = 14;      // 「知っている」問題を、たしかめるまでの日数
   var LADDER = [3, 7, 14];   // 「苦手」問題：正解が続いた回数ごとの、次に出すまでの日数。全部続けたら「覚えた」
+  var THINK_MS = 5000;       // 「答えを見る」を押せるまでの時間
+  var SPOT_RATE = 3;         // 「○ 思い出せた」の何問に1問を、4択でたしかめるか
+  var SPOT_AFTER = 3;        // 何日あとにたしかめるか
+  var SPOT_DAILY = 5;        // 1日に出す4択のたしかめの数（1日の問題の数にふくむ）
   var ORDER = ["japanese", "science", "social", "math"];
   var PENDING_STORE = "bd-shelf-pending";
 
@@ -25,6 +34,24 @@ var Shelf = (function () {
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function addDays(date, n) { var d = new Date(date.replace(/-/g, "/")); d.setDate(d.getDate() + n); return ymd(d); }
   function subjectName(k) { return DrillCore.subjectName(k); }
+  function hash(str) {   // 文字列から決まった数（日や問題ごとに、同じ選び方・同じ並びになるように）
+    var h = 2166136261; str = String(str);
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13;
+    return h >>> 0;
+  }
+  function normAns(v) { return String(v == null ? "" : v).normalize("NFKC").replace(/[\s。、，,・]/g, ""); }
+  // 4択のたしかめの記録か（GAS の列は変えないので、parts[0].spot で見分ける）
+  function isSpot(r) { return !!(r && (r.spot || (Array.isArray(r.parts) && r.parts.some(function (p) { return p && p.spot; })))); }
+  // 自分で○×をつけた記録か（自分で○×をつけた欄があれば）
+  function isSelf(r) { return !!(r && (r.self === true || r.self === "○" || (Array.isArray(r.parts) && r.parts.some(function (p) { return p && p.self; })))); }
+  // 答えが1つだけの「思い出して答える」問題の答え（4択にできる問題）
+  function recallAnswer(q) {
+    var ps = DrillCore.asList(q && q.parts);
+    if (ps.length !== 1 || !ps[0] || ps[0].type !== "recall") return "";
+    var a = DrillCore.asList(ps[0].answer)[0];
+    return a == null ? "" : String(a).trim();
+  }
 
   // ---------- 出し方（画面とは別。node でもためせるように、ここは DOM を使わない） ----------
   // 問題ごとの今の様子：{ kind（"known" 知っている／"retry" 次の日にもう1回／"weak" 苦手／"mastered" 覚えた）, box（苦手の問題で正解が続いた回数）,
@@ -42,6 +69,11 @@ var Shelf = (function () {
         return;
       }
       s.tries++; s.last = r.date;
+      if (isSpot(r)) {
+        // 4択のたしかめ：正解ならそのまま。×なら、はじめにまちがえたのと同じ扱い（次の日にもう1回）にもどす
+        if (!r.correct) { s.kind = "retry"; s.box = 0; s.due = addDays(r.date, 1); }
+        return;
+      }
       if (!r.correct) { s.kind = "weak"; s.box = 0; s.due = addDays(r.date, 1); return; }
       if (s.kind === "known" || s.kind === "mastered") { s.kind = "mastered"; s.due = ""; return; }
       // retry・weak で正解：苦手の段を1つ上げる
@@ -103,6 +135,53 @@ var Shelf = (function () {
     if (!m) return -1;
     return (m[1] === "下" ? 1000 : 0) + Number(m[2]);
   }
+  // 4択のたしかめにする問題：いちばん新しい答えが「自分で○」で、SPOT_AFTER 日以上たっていて、SPOT_RATE 問に1問にあたるもの（新しい答えが先）
+  function spotTargets(questions, records, today) {
+    var last = {}, limit = addDays(today, -SPOT_AFTER), byQ = {};
+    (questions || []).forEach(function (q) { if (q && q.id) byQ[q.id] = q; });
+    (records || []).forEach(function (r) {
+      if (!r || !r.qid || !r.date) return;
+      var l = last[r.qid];
+      if (!l || r.date > l.date || (r.date === l.date && String(r.answeredAt) > String(l.answeredAt))) last[r.qid] = r;
+    });
+    var out = [];
+    Object.keys(last).forEach(function (id) {
+      var r = last[id], q = byQ[id];
+      if (!q || !r.correct || isSpot(r) || !isSelf(r) || r.date > limit) return;
+      if (hash(id + "|" + r.date) % SPOT_RATE) return;
+      var sq = spotQuestion(q, questions);
+      if (sq) out.push({ q: sq, at: r.date });
+    });
+    out.sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : (a.q.id < b.q.id ? -1 : 1); });
+    return out.map(function (x) { return x.q; });
+  }
+  // 「思い出して答える」問題から4択の問題を作る。まちがいの選択肢は、同じ教科のほかの問題の答えから
+  // （同じ単元・同じプリント・答えの最後の字が同じ（県・市・山 など）ものを先に）。作れないときは null
+  function spotQuestion(q, pool) {
+    var ans = recallAnswer(q);
+    if (!ans) return null;
+    var seen = {}, cands = [];
+    seen[normAns(ans)] = true;
+    var tail = ans.slice(-1);
+    (pool || []).forEach(function (c) {
+      if (!c || c.id === q.id || c.subject !== q.subject || c.enabled === false) return;
+      var a = recallAnswer(c), k = normAns(a);
+      if (!a || seen[k]) return;
+      seen[k] = true;
+      var score = (c.unit && c.unit === q.unit ? 4 : 0) + (sheetOf(c) === sheetOf(q) ? 2 : 0) + (a.slice(-1) === tail ? 1 : 0);
+      cands.push({ a: a, score: score, h: hash(q.id + "|" + c.id) });
+    });
+    if (cands.length < 3) return null;
+    cands.sort(function (x, y) { return (y.score - x.score) || (x.h - y.h); });
+    var opts = [ans].concat(cands.slice(0, 3).map(function (x) { return x.a; }));
+    opts.sort(function (x, y) { return hash(q.id + x) - hash(q.id + y); });
+    var p = DrillCore.asList(q.parts)[0];
+    var out = {};
+    Object.keys(q).forEach(function (k) { out[k] = q[k]; });
+    out.parts = [{ label: p.label || "", prompt: p.prompt || "", images: p.images, type: "choice", options: opts, answer: ans }];
+    out.spot = true;
+    return out;
+  }
   // その日の分：{ list: [{ q, why（"retry"・"new"・"check"） }], doneToday, left（1周目の残り）, caughtUp（1周目が終わった） }
   function plan(questions, records, today, daily) {
     var st = states((records || []).filter(function (r) { return r.date < today; }));
@@ -129,7 +208,14 @@ var Shelf = (function () {
     // ③1周目が終わったあとの、たしかめ（知っている問題の1回・苦手の問題）
     var check = Q.filter(function (q) { var s = st[q.id]; return s && (s.kind === "known" || s.kind === "weak") && s.due && s.due <= today; });
     check.sort(function (a, b) { var x = st[a.id], y = st[b.id]; return (x.due < y.due ? -1 : x.due > y.due ? 1 : 0) || (a.id < b.id ? -1 : 1); });
-    var list = tag(retry, "retry", 0);
+    // ⓪「○ 思い出せた」にした問題の、4択のたしかめ（2026-11-27）
+    var spots = spotTargets(questions, (records || []).filter(function (r) { return r.date < today; }), today)
+      .filter(function (q) { return !todayIds[q.id]; }).slice(0, SPOT_DAILY);
+    var spotIds = {};
+    spots.forEach(function (q) { spotIds[q.id] = true; });
+    check = check.filter(function (q) { return !spotIds[q.id]; });
+    var list = spots.map(function (q, i) { return { q: q, why: "spot", unit: 300000 + i }; });
+    list = list.concat(tag(retry, "retry", 0));
     list = list.concat(tag(fresh, "new", 100000));
     if (!fresh.length) list = list.concat(tag(check, "check", 200000));
     return { list: room > 0 ? cut(list, room) : [], doneToday: doneToday, left: fresh.length, caughtUp: !fresh.length };
@@ -296,6 +382,7 @@ var Shelf = (function () {
       shelves.appendChild(row);
     });
     body.appendChild(shelves);
+    body.appendChild(el("p", "sub", "「○ 思い出せた」にした問題は、何日かあとに4つから選ぶ形でたしかめが出ることがある。そこでまちがえたら、覚え直し。"));
     body.appendChild(el("p", "sub", "1日 " + DAILY + " 問。まちがえた問題は、次の日にもう1回出る。はじめて見て正解できた本は「知っている」（金のふち）、2週間たっても正解できたら「覚えた」（金）。"));
   }
 
@@ -365,18 +452,24 @@ var Shelf = (function () {
     }
     done.hidden = true; card.hidden = false; ans.hidden = false;
     var it = queue[pos], q = it.q;
-    var WHY = { retry: "（前にまちがえた問題）", "new": "（はじめての問題）", check: "（たしかめ）" };
+    var WHY = { retry: "（前にまちがえた問題）", "new": "（はじめての問題）", check: "（たしかめ）", spot: "（「思い出せた」のたしかめ・4つから選ぶ）" };
     $("shelfProgress").textContent = "今日の分 " + (pos + 1) + " / " + queue.length + WHY[it.why];
     screen.dataset.s = q.subject; card.dataset.s = q.subject; ans.dataset.s = q.subject;
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
     // 日本地図の棚の「タップして答える」問題は chizu.js で出す（自動で○×）
     var render = (q.tap || q.tapCap) && window.Chizu ? function (h, qq, o) { Chizu.renderTap(h, ans, qq, o); } : DrillCore.renderQuestion;
+    var allRecall = DrillCore.asList(q.parts).length > 0 && DrillCore.asList(q.parts).every(function (x) { return x && x.type === "recall"; });
     render(holder, q, {
       answerRoot: ans, keypad: true, imageLoader: loadImage,
       review: it.why === "retry",
+      extraMeta: it.why === "spot" ? ["前に「○ 思い出せた」にした問題。4つの中から正しい答えを選ぼう"] : [],
+      minThink: allRecall ? THINK_MS : 0,
       onFinish: function (res) {
-        var rec = { date: today, subject: q.subject, qid: q.id, input: res.input || "", correct: !!res.correct,
-          self: (res.parts || []).some(function (x) { return x && x.self; }), answeredAt: new Date().toISOString(), parts: res.parts || [] };
+        var parts = res.parts || [];
+        if (it.why === "spot") { parts = parts.map(function (x) { var o = {}; Object.keys(x || {}).forEach(function (k) { o[k] = x[k]; }); return o; }); if (parts[0]) parts[0].spot = true; }
+        var rec = { date: today, subject: q.subject, qid: q.id, input: (it.why === "spot" ? "4択でたしかめ：" : "") + (res.input || ""), correct: !!res.correct,
+          self: parts.some(function (x) { return x && x.self; }), answeredAt: new Date().toISOString(), parts: parts };
+        if (it.why === "spot") rec.spot = true;
         saveAnswer(rec);
         sessionDone++; if (rec.correct) sessionOk++;
         Sound.play(rec.correct ? "correct" : "wrong");
@@ -395,5 +488,5 @@ var Shelf = (function () {
   }
   $("shelfDoneBack").addEventListener("click", close);
 
-  return { panel: panel, plan: plan, states: states, summary: summary, mix: mix, DAILY: DAILY };
+  return { panel: panel, plan: plan, states: states, summary: summary, mix: mix, isSpot: isSpot, spotQuestion: spotQuestion, DAILY: DAILY };
 })();
