@@ -435,8 +435,22 @@
     var checkBtn = btn("dq-btn", allRecall ? "答えを見る" : "答え合わせ", check), armed = false;
     var emptyNote = el("p", "dq-note dq-empty-note");
     function allFilled() { return parts.every(function (p, i) { return !isEmpty(p, ws[i].get()); }); }
+    // opts.minThink（ミリ秒）：問題を出してから、この時間がたつまで答え合わせのボタンを押せない（書庫の「答えを見る」。2026-11-27 保護者と決定：
+    //   考えずに答えを見て○×をつけるのを止める）。答え合わせを押すまでの時間は、記録の parts[0].ms に入る
+    var t0 = Date.now(), thinkMs = 0, waitLeft = 0, waitTimer = null, baseLabel = checkBtn.textContent;
+    if (opts.minThink > 0 && !saved) {
+      waitLeft = Math.ceil(opts.minThink / 1000);
+      var tick = function () {
+        waitLeft = Math.max(0, Math.ceil((opts.minThink - (Date.now() - t0)) / 1000));
+        checkBtn.textContent = waitLeft ? baseLabel + "（あと " + waitLeft + " 秒）" : baseLabel;
+        update();
+        if (!waitLeft) clearInterval(waitTimer);
+      };
+      waitTimer = setInterval(tick, 250);
+      tick();
+    }
     function update() {
-      checkBtn.disabled = !parts.length;
+      checkBtn.disabled = !parts.length || waitLeft > 0;
       if (armed && allFilled()) { armed = false; checkBtn.textContent = "答え合わせ"; emptyNote.remove(); }
     }
 
@@ -535,6 +549,8 @@
         action.parentNode.insertBefore(emptyNote, action);
         return;
       }
+      if (waitLeft > 0) return;
+      thinkMs = Date.now() - t0;
       emptyNote.remove();
       ws.forEach(function (w) { w.lock(); });
       if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);   // 答え合わせのあとは数字のボタンをしまう
@@ -568,6 +584,7 @@
         };
         var note = results.map(function (r) { return r.note; }).filter(Boolean)[0];
         if (note) rec.note = note;
+        if (opts.minThink > 0 && rec.parts.length) rec.parts[0].ms = thinkMs;
         if (opts.onFinish) opts.onFinish(rec);
       }
     }

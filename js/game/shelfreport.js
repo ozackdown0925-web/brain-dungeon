@@ -160,10 +160,65 @@ var ShelfReport = (function () {
     box.appendChild(el("h4", "sr-h", "プリントごと"));
     box.appendChild(subjectBar());
     box.appendChild(sheetTable(st));
+    box.appendChild(el("h4", "sr-h", "自分でつけた○のたしかめ（4択の抜き打ち）"));
+    box.appendChild(spotBox());
     box.appendChild(el("h4", "sr-h", "苦手な問題"));
     box.appendChild(weakBox(st));
     box.appendChild(el("h4", "sr-h", "日本地図（都道府県と県庁所在地）"));
     box.appendChild(mapBox(st));
+  }
+  // 自分でつけた○のたしかめ（2026-11-27）：「○ 思い出せた」にした問題の一部を、数日あとに4択で出し直している（shelf.js）。
+  // { n（4択のたしかめの数）, ng（そのうち×）, selfOk（自分で○にした数）, wrong: [{ r（×だった記録）, q }]（新しい順） }
+  function spotSummary(list, fromDay) {
+    var isSpot = window.Shelf && Shelf.isSpot ? Shelf.isSpot : function (r) { return !!(r && Array.isArray(r.parts) && r.parts.some(function (p) { return p && p.spot; })); };
+    var out = { n: 0, ng: 0, selfOk: 0, wrong: [] };
+    list.forEach(function (r) {
+      if (fromDay && r.date < fromDay) return;
+      if (isSpot(r)) { out.n++; if (!r.correct) { out.ng++; out.wrong.push({ r: r, q: byId[r.qid] }); } }
+      else if (r.self && r.correct) out.selfOk++;
+    });
+    out.wrong.sort(function (a, b) { return String(a.r.date) + a.r.answeredAt < String(b.r.date) + b.r.answeredAt ? 1 : -1; });
+    return out;
+  }
+  function spotBox() {
+    var wrap = el("div");
+    wrap.appendChild(el("p", "note", "子どもが「○ 思い出せた」にした問題の3問に1問を、3日あとに4択で出し直している（1日5問まで）。正直に○をつけていれば、ほとんど正解する。4択で×なら、その問題は「まちがえた」にもどる。"));
+    var from = new Date(parseDay(ymd(new Date())).getTime()); from.setDate(from.getDate() - 13);
+    var rows = [["この2週間", spotSummary(records, ymd(from))], ["全部", spotSummary(records, "")]];
+    var tw = el("div", "dc-table-w"), t = el("table", "dc-table"), hr = el("tr");
+    ["", "自分で○にした", "4択でたしかめた", "そのうち×"].forEach(function (h) { hr.appendChild(el("th", "", h)); });
+    t.appendChild(hr);
+    rows.forEach(function (x) {
+      var tr = el("tr"), o = x[1], r = rate(o.ng, o.n);
+      tr.appendChild(el("td", "dc-d", x[0]));
+      tr.appendChild(el("td", "", String(o.selfOk)));
+      tr.appendChild(el("td", "", String(o.n)));
+      tr.appendChild(el("td", r === null ? "dc-none" : r >= 30 ? "dc-lo" : r >= 15 ? "dc-mid" : "dc-hi", r === null ? "－" : o.ng + "（" + r + "%）"));
+      t.appendChild(tr);
+    });
+    tw.appendChild(t); wrap.appendChild(tw);
+    var recent = rows[0][1];
+    if (recent.n >= 5 && rate(recent.ng, recent.n) >= 30)
+      wrap.appendChild(el("p", "note dc-lo", "この2週間、自分で○にした問題の4択で、" + rate(recent.ng, recent.n) + "% をまちがえている。答えを見てから○を押しているかもしれない。いっしょに解くところを見てあげてください。"));
+    var all = rows[1][1].wrong;
+    if (all.length) {
+      var t2w = el("div", "dc-table-w"), t2 = el("table", "dc-table dc-ans"), h2 = el("tr");
+      ["日", "教科", "問題", "正しい答え", "選んだ答え"].forEach(function (h) { h2.appendChild(el("th", "", h)); });
+      t2.appendChild(h2);
+      all.slice(0, 20).forEach(function (x) {
+        var tr = el("tr"), q = x.q || {}, p0 = DrillCore.asList(q.parts)[0], lp = (x.r.parts || [])[0];
+        tr.appendChild(el("td", "dc-d", dayLabel(x.r.date)));
+        tr.appendChild(el("td", "", subjectOf(x.r.subject).name));
+        var txt = String(q.text || (p0 && p0.prompt) || q.unit || x.r.qid);
+        tr.appendChild(el("td", "", txt.length > 40 ? txt.slice(0, 40) + "…" : txt));
+        tr.appendChild(el("td", "", p0 ? DrillCore.answerText(p0) : "－"));
+        tr.appendChild(el("td", "dc-lo", lp && typeof lp === "object" ? valueText(lp.value) : ""));
+        t2.appendChild(tr);
+      });
+      t2w.appendChild(t2); wrap.appendChild(t2w);
+    } else if (rows[1][1].n) wrap.appendChild(el("p", "note", "4択で×だった問題はまだない"));
+    else wrap.appendChild(el("p", "note", "まだ4択のたしかめは出ていない"));
+    return wrap;
   }
   function toggleGroup(items, cur, on) {
     var g = el("div", "dc-tg");
@@ -387,5 +442,5 @@ var ShelfReport = (function () {
   // 保護者画面を開くたびに読みこみ直す
   function show(target) { records = null; questions = null; state.weakN = WEAK_PAGE; render(target); }
 
-  return { show: show, render: render, _byDay: byDay, _bySheet: bySheet, _weakList: weakList, _mapSummary: mapSummary, _setQuestions: function (qs) { questions = qs; byId = {}; qs.forEach(function (q) { byId[q.id] = q; }); } };
+  return { show: show, render: render, _byDay: byDay, _bySheet: bySheet, _weakList: weakList, _mapSummary: mapSummary, _spotSummary: spotSummary, _setQuestions: function (qs) { questions = qs; byId = {}; qs.forEach(function (q) { byId[q.id] = q; }); } };
 })();
