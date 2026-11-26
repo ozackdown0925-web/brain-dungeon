@@ -76,12 +76,38 @@ var GameData = (function () {
                    growth: { str: 0.5, vit: 1.0, mag: 2.5, int: 2.0 } },
     // 魔物使い（2026-10-26 保護者と決定）：狩人＋魔術師。弓と杖／軽装備。たおしたダンジョンの主を呼んで、大技を使わせる
     tamer:       { name: "魔物使い", weapons: ["bow", "staff"], armor: "light", color: "#5c8a6a", tier: 2, from: "hunter", from2: "mage",
-                   growth: { str: 1.5, vit: 1.0, mag: 2.0, int: 2.0 } }
+                   growth: { str: 1.5, vit: 1.0, mag: 2.0, int: 2.0 } },
+    // 最上級職（2026-11-16 暫定で作った。名前・武器は 2026-11-08 保護者の表、スキルは 2026-11-15 の案）。tier 3。伸び方は上級職より少しよい。
+    // 絵は 2026-11-10 の試作（保護者の手直し待ち）。なるには、もとの上級職を★7 と地方2のクリア（2026-11-03 決定）
+    knightking:  { name: "騎士王",             weapons: ["sword"], armor: "heavy", color: "#ffd75a", tier: 3, from: "knight",
+                   growth: { str: 2.5, vit: 2.5, mag: 1.0, int: 1.0 } },
+    archmage:    { name: "大魔導師",           weapons: ["staff"], armor: "magic", color: "#5a2a8a", tier: 3, from: "blackmage",
+                   growth: { str: 0.5, vit: 1.5, mag: 3.0, int: 2.0 } },
+    grandarcher: { name: "グランドアーチャー", weapons: ["bow"], armor: "light", color: "#5ac860", tier: 3, from: "sniper",
+                   growth: { str: 2.5, vit: 2.0, mag: 1.0, int: 1.5 } },
+    wushen:      { name: "武神",               weapons: ["fist"], armor: "light", color: "#e0b030", tier: 3, from: "monk",
+                   growth: { str: 2.5, vit: 2.5, mag: 0.5, int: 1.5 } },
+    archbishop:  { name: "大司教",             weapons: ["staff"], armor: "magic", color: "#f4f4f6", tier: 3, from: "whitemage",
+                   growth: { str: 1.0, vit: 2.0, mag: 2.5, int: 2.0 } },
+    swordsaint:  { name: "魔剣聖",             weapons: ["sword"], armor: "heavy", color: "#6a3aa0", tier: 3, from: "magicknight",
+                   growth: { str: 2.5, vit: 2.0, mag: 2.5, int: 1.0 } },
+    dragoon:     { name: "竜騎士",             weapons: ["spear"], armor: "heavy", color: "#3a86c0", tier: 3, from: "ninja",
+                   growth: { str: 2.5, vit: 2.0, mag: 1.0, int: 1.5 } },
+    champion:    { name: "グラディエーター",   weapons: ["greatsword"], armor: "light", color: "#c81e34", tier: 3, from: "gladiator",
+                   growth: { str: 3.0, vit: 2.5, mag: 0.5, int: 0.5 } },
+    holylancer:  { name: "パラディン",         weapons: ["spear"], armor: "heavy", color: "#fff2a0", tier: 3, from: "paladin",
+                   growth: { str: 2.0, vit: 3.0, mag: 1.5, int: 1.5 } },
+    timesage:    { name: "時の賢者",           weapons: ["staff"], armor: "magic", color: "#4ec0a0", tier: 3, from: "sage",
+                   growth: { str: 0.5, vit: 1.5, mag: 3.0, int: 2.5 } },
+    summoner:    { name: "召喚士",             weapons: ["staff"], armor: "light", color: "#7ae0a8", tier: 3, from: "tamer",
+                   growth: { str: 1.5, vit: 1.5, mag: 2.5, int: 2.5 } }
   };
   var JOB_ORDER = ["warrior", "mage", "hunter", "fighter", "priest"];
   var UPPER_ORDER = ["knight", "blackmage", "sniper", "monk", "whitemage", "magicknight", "ninja", "gladiator", "paladin", "sage", "tamer"];   // 作った上級職
+  var TOP_ORDER = ["knightking", "archmage", "grandarcher", "wushen", "archbishop", "swordsaint", "dragoon", "champion", "holylancer", "timesage", "summoner"];   // 最上級職（2026-11-16 暫定）
   function tierOf(job) { return (JOBS[job] && JOBS[job].tier) || 1; }
   // 上級職・最上級職の一覧（2026-10-19 見直し。まだ転職はできない。転職の神殿のタブで、条件と今の★を見せる）
+  // castle：魔王城のその階（主）をたおしていることも要る（召喚士＝4階。幻獣の祠が開くまで何もできないため。2026-11-24 保護者）
   // need：[職, ★の数]。一本道はもとの職が★7、組み合わせは2つの職がどちらも★5
   var UPPER_JOBS = [
     { id: "knight", name: "騎士",       need: [["warrior", 7]], arms: "剣・槍／重装備",               note: "槍も使える。守りが強い" },
@@ -96,29 +122,31 @@ var GameData = (function () {
     { id: "sage", name: "賢者",       need: [["mage", 5], ["priest", 5]],     arms: "杖／魔法装備",     note: "大きな攻撃魔法と回復。魔術師と僧侶の魔法も使える" },
     { id: "tamer", name: "魔物使い",   need: [["hunter", 5], ["mage", 5]],     arms: "弓・杖／軽装備",   note: "たおしたダンジョンの主を呼んで、大技を使わせる。魔術師の魔法も使える" }
   ];
-  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 の順。null はまだ決めていない
+  // 最上級職（2026-11-08 保護者の表で名前・武器・スキル名を決めた）。skills は はじめ・★1〜★6 で覚える順（いまのスキルは SKILLS）。
+  // 2026-11-22 保護者と決定：召喚士のほかは、パッシブ1つ＋アクティブ4つ（★7 の大技をふくむ）にしぼった。はじめ・★1・★2・★4・★6 で覚える
+  // need：もとの上級職を★7。もう1つの条件「地方2のクリア」は state.js の canBecome
   var TOP_JOBS = [
-    { name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
-      skills: [null, null, "斬り返し", null, "クロスブレイク", null, "キングスブレード"] },
-    { name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
-      skills: ["バインド", "プロミネンス", null, "テンペスト", "ダイヤモンドダスト", null, "アビスゲート"] },
-    { name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
-      skills: [null, null, "ストームアロー", null, "ラピッドショット", null, "アストラルレイン"] },
-    { name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
-      skills: [null, "岩石投げ", null, null, "メテオストライク", null, "無双乱舞"] },
-    { name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
-      skills: [null, null, null, "リザレクション", null, "アストラルオーラ", "セイクレッド"] },
-    { name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
-      skills: [null, null, null, null, null, null, "魔炎連舞"] },
-    { name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
-      skills: [null, null, null, null, null, null, "ドラゴンダイブ"] },
-    { name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
-      skills: [null, null, null, "斬鉄剣", null, null, "ヴォルテックス"] },
-    { name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
-      skills: [null, null, null, "ファランクス", null, null, "ディバインエンド"] },
-    { name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
-      skills: [null, null, null, null, null, null, "クロノフォール"] },
-    { name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
+    { id: "knightking", need: [["knight", 7]], name: "騎士王",             from: "騎士",       arms: "剣",   note: "剣の大技で斬りすすむ",
+      skills: ["斬り返し", "王者の威光", "クロスブレイク", null, "王の号令", null, "キングスブレード"] },
+    { id: "archmage", need: [["blackmage", 7]], name: "大魔導師",           from: "黒魔道士",   arms: "杖",   note: "大きな攻撃魔法",
+      skills: ["プロミネンス", "属性の極意", "テンペスト", null, "ダイヤモンドダスト", null, "アビスゲート"] },
+    { id: "grandarcher", need: [["sniper", 7]], name: "グランドアーチャー", from: "スナイパー", arms: "弓",   note: "風の矢と、星の矢の雨",
+      skills: ["ストームアロー", "風読み", "チェインアロー", null, "ラピッドショット", null, "アストラルレイン"] },
+    { id: "wushen", need: [["monk", 7]], name: "武神",               from: "修行僧",     arms: "拳",   note: "大きな一撃と、止まらない連続攻撃",
+      skills: ["岩石投げ", "不動心", "闘気解放", null, "メテオストライク", null, "無双乱舞"] },
+    { id: "archbishop", need: [["whitemage", 7]], name: "大司教",             from: "白魔道士",   arms: "杖",   note: "仲間を生きかえらせ、聖なる光で守る",
+      skills: ["サンクチュアリ", "天の恵み", "リザレクション", null, "アストラルオーラ", null, "セイクレッド"] },
+    { id: "swordsaint", need: [["magicknight", 7]], name: "魔剣聖",             from: "魔法剣士",   arms: "剣",   note: "魔法の炎の連続の斬りわざ",
+      skills: ["聖光剣", "魔剣の極意", "スプラッシュブレイド", null, "スペルブレイク", null, "魔炎連舞"] },
+    { id: "dragoon", need: [["ninja", 7]], name: "竜騎士",             from: "忍者",       arms: "槍",   note: "ジャンプと、敵を通りぬける突進",
+      skills: ["ドラゴンランス", "竜の心", "ドラゴンラッシュ", null, "竜の咆哮", null, "ドラゴンダイブ"] },
+    { id: "champion", need: [["gladiator", 7]], name: "グラディエーター",   from: "剣闘士",     arms: "大剣", note: "大剣で鉄も斬る",
+      skills: ["大車輪", "不屈の闘魂", "斬鉄剣", null, "地裂撃", null, "ヴォルテックス"] },
+    { id: "holylancer", need: [["paladin", 7]], name: "パラディン",         from: "聖騎士",     arms: "槍",   note: "槍で守りをかため、聖なる大技を使う",
+      skills: ["審判の光", "守護者", "ファランクス", null, "聖槍陣", null, "ディバインエンド"] },
+    { id: "timesage", need: [["sage", 7]], name: "時の賢者",           from: "賢者",       arms: "杖",   note: "時間をあやつる魔法。敵をおそくし、仲間を速くする",
+      skills: ["ディレイ", "先読み", "アクセル", null, "タイムストップ", null, "クロノフォール"] },
+    { id: "summoner", need: [["tamer", 7]], castle: 4, name: "召喚士",             from: "魔物使い",   arms: "杖",   note: "幻獣の祠でたおした幻獣を呼ぶ",
       skills: [null, "ケルベロス", "ガルーダ", "リヴァイアサン", "フェニックス", "ヨルムンガンド", "ガイア"] }
   ];
 
@@ -127,6 +155,12 @@ var GameData = (function () {
   var LINES = { warrior: ["warrior", "knight"], mage: ["mage", "blackmage", "magicknight", "sage", "tamer"], hunter: ["hunter", "sniper", "tamer"], fighter: ["fighter", "monk"], priest: ["priest", "whitemage", "paladin", "sage"],
                 knight: ["knight"], blackmage: ["blackmage"], sniper: ["sniper"], monk: ["monk"], whitemage: ["whitemage"],
                 magicknight: ["magicknight"], ninja: ["ninja"], gladiator: ["gladiator"], paladin: ["paladin"], sage: ["sage"], tamer: ["tamer"] };
+  // 最上級職は、もとの上級職が入っている系統に入る（竜騎士は忍者の系統、大司教は白魔道士と僧侶の系統 など）。自分の系統も持つ
+  TOP_ORDER.forEach(function (t) {
+    var up = JOBS[t].from;
+    Object.keys(LINES).forEach(function (k) { if (LINES[k].indexOf(up) >= 0 && LINES[k].indexOf(t) < 0) LINES[k].push(t); });
+  });
+  TOP_ORDER.forEach(function (t) { LINES[t] = [t]; });
 
   // スキル（docs/draft.md 3.1）。star＝覚える★、cond＝使える条件（weapons：装備している武器、line：系統、null：条件なし）
   // fx＝効果の並び。t の種類：
@@ -136,6 +170,8 @@ var GameData = (function () {
   // stat：p＝物攻、m＝魔攻。elem：weapon＝武器の属性。status：{ type: poison/para/sleep/break, chance, dur }
   var EDGE = ["sword", "greatsword", "axe"];
   var HEAVY = ["greatsword", "axe"];
+  // 魔物使いの呼び出しの前のため（秒。2026-11-12 保護者：破衝撃の1.5秒くらいは待たせたい。すばやい構えの30%を引いても約1.5秒）
+  var SUMMON_CHARGE = 2.2;
   var SKILLS = [
     // 戦士
     { id: "w.spin",   job: "warrior", star: 1, name: "回転ぎり", desc: "まわりの敵を、まとめて斬る。",   short: "回転",   cond: { weapons: EDGE }, mp: 6, ct: 4,
@@ -296,17 +332,17 @@ var GameData = (function () {
     { id: "nj.katon", job: "ninja", star: 7, name: "火遁の術", desc: "まわりを火で包む（火）。", short: "火遁", cond: { line: "ninja" }, mp: 14, ct: 14,
       fx: [{ t: "around", vis: "flame", stat: "p", mult: 2.4, radius: 40, elem: "fire", color: "#ff8a3d" }] },
     // 剣闘士：剣・斧。HPが少ないほど強い
-    { id: "gl.rush",  job: "gladiator", star: 1, name: "乱撃", desc: "その場で、すばやく4回斬る。", short: "乱撃", cond: { weapons: ["sword", "axe"] }, mp: 6, ct: 4,
+    { id: "gl.rush",  job: "gladiator", star: 1, name: "乱撃", desc: "その場で、すばやく4回斬る。", short: "乱撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 6, ct: 4,
       fx: [{ t: "rapid", count: 4, interval: 0.1, hit: { t: "arc", stat: "p", mult: 0.6, elem: "weapon" } }] },
     { id: "gl.back",  job: "gladiator", star: 2, name: "背水", desc: "HPが半分より少ないと物攻が上がる。HPが少ないほど上がり、最大で30%。", short: "背水", cond: null, passive: { backwater: 0.30 } },
     { id: "gl.risk",  job: "gladiator", star: 3, name: "捨て身", desc: "15秒のあいだ、物攻が30%上がり、物防が30%下がる。", short: "捨て身", cond: { line: "gladiator" }, mp: 6, ct: 30,
       fx: [{ t: "buff", stat: "patk", pct: 0.30, dur: 15 }, { t: "buff", stat: "pdef", pct: -0.30, dur: 15 }] },
-    { id: "gl.whirl", job: "gladiator", star: 4, name: "旋風撃", desc: "まわりを回転して斬ってから、正面を強く斬る。", short: "旋風撃", cond: { weapons: ["sword", "axe"] }, mp: 9, ct: 7,
+    { id: "gl.whirl", job: "gladiator", star: 4, name: "旋風撃", desc: "まわりを回転して斬ってから、正面を強く斬る。", short: "旋風撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 9, ct: 7,
       fx: [{ t: "around", vis: "spin", stat: "p", mult: 1.0, radius: 26, elem: "weapon" }, { t: "pause", time: 0.2 }, { t: "arc", vis: "smash", stat: "p", mult: 1.6, elem: "weapon" }] },
     { id: "gl.spirit",job: "gladiator", star: 5, name: "闘志", desc: "敵をたおすと、5秒のあいだ物攻が10%上がる。", short: "闘志", cond: null, passive: { fervor: 0.10 } },
-    { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe"] }, mp: 12, ct: 12,
+    { id: "gl.impact",job: "gladiator", star: 6, name: "破衝撃", desc: "1.5秒ためて、遠くまでとどく斬撃を飛ばす。何体でもつらぬく。", short: "破衝撃", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 12, ct: 12,
       fx: [{ t: "charge", time: 1.5 }, { t: "shot", stat: "p", mult: 3.2, elem: "weapon", speed: 200, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }] },
-    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "一歩ずつふみこみながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe"] }, mp: 15, ct: 15,
+    { id: "gl.thunder",job: "gladiator", star: 7, name: "迅雷斬", desc: "一歩ずつふみこみながら、6回斬る。", short: "迅雷斬", cond: { weapons: ["sword", "axe", "greatsword"] }, mp: 15, ct: 15,
       fx: [{ t: "rapid", count: 6, interval: 0.24, step: 10, hit: { t: "arc", stat: "p", mult: 0.7, elem: "weapon", color: "#fff3a0" } }] },   // 2026-10-21：一歩ふみこんでは斬る、をゆっくり6回
     // 聖騎士：光の槍と守り
     { id: "pl.spear", job: "paladin", star: 1, name: "ホーリースピア", desc: "光の槍で、前へ一直線に突く（光）。", short: "ホーリー", cond: { weapons: ["spear"] }, mp: 7, ct: 4,
@@ -335,43 +371,145 @@ var GameData = (function () {
     { id: "sg.meteor",job: "sage", star: 7, name: "メテオ", desc: "前の広いところに、隕石を3つ降らせる。", short: "メテオ", cond: { line: "sage" }, mp: 24, ct: 25,
       fx: [{ t: "charge", time: 0.8 }, { t: "rain", look: "meteor", stat: "m", mult: 1.0, elem: "none", count: 3, dist: 56, radius: 30, hitRadius: 22 }] },
     // 魔物使い（2026-10-26 保護者と決定）：はじめはパッシブ。★1〜★6 は各ダンジョンの主を呼ぶ。呼べるのは、その★になって、その主をたおしているとき（boss）。
-    // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。強さは物攻と魔攻の高い方（stat: "best"。守りは使った方）。数字は仮（2026-10-26：弱かったので、MP・待ち時間を下げ、倍率を上げた）
+    // 呼んだ主は、大技を1回敵に使って消える（呼ぶあいだは止まる）。強さは物攻と魔攻の高い方（stat: "best"。守りは使った方）。数字は仮（2026-10-26：弱かったので、MP・待ち時間を下げ、倍率を上げた。
+    // 2026-11-12 保護者「強すぎる。威力は変えず、自分が止まる・出るまでのためとMPを大きく。少なくとも破衝撃（1.5秒ため）くらいは待たせたい」：
+    //   呼ぶ前にため（SUMMON_CHARGE 2.2秒。すばやい構えで30%短くなっても約1.5秒）。MP 16・18・20 → 24・26・28。倍率と待ち時間は前のまま）
+    // 2026-11-12 夕方 保護者「MP消費もっと増やしてもいい」：MP 36・38・40（Lv25 の MP 約126 で、続けて呼べるのは3回くらい）
+    // 2026-11-13 保護者「クールダウンは1分くらいあってもいい」：待ち時間 15・15・18秒 → 3つとも60秒
     { id: "tm.quick", job: "tamer", star: 1, name: "すばやい構え", desc: "スキルの構えとための時間が、いつも30%短い。", short: "構え", cond: null, passive: { castcut: 0.3 } },
-    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "大木の魔物を呼ぶ。自分を中心に十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 16, ct: 15,
-      fx: [{ t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
-    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 18, ct: 15,
-      fx: [{ t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
-    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 20, ct: 18,
-      fx: [{ t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
-    // ★4〜★6：次の地方のダンジョンの主（まだない）。覚えない
-    { id: "tm.next1", job: "tamer", star: 5, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next2", job: "tamer", star: 6, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    { id: "tm.next3", job: "tamer", star: 7, name: "？？？", desc: "次の地方のダンジョンの主を呼ぶ（まだ行けない）。", short: "？？？", future: true, cond: { line: "tamer" }, mp: 0, ct: 0, fx: [] },
-    // 最上級職の大技のお試し（2026-11-08 保護者の案と強さのたたき台）。最上級職はまだないので、もとの上級職のスキルとして置き、
-    // 「全開放の試し」のときだけ使える（preview：ふつうには覚えない）。見た目は今の上級職の絵のまま。数字は遊んでみて直す
-    { id: "x.kings",  job: "knight", star: 8, preview: "騎士王", name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る一本の線を放つ。太さはキャラ4人分、線の上の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knight", weapons: ["sword"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.6, elem: "light", length: 260, width: 64, color: "#ffd75a" }] },
-    { id: "x.abyss",  job: "blackmage", star: 8, preview: "大魔導師", name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "blackmage", line: "blackmage" }, mp: 24, ct: 20,
+    { id: "tm.tree",  job: "tamer", star: 2, name: "よびだし：大木の魔物", desc: "ためてから、大木の魔物を呼ぶ。敵がいちばん多く入るところを中心に、十字の形で根の大波を起こし、通り道の敵みんなに当たる（草）。新緑の樹海の主をたおしていると覚える。", short: "大木", boss: "tree_boss", cond: { line: "tamer" }, mp: 36, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "tree_boss", stat: "best", color: "#7ae0a8", mult: 3.0, elem: "grass" }] },
+    { id: "tm.witch", job: "tamer", star: 3, name: "よびだし：沼の魔女", desc: "ためてから、沼の魔女を呼ぶ。近くの敵の足もとに瘴気の柱を立てる（1体に当たるのは1回だけ）。毒になることがある。瘴気の森の主をたおしていると覚える。", short: "魔女", boss: "witch_boss", cond: { line: "tamer" }, mp: 38, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "witch_boss", stat: "best", color: "#7ae0a8", mult: 3.2, elem: "none", status: { type: "poison", chance: 0.5, dur: 8 } }] },
+    { id: "tm.elf",   job: "tamer", star: 4, name: "よびだし：ダークエルフ", desc: "ためてから、ダークエルフを呼ぶ。まわりに闇の玉を6つ回して（さわった敵にも当たる）、近くの敵をねらって1つずつ撃つ。玉は敵をつらぬく（闇）。原生の秘境の主をたおしていると覚える。", short: "エルフ", boss: "elf_boss", cond: { line: "tamer" }, mp: 40, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "elf_boss", stat: "best", color: "#7ae0a8", mult: 1.0, orbs: 6, touch: 0.5, elem: "dark" }] },
+    // ★5〜★7：地方2の主（2026-11-22 保護者と決定）。ため・MP・待ち時間は地方1の3体と同じ決まり（MP は★ごとに＋2）。倍率は★が上がるほど少し強い
+    { id: "tm.dwarf", job: "tamer", star: 5, name: "よびだし：ドワーフキング", desc: "ためてから、ドワーフキングを呼ぶ。敵がいちばん多い方へ、扇の形に3本、地面から光の柱を順に立てる（木や岩は通りぬける。1体に当たるのは1回だけ。打）。黒鉄の坑道の主をたおしていると覚える。", short: "ドワーフ", boss: "dwarf_boss", cond: { line: "tamer" }, mp: 42, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "dwarf_boss", stat: "best", color: "#7ae0a8", mult: 3.4, elem: "strike" }] },
+    { id: "tm.roc",   job: "tamer", star: 6, name: "よびだし：大怪鳥", desc: "ためてから、大怪鳥を呼ぶ。近くの敵のそばに竜巻を2つ起こす。竜巻は4秒のあいだ敵を追いかけて、巻きこむ（1体に当たるのは1秒に1回）。烈風の峰の主をたおしていると覚える。", short: "大怪鳥", boss: "roc_boss", cond: { line: "tamer" }, mp: 44, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "roc_boss", stat: "best", color: "#7ae0a8", mult: 0.9, elem: "none" }] },
+    { id: "tm.icefang",job: "tamer", star: 7, name: "よびだし：氷牙獣", desc: "ためてから、氷牙獣を呼ぶ。近くの敵の足もとに、つららを7本次々に落とす（1体に当たるのは1回だけ。水）。おそくなることがある。白銀の霊峰の主をたおしていると覚える。", short: "氷牙獣", boss: "icefang_boss", cond: { line: "tamer" }, mp: 46, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "icefang_boss", stat: "best", color: "#7ae0a8", mult: 3.6, elem: "water", status: { type: "slow", chance: 0.4, dur: 3 } }] },
+    // ---------- 最上級職（2026-11-16 暫定。名前は 2026-11-08 保護者の表と 2026-11-15 の案。数字はたたき台で、遊んでみて直す） ----------
+    // ★7（star 7）の大技は職業専用（only。2026-11-09 決定）。★1〜★6 は条件が合えばほかの職でも使える
+    // 2026-11-22 保護者と決定：召喚士のほかは star 1・3・5 にアクティブ、star 2 にパッシブ（上級職とかぶらないもの）、star 7 に大技。上級職とかぶるパッシブなど20個を消し、残したアクティブ（★7 のほか）の倍率を ×1.1
+    // 2026-11-24 保護者と決定：おすすめで上級職の★7（×2.4〜4.2）に負けて選ばれなかったので、ダメージのある技を、1回に出せる合計で ★1 ×3.0・★3 ×3.5・★5 ×4.0 にそろえた（大技はそのまま）
+    // 騎士王：剣の大技
+    { id: "kk.counter", job: "knightking", star: 1, name: "斬り返し", desc: "1.5秒、剣を構える（金色の盾が光る）。そのあいだに攻撃を受けると、ダメージを受けずに、まわりを強く斬り返す。受けなかったときは、前を斬る。", short: "斬り返し", cond: { weapons: ["sword"] }, mp: 8, ct: 8,
+      fx: [{ t: "counter", time: 1.5, hit: { t: "around", vis: "spin", stat: "p", mult: 3, radius: 40, elem: "weapon", color: "#ffd75a" }, miss: { t: "arc", stat: "p", mult: 1.5, elem: "weapon" } }] },   // 2026-11-24 保護者「何が起きてるかわからない」：構えを大きく見せ、1.0→1.5秒
+    { id: "kk.aura",  job: "knightking", star: 2, name: "王者の威光", desc: "これをつけた人が仲間にいれば、仲間みんなの物防が8%上がる。", short: "威光", cond: null, passive: { teamPdef: 0.08 } },
+    { id: "kk.cross", job: "knightking", star: 3, name: "クロスブレイク", desc: "十字に2回斬る。斬った敵の物防を15秒下げる。", short: "クロス", cond: { weapons: ["sword"] }, mp: 12, ct: 8,
+      fx: [{ t: "xslash", reach: 26, color: "#ffd75a" }, { t: "rapid", count: 2, interval: 0.16, hit: { t: "arc", stat: "p", mult: 1.75, elem: "weapon", color: "#ffd75a", status: { type: "break", chance: 1, dur: 15 } } }] },   // 2026-11-24 保護者：前に金色の X の斬りあと
+    { id: "kk.order", job: "knightking", star: 5, name: "王の号令", desc: "仲間みんなの物攻と魔攻が、60秒のあいだ15%上がる。交代しても続く。", short: "号令", cond: null, mp: 14, ct: 30,
+      fx: [{ t: "buff", stat: "patk", pct: 0.15, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.15, dur: 60, party: true }] },
+    { id: "x.kings",  job: "knightking", star: 7, name: "キングスブレード", desc: "1秒ためて、敵の方へ金色に光る大きな光の帯を放つ。太さは画面の上下の半分くらい、帯の中の敵みんなに当たる（光）。", short: "キングス", cond: { only: "knightking", weapons: ["sword"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.0 }, { t: "beam", stat: "p", mult: 4.2, elem: "light", length: 280, width: 135, noCross: true, noWall: true, show: 1.4, grow: 0.3, color: "#ffd75a" }] },   // 2026-11-22 保護者：太さを画面の縦半分（64→135）、十字なし。広くなったので ×4.6→×4.2
+    // 大魔導師：大きな攻撃魔法
+    { id: "am.prom",  job: "archmage", star: 1, name: "プロミネンス", desc: "前へ、炎の柱が次々にふき上がる（火）。", short: "プロミネンス", cond: { line: "archmage" }, mp: 14, ct: 6,
+      fx: [{ t: "blasts", stat: "m", mult: 3, elem: "fire", count: 4, gap: 22, radius: 20, interval: 0.12, color: "#ff8a3d" }] },
+    { id: "am.elem",  job: "archmage", star: 2, name: "属性の極意", desc: "弱点をついたときのダメージが、×1.3 から ×1.5 になる。", short: "属性", cond: null, passive: { weak: 0.2 } },
+    { id: "am.tempest", job: "archmage", star: 3, name: "テンペスト", desc: "敵がいちばん多く入るところを中心に、十字の形に太い根を地面からつき上げる（草）。1体に当たるのは1回だけ。", short: "テンペスト", cond: { line: "archmage" }, mp: 18, ct: 10,
+      fx: [{ t: "roots", stat: "m", mult: 3.5, elem: "grass" }] },   // 2026-11-24 保護者：ダークホールの色ちがいだったので、大木の魔物の根の大波に
+    { id: "am.diamond", job: "archmage", star: 5, name: "ダイヤモンドダスト", desc: "まわりの広いところに氷のつぶをふらせる。当たった敵は6秒おそくなる（水）。", short: "ダスト", cond: { line: "archmage" }, mp: 20, ct: 14,
+      fx: [{ t: "around", vis: "dust", stat: "m", mult: 4, radius: 110, elem: "water", color: "#bfe8ff", status: { type: "slow", chance: 1, dur: 6 } }] },
+    { id: "x.abyss",  job: "archmage", star: 7, name: "アビスゲート", desc: "1.2秒ためて、自分のまわりに暗黒の扉を開く。2秒あまり開いていて、まわりの敵を吸いよせながら何回も当たる（闇）。", short: "アビス", cond: { only: "archmage" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.2 }, { t: "around", vis: "abyss", stat: "m", mult: 4.0, radius: 72, elem: "dark", color: "#9a5ad0", dur: 2.4, ticks: 6, pull: 45 }] },
-    { id: "x.astral", job: "sniper", star: 8, preview: "グランドアーチャー", name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "sniper", weapons: ["bow"] }, mp: 24, ct: 20,
+    // グランドアーチャー：風の矢と星の矢の雨
+    { id: "ga.storm", job: "grandarcher", star: 1, name: "ストームアロー", desc: "風をまとった矢。何体でもつらぬき、はじめに当たったところ（当たらなければ矢の先）に竜巻を残す。竜巻は2.5秒、近くの敵を追いかける（草）。", short: "ストーム", cond: { weapons: ["bow"] }, mp: 8, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 1.5, elem: "grass", speed: 230, range: 200, size: 3, pierce: true, color: "#9be36a", tornado: { mult: 0.75, life: 2.5 } }] },   // 2026-11-24 保護者：大怪鳥の竜巻を残す。矢 ×1.5＋竜巻 ×0.75 を1秒ごと
+    { id: "ga.wind",  job: "grandarcher", star: 2, name: "風読み", desc: "飛ばす攻撃は、遠くの敵ほどダメージが大きい（最大30%）。", short: "風読み", cond: null, passive: { far: 0.3 } },
+    { id: "ga.chain", job: "grandarcher", star: 3, name: "チェインアロー", desc: "当たった敵から、近くの敵へ4回とびうつる矢（とびうつるたびに少し弱くなる）。たおした敵からもとびうつる。", short: "チェイン", cond: { weapons: ["bow"] }, mp: 9, ct: 5,
+      fx: [{ t: "shot", stat: "p", mult: 3.5, elem: "weapon", speed: 200, range: 180, size: 2, chain: 4, chainRange: 120, chainDecay: 0.85, color: "#a8d8ff" }] },   // 2026-11-24 保護者：2→4回、とびうつる先を 80→120 に、光の線でつなぐ
+    { id: "ga.rapid", job: "grandarcher", star: 5, name: "ラピッドショット", desc: "矢をすばやく6本撃つ。", short: "ラピッド", cond: { weapons: ["bow"] }, mp: 12, ct: 7,
+      fx: [{ t: "rapid", count: 6, interval: 0.1, hit: { t: "shot", stat: "p", mult: 0.67, elem: "weapon", speed: 250, range: 180, size: 2, color: "#e8f4ff" } }] },
+    { id: "x.astral", job: "grandarcher", star: 7, name: "アストラルレイン", desc: "1秒ためて、空から光の矢をななめに降らせる。矢の雨より強い（光）。", short: "アストラル", cond: { only: "grandarcher", weapons: ["bow"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 }, { t: "rain", look: "astral", stat: "p", mult: 0.55, elem: "light", count: 26, dist: 70, radius: 60, hitRadius: 20 }] },
-    { id: "x.musou",  job: "monk", star: 8, preview: "武神", name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "monk", weapons: ["fist"] }, mp: 24, ct: 20,
+    // 武神：大きな一撃と、止まらない連続攻撃
+    { id: "ws.rock",  job: "wushen", star: 1, name: "岩石投げ", desc: "大きな岩を投げる。当たると割れて、まわりの敵にも当たる（打）。", short: "岩石", cond: { weapons: ["fist"] }, mp: 10, ct: 6,
+      fx: [{ t: "shot", stat: "p", mult: 3, elem: "strike", speed: 150, range: 150, size: 8, rock: true, color: "#b08a60", explode: 28 }] },
+    { id: "ws.calm",  job: "wushen", star: 2, name: "不動心", desc: "しびれと眠りに、かからない。", short: "不動心", cond: null, passive: { steady: 1 } },
+    { id: "ws.spirit", job: "wushen", star: 3, name: "闘気解放", desc: "15秒のあいだ、ふつうの攻撃の待ち時間が30%短くなる。", short: "闘気", cond: null, mp: 10, ct: 30,
+      fx: [{ t: "buff", stat: "wait", pct: -0.30, dur: 15, color: "#ffb84a" }] },
+    { id: "ws.meteor", job: "wushen", star: 5, name: "メテオストライク", desc: "高くとんで、拳で地面を打つ。まわりの敵に大きなダメージ（打）。空中は敵の攻撃が当たらない。", short: "メテオ", cond: { weapons: ["fist"] }, mp: 16, ct: 12,
+      fx: [{ t: "leap", stay: true, stat: "p", dive: 0, mult: 4, radius: 38, range: 0, up: 0.25, hang: 0.45, down: 0.16, height: 110, elem: "strike", color: "#ffb84a", ground: "#ffb84a" }] },
+    { id: "x.musou",  job: "wushen", star: 7, name: "無双乱舞", desc: "0.6秒ためて、敵を追いかけながら7回打つ。", short: "無双乱舞", cond: { only: "wushen", weapons: ["fist"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.6 }, { t: "rapid", count: 7, interval: 0.24, chase: 30, hit: { t: "arc", stat: "p", mult: 0.8, elem: "weapon", reach: 22, color: "#ffb84a" } }] },
-    { id: "x.sacred", job: "whitemage", star: 8, preview: "大司教", name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "whitemage", line: "whitemage" }, mp: 24, ct: 20,
+    // 大司教：生きかえらせ、聖なる光で守る
+    { id: "ab.sanct", job: "archbishop", star: 1, name: "サンクチュアリ", desc: "その場に光の輪を20秒出す。中にいると1秒ごとにHPが5%回復し、受けるダメージが15%へる。", short: "聖域", cond: { line: "archbishop" }, mp: 18, ct: 40,
+      fx: [{ t: "zone", look: "holy", stat: "m", mult: 0, elem: "light", dist: 0, radius: 40, dur: 20, tick: 1, sanct: { heal: 0.05, cut: 0.15 } }] },   // 2026-11-24 保護者「回復が少なく見える」：1秒 3%→5%、回復のたびに緑に光る
+    { id: "ab.grace", job: "archbishop", star: 2, name: "天の恵み", desc: "これをつけた人が仲間にいれば、部屋の敵を全部たおしたとき、仲間みんなのHPが5%回復する。", short: "恵み", cond: null, passive: { teamRoomHp: 0.05 } },
+    { id: "ab.resur", job: "archbishop", star: 3, name: "リザレクション", desc: "たおれた仲間みんなを、HP50%でよみがえらせる。", short: "リザレク", cond: { line: "archbishop" }, mp: 40, ct: 120,
+      fx: [{ t: "revive", pct: 0.5, all: true }] },
+    { id: "ab.astral", job: "archbishop", star: 5, name: "アストラルオーラ", desc: "仲間みんなの物攻・魔攻・物防・魔防が60秒のあいだ10%上がり、HPも少しずつ回復する。交代しても続く。", short: "オーラ", cond: { line: "archbishop" }, mp: 24, ct: 45,
+      fx: [{ t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "matk", pct: 0.10, dur: 60, party: true },
+           { t: "buff", stat: "pdef", pct: 0.10, dur: 60, party: true }, { t: "buff", stat: "mdef", pct: 0.10, dur: 60, party: true },
+           { t: "regen", pct: 0.2, dur: 60, party: true }] },
+    { id: "x.sacred", job: "archbishop", star: 7, name: "セイクレッド", desc: "1秒ためて、ねらった敵のまわりに大きい光の柱を立てる（光）。", short: "セイクレッド", cond: { only: "archbishop" }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 }, { t: "pillar", stat: "m", mult: 4.5, elem: "light", radius: 40, range: 170, color: "#fff2a0", dur: 1.8 }] },
-    { id: "x.maen",   job: "magicknight", star: 8, preview: "魔剣聖", name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "magicknight", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
+    // 魔剣聖：魔法の剣
+    { id: "ss.light", job: "swordsaint", star: 1, name: "聖光剣", desc: "15秒のあいだ、剣の攻撃が光になる。", short: "聖光剣", cond: { weapons: ["sword", "greatsword"] }, mp: 6, ct: 15,
+      fx: [{ t: "enchant", elem: "light", dur: 15 }] },
+    { id: "ss.art",   job: "swordsaint", star: 2, name: "魔剣の極意", desc: "剣に属性をのせる時間が2倍になり、火・水・草・光・闇のダメージがいつも15%強い。", short: "魔剣極意", cond: null, passive: { enchantMul: 1, elemDmg: 0.15 } },
+    { id: "ss.wave",  job: "swordsaint", star: 3, name: "スプラッシュブレイド", desc: "自分のまわりに水の玉を6つよび出す。玉は回りながら、さわった敵に当たり、そのあと水の斬撃になって近くの敵へ1つずつ飛んでいく（水。つらぬく）。", short: "スプラッシュ", cond: { weapons: ["sword", "greatsword"] }, mp: 9, ct: 6,
+      fx: [{ t: "orbs", stat: "p", mult: 0.6, touch: 0.3, elem: "water", count: 6, color: "#5ab8ff" }] },   // 2026-11-24 保護者：斬空波は地味なので、ダークエルフの大技（回る玉）を水の色で。2026-11-24 名前をスプラッシュブレイドにし、撃つと水の斬撃
+    { id: "ss.break", job: "swordsaint", star: 5, name: "スペルブレイク", desc: "斬った敵の魔防を、20秒のあいだ下げる。", short: "スペル", cond: { weapons: ["sword", "greatsword"] }, mp: 8, ct: 8,
+      fx: [{ t: "arc", stat: "p", mult: 4, elem: "weapon", color: "#c070ff", status: { type: "mbreak", chance: 1, dur: 20 } }] },
+    { id: "x.maen",   job: "swordsaint", star: 7, name: "魔炎連舞", desc: "0.8秒ためて、敵を追いかけながら炎の回転斬りを5回くり返す。まわりの敵みんなに当たる（火）。", short: "魔炎連舞", cond: { only: "swordsaint", weapons: ["sword", "greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 0.8 }, { t: "rapid", count: 5, interval: 0.42, chase: 40, hit: { t: "around", vis: "spin", stat: "p", mult: 0.8, radius: 30, elem: "fire", color: "#ff8a3d" } }] },
-    { id: "x.dive",   job: "ninja", star: 8, preview: "竜騎士", name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "ninja", weapons: ["spear"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 34, range: 150, elem: "weapon", color: "#7fc8ff" }] },
-    { id: "x.vortex", job: "gladiator", star: 8, preview: "グラディエーター", name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "gladiator", weapons: ["sword", "axe"] }, mp: 24, ct: 20,
+    // 竜騎士：ジャンプと突進
+    { id: "dg.fang",  job: "dragoon", star: 1, name: "ドラゴンランス", desc: "とび上がって、近くの敵1体に槍ごととびこむ。ドラゴンダイブを小さくしたもので、まわりには当たらない。空中は敵の攻撃が当たらない。", short: "ランス", cond: { weapons: ["spear"] }, mp: 8, ct: 5,
+      fx: [{ t: "leap", stat: "p", dive: 3, mult: 0, noArea: true, track: true, radius: 14, up: 0.2, hang: 0.5, down: 0.14, height: 170, range: 130, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-24 保護者：竜牙突き（3回突く）は地味なので、1体へのジャンプ攻撃に。画面の上に消えて0.5秒待ってから、ねらった敵を追ってとびこむ
+    { id: "dg.heart", job: "dragoon", star: 2, name: "竜の心", desc: "ボスへのダメージが、いつも15%大きい。", short: "竜の心", cond: null, passive: { bossDmg: 0.15 } },
+    { id: "dg.rush",  job: "dragoon", star: 3, name: "ドラゴンラッシュ", desc: "敵を通りぬけて突進し、通った敵みんなに当たる。かべでは止まる。", short: "ラッシュ", cond: { weapons: ["spear"] }, mp: 12, ct: 7,
+      fx: [{ t: "pierceDash", dist: 90, stat: "p", mult: 3.5, elem: "weapon" }] },
+    { id: "dg.roar",  job: "dragoon", star: 5, name: "竜の咆哮", desc: "まわりの敵をしびれさせることがある。仲間みんなの物攻が、60秒のあいだ10%上がる。", short: "咆哮", cond: null, mp: 14, ct: 30,
+      fx: [{ t: "around", stat: "p", mult: 0, radius: 56, elem: "none", color: "#7fc8ff", status: { type: "para", chance: 0.5, dur: 2 } }, { t: "buff", stat: "patk", pct: 0.10, dur: 60, party: true }] },
+    { id: "x.dive",   job: "dragoon", star: 7, name: "ドラゴンダイブ", desc: "0.8秒ためて高くとび、近くの敵にとびこむ。着地したところに火柱が立ち、まわりに大ダメージ。空中は敵の攻撃が当たらない。", short: "ダイブ", cond: { only: "dragoon", weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 0.8 }, { t: "leap", stat: "p", dive: 1.5, mult: 3.5, radius: 48, crack: 80, up: 0.28, down: 0.2, height: 170, hang: 1.0, range: 150, elem: "weapon", color: "#7fc8ff" }] },   // 2026-11-22 保護者：上がり下がりを速く（0.5＋0.4→0.28＋0.2秒）、地割れを大きく（半径34→48）
+    // グラディエーター：大剣
+    { id: "ch.wheel", job: "champion", star: 1, name: "大車輪", desc: "大剣をふり回してぐるぐる回りながら、1.6秒のあいだ前へ進む。まわりの敵に何回も当たる。", short: "大車輪", cond: { weapons: ["greatsword"] }, mp: 10, ct: 6,
+      fx: [{ t: "rapid", count: 8, interval: 0.2, step: 7, spinWalk: true, hit: { t: "around", vis: "spin", stat: "p", mult: 0.375, radius: 28, elem: "weapon", push: 1 } }] },   // 2026-11-24 保護者：本当に回りながら進むように（向きが回る）
+    { id: "ch.guts",  job: "champion", star: 2, name: "不屈の闘魂", desc: "HPが0になるときに1回だけ、HP1で持ちこたえる（1回の冒険で1回）。", short: "闘魂", cond: null, passive: { lastStand: 1 } },
+    { id: "ch.zantetsu", job: "champion", star: 3, name: "斬鉄剣", desc: "1秒ためて、一閃。敵の物防をむしして斬る。盾・氷のよろいなどのかたい守りも斬りさく。", short: "斬鉄剣", cond: { weapons: ["greatsword", "sword"] }, mp: 12, ct: 9,
+      fx: [{ t: "charge", time: 1.0 }, { t: "arc", stat: "p", mult: 3.5, elem: "weapon", reach: 28, arc: 0.9, vis: "issen", noDef: true, noGuard: true, color: "#e8f4ff" }] },   // 2026-11-24 保護者「効果がわかりづらい」：守りの技（ドワーフキングの盾・氷のよろい）もむしし、一閃の光と「斬鉄！」を出す
+    { id: "ch.rift",  job: "champion", star: 5, name: "地裂撃", desc: "前の地面を一直線に割る。とどくところの敵みんなに当たる。", short: "地裂撃", cond: { weapons: ["greatsword", "axe"] }, mp: 14, ct: 10,
+      fx: [{ t: "arc", stat: "p", mult: 4, elem: "weapon", reach: 72, arc: 0.22, vis: "quake" }] },
+    { id: "x.vortex", job: "champion", star: 7, name: "ヴォルテックス", desc: "1秒ためて、破衝撃を2発飛ばしてから迅雷斬。", short: "ヴォルテックス", cond: { only: "champion", weapons: ["greatsword"] }, mp: 24, ct: 20,
       fx: [{ t: "charge", time: 1.0 },
            { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
            { t: "shot", stat: "p", mult: 1.2, elem: "weapon", speed: 220, range: 170, size: 4, pierce: true, look: "crescent", color: "#ffe7a0", noAim: true }, { t: "pause", time: 0.65 },
            { t: "rapid", count: 6, interval: 0.28, step: 10, hit: { t: "arc", stat: "p", mult: 0.5, elem: "weapon", color: "#fff3a0" } }] },
-    { id: "x.divine", job: "paladin", star: 8, preview: "パラディン", name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "paladin", weapons: ["spear"] }, mp: 24, ct: 20,
-      fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, color: "#fff2a0" }] },
-    { id: "x.chrono", job: "sage", star: 8, preview: "時の賢者", name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { only: "sage", line: "sage" }, mp: 28, ct: 30,
-      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] }
+    // パラディン：槍で守り、聖なる大技
+    { id: "hl.judge", job: "holylancer", star: 1, name: "審判の光", desc: "近くの敵みんなの上に、光が落ちる（光）。", short: "審判", cond: { line: "holylancer" }, mp: 16, ct: 12,
+      fx: [{ t: "judge", stat: "p", mult: 3, elem: "light", range: 170, radius: 14, color: "#fff2a0" }] },
+    { id: "hl.guard", job: "holylancer", star: 2, name: "守護者", desc: "これをつけた人が仲間にいれば、仲間みんなの受けるダメージが5%へる。", short: "守護者", cond: null, passive: { teamCut: 0.05 } },
+    { id: "hl.phalanx", job: "holylancer", star: 3, name: "ファランクス", desc: "槍と盾を構えて守りをかためる。8秒のあいだ、受けるダメージが40%へる。", short: "ファランクス", cond: { weapons: ["spear"] }, mp: 10, ct: 25,
+      fx: [{ t: "buff", stat: "cut", pct: 0.40, dur: 8, color: "#fff2a0" }] },   // 守っているあいだは体のまわりに光の盾（core.js）
+    { id: "hl.field", job: "holylancer", star: 5, name: "聖槍陣", desc: "槍を地面に立てて光を広げ、まわりの敵をおし返す（光）。10秒のあいだ、仲間みんなの受けるダメージが15%へる。", short: "聖槍陣", cond: { weapons: ["spear"] }, mp: 16, ct: 20,
+      fx: [{ t: "holyspear", time: 1.2, color: "#fff2a0" }, { t: "lightring", radius: 40, time: 0.45, color: "#fff2a0" },
+           { t: "around", stat: "p", mult: 4, radius: 40, elem: "light", push: 25, color: "#fff2a0" }, { t: "buff", stat: "cut", pct: 0.15, dur: 10, party: true }] },   // 2026-11-24 保護者「何が起きてるかわからない」：槍が立ち、光の輪が広がる
+    { id: "x.divine", job: "holylancer", star: 7, name: "ディバインエンド", desc: "1.2秒ためて、自分のまわりに光の輪を広げてから、光になって画面のはしまで突進する。通った敵みんなをつらぬく（光）。突進のあいだは敵の攻撃が当たらない。", short: "ディバイン", cond: { only: "holylancer", weapons: ["spear"] }, mp: 24, ct: 20,
+      fx: [{ t: "charge", time: 1.2 }, { t: "lightring", radius: 56, time: 0.45, color: "#fff2a0" }, { t: "pause", time: 0.35 }, { t: "pierceDash", stat: "p", mult: 5.0, elem: "light", dist: 300, beam: true, time: 0.55, color: "#fff2a0" }] },   // 2026-11-22 保護者：往復はやめ、0.55秒かけて進んで見えるように
+    // 時の賢者：時間をあやつる魔法
+    { id: "ts.delay", job: "timesage", star: 1, name: "ディレイ", desc: "まわりの敵の動きと攻撃を、15秒のあいだ半分の速さにする。", short: "ディレイ", cond: { line: "timesage" }, mp: 10, ct: 15,
+      fx: [{ t: "around", stat: "m", mult: 0, radius: 64, elem: "none", color: "#8ad8ff", status: { type: "slow", chance: 1, dur: 15 } }] },
+    { id: "ts.foresee", job: "timesage", star: 2, name: "先読み", desc: "10%の確率で、敵の攻撃をよける。", short: "先読み", cond: null, passive: { dodge: 0.10 } },
+    { id: "ts.accel", job: "timesage", star: 3, name: "アクセル", desc: "仲間みんなが20秒のあいだ、歩く速さが20%上がり、ふつうの攻撃の待ち時間が20%短くなる。交代しても続く。", short: "アクセル", cond: { line: "timesage" }, mp: 14, ct: 30,
+      fx: [{ t: "buff", stat: "wait", pct: -0.20, dur: 20, party: true }, { t: "buff", stat: "speed", pct: 0.20, dur: 20, party: true, color: "#8ad8ff" }] },
+    { id: "ts.stop",  job: "timesage", star: 5, name: "タイムストップ", desc: "部屋の敵みんなの時間を3秒止める（ボスは1秒）。", short: "ストップ", cond: { line: "timesage" }, mp: 24, ct: 40,
+      fx: [{ t: "timestop", dur: 3, boss: 1 }] },
+    { id: "x.chrono", job: "timesage", star: 7, name: "クロノフォール", desc: "1.5秒ためて、時空をこえて隕石を画面じゅうに降らせる。部屋の敵みんなに1つずつ当たる。", short: "クロノ", cond: { only: "timesage" }, mp: 28, ct: 30,
+      fx: [{ t: "charge", time: 1.5 }, { t: "chrono", stat: "m", mult: 3.0, elem: "none", extra: 10 }] },
+    // 召喚士：幻獣を呼ぶ（幻獣は魔王城の主をたおすと開く祠でたおす。まだない）
+    { id: "sm.bond",  job: "summoner", star: 1, name: "幻獣の絆", desc: "呼び出しのスキルの待ち時間が、いつも20%短い。", short: "絆", cond: null, passive: { summonCt: 0.2 } },
+    // 幻獣を呼ぶ（2026-11-22 から1体ずつ）：魔物使いの呼び出しと同じ形（ため・その幻獣を祠でたおしていると覚える）。魔物使いより一段強く、MP も多い
+    { id: "sm.cerberus", job: "summoner", star: 2, name: "よびだし：ケルベロス", desc: "ためてから、幻獣ケルベロスを呼ぶ。特大の火球を、まんなかの1発が近くの敵をねらい、その上下に1発ずつ。これを3回撃つ。火球は敵をつらぬく（1回の3発で1体に当たるのは1回だけ。火）。ケルベロスの祠でケルベロスをたおしていると覚える。", short: "ケルベロス", boss: "cerberus_gj", cond: { line: "summoner" }, mp: 50, ct: 60,
+      fx: [{ t: "charge", time: SUMMON_CHARGE }, { t: "summon", boss: "cerberus_gj", stat: "best", color: "#ffa030", mult: 4.2, elem: "fire" }] },
+    { id: "sm.garuda", job: "summoner", star: 3, name: "ガルーダ", desc: "幻獣ガルーダを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガルーダ", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.levia", job: "summoner", star: 4, name: "リヴァイアサン", desc: "幻獣リヴァイアサンを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "リヴァイア", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.phoenix", job: "summoner", star: 5, name: "フェニックス", desc: "幻獣フェニックスを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "フェニックス", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.jormun", job: "summoner", star: 6, name: "ヨルムンガンド", desc: "幻獣ヨルムンガンドを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ヨルムン", future: true, cond: { line: "summoner" }, mp: 0, ct: 0, fx: [] },
+    { id: "sm.gaia",  job: "summoner", star: 7, name: "ガイア", desc: "幻獣ガイアを呼ぶ（まだ呼べない。幻獣の祠でたおすと呼べる）。", short: "ガイア", future: true, cond: { only: "summoner" }, mp: 0, ct: 0, fx: [] }
   ];
   var SKILL = {};
   SKILLS.forEach(function (s) { SKILL[s.id] = s; });
@@ -607,6 +745,96 @@ var GameData = (function () {
       reach: 12, windup: 0.45, cooldown: 1.6, color: "#2a3248",
       chargeMin: 24, chargeRange: 170, chargeMax: 200, chargeWarn: 0.7, chargeSpeed: 260, chargeMult: 1.8, chargeEvery: 3.5, tired: 1.6, chargeWord: "すべりこみの構え！"
     },
+    // ---- 水晶の鍾乳洞の敵（地方3の最初のダンジョン。段階2、2026-11-14 Claude の案）。数字は遊んでみてから直す ----
+    // 弱点がかたよらないように、打（洞くつガニ）・草（地底の半魚人）・闇（水晶の精）・斬（水晶コウモリ）に分けた
+    // 洞くつガニ：背中に水晶が生えた大きなカニ。のろいが、かたくて HP が多い。はさみで重い一撃。打が弱点（からをわる）、斬と刺と水は半減
+    cave_crab: {
+      name: "洞くつガニ", kind: "melee", hp: 58, patk: 10, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5, water: 0.5 }, speed: 18, r: 7,
+      reach: 14, windup: 0.5, cooldown: 1.6, lunge: 5, color: "#c84a3a"
+    },
+    // 地底の半魚人：三つまたの槍で、少しはなれたところから突く（ゴブリンの槍兵と同じ動き）。草が弱点、水は効かない
+    fishman: {
+      name: "地底の半魚人", kind: "spear", hp: 44, patk: 10, pdef: 4, mdef: 3,
+      res: { grass: 1.3, water: 0 }, speed: 30, r: 6,
+      reach: 32, keep: 22, windup: 0.5, cooldown: 1.4, lunge: 4, color: "#3a8a8a"
+    },
+    // 水晶の精（3階から）：ふわふわ浮いて、はなれたところから水晶のかけらを撃つ（魔法のダメージ）。
+    // かたいので刺は半減、光は効かない（光をはね返す）、闇が弱点
+    crystal_sprite: {
+      name: "水晶の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 5, mdef: 5,
+      res: { dark: 1.3, light: 0, pierce: 0.5 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 130, color: "#a8a0ff", ice: true
+    },
+    // 水晶コウモリ：大コウモリと同じく飛んで（水の上も通る）、じぐざぐに近づいてかみつく。うすい羽なので斬が弱点、打はいまひとつ
+    crystal_bat: {
+      name: "水晶コウモリ", kind: "bee", fly: true, hp: 20, patk: 8, pdef: 2, mdef: 2,
+      res: { slash: 1.3, strike: 0.75 }, speed: 54, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.4, color: "#4a7ad0"
+    },
+    // ---- しずみの湖底神殿の敵（地方3の2つ目のダンジョン。段階2、2026-11-18 Claude の案）。数字は遊んでみてから直す ----
+    // 弱点がかたよらないように、水（神殿の石像兵）・刺（神殿ウツボ）・斬（神殿クラゲ）・光（しずみの神官）に分けた。地底の半魚人（草）も続けて出る
+    // 神殿の石像兵：神殿を守る石の兵隊。剣でなぐる。かたくて、斬と刺は半減。水がしみこむと、もろくなる（水が弱点）
+    stone_guard: {
+      name: "神殿の石像兵", kind: "melee", hp: 56, patk: 10, pdef: 8, mdef: 4,
+      res: { water: 1.3, slash: 0.5, pierce: 0.5 }, speed: 20, r: 6,
+      reach: 14, windup: 0.5, cooldown: 1.5, lunge: 6, color: "#6e8c8e"
+    },
+    // 神殿ウツボ：石のすきまから、赤い線で予告してからまっすぐとびかかる（ワイルドボアと同じ動き。壁や柱にぶつかるとふらつく）。刺が弱点、水は効かない
+    moray: {
+      name: "神殿ウツボ", kind: "boar", hp: 44, patk: 9, pdef: 4, mdef: 2,
+      res: { pierce: 1.3, water: 0 }, speed: 22, r: 6,
+      reach: 12, windup: 0.45, cooldown: 1.6, color: "#a8a038",
+      chargeMin: 24, chargeRange: 160, chargeMax: 190, chargeWarn: 0.75, chargeSpeed: 250, chargeMult: 1.8, chargeEvery: 4, tired: 1.6, chargeWord: "とびかかる構え！"
+    },
+    // 神殿クラゲ（3階から）：ふわふわ浮いて近づき、まわりに電気をはじけさせる（瘴気の霊と同じ動き。魔法のダメージ。しびれることがある）。
+    // やわらかいので打は半減、うすい体は斬が弱点、水は効かない
+    jelly: {
+      name: "神殿クラゲ", kind: "wisp", hp: 30, patk: 4, matk: 11, pdef: 3, mdef: 4,
+      res: { slash: 1.3, strike: 0.5, water: 0 }, speed: 26, r: 6,
+      reach: 18, windup: 0.6, cooldown: 2.0, color: "#f0a0d8", zap: true,
+      onHit: { type: "para", chance: 0.25, dur: 1.5 }
+    },
+    // しずみの神官（後半の6階から）：神殿にしずんだ神官のたましい。はなれたところから水の玉を撃つ（影の魔導士と同じ動き。魔法のダメージ）。
+    // 光が弱点、闇と水は効かない
+    priest: {
+      name: "しずみの神官", kind: "caster", hp: 32, patk: 4, matk: 12, pdef: 2, mdef: 6,
+      res: { light: 1.3, dark: 0, water: 0 }, speed: 24, r: 6,
+      keepMin: 70, keepMax: 130, windup: 0.8, cooldown: 2.4, orbSpeed: 95, color: "#3a8ab0", water: true
+    },
+    // ---- 紅蓮の火山の敵（地方3の3つ目のダンジョン。段階2、2026-11-20 Claude の案）。数字は遊んでみてから直す ----
+    // どれも火は効かない。弱点がかたよらないように、水（溶岩スライム・火トカゲ）・打（溶岩の岩人形）・刺（炎のコウモリ）・闇（炎の精）に分けた
+    // 溶岩スライム：はねて動き、火のつぶを吐く。たおすと、小さい2つに分かれる（氷のスライムと同じ）。水が弱点、斬・刺はいまひとつ
+    lava_slime: {
+      name: "溶岩スライム", kind: "frog", hp: 46, patk: 9, pdef: 3, mdef: 3,
+      res: { water: 1.3, slash: 0.75, pierce: 0.75, fire: 0 }, speed: 0, r: 6,
+      reach: 60, keep: 40, hopSpeed: 80, hopTime: 0.4, hopEvery: 1.3,
+      windup: 0.5, cooldown: 2.4, spitSpeed: 100, color: "#f06a18", fire: true, split: "lava_slime_mini"
+    },
+    lava_slime_mini: {
+      name: "溶岩スライムの子", kind: "frog", hp: 16, patk: 6, pdef: 2, mdef: 2,
+      res: { water: 1.3, slash: 0.75, pierce: 0.75, fire: 0 }, speed: 0, r: 4,
+      reach: 50, keep: 30, hopSpeed: 90, hopTime: 0.35, hopEvery: 1.1,
+      windup: 0.5, cooldown: 2.6, spitSpeed: 100, color: "#f06a18", fire: true
+    },
+    // 炎のコウモリ：飛んで（溶岩の上も通る）、じぐざぐに近づいてかみつく。刺が弱点（矢で落とす）、打はいまひとつ
+    flame_bat: {
+      name: "炎のコウモリ", kind: "bee", fly: true, hp: 22, patk: 8, pdef: 2, mdef: 2,
+      res: { pierce: 1.3, strike: 0.75, fire: 0 }, speed: 54, r: 5,
+      reach: 12, windup: 0.3, cooldown: 1.4, color: "#d84410"
+    },
+    // 溶岩の岩人形：体のすきまに溶岩が光る岩の人形。のろいが、かたくて HP が多い。打が弱点、斬と刺は半減
+    magma_golem: {
+      name: "溶岩の岩人形", kind: "melee", hp: 64, patk: 11, pdef: 8, mdef: 3,
+      res: { strike: 1.3, slash: 0.5, pierce: 0.5, fire: 0 }, speed: 14, r: 7,
+      reach: 14, windup: 0.7, cooldown: 1.9, lunge: 4, color: "#584440"
+    },
+    // 炎の精（3階から）：ふわふわ浮いて、はなれたところから大きな火の玉を撃つ（魔法のダメージ）。闇が弱点、刺は半減
+    fire_sprite: {
+      name: "炎の精", kind: "caster", fly: true, hp: 30, patk: 4, matk: 12, pdef: 4, mdef: 5,
+      res: { dark: 1.3, pierce: 0.5, fire: 0 }, speed: 30, r: 6,
+      keepMin: 60, keepMax: 120, windup: 0.6, cooldown: 2.3, orbSpeed: 120, color: "#f08a28", fire: true
+    },
     // モンスターの巣（段階5、2026-10-22）：瘴気の森の寄り道の部屋に、ときどきある。泡立つ毒の沼。
     // 動かず攻撃もしないが、数秒ごとに敵を出す（core.js）。こわすと敵は出なくなる。
     // fixed：押されない・吸いよせられない・チャームが効かない。notInBook：図鑑に出さない。数字は遊んでみてから直す
@@ -676,10 +904,13 @@ var GameData = (function () {
   //   影走り：床に赤い線で予告 → その線を一気に走りぬけて斬る（線から出ればよけられる）。
   //   爆弾投げ：こちらの足もとに爆弾（落ちる場所に輪で予告。HP半分から3つ）。HP が半分になると、子分（盗賊の剣士と弓使い）を1回だけ呼ぶ。
   //   HP 半分から速くなる（動き・斬り・大技の間かく）。刺が弱点（子分と同じ）
+  // 2026-11-11 保護者（子どもが Lv28 の剣闘士でおかしらを楽にたおし、爆弾で7・大技で30くらいしか受けなかった）：坑道と峰のボスの物攻が、
+  //   深さで上がるまわりの敵より低かったので（霊峰のボスを 2026-11-09 に直したのと同じ理由）、大技がその階の体力の12〜17%になるように上げた：
+  //   おかしら 36→58、ドワーフキング 40→62、ラフレシア 38→66、大怪鳥 42→70。氷牙獣のつららは ×2.2→×1.8（大怪鳥からの上がり方を小さく）
   ENEMIES.bandit_boss = {
     // 2026-11-03 保護者：Lv19（ゴーレムをたおしたところ）で普通に勝てた。斬が効きにくいゴーレムと、剣で戦うとほぼ同じだったので、
     //   坑道6階に来るころ（Lv24〜25くらい）に合わせて強くした：HP 3400→4800、物攻 30→36、物防 9→11
-    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 36, matk: 0, pdef: 11, mdef: 8,
+    name: "盗賊のおかしら", kind: "bandit_boss", boss: true, hp: 4800, patk: 58, matk: 0, pdef: 11, mdef: 8,
         res: { pierce: 1.3 }, speed: 40, speedHalf: 52, r: 12, color: "#8a5a36",
     reach: 20, windup: 0.4, windupHalf: 0.3, cooldown: 1.1, cooldownHalf: 0.75, slashes: 2, slashesHalf: 3, slashGap: 0.2, slashMult: 0.8,
     dashEvery: 8, dashEveryHalf: 6, dashWarn: 0.9, dashWarnHalf: 0.75, dashSpeed: 300, dashMult: 2.0,
@@ -699,7 +930,7 @@ var GameData = (function () {
   //   HP が半分になると、子分（ドワーフの斧使いと鎚使い）を1回だけ呼び、少し速くなる。水が弱点、火はいまひとつ（鍛冶の民なので）
   //   強さ（tools/balance.js の式で試算）：坑道12階（Lv31・鋼R＋5）で剣 44振り・弓 55本（盾がまえで前からは減る）。おかしら（6階）は剣 39振り・弓 37本
   ENEMIES.dwarf_boss = {
-    name: "ドワーフキング", kind: "dwarf_boss", boss: true, hp: 6000, patk: 40, matk: 0, pdef: 13, mdef: 9,
+    name: "ドワーフキング", kind: "dwarf_boss", boss: true, hp: 6000, patk: 62, matk: 0, pdef: 13, mdef: 9,
     res: { water: 1.3, fire: 0.5 }, speed: 24, speedHalf: 30, r: 14, color: "#a82a2a",
     reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, swingMult: 1.3,
     guardEvery: 9, guardTime: 2.6, guardCut: 0.25, guardTurn: 1.4, bashReach: 26, bashMult: 1.0,
@@ -720,7 +951,7 @@ var GameData = (function () {
   //   HP が半分：花びらが大きく開き、毒の種が5つになり、霧と吸いこみの間かくが短くなる。つぼみは3つ。
   //   斬が弱点（つるも花も切れる）。草は効かない、火は湯けむりでしめっているのでいまひとつ、水もいまひとつ
   ENEMIES.raff_boss = {
-    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 38, matk: 0, pdef: 10, mdef: 10,
+    name: "ラフレシア", kind: "raff_boss", boss: true, hp: 7400, patk: 66, matk: 0, pdef: 10, mdef: 10,
     res: { slash: 1.3, grass: 0, fire: 0.75, water: 0.75 }, speed: 0, r: 20, color: "#c83a3a",
     whipReach: 34, windup: 0.55, cooldown: 1.3, cooldownHalf: 1.0, whipMult: 1.2,
     seedSpeed: 115, seeds: 3, seedsHalf: 5, seedSpread: 0.32, seedMult: 0.8,
@@ -744,13 +975,161 @@ var GameData = (function () {
   //     空にいるあいだは剣などは届かず、矢・魔法だけが当たる（崖の外まで歩けないので）。空からも風の刃を撃ってくる。
   //   火が弱点（つばさが燃える）。草はいまひとつ
   ENEMIES.roc_boss = {
-    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 42, matk: 0, pdef: 10, mdef: 9,
+    name: "大怪鳥", kind: "roc_boss", boss: true, fly: true, hp: 9000, patk: 70, matk: 0, pdef: 10, mdef: 9,
     res: { fire: 1.3, grass: 0.75 }, speed: 46, r: 16, color: "#8a6a3a",
     clawReach: 22, windup: 0.5, cooldown: 1.3, cooldownHalf: 1.0, clawMult: 1.2, keep: 64,
     bladeSpeed: 150, blades: 3, bladesHalf: 5, bladeSpread: 0.3, bladeMult: 0.8,
     diveEvery: 7, diveEveryHalf: 5.5, diveWarn: 0.8, diveSpeed: 340, diveMult: 1.8, diveMax: 280,
     stormEvery: 18, stormEveryHalf: 15, stormTime: 8, stormCount: 2, stormCountHalf: 3, stormWarn: 0.9,
     tornadoR: 13, tornadoSpeed: 42, tornadoMult: 1.0, tornadoPush: 70, skyShot: 1.6
+  };
+
+  // ヨロイガニ（水晶の鍾乳洞5階・中ボス。段階3、2026-11-15 Claude の案。数字は仮）：地底湖のほとりにすむ、よろいのようなからの大ガニ。
+  //   今までのボスとちがい、「からにこもったら、たたいてわる」のが決め手。
+  //   横歩き：こちらを向いたまま、横にずれながら近づく（カニなので）。
+  //   はさみ：近くにいると、はさみを振り上げて2回はさむ（前にいると当たる）。
+  //   あわはき（bubbleEvery 秒ごと。少しはなれているとき）：ゆっくり進む大きなあわを、扇に吐く（HP 半分から5つ）。
+  //   からごもり（shellEvery 秒ごと）：はさみと足を引っこめて、shellTime 秒からにこもる。こもっているあいだは、打（こぶし・杖でたたく・かぶと割り・気功波など）以外の攻撃は shellCut 倍。
+  //     打で shellBreak 回たたくと（打のないパーティでも、こもっているのは shellTime 秒だけなので、待てば出てくる）、からがわれて、ひっくりかえる（crackTime 秒ふらつき。そのあいだは受けるダメージが crackMult 倍）。
+  //     わられずにこもり終わると、からのまま回って突進（大オオカミの大突進と同じく、赤い線で予告）。HP 半分からは2回続けて。
+  //   HP が半分になると、洞くつガニを2体呼ぶ（1回だけ）。打が弱点、水は効きにくい（水の中にすむので）
+  //   強さ：霊峰のスノーゴーレム（6階・HP 9000）・氷牙獣（12階・HP 11500）のあいだ。鍾乳洞5階（Lv48 くらい・ミスリル）で、剣で約45振り（からごもりの時間を入れずに。1振り約210）
+  // 2026-11-17 段階5（数字の見直し）：tools/balance.js のボスの表で、ふつうの一撃が体力の約6%（氷牙獣と同じ）、大技が12〜17%になるように、物攻 84→100
+  ENEMIES.crab_boss = {
+    name: "ヨロイガニ", kind: "crab_boss", boss: true, hp: 9500, patk: 100, matk: 0, pdef: 16, mdef: 8,
+    res: { strike: 1.3, water: 0.5 }, speed: 26, speedHalf: 32, r: 16, color: "#c84a3a",
+    reach: 22, windup: 0.6, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, pinchMult: 0.9, pinchGap: 0.25,
+    bubbleEvery: 7, bubbleEveryHalf: 5.5, bubbleWindup: 0.6, bubbles: 3, bubblesHalf: 5, bubbleSpread: 0.35, bubbleSpeed: 62, bubbleMult: 1.0, bubbleLife: 3.6,
+    shellEvery: 13, shellEveryHalf: 10, shellTime: 4.5, shellCut: 0.3, shellBreak: 3, crackTime: 3.5, crackMult: 1.25,
+    chargeWarn: 0.9, chargeSpeed: 250, chargeMult: 1.8, spins: 1, spinsHalf: 2,
+    callHp: 500, callAtk: 75   // 2026-11-15：氷牙獣の子分（320）に近づけて 900→500
+  };
+
+  // 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15 Claude の案。数字は仮）：おしりが大きな水晶の、洞くつの主。
+  //   かみつき：近くにいると、きばでかむ（毒になることがある）。
+  //   糸はき（webEvery 秒ごと）：糸のかたまりを飛ばす。当たると、糸にからまって少し動けなくなる（しびれ）。HP 半分から扇に3つ。
+  //   天井へ（ceilEvery 秒ごと）：糸を出して天井へのぼり、見えなくなる（攻撃が当たらない）。足もとの影がこちらを追ってくる →
+  //     影が止まって赤い輪になったら、そこへ落ちてくる（まわりに大ダメージ）。落ちたあとは少しふらつく（すきあり）。
+  //   水晶の光線（beamEvery 秒ごと）：おしりの水晶に光をためて（赤い帯で予告）、まっすぐの光線を撃つ。HP 半分から扇に3本。
+  //   HP が半分になると、子グモを3体よぶ（1回だけ）。火が弱点（糸もよく燃える）、光はいまひとつ（水晶がはね返す）
+  //   強さ：氷牙獣（霊峰12階・HP 11500・物攻 90）より少し強く。鍾乳洞10階（Lv51 くらい・ミスリル）で剣で約55振り
+  // 2026-11-17 段階5（数字の見直し）：物攻 92→108（ふつうの一撃が体力の約6%）。天井から落ちる一撃は ×2.0→×1.7（約17%。光線と同じくらい）
+  ENEMIES.spider_boss = {
+    name: "水晶の大グモ", kind: "spider_boss", boss: true, hp: 12500, patk: 108, matk: 0, pdef: 12, mdef: 10,
+    res: { fire: 1.3, light: 0.5 }, speed: 44, speedHalf: 52, r: 16, color: "#7ad8f8",
+    reach: 20, windup: 0.45, cooldown: 1.1, cooldownHalf: 0.85, biteMult: 1.2,
+    webEvery: 6, webEveryHalf: 4.5, webWindup: 0.5, webSpeed: 130, webMult: 0.6, webs: 1, websHalf: 3, webSpread: 0.3,
+    ceilEvery: 15, ceilEveryHalf: 12, climbTime: 0.6, ceilTime: 2.4, ceilFollow: 70, leapLock: 0.8, dropR: 34, dropMult: 1.7, tired: 1.6,
+    beamEvery: 11, beamEveryHalf: 9, beamWarn: 1.0, beamLen: 240, beamW: 14, beamMult: 1.7, beams: 1, beamsHalf: 3, beamSpread: 0.5, beamTime: 0.35,
+    kids: 3, kidHp: 300, kidAtk: 72
+  };
+  // 子グモ（水晶の大グモが呼ぶ）：すばやく近づいてかむ。火が弱点
+  ENEMIES.crystal_spiderling = {
+    name: "子グモ", kind: "melee", hp: 24, patk: 8, pdef: 2, mdef: 2,
+    res: { fire: 1.3, light: 0.5 }, speed: 50, r: 5,
+    reach: 12, windup: 0.3, cooldown: 1.2, lunge: 8, color: "#7ad8f8"
+  };
+
+  // 大ダコ（しずみの湖底神殿6階・中ボス。段階3、2026-11-18 Claude の案。数字は仮）：水の祭壇にすむ、大きな赤むらさきのタコ。
+  //   決め手は「床から出てきた足を、全部切る」（ヨロイガニ＝打でわる、大グモ＝影から落ちる場所を見る、とはちがう答え）。
+  //   足ばらい：近くにいると、2本の足で2回なぎはらう。
+  //   足のたたきつけ（slamEvery 秒ごと）：こちらへ足をふり上げ（赤い帯で予告）、床にたたきつける。HP 半分から扇に3本。
+  //   墨はき（inkEvery 秒ごと。少しはなれているとき）：扇の形に墨をはく（予告あり）。当たると、墨でべたべたになって守りが下がることがある（防御ダウン）。
+  //   足を出す（armEvery 秒ごと）：床の石のすきまから、足を armCount 本（HP 半分から armCountHalf 本）出す。足はその場でむちのように打つ（つる草の魔物と同じ動き。しびれることがある）。
+  //     出た足を全部切ると、大ダコがいたがってひるむ（stunTime 秒。そのあいだは受けるダメージが stunMult 倍）。armLife 秒たつと、のこった足は引っこむ。
+  //   斬が弱点（足を切る）、打はいまひとつ（やわらかい）、水は効かない。
+  //   強さ：神殿6階（Lv55 くらい・プラチナ）で、剣で約45振り（ヨロイガニの鍾乳洞と同じくらい）。ふつうの一撃が体力の約6%（tools/balance.js のボスの表）
+  ENEMIES.octo_boss = {
+    name: "大ダコ", kind: "octo_boss", boss: true, hp: 16000, patk: 120, matk: 0, pdef: 12, mdef: 10,
+    res: { slash: 1.3, strike: 0.75, water: 0 }, speed: 22, speedHalf: 28, r: 18, color: "#c05a8a",
+    reach: 26, windup: 0.55, windupHalf: 0.45, cooldown: 1.4, cooldownHalf: 1.1, sweepMult: 0.9, sweepGap: 0.3,
+    slamEvery: 8, slamEveryHalf: 6.5, slamWarn: 0.9, slamLen: 120, slamW: 18, slamMult: 1.6, slams: 1, slamsHalf: 3, slamSpread: 0.45, slamTime: 0.4,
+    inkEvery: 9, inkEveryHalf: 7, inkWarn: 0.8, inkLen: 110, inkSpread: 0.5, inkMult: 1.2,
+    armFirst: 5, armEvery: 18, armEveryHalf: 15, armCount: 3, armCountHalf: 4, armHp: 420, armAtk: 80, armLife: 12, stunTime: 4, stunMult: 1.3
+  };
+  // 大ダコの足（大ダコが床から出す）：動かずに、むちのように打つ。しびれることがある。斬がよく効く
+  ENEMIES.octo_arm = {
+    name: "大ダコの足", kind: "vine", hp: 30, patk: 8, pdef: 3, mdef: 3,
+    res: { slash: 1.5, strike: 0.75, water: 0 }, speed: 0, r: 6,
+    reach: 34, windup: 0.6, cooldown: 1.8, color: "#c05a8a", arm: true,
+    onHit: { type: "para", chance: 0.2, dur: 1.5 }
+  };
+
+  // 水竜（しずみの湖底神殿12階・主。段階4、2026-11-19 Claude の案。数字は仮）：神殿の奥の水の広間にすむ、青い竜。
+  //   決め手は「大波を、柱のかげでよける」（ヨロイガニ＝打でわる、大グモ＝影を見る、大ダコ＝足を切る、とはちがう答え）。
+  //   かみつき：近くにいると、かみつく。
+  //   水のブレス（jetEvery 秒ごと）：口に水をため（赤い帯で予告）、まっすぐ水をふき出す。HP 半分からは、右から左へなぎはらう（帯が順に5本）。
+  //   大波（waveEvery 秒ごと）：水にもぐって見えなくなり（攻撃が当たらない）、プレイヤーと反対がわの水路から、部屋のはばいっぱいの大波を起こす。
+  //     波が来る向きの柱（I）のすぐうしろ（waveShade マス）にいれば当たらない。予告のあいだ、柱のかげが青く光る。
+  //     波が通りすぎると、もぐった場所から飛び出し（まわりに予告の輪）、少しのあいだ、つかれて動かない（すきあり）。
+  //   草が弱点、火はいまひとつ、水は効かない。
+  //   強さ：神殿12階（Lv58 くらい・プラチナ）で、剣で約60振り（大ダコより少し長い。地方3のまんなかの主）。ふつうの一撃が体力の約6%
+  ENEMIES.wdragon_boss = {
+    name: "水竜", kind: "wdragon_boss", boss: true, hp: 18000, patk: 125, matk: 0, pdef: 12, mdef: 12,
+    res: { grass: 1.3, fire: 0.5, water: 0 }, speed: 30, speedHalf: 36, r: 18, color: "#3a8ac8",
+    reach: 24, windup: 0.5, windupHalf: 0.4, cooldown: 1.3, cooldownHalf: 1.0, biteMult: 1.2,
+    jetFirst: 4, jetEvery: 8, jetEveryHalf: 7, jetWarn: 0.9, jetLen: 230, jetW: 16, jetMult: 1.5, jets: 1, jetsHalf: 5, jetSpread: 0.28, jetGap: 0.15, jetTime: 0.35,
+    waveFirst: 11, waveEvery: 22, waveEveryHalf: 17, waveSink: 0.8, waveWarn: 2.4, waveSpeed: 140, waveMult: 2.4, waveShade: 3,
+    riseWarn: 0.8, riseR: 34, riseMult: 1.4, tiredTime: 3
+  };
+
+  // 炎の巨人（紅蓮の火山6階・中ボス。段階3、2026-11-20 Claude の案。数字は仮）：溶岩の岩の体に、燃える髪の巨人。
+  //   決め手は「炎のよろいを、たたいて消す（水だと早い）」（ヨロイガニ＝打でわる、大ダコ＝足を切る、水竜＝柱のかげ、とはちがう答え）。
+  //   こぶし：近くにいると、こぶしでなぐる。
+  //   地ならし（stompEvery 秒ごと。近くにいるとき）：両うでを上げて（まわりに赤い輪で予告）、地面をたたく。まわりから火がふき出す。
+  //   溶岩の岩投げ（ballEvery 秒ごと）：溶岩の岩を頭の上に持ち上げ、プレイヤーのまわりへ balls 個（HP 半分から ballsHalf 個）投げる。
+  //     落ちる場所に輪の予告。落ちたところは、少しのあいだ溶岩だまりになる（中にいると、ときどき少しダメージ）。
+  //   炎のよろい（flameEvery 秒ごと）：体の炎が燃え上がる。燃えているあいだは、受けるダメージが flameCut 倍で、近くにいると熱い（heatTick 秒ごとに少しダメージ）。
+  //     攻撃を flameHits 回当てると（水の攻撃は3回分）炎が消えて、stunTime 秒ふらつく（そのあいだは受けるダメージが stunMult 倍）。flameTime 秒たつと、自分で消える。
+  //   水が弱点、火は効かない、闇はいまひとつ。
+  //   強さ：火山6階（Lv62 くらい・プラチナ）で、剣で約50振り（大ダコより少し長い）＋炎のよろい。ふつうの一撃が体力の約6%
+  ENEMIES.giant_boss = {
+    name: "炎の巨人", kind: "giant_boss", boss: true, hp: 15500, patk: 128, matk: 0, pdef: 12, mdef: 10,
+    res: { water: 1.3, fire: 0, dark: 0.75 }, speed: 20, speedHalf: 26, r: 18, color: "#c84a20",
+    reach: 24, windup: 0.6, windupHalf: 0.5, cooldown: 1.5, cooldownHalf: 1.2, punchMult: 1.2,
+    stompEvery: 9, stompEveryHalf: 7, stompWarn: 1.0, stompR: 58, stompMult: 1.6,
+    ballFirst: 4, ballEvery: 8, ballEveryHalf: 6.5, ballLift: 0.7, ballWarn: 1.1, balls: 3, ballsHalf: 5, ballR: 16, ballMult: 1.3, poolTime: 4, poolMult: 0.35,
+    flameFirst: 10, flameEvery: 24, flameEveryHalf: 18, flameTime: 10, flameCut: 0.5, flameHits: 12, heatR: 30, heatMult: 0.3, heatTick: 0.9,
+    stunTime: 4, stunMult: 1.3
+  };
+
+  // 紅蓮の竜（紅蓮の火山12階・主。段階4、2026-11-20 Claude の案。数字は仮）：火口にすむ、つばさのある赤い竜。地方3の最後の主。
+  //   決め手は「空からの突進を、岩の柱にぶつけさせる」（ヨロイガニ＝打でわる、大ダコ＝足を切る、水竜＝柱のかげ、炎の巨人＝炎を消す、とはちがう答え）。
+  //   かみつき：近くにいると、かみつく。
+  //   炎の息（fbreathEvery 秒ごと）：扇の形に予告してから、炎をはく。HP 半分から扇が広くなる。
+  //   噴火（eruptEvery 秒ごと）：ほえると、火口の溶岩から溶岩の岩が erupts 個（HP 半分から eruptsHalf 個）ふってくる。落ちる場所に輪の予告。落ちたところは少しのあいだ溶岩だまり。
+  //   空からの突進（soarEvery 秒ごと）：空へ舞い上がり（攻撃が当たらない）、赤い線で予告してから、線の先へまっすぐ突っこむ（溶岩の上も飛ぶ）。
+  //     線の先に岩の柱（I）があると、柱にぶつかって crashTime 秒目を回す（そのあいだは受けるダメージが crashMult 倍）。線は、柱の前に立つと柱まで、そうでなければ壁までのびる。
+  //     HP 半分からは、柱にぶつからなければ2回続けて突っこむ。
+  //   水が弱点、火は効かない。
+  //   強さ：火山12階（Lv65 くらい・プラチナ）で、剣で約65振り（水竜より少し長い。地方3の最後の主）。ふつうの一撃が体力の約6%
+  ENEMIES.fdragon_boss = {
+    name: "紅蓮の竜", kind: "fdragon_boss", boss: true, hp: 20500, patk: 132, matk: 0, pdef: 13, mdef: 12,
+    res: { water: 1.3, fire: 0 }, speed: 28, speedHalf: 34, r: 18, color: "#c8381c",
+    reach: 24, windup: 0.5, windupHalf: 0.4, cooldown: 1.3, cooldownHalf: 1.0, biteMult: 1.2,
+    fbreathFirst: 4, fbreathEvery: 8, fbreathEveryHalf: 6.5, fbreathWarn: 0.9, fbreathLen: 125, fbreathSpread: 0.42, fbreathSpreadHalf: 0.62, fbreathMult: 1.5,
+    eruptFirst: 8, eruptEvery: 15, eruptEveryHalf: 12, eruptWarn: 1.3, erupts: 5, eruptsHalf: 8, ballR: 16, eruptMult: 1.3, poolTime: 4, poolMult: 0.35,
+    soarFirst: 13, soarEvery: 20, soarEveryHalf: 16, soarTime: 0.8, diveWarn: 1.4, diveSpeed: 300, diveMult: 2.0, dives: 1, divesHalf: 2, crashTime: 4.5, crashMult: 1.3, landTime: 0.8
+  };
+
+  // ---- 幻獣（召喚士の幻獣の祠。2026-11-22 保護者と決定：祠のボス戦と呼び出しのスキルを1体ずつ作る） ----
+  // 祠は魔王城の主をたおすと開く（魔王城ができるまでは、デバッグ用のセーブと全開放の試しからだけ入れる）。たおすと、最強の防具かアクセサリ（loot.js の LEGENDS）と、
+  // 召喚士の★が足りていれば、その幻獣を呼ぶスキル。強さは魔王城の4階目（最強武器を持っている前提）より少し上。数字は仮（遊んでみて直す）
+  // ケルベロス（★2。大木の魔物（魔王城4階）をたおすと祠が開く。2026-11-22 Claude の案）：3つの首を持つ、地獄の番犬。
+  //   決め手は「3つの首の炎は、首と首のすきまでよける」と「地獄の炎は、光っていない床へ」。
+  //   三連がみ：近くにいると、3つの首で続けてかみつく（1回ずつは弱い）。
+  //   大突進：大オオカミと同じ（赤い線で予告）。
+  //   三つ首の火球（tbreathEvery 秒ごと）：まんなかの1発がこちらをねらい、その上下に1発ずつ。これを tbreathVolleys 回（2026-11-22 保護者：合わせて9発・予告の線つき。大きさと速さはゴーレムの岩石投げくらい）。線は tbreathLock 秒前まで追ってきて、そのあと止まる。
+  //   地獄の炎（hellEvery 秒ごと）：ほえると、床のあちこち（2組）が順に光って火柱が立つ。1組目が終わると2組目。光っていない場所へ動けばよけられる。
+  //     終わると、つかれて少し動かない（すきあり）。HP 半分から3組。
+  //   水が弱点、火は効かない。
+  ENEMIES.cerberus_gj = {
+    name: "ケルベロス", kind: "cerberus_gj", boss: true, genju: true, hp: 24000, patk: 140, matk: 0, pdef: 13, mdef: 12,
+    res: { water: 1.3, fire: 0 }, speed: 34, speedHalf: 40, r: 18, color: "#3a3250",
+    reach: 22, windup: 0.45, cooldown: 1.4, cooldownHalf: 1.1, biteMult: 0.55, bites: 3, biteGap: 0.18,
+    chargeWarn: 0.85, chargeSpeed: 300, chargeMult: 1.8, chargeEvery: 9,
+    tbreathFirst: 4, tbreathEvery: 9, tbreathEveryHalf: 7.5, tbreathWarn: 1.0, tbreathNext: 0.75, tbreathNextHalf: 0.6, tbreathLock: 0.3, tbreathVolleys: 3, tbreathGap: 0.5, tbreathMult: 1.3, fireSpeed: 140, fireSpeedHalf: 160, fireR: 10,
+    hellFirst: 12, hellEvery: 20, hellEveryHalf: 16, hellHowl: 0.9, hellWarn: 1.3, hellStep: 1.2, hellR: 24, hellMult: 2.0, hellSets: 2, hellSetsHalf: 3, tired: 3
   };
 
   // ---- 原生の秘境のボス（段階4、2026-10-25 保護者と決定）。数字は仮（遊んでみてから直す） ----
@@ -806,15 +1185,16 @@ var GameData = (function () {
   //   2026-11-09 保護者（Lv27 で遊んで）：スノーゴーレムの攻撃がペンギンより弱かった。ボスの物攻は深さで上がらない決まった数字なのに、
   //     ふつうの敵は深さで上がる（霊峰では約7.8倍）ため。ボスと呼ばれる敵の物攻を上げ、ふつうの攻撃がペンギンの体当たりくらい、
   //     大技がすべりこみくらい（Lv45 で約90。つららは約145）になるようにした：スノーゴーレム 44→70、雪だるま 30→65、氷牙獣 46→90、雪オオカミ 22→75、つらら ×3.0→×2.2
+  //   2026-11-11 保護者：つららより大ジャンプが痛い（よけられるようにするより、ダメージを下げてほしい）→ 着地 ×1.5→×1.0、氷のトゲ ×1.0→×0.7
   ENEMIES.icefang_boss = {
     name: "氷牙獣", kind: "icefang_boss", boss: true, hp: 11500, patk: 90, matk: 0, pdef: 12, mdef: 8,
     res: { fire: 1.3, water: 0.5 }, speed: 40, r: 14, color: "#dff0fa",
     reach: 20, windup: 0.45, cooldown: 1.0, cooldownHalf: 0.8,
     chargeWarn: 0.8, chargeSpeed: 300, chargeMult: 1.6, chargeEvery: 7,
-    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 2.2,
+    rainEvery: 14, rainEveryHalf: 11, rainHowl: 1.0, rainCount: 7, rainCountHalf: 11, rainWarn: 1.0, rainGap: 0.14, rainR: 22, rainMult: 1.8,
     howlEvery: 16, pups: 2, pupHp: 320, pupAtk: 75,
-    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.5, leapsHalf: 3,
-    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 1.0,
+    leapEvery: 8, leapEveryHalf: 7, leapCrouch: 0.35, leapAir: 1.0, leapLock: 0.35, leapR: 30, leapMult: 1.0, leapsHalf: 3,
+    spikeCount: 8, spikeDist: 46, spikeR: 12, spikeWarn: 0.35, spikeMult: 0.7,
     breathEvery: 10, breathWarn: 0.8, breathLen: 120, breathSpread: 0.45, breathMult: 1.3, frostLife: 6,
     armorCut: 0.5, armorTime: 8, armorEvery: 20
   };
@@ -856,7 +1236,10 @@ var GameData = (function () {
     venom:  { name: "猛毒", color: "#ff3fb0" },   // 2026-11-01：瘴気の森のボスの毒。1秒ごとに最大HPの5%（毒の約3倍）。毒消しで治る
     para:   { name: "しびれ", color: "#ffe066" },
     sleep:  { name: "眠り", color: "#b48cf0" },
-    "break": { name: "防御ダウン", color: "#ff9a4d" }
+    "break": { name: "防御ダウン", color: "#ff9a4d" },
+    mbreak: { name: "魔防ダウン", color: "#c070ff" },   // 2026-11-16 スペルブレイク（魔剣聖）：魔防が下がる
+    slow:   { name: "おそくなった", color: "#8ad8ff" },   // 2026-11-16 ディレイ（時の賢者）・ダイヤモンドダスト：動きと攻撃が半分の速さ
+    stop:   { name: "止まった", color: "#c8b0ff" }        // 2026-11-16 タイムストップ（時の賢者）：まったく動かない
   };
 
   // 基礎パラメーター（レベル1はどれも10。上がるたびに職業の伸びを足す。小数は持ちこす）
@@ -894,9 +1277,17 @@ var GameData = (function () {
       lore: ["主人公たちが生まれ育った、豊かな緑に囲まれたのどかな村。", "ここから、世界を救うための長い旅が始まる。"] },
     frostcrest: { id: "frostcrest", name: "フロストクレスト", base: "鉱山の町ボルダ", gate: "山の門", needs: "kodo", art: { town: "town2", world: "world2" },
       intro: ["深い森の故郷を後にして、若者たちの旅路はいよいよ険しい雪山地方へと差し掛かる。", "豊かだった緑は次第に薄れ、冷たい風が世界の色を変えていく。", "魔王城への道を開くため、彼らはミスリルが眠る鉱山の街と、凍てつく雪山を越えなければならない。"],
-      lore: ["かつて活気に満ちていた、ミスリル鉱石の採掘で栄える街。", "名産である坑道に突如として盗賊が住み着き、街の人々は頭を悩ませている。"] }
+      lore: ["かつて活気に満ちていた、ミスリル鉱石の採掘で栄える街。", "名産である坑道に突如として盗賊が住み着き、街の人々は頭を悩ませている。"],
+      road: "ワールドマップの北の山道から行ける" },
+    // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。氷牙獣（白銀の霊峰の主）をたおすと行ける。
+    //   町と地図の絵は保護者が Gemini で作ったもの（2026-11-14）。intro と lore は Claude が書いた仮の文（保護者があとで直す）
+    //   road：その地方への道が開けたときの知らせ（前の地方の地図のどこから行けるか）
+    volcamarine: { id: "volcamarine", name: "ヴォルカマリン", base: "湖畔の街リムネ", gate: "湖の門", needs: "shonyu", art: { town: "town3", world: "world3" },
+      intro: ["白い峰を越えると、あたたかい風がふいてきた。", "青く広い湖と、赤くけむりをはく火山。火と水がとなりあう不思議な土地、ヴォルカマリン。", "魔王城へ続く道は、この湖と火山の向こうにあるという。"],
+      lore: ["大きな湖のほとりにある、漁と交易でにぎわう街。", "ちかごろ湖の底から光がもれ、火山がけむりをふき始めたと、人々はうわさしている。"],
+      road: "ワールドマップの東のはしの道から行ける" }
   };
-  var REGION_ORDER = ["forestveil", "frostcrest"];
+  var REGION_ORDER = ["forestveil", "frostcrest", "volcamarine"];
   // ダンジョンの一覧（瘴気の森の段階1、2026-10-21）。階の数・ボスの階・開く条件・強さの深さはダンジョンごと。
   //   bosses：ボスの階 → BOSSES と同じ形（enemy・title・before・after）
   //   needs：このダンジョンの主をたおすと開く（null ならはじめから開いている）
@@ -998,9 +1389,83 @@ var GameData = (function () {
               before: ["霊峰のいただきは、一面の氷だ。", "吹雪の向こうで、二つの青い目が光った。", "大きな獣のうなり声が、ひびいてくる……。"],
               after: ["獣は雪の上にたおれ、吹雪がやんだ。", "峰の向こうに、まだ見ぬ土地が広がっている。"] }
       }
+    },
+    // 水晶の鍾乳洞（地方3の最初のダンジョン。段階1、2026-11-14）：10階（5階・10階がボス）。氷牙獣（白銀の霊峰の主）をたおすと開く。
+    //   深さは霊峰の続き（75＋階）。部屋は水晶の洞くつの型（theme: crystal。湖の下につながる、光る水晶の洞くつ。坑道と見分けがつくように）。
+    //   装備の段はミスリルのまま（坑道が秘境と同じ鋼だったのと同じ形。プラチナは鍾乳洞の主をたおすと、の案）。
+    //   敵は段階2（2026-11-14）で作った（洞くつガニ・地底の半魚人・水晶の精・水晶コウモリ）。5階のボスはヨロイガニ（段階3）。10階のボスは水晶の大グモ（段階4）。
+    //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    shonyu: {
+      id: "shonyu", tagline: "湖の下にひろがる、青く光る水晶の洞くつ。", intro: ["湖の下にひろがる、青く光る水晶の洞くつ。", "地底の湖には、水晶の光に引きよせられた魔物がすみついているという。"],
+      // tierAfter：主（いちばん下の階）をたおしたあとの段（2026-11-17）。大グモをたおすと、鍾乳洞の宝箱とお店がプラチナになる
+      region: "volcamarine", name: "水晶の鍾乳洞", short: "鍾乳洞", floors: 10, needs: "yuki", depthBase: 75, theme: "crystal", tier: 3, tierAfter: 4,
+      // 敵の強さの上のせ（段階2、2026-11-14。仮）：HP ×1.9・攻撃 ×1.0。装備はミスリルのまま（深さで敵だけ強くなる）なので、攻撃は霊峰（×1.1）より少し小さく。
+      //   tools/balance.js で、地底の半魚人が剣で約4振り・受けて約22回（霊峰のペンギンの兵隊と同じくらい）。洞くつガニは斬が半減なので、HP を少し小さく
+      foeHp: 1.9, foeAtk: 1.0, foeType: { cave_crab: { hp: 0.8 } },
+      bosses: {
+        5: { enemy: "crab_boss", title: "よろいのからをわりし者", room: "lakeside",   // ヨロイガニ（段階3、2026-11-15）。部屋は地底湖のほとり。前後の文は Claude が書いた仮の文
+             before: ["地底の湖のほとりに、赤い岩のようなものがある。", "岩がゆっくりと立ち上がり、大きなはさみをふり上げた！"],
+             after: ["大ガニは、あわをはきながら、湖の底へしずんでいった。", "洞くつの奥へ、道が続いている。"] },
+        10: { enemy: "spider_boss", title: "水晶をきわめし者",   // 水晶の大グモ（段階4、2026-11-15）。前後の文は Claude が書いた仮の文
+              before: ["洞くつのいちばん奥は、天井まで水晶でおおわれている。", "水晶の光が、ふっと暗くなった……。", "天井から、大きな水晶をかかえたクモが下りてきた！"],
+              after: ["大グモの水晶から光が消え、洞くつに静けさがもどった。", "地上へ出る道の先に、大きな湖が見えている。"] }
+      }
+    },
+    // しずみの湖底神殿（地方3の2つ目のダンジョン。段階1、2026-11-18）：12階（6階・12階がボス）。水晶の大グモ（鍾乳洞の主）をたおすと開く。
+    //   深さは鍾乳洞の続き（85＋階）。部屋は湖の底にしずんだ神殿の型（theme: temple。青緑の石だたみ・水路・石柱・海藻）。
+    //   装備の段は、はじめからプラチナ（tier: 4。2026-11-17 段階5で決めた形）。
+    //   敵は段階2（2026-11-18）で作った（神殿の石像兵・神殿ウツボ・神殿クラゲ・しずみの神官。地底の半魚人も出る）。
+    //   6階のボスは大ダコ（段階3、2026-11-18）。12階の主は水竜（段階4、2026-11-19）。
+    //   説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    kotei: {
+      id: "kotei", tagline: "湖の底にしずんだ、古い神殿。", intro: ["湖のまんなかの底にしずんだ、古い神殿。", "ふしぎな力で水が入らない神殿の中には、湖の魔物がすみついているという。"],
+      region: "volcamarine", name: "しずみの湖底神殿", short: "湖底神殿", floors: 12, needs: "shonyu", depthBase: 85, theme: "temple", tier: 4,
+      // 敵の強さの上のせ（段階2、2026-11-18。仮）：HP ×1.8・攻撃 ×1.05。装備がプラチナに上がった（×1.19）ので、新しい段の最初の峰と同じく少し楽にする。
+      //   tools/balance.js で、地底の半魚人が剣で約3.4振り・受けて約22回（鍾乳洞は約3.9振り・約22回）。石像兵は斬が半減なので、HP を少し小さく
+      foeHp: 1.8, foeAtk: 1.05, foeType: { stone_guard: { hp: 0.8 } },
+      bosses: {
+        6: { enemy: "octo_boss", title: "大ダコの足を切りし者", room: "altar",   // 大ダコ（段階3、2026-11-18）。部屋は水の祭壇。前後の文は Claude が書いた仮の文
+             before: ["神殿の奥に、大きな水の祭壇がある。", "水の中から、赤むらさきの足が何本ものびてきた！", "大ダコが、祭壇からはい上がってきた！"],
+             after: ["大ダコは、墨をはきながら、祭壇の水の底へにげていった。", "神殿の奥へ、道が続いている。"] },
+        12: { enemy: "wdragon_boss", title: "湖底神殿をきわめし者",   // 水竜（段階4、2026-11-19）。前後の文は Claude が書いた仮の文
+              before: ["神殿のいちばん奥は、水路にかこまれた広間だ。", "水面が大きくもり上がった……。", "青い水竜が、水しぶきを上げてあらわれた！"],
+              after: ["神殿に、静けさがもどった。", "湖の向こうに、赤い火山が見えている。"] }
+      }
+    },
+    // 紅蓮の火山（地方3の3つ目・最後のダンジョン。段階1、2026-11-20）：12階（6階・12階がボス）。水竜（湖底神殿の主）をたおすと開く。
+    //   深さは湖底神殿の続き（97＋階）。部屋は火山の型（theme: volcano。黒い溶岩の岩・赤く光るひび・溶岩の川・岩の柱）。装備の段はプラチナ（tier: 4）。
+    //   敵とボスはまだ仮：敵は湖底神殿の後半（石像兵・ウツボ・神官）、ボスは大ダコと水竜（段階2〜4で作る。案は炎の巨人 → 紅蓮の竜）。
+    //   主（紅蓮の竜）をたおすと、エルダースタッフ（最強の杖。loot.js の LEGENDS）がもらえ、地図にノクトガルドへの道が出る（段階5、2026-11-21。地方4はまだなので通れない）。説明と前後の文は Claude が書いた仮の文（保護者があとで直す）
+    kazan: {
+      id: "kazan", tagline: "燃える溶岩が流れる、赤い火山。", intro: ["湖の東にそびえる、赤い火山。", "溶岩の川が流れる山の中には、炎の魔物がすみついているという。"],
+      region: "volcamarine", name: "紅蓮の火山", short: "火山", floors: 12, needs: "kotei", depthBase: 97, theme: "volcano", tier: 4,
+      foeHp: 1.8, foeAtk: 1.05, foeType: { magma_golem: { hp: 0.8 } },   // 岩人形はかたくて HP が多いので少し減らす（湖底神殿の石像兵と同じ）
+      bosses: {
+        6: { enemy: "giant_boss", title: "炎の巨人の火を消せし者", room: "magma",   // 炎の巨人（段階3、2026-11-20）。部屋は炎の巨人の広間。前後の文は Claude が書いた仮の文
+             before: ["溶岩にかこまれた、広い岩の広間に出た。", "地ひびきがして、燃える髪の巨人が立ち上がった！"],
+             after: ["巨人の体の火が消え、ただの岩になってくずれた。", "火山の上へ、道が続いている。"] },
+        12: { enemy: "fdragon_boss", title: "紅蓮の火山をきわめし者",   // 紅蓮の竜（段階4、2026-11-20）。前後の文は Claude が書いた仮の文
+              before: ["火山のいちばん上は、溶岩がうずまく火口だ。", "溶岩の中から、赤いつばさの竜が舞い上がった！"],
+              after: ["火口に、静けさがもどった。", "火山の向こうに、暗い雲におおわれた土地が見えている。"] }
+      }
+    },
+    // ---- 幻獣の祠（召喚士。2026-11-22 から1体ずつ作る） ----
+    //   1階だけ（入口 → 祠の守りの魔物の部屋 → 幻獣の広間）。DUNGEON_ORDER には入れない（ワールドマップの祠の印から入る）。
+    //   castle：魔王城のこの階（主の階）をたおすと開く。魔王城ができるまでは、デバッグ用のセーブと全開放の試しからだけ入れる（worldmap.js）。
+    //   深さは魔王城の主の階のあたり（紅蓮の火山12階＝109 の続き）。部屋の型と道中の敵は、今は湖底神殿のもの（theme: temple）。装備の段はプラチナ（ダイヤの段ができたら上げる）。
+    //   前後の文は Claude が書いた仮の文（保護者があとで直す）
+    gj_cerberus: {
+      id: "gj_cerberus", shrine: true, genju: "cerberus_gj", castle: 4, tagline: "地獄の番犬がねむる祠。", intro: ["古い石の祠。奥から、低いうなり声がひびいてくる。", "ここには、3つの首を持つ地獄の番犬がいるという。"],
+      region: "noctgard", name: "ケルベロスの祠", short: "ケルベロス", floors: 1, needs: null, depthBase: 112, theme: "temple", tier: 4,
+      foeHp: 1.8, foeAtk: 1.1, foeType: { stone_guard: { hp: 0.8 } },
+      bosses: {
+        1: { enemy: "cerberus_gj", title: "地獄の番犬をしずめし者", room: "shrine",
+             before: ["祠の奥の広間に、黒い大きな犬がねそべっている。", "3つの首が、いっせいにこちらを向いた！", "ケルベロスが、炎をまとって立ち上がった！"],
+             after: ["ケルベロスは、しずかに頭を下げた。", "3つの首が、こちらを主とみとめたように見つめている……。"] }
+      }
     }
   };
-  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki"];
+  var DUNGEON_ORDER = ["forest1", "shouki", "hikyo", "kodo", "yama", "yuki", "shonyu", "kotei", "kazan"];
   // 地方の中のダンジョン（ワールドマップに出す順）
   function regionOf(id) { return REGIONS[id] || REGIONS.forestveil; }
   function dungeonsIn(region) { return DUNGEON_ORDER.filter(function (d) { return DUNGEONS[d].region === region; }); }
@@ -1014,9 +1479,12 @@ var GameData = (function () {
          heavy: "鋼のよろい", light: "けものの皮の服", magic: "星のローブ" },
     // ミスリルの段（烈風の峰。2026-11-08。ドワーフキングをたおすと、宝箱とお店がミスリルになる）。名前は仮（保護者があとで直してよい）
     3: { sword: "ミスリルの剣", greatsword: "ミスリルの大剣", axe: "ミスリルの斧", bow: "銀翼の弓", spear: "ミスリルの槍", fist: "ミスリルのこて", staff: "月光の杖",
-         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" }
+         heavy: "ミスリルのよろい", light: "ミスリルの鎖かたびら", magic: "銀糸のローブ" },
+    // プラチナの段（地方3。2026-11-17。水晶の大グモ（鍾乳洞の主）をたおすと、宝箱とお店がプラチナになる）。名前は 2026-11-10 保護者と決めたもの
+    4: { sword: "プラチナの剣", greatsword: "プラチナの大剣", axe: "プラチナの斧", bow: "プラチナの弓", spear: "プラチナの槍", fist: "プラチナのこて", staff: "太陽の杖",
+         heavy: "プラチナのよろい", light: "プラチナの鎖かたびら", magic: "プラチナのローブ" }
   };
-  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル"];
+  var TIER_LABEL = ["銅", "鉄", "鋼", "ミスリル", "プラチナ"];
   function dungeonOf(id) { return DUNGEONS[id] || DUNGEONS.forest1; }
   function isBossFloor(id, floor) { return !!dungeonOf(id).bosses[floor]; }
   function bossInfo(id, floor) { return dungeonOf(id).bosses[floor] || null; }
@@ -1050,7 +1518,7 @@ var GameData = (function () {
   }
 
   return {
-    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
+    ELEMENTS: ELEMENTS, WEAPONS: WEAPONS, ARMORS: ARMORS, STARTER_ARMORS: STARTER_ARMORS, JOBS: JOBS, JOB_ORDER: JOB_ORDER, UPPER_ORDER: UPPER_ORDER, TOP_ORDER: TOP_ORDER, tierOf: tierOf, UPPER_JOBS: UPPER_JOBS, TOP_JOBS: TOP_JOBS, LINES: LINES,
     SKILLS: SKILLS, SKILL: SKILL, ENEMIES: ENEMIES, STATUS: STATUS, BOSSES: BOSSES,
     baseStats: baseStats, combatStats: combatStats, inLine: inLine, weaponWait: weaponWait, PLACES: PLACES, floorLabel: floorLabel, floorName: floorName,
     DUNGEONS: DUNGEONS, DUNGEON_ORDER: DUNGEON_ORDER, REGIONS: REGIONS, REGION_ORDER: REGION_ORDER, regionOf: regionOf, dungeonsIn: dungeonsIn, TIER_NAMES: TIER_NAMES, TIER_LABEL: TIER_LABEL, dungeonOf: dungeonOf, isBossFloor: isBossFloor, bossInfo: bossInfo, depthOf: depthOf, canSet: canSet, condText: condText

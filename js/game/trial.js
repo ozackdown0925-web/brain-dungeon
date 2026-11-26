@@ -31,10 +31,17 @@ var Trial = (function () {
   var key = "", today = "";
   var Q = [], byId = {}, days = {}, picks = {}, current = "math", ready = false, shownKey = "";
   var writeChain = Promise.resolve();
-  var onDone = null, floorNo = 1, rest = false;
+  var onDone = null, floorNo = 1, rest = false, dungeonId = "";
   // 何回目の試練か（1日に出発できる回数まで。出発ごとに新しい4問。2026-10-17）
   // 記録の形は変えない：同じ日・同じ教科の記録の、何番目かで見分ける（1番目＝1回目、2番目＝2回目）
   var round = 1, memoFor = "";
+  // 考えた時間（2026-11-16 保護者の希望：空欄や数秒で答え合わせして飛ばしていたため）
+  // 問いを画面に出していた時間を教科ごとに数える（ほかの教科を見ているあいだ・画面をとじているあいだは数えない）。
+  // 急いだ問い（RUSH）が RUSH_MAX こ以上あると、扉は開かない（この出発は1回分使ったことになる）
+  var RUSH_MIN = 12, RUSH_PER_PART = 4, RUSH_MAX = 2;
+  // 「わからない」ボタン（2026-11-16 保護者の案）：この秒数だけ考えてから押せる。押した問いは×で、保護者画面に出る（急いだ問いには数えない）
+  var DONTKNOW_SECS = 30;
+  var spent = {}, timing = null;   // spent[教科]＝ミリ秒、timing＝{ s: 教科, t: 数えはじめた時刻 }
 
   function pad(n) { return ("0" + n).slice(-2); }
   function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -46,9 +53,10 @@ var Trial = (function () {
   function open(floor, done, opts) {
     Sound.bgm("trial");
     floorNo = floor; onDone = done; today = ymd(new Date()); rest = !!(opts && opts.rest);
+    dungeonId = (opts && opts.dungeon) || "";
     round = Math.max(1, (opts && opts.round) || 1);
     // 新しい試練になったら、メモを白紙にする
-    if (memoFor !== today + "#" + round) { clearMemos(); memoFor = today + "#" + round; }
+    if (memoFor !== today + "#" + round) { clearMemos(); memoFor = today + "#" + round; spent = {}; timing = null; }
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
@@ -58,12 +66,13 @@ var Trial = (function () {
     $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDone").hidden = true;
     $("trialBody").hidden = false;
+    if ($("trialTeach")) $("trialTeach").hidden = true;
     ready = false; shownKey = ""; current = "math";
     renderAll();
     if (!key) { close(); Sync.reconnect(""); return; }
     load();
   }
-  function close() { screen.hidden = true; }
+  function close() { stopTimer(); screen.hidden = true; }
   $("trialBack").addEventListener("click", function () { close(); Base.showBase(null); });
 
   // 問題が読みこめないとき：「もう一度」と、問題をとばしてダンジョンに入るボタン（2026-10-22 保護者の希望。加護なし・正解0問あつかい）
@@ -126,6 +135,8 @@ var Trial = (function () {
       var d = days[r.date] || (days[r.date] = { date: r.date, lists: {} });
       (d.lists[r.subject] || (d.lists[r.subject] = [])).push(r); // 記録の順（古い順）
     });
+    // 前の日までに2回続けてできなかった問い（わからない・まちがい）で、まだおうちの人と直していないものがあると、先に直す（2026-11-16、11-24 に変更）
+    if (!rest && showTeach()) return;
     ready = true;
     SUBJECTS.forEach(function (s) { picks[s.key] = choose(s.key); });
     // まだ解いていない教科から
@@ -301,15 +312,116 @@ var Trial = (function () {
     return imgCache[id];
   }
 
+  // ---------- 考えた時間 ----------
+  function stopTimer() {
+    if (timing) { spent[timing.s] = (spent[timing.s] || 0) + (Date.now() - timing.t); timing = null; }
+  }
+  // 解いていない問いが画面に出ているあいだだけ数える
+  function startTimer(subject) {
+    stopTimer();
+    if (screen.hidden || document.hidden || !ready || itemOf(subject)) return;
+    timing = { s: subject, t: Date.now() };
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden) stopTimer(); else if (!screen.hidden) startTimer(current); });
+  function secsOf(subject) {
+    var ms = (spent[subject] || 0) + (timing && timing.s === subject ? Date.now() - timing.t : 0);
+    return Math.round(ms / 1000);
+  }
+  // この問いに、少なくともこれだけは考えてほしい秒数（自分で○×をつける欄（漢字など）は数えない。0なら決まりなし）
+  function needSecs(q) {
+    var n = DrillCore.asList(q && q.parts).filter(function (p) { return !({ kanji: 1, free: 1, recall: 1 })[p.type]; }).length;
+    return n ? Math.max(RUSH_MIN, RUSH_PER_PART * n) : 0;
+  }
+  // 記録から、急いだ問いかどうか（考えた時間は note の「考えた時間 N秒」に入れて GAS に送る。読みこみ直しても分かるように）
+  function rushedOf(it) {
+    if (!it) return false;
+    var secs = typeof it.secs === "number" ? it.secs : null;
+    if (secs == null) { var m = /考えた時間 (\d+)秒/.exec(String(it.note || "")); if (m) secs = Number(m[1]); }
+    if (secs == null) return false;
+    if (isDontKnow(it)) return false;
+    var q = byId[it.qid];
+    var n = q ? needSecs(q) : (Array.isArray(it.parts) ? it.parts.filter(function (p) { return p && !p.self; }).length * RUSH_PER_PART : 0);
+    if (!q && n) n = Math.max(RUSH_MIN, n);
+    return n > 0 && secs < n;
+  }
+
+  // ---------- 「わからない」を放置しない（2026-11-16 保護者の希望） ----------
+  // その日は試練を続けてよい。次の日からは、おうちの人といっしょに直して、暗証番号で「直した」にするまで試練に進めない
+  // 2026-11-24 に変えた（保護者の希望）：1回目の「わからない」・まちがいでは止めない。同じ問いが次に出たときも
+  // 「わからない」かまちがい（○でない）だったときだけ、おうちの人と直す。暗証番号は教科ごとに1回（その教科の問いをまとめて直したにする）。
+  // TEACH_FROM より前の記録は数えない（変える前の記録で急に止まらないように）。
+  var TEACH_FROM = "2026-11-24";
+  function teachKey(r) { return r.date + "|" + r.qid; }
+  function untaught() {
+    // 問いごとに、解いた順に並べる（日付・記録の順）
+    var byQ = {};
+    Object.keys(days).sort().forEach(function (d) {
+      SUBJECTS.forEach(function (s) {
+        (days[d].lists[s.key] || []).forEach(function (r) { if (r && r.qid) (byQ[r.qid] || (byQ[r.qid] = [])).push(r); });
+      });
+    });
+    var out = [];
+    Object.keys(byQ).forEach(function (qid) {
+      var list = byQ[qid];
+      for (var i = 1; i < list.length; i++) {
+        var r = list[i], prev = list[i - 1];
+        if (r.date >= today || r.date < TEACH_FROM) continue;
+        if (!r.correct && !prev.correct && !GameState.dkTaught(teachKey(r))) out.push(r);
+      }
+    });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return out;
+  }
+  function teachBox() {
+    var b = $("trialTeach");
+    if (!b) { b = el("div", "ttech"); b.id = "trialTeach"; $("trialBody").parentNode.insertBefore(b, $("trialBody")); }
+    return b;
+  }
+  function showTeach() {
+    var list = untaught(), box = teachBox();
+    box.textContent = "";
+    if (!list.length) { box.hidden = true; $("trialBody").hidden = false; return false; }
+    $("trialBody").hidden = true; box.hidden = false;
+    box.appendChild(el("h3", "", "2回続けてできなかった問いを、おうちの人と直そう"));
+    box.appendChild(el("p", "", "「わからない」かまちがいが2回続いた問いが " + list.length + "つある。おうちの人といっしょに解き直してから、教科ごとに、おうちの人に暗証番号を入れてもらおう。全部直すと、今日の試練に進める。"));
+    SUBJECTS.forEach(function (s) {
+      var mine = list.filter(function (r) { return r.subject === s.key; });
+      if (!mine.length) return;
+      var sec = el("div", "ttech-s");
+      sec.appendChild(el("h4", "", s.name + "（" + mine.length + "つ）"));
+      mine.forEach(function (r) {
+        var q = byId[r.qid], card = el("div", "ttech-q");
+        card.appendChild(el("b", "", r.date.slice(5).replace("-", "/") + "　" + s.name + "　" + (r.unit || "") + "　" + (isDontKnow(r) ? "？ わからない" : "× まちがい")));
+        var holder = el("div");
+        card.appendChild(holder);
+        if (q) DrillCore.renderQuestion(holder, q, { imageLoader: loadImage, saved: r });
+        else holder.appendChild(el("p", "muted", "この問題は今は出していないので、問題文は出せない。"));
+        sec.appendChild(card);
+      });
+      var ok = el("button", "dq-btn small", s.name + "をおうちの人と直した（暗証番号）"); ok.type = "button";
+      ok.addEventListener("click", function () {
+        Parent.askPin(function () {
+          mine.forEach(function (r) { GameState.markTaught(teachKey(r)); });
+          if (!showTeach()) { ready = true; SUBJECTS.forEach(function (x) { picks[x.key] = choose(x.key); }); var first = SUBJECTS.filter(function (x) { return picks[x.key] && !itemOf(x.key); })[0]; current = first ? first.key : "math"; renderAll(); }
+        });
+      });
+      sec.appendChild(ok);
+      box.appendChild(sec);
+    });
+    return true;
+  }
+
+  function isDontKnow(it) { return !!it && (it.dontKnow === true || /^わからない/.test(String(it.note || ""))); }
+
   // ---------- 画面 ----------
-  function renderAll() { renderTabs(); renderQuestion(); showMemo(current); renderDone(); }
+  function renderAll() { renderTabs(); renderQuestion(); showMemo(current); renderDone(); startTimer(current); }
   function renderTabs() {
     var nav = $("trialTabs"); nav.textContent = "";
     SUBJECTS.forEach(function (s) {
       var it = itemOf(s.key), none = ready && !picks[s.key];
       var b = el("button", "ttab" + (s.key === current ? " sel" : "")); b.type = "button"; b.dataset.s = s.key;
       b.appendChild(el("span", "tname", s.name));
-      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : "× ざんねん"));
+      b.appendChild(el("span", "tstate", none ? "問題なし" : !it ? "まだ" : it.correct ? "○ 正解" : isDontKnow(it) ? "？ わからない" : "× ざんねん"));
       b.addEventListener("click", function () { current = s.key; renderAll(); });
       nav.appendChild(b);
     });
@@ -328,11 +440,27 @@ var Trial = (function () {
     var holder = el("div"); card.textContent = ""; card.appendChild(holder);
     DrillCore.renderQuestion(holder, q, {
       answerRoot: ansBox, keypad: true,   // 数字の答えは、画面の数字のボタンで入れる（2026-10-19）
+      requireAll: true,   // 空欄のままでは答え合わせできない（2026-11-16）
+      dontKnow: needSecs(q) ? {
+        guard: function () {
+          var secs = secsOf(current);
+          return secs >= DONTKNOW_SECS ? "" : "「わからない」は、" + DONTKNOW_SECS + "秒考えてから使えるよ（今 " + secs + "秒）。まずは問題をよく読んで、メモに書いて考えてみよう。";
+        },
+        done: "わからないことを正直に言えたね。おうちの人に知らせたよ。正しい答えと解説を読んでおこう。次に出たときにまたできなかったら、おうちの人といっしょに直そう。"
+      } : null,
+      checkGuard: function () {
+        var need = needSecs(q), secs = secsOf(current);
+        if (!need || secs >= need) return "";
+        return "まだ " + secs + "秒しか考えていないよ。急いで答えた問いが" + RUSH_MAX + "つ以上あると、扉が開かない。もう一度よく見直してから答え合わせしよう。";
+      },
       imageLoader: loadImage, saved: saved, review: pick.review,
       extraMeta: [q.testMiss ? "テストでまちがえた問題" : "", "正答率 " + Math.round(rateOf(q)) + "%"].filter(Boolean),
       reviewNote: "正解するまで、また出てきます。",
       onFinish: function (res) {
+        var secs = secsOf(current); stopTimer();
         var rec = Object.assign({ qid: q.id, unit: q.unit || "", review: !!pick.review, answeredAt: new Date().toISOString() }, res);
+        rec.secs = secs;
+        rec.note = (rec.note ? rec.note + " " : "") + "考えた時間 " + secs + "秒";
         saveAnswer(current, rec);
         Sound.play(rec.correct ? "correct" : "wrong");
         shownKey = current + "|" + q.id + "|done";
@@ -355,7 +483,8 @@ var Trial = (function () {
     var list = SUBJECTS.filter(function (s) { return picks[s.key]; });
     var solved = list.filter(function (s) { return itemOf(s.key); });
     var correct = list.filter(function (s) { var it = itemOf(s.key); return it && it.correct; }).map(function (s) { return s.key; });
-    return { all: list.length > 0 && solved.length === list.length, solved: solved.length, total: list.length, correct: correct.length, subjects: correct };
+    var rushed = list.filter(function (s) { return rushedOf(itemOf(s.key)); }).length;
+    return { all: list.length > 0 && solved.length === list.length, solved: solved.length, total: list.length, correct: correct.length, subjects: correct, rushed: rushed };
   }
   function renderDone() {
     var box = $("trialDone");
@@ -364,6 +493,22 @@ var Trial = (function () {
     $("trialProgress").textContent = r.total ? "解いた問い " + r.solved + " / " + r.total : "";
     if (!r.all) { box.hidden = true; return; }
     if (box.hidden) Sound.play("trialDone");
+    // 急いで答えた問いが多いときは、扉が開かない（2026-11-16 保護者の希望）。休みの日はダンジョンがないので、そのまま
+    if (!rest && r.rushed >= RUSH_MAX) {
+      document.querySelector("#trialDone h3").textContent = "扉は開かなかった…";
+      $("trialDoneText").textContent = "正解 " + r.correct + " / " + r.total + "。よく考えずに急いで答えた問いが " + r.rushed + "つあったので、今回は扉が開かない（この出発は1回分使った）。次は1問ずつ、よく考えて答えよう。";
+      $("trialGo").textContent = "拠点にもどる";
+      $("trialGo").onclick = function () {
+        close();
+        GameState.logRefused({ floor: floorNo, dungeon: dungeonId, correct: r.correct, subjects: r.subjects, rushed: r.rushed });
+        Base.showBase(null);
+        document.getElementById("baseNote").textContent = "知恵の試練で急いで答えた問いが多かったので、扉が開かなかった。次はよく考えて答えよう。";
+      };
+      box.hidden = false;
+      return;
+    }
+    document.querySelector("#trialDone h3").textContent = rest ? "4つの問いに答えた！" : "4つの問いに答えた！ 扉が開いた";
+    $("trialGo").textContent = rest ? "拠点にもどる" : "ダンジョンへ";
     $("trialDoneText").textContent = "正解 " + r.correct + " / " + r.total + "。" +
       (rest ? "" : r.correct ? "加護：" + r.subjects.map(function (s) { return BLESS[s].name + "（" + BLESS[s].text + "）"; }).join("・") + "。" : "加護はなし。") +
       (rest ? "今日はお休みの日なので、ダンジョンはまた明日。" : "正解が多いほど、宝箱がよくなり、クリア報酬がふえる。");

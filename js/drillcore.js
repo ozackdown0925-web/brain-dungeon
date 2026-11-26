@@ -435,8 +435,22 @@
     var checkBtn = btn("dq-btn", allRecall ? "答えを見る" : "答え合わせ", check), armed = false;
     var emptyNote = el("p", "dq-note dq-empty-note");
     function allFilled() { return parts.every(function (p, i) { return !isEmpty(p, ws[i].get()); }); }
+    // opts.minThink（ミリ秒）：問題を出してから、この時間がたつまで答え合わせのボタンを押せない（書庫の「答えを見る」。2026-11-27 保護者と決定：
+    //   考えずに答えを見て○×をつけるのを止める）。答え合わせを押すまでの時間は、記録の parts[0].ms に入る
+    var t0 = Date.now(), thinkMs = 0, waitLeft = 0, waitTimer = null, baseLabel = checkBtn.textContent;
+    if (opts.minThink > 0 && !saved) {
+      waitLeft = Math.ceil(opts.minThink / 1000);
+      var tick = function () {
+        waitLeft = Math.max(0, Math.ceil((opts.minThink - (Date.now() - t0)) / 1000));
+        checkBtn.textContent = waitLeft ? baseLabel + "（あと " + waitLeft + " 秒）" : baseLabel;
+        update();
+        if (!waitLeft) clearInterval(waitTimer);
+      };
+      waitTimer = setInterval(tick, 250);
+      tick();
+    }
     function update() {
-      checkBtn.disabled = !parts.length;
+      checkBtn.disabled = !parts.length || waitLeft > 0;
       if (armed && allFilled()) { armed = false; checkBtn.textContent = "答え合わせ"; emptyNote.remove(); }
     }
 
@@ -471,8 +485,63 @@
     }
 
     action.append(checkBtn); update();
+    // opts.dontKnow：「わからない」ボタン（知恵の試練。2026-11-16 保護者の案：飛ばさずに正直に言える道）
+    //   { guard: function () { 押せないときの文を返す（押せるなら ""） }, done: 押したあとに出す文 }
+    //   押すと、答えを入れた欄はふつうに答え合わせし（2026-11-22 保護者：できた小問まで×になるのはおかしい）、
+    //   入れていない欄（と、自分で○×をつける欄）を「わからない」の×にする。問題としては×で、記録の note に「わからない」と入る
+    var dkBtn = null;
+    if (opts.dontKnow && parts.length && !allRecall) {
+      dkBtn = btn("dq-btn ghost small dq-dontknow", "わからない", function () {
+        var msg = opts.dontKnow.guard ? opts.dontKnow.guard() : "";
+        if (msg) { emptyNote.textContent = msg; action.parentNode.insertBefore(emptyNote, action); return; }
+        dontKnow();
+      });
+      action.append(dkBtn);
+    }
+    function dontKnow() {
+      emptyNote.remove();
+      ws.forEach(function (w) { w.lock(); });
+      if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);
+      var results = parts.map(function (p, i) {
+        var v = ws[i].get(), r;
+        if (SELF[p.type] || isEmpty(p, v)) r = { correct: false, value: v, note: "わからない" };
+        else { r = checkPart(p, v); r.value = v; }
+        showPartResult(i, r, v); return r;
+      });
+      // 入れた答えが全部正しかった（わからない欄がなかった）ときは、ふつうの正解にする
+      if (finish(results)) {
+        if (opts.onFinish) opts.onFinish({
+          correct: true,
+          input: parts.map(function (p, i) { return (p.label ? p.label + " " : "") + inputText(p, results[i].value); }).join(" / "),
+          parts: parts.map(function (p, i) { return { label: p.label || "", value: results[i].value, correct: true, note: results[i].note || "" }; })
+        });
+        return;
+      }
+      if (opts.dontKnow.done) ans.appendChild(el("p", "dq-note dq-dontknow-note", opts.dontKnow.done));
+      var rec = {
+        correct: false, dontKnow: true, note: "わからない",
+        input: "わからない：" + parts.map(function (p, i) { return (p.label ? p.label + " " : "") + inputText(p, results[i].value); }).join(" / "),
+        parts: parts.map(function (p, i) { var o = { label: p.label || "", value: results[i].value, correct: !!results[i].correct, note: results[i].note || "" }; if (SELF[p.type]) o.self = true; return o; })
+      };
+      if (opts.onFinish) opts.onFinish(rec);
+    }
 
     function check() {
+      // opts.requireAll：入れていない欄があると答え合わせしない（知恵の試練。2026-11-16 保護者の希望：空欄のまま答え合わせして飛ばしていたため）
+      if (opts.requireAll && !allFilled()) {
+        emptyNote.textContent = "まだ答えを入れていない欄がある。わからなくても、考えて答えを入れてから答え合わせしよう。";
+        action.parentNode.insertBefore(emptyNote, action);
+        return;
+      }
+      // opts.checkGuard：答え合わせの前の知らせ（知恵の試練：急ぎすぎ。2026-11-16）。文が返ったら1回目は知らせだけ出す
+      var guard = opts.checkGuard ? opts.checkGuard() : "";
+      if (guard && !armed) {
+        armed = true;
+        checkBtn.textContent = "このまま答え合わせする";
+        emptyNote.textContent = guard;
+        action.parentNode.insertBefore(emptyNote, action);
+        return;
+      }
       if (!allFilled() && !armed) {
         armed = true;
         checkBtn.textContent = "このまま答え合わせする";
@@ -480,10 +549,13 @@
         action.parentNode.insertBefore(emptyNote, action);
         return;
       }
+      if (waitLeft > 0) return;
+      thinkMs = Date.now() - t0;
       emptyNote.remove();
       ws.forEach(function (w) { w.lock(); });
       if (myKp.node && myKp.node.parentNode) myKp.node.parentNode.removeChild(myKp.node);   // 答え合わせのあとは数字のボタンをしまう
       checkBtn.remove();
+      if (dkBtn) dkBtn.remove();
       var results = parts.map(function (p, i) {
         var v = ws[i].get();
         if (SELF[p.type]) return { self: true, value: v };
@@ -512,6 +584,7 @@
         };
         var note = results.map(function (r) { return r.note; }).filter(Boolean)[0];
         if (note) rec.note = note;
+        if (opts.minThink > 0 && rec.parts.length) rec.parts[0].ms = thinkMs;
         if (opts.onFinish) opts.onFinish(rec);
       }
     }

@@ -1,5 +1,5 @@
 // 保護者画面（段階6-2）：拠点の「保護者」から、4けたの暗証番号で入る。
-// できること：冒険の時間・1日に出発できる回数、休みの日、知恵の試練の正解率（drillchart.js）、遊んだ記録、セーブの復元、試しモード。
+// できること：冒険の時間・1日に出発できる回数、休みの日、知恵の試練の正解率（drillchart.js）、書庫の結果（shelfreport.js）、遊んだ記録、セーブの復元、試しモード。
 // 決まりはセーブ（GameState.get().parent）に入り、変えたら GAS に送る。
 // 暗証番号は固定（スプレッドシートのメニューから入れる）で、GAS で確かめる（G-2）。セーブの復元は GAS の「セーブの控え」から。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -12,7 +12,7 @@ var Parent = (function () {
   var SUBJECTS = [
     { id: "math", name: "算数" }, { id: "japanese", name: "国語" }, { id: "science", name: "理科" }, { id: "social", name: "社会" }
   ];
-  var KIND = { clear: "クリア", timeout: "時間切れ", wipe: "3人ともたおれた", quit: "やめた" };
+  var KIND = { clear: "クリア", timeout: "時間切れ", wipe: "3人ともたおれた", quit: "やめた", refused: "扉が開かなかった（試練を急いで答えた）" };
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -84,6 +84,7 @@ var Parent = (function () {
     body.hidden = false;
     render(note);
     DrillChart.show(document.getElementById("parentChart"));   // 正解率のグラフ（2026-10-29）
+    ShelfReport.show(document.getElementById("parentShelf"));  // 書庫の結果（2026-11-16）
   }
 
   // ---------- 中身 ----------

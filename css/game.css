@@ -526,6 +526,7 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .dc-ans { margin-top: 4px; white-space: normal; }
 .dc-ans td, .dc-ans th { text-align: left; }
 .dc-prompt td { color: var(--muted); font-size: 12px; text-align: left !important; border-bottom: 0; padding-bottom: 0; }
+.sr-h { color: var(--gold); font-size: 15px; margin: 14px 0 4px; border-bottom: 1px solid #2c3249; padding-bottom: 2px; }
 .dc-q-ex { font-size: 13px; margin-top: 4px; } .dc-q-ex p { white-space: pre-wrap; margin: 4px 0; }
 
 /* 書庫の知識の棚の欄（2026-11-04）：教科ごとの本棚。金の本＝覚えた、金のふち＝知っている、白い本＝もう少し */
@@ -548,3 +549,12 @@ rt { font-size: 0.5em; line-height: 1; font-weight: normal; letter-spacing: 0; t
 .shelf-books.map-books { gap: 1px; }
 .shelf-books.map-books .book { width: 5px; }
 #dlgNote { white-space: pre-line; line-height: 1.7; }   /* ダンジョンの説明とボスの階のお知らせ（2026-11-04） */
+/* 「わからない」と言った問い（保護者画面。2026-11-16） */
+.dc-dk { margin-top: 12px; border: 1px solid var(--btn-line); border-radius: 10px; padding: 10px; }
+/* 「わからない」をそのままにしない（知恵の試練の入り口。2026-11-16） */
+.ttech { padding: 12px; overflow: auto; }
+.ttech h3 { margin: 0 0 6px; }
+.ttech-q { margin: 12px 0; padding: 10px; border: 1px solid var(--btn-line); border-radius: 10px; background: rgba(0,0,0,.2); }
+.ttech-q > b { display: block; margin-bottom: 6px; }
+.ttech-s { margin: 14px 0; padding-bottom: 8px; border-bottom: 1px solid var(--btn-line); }
+.ttech-s h4 { margin: 0 0 4px; color: var(--gold); }

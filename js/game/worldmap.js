@@ -42,20 +42,52 @@ var WorldMap = (function () {
       { id: "yuki", kind: "dungeon", x: 282, y: 52,
         note: "6階と12階に、強い魔物がいる。" },
       // 前の地方への道：南西のはし（線路が地図の外へ出ていくところ）
-      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 }
+      { id: "to_forest", kind: "road", to: "forestveil", x: 22, y: 166 },
+      // 次の地方への道：東のはし（雪山の向こう）。氷牙獣をたおすと開く（2026-11-14）
+      { id: "to_volca", kind: "road", to: "volcamarine", x: 306, y: 108 }
+    ],
+    // ヴォルカマリン（地方3。火と水の地方。2026-11-14 段階1）：水晶の鍾乳洞 → しずみの湖底神殿 → 紅蓮の火山。
+    // 地図の絵は保護者が Gemini で作ったもの（2026-11-14）：町は左の川ぞい、鍾乳洞は湖の北の水晶の洞くつ、神殿は湖のまんなか、
+    // 火山は右の赤い火山。湖底神殿は 2026-11-18 から、火山は 2026-11-20 から
+    volcamarine: [
+      { id: "base", kind: "base", x: 80, y: 110 },
+      { id: "shonyu", kind: "dungeon", x: 192, y: 58,
+        note: "5階と10階に、強い魔物がいる。" },
+      { id: "kotei", kind: "dungeon", x: 184, y: 98,
+        note: "6階と12階に、強い魔物がいる。" },
+      { id: "kazan", kind: "dungeon", x: 298, y: 50,
+        note: "6階と12階に、強い魔物がいる。" },
+      // 前の地方への道：右下の雪山（白銀の霊峰を越えてきた）
+      { id: "to_frost", kind: "road", to: "frostcrest", x: 300, y: 124 },
+      // 地方4ノクトガルドへの道（2026-11-21 紅蓮の火山の段階5）：右上の暗い雲（いなずまの空）。紅蓮の竜をたおすと地図に出る。
+      // 地方4はまだ作っていないので、通れない（soon：このダンジョンの主をたおすと見える、まだ通れない道）
+      { id: "to_noct", kind: "road", to: "noctgard", soon: "kazan", x: 262, y: 14, name: "ノクトガルド",
+        note: "暗い雲におおわれた土地、ノクトガルド。魔王城は、この先にあるという。けれど道はまだ闇にとざされていて、先へは進めない。" },
+      // 幻獣の祠（2026-11-22 から1体ずつ）：本当は魔王城の主をたおすと開く（ノクトガルドの地図に置く）。魔王城ができるまでは、
+      // 試すために、ここ（湖の南の古い村あと）に置き、デバッグ用のセーブと全開放の試しのときだけ見せる（shrine。下の isOpen・spots）
+      { id: "gj_cerberus", kind: "dungeon", shrine: true, x: 190, y: 134,
+        note: "幻獣ケルベロスがいる。たおすと最強の防具が手に入り、召喚士が呼べるようになる。" }
     ]
   };
   function region() { return GameData.regionOf(GameState.region()); }
-  function spots() { return SPOTS[region().id] || SPOTS.forestveil; }
+  function spots() { return (SPOTS[region().id] || SPOTS.forestveil).filter(function (s) { return !s.shrine || isOpen(s); }); }   // 開いていない幻獣の祠は出さない
+  // 幻獣の祠が開いているか：魔王城のその階（主）をたおしている。魔王城ができるまでは、デバッグ用のセーブと全開放の試しのときだけ開く
+  function shrineOpen(id) {
+    var D = GameData.dungeonOf(id);
+    if (GameData.DUNGEONS.castle && GameState.castleFloor() >= D.castle) return true;
+    return GameState.inSandbox() || !!(window.Sync && Sync.isDebug());
+  }
   // 開いているか（作っていない場所はいつも閉じている）と、地図に出す名前
   function isOpen(s) {
     if (s.kind === "base") return true;
+    if (s.soon) return GameState.progressOf(s.soon).deepest >= GameData.dungeonOf(s.soon).floors;
+    if (s.shrine) return shrineOpen(s.id);
     if (s.kind === "road") return GameState.regionOpen(s.to);
     return !s.locked && GameState.unlocked(s.id);
   }
   function nameOf(s) {
     if (s.kind === "base") return region().base;
-    if (s.kind === "road") return isOpen(s) ? GameData.regionOf(s.to).name + "へ" : "？？？";
+    if (s.kind === "road") return isOpen(s) ? (s.name || GameData.regionOf(s.to).name) + "へ" : "？？？";
     return isOpen(s) ? GameData.dungeonOf(s.id).name : "？？？";
   }
   function floorsOf(s) { return GameData.dungeonOf(s.id).floors; }
@@ -103,7 +135,7 @@ var WorldMap = (function () {
         if (lit) { ctx.strokeStyle = "#f2c14e"; ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, Math.PI * 2); ctx.stroke(); }
       } else if (s.kind === "road" && isOpen(s)) {
         // となりの地方への道：矢印の印
-        var rc = lit ? "#f2c14e" : "#9fe0ff";
+        var rc = lit ? "#f2c14e" : s.soon ? "#c8a0ff" : "#9fe0ff";   // まだ通れない道はむらさき
         circle(s.x, s.y, 7, "rgba(10,12,18,0.7)");
         ctx.strokeStyle = rc; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = rc; ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("➜", s.x, s.y + 0.5);
@@ -141,6 +173,7 @@ var WorldMap = (function () {
     if (!s) return;
     if (s.kind === "base") { close(); return; }
     if (!isOpen(s)) { showNote("まだ行けない場所。先のダンジョンの主をたおすと、道が開けるかも…？"); return; }
+    if (s.soon) { showNote(s.note); return; }
     if (s.kind === "road") { goRegion(s.to); return; }
     // 休みの日と、1日に出発できる回数（保護者画面で決める。テスト用の設定で外せる）
     if (!GameState.unlimited() && !GameState.inSandbox()) {

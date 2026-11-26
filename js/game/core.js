@@ -240,8 +240,9 @@
   function roomCleared() {
     var who = [];
     Party.members().forEach(function (m) {
-      if (m.down || !(m.stats.roomHp || m.stats.roomMp)) return;
-      m.hp = Math.min(m.stats.hp, m.hp + Math.round(m.stats.hp * (m.stats.roomHp || 0)));
+      var team = Party.teamMax("teamRoomHp");   // 天の恵み（2026-11-16）：これをつけた人が仲間にいれば、みんなのHPも回復
+      if (m.down || !(m.stats.roomHp || m.stats.roomMp || team)) return;
+      m.hp = Math.min(m.stats.hp, m.hp + Math.round(m.stats.hp * ((m.stats.roomHp || 0) + team)));
       m.mp = Math.min(m.stats.mp, m.mp + Math.round(m.stats.mp * (m.stats.roomMp || 0)));
       who.push(m.name);
     });
@@ -293,7 +294,18 @@
       Battle.pop(e.x, e.y - 52, "宝玉 +1", "#ff9ad0", 9);
     }
     Battle.pop(e.x, e.y - 40, "+" + g + "G", "#f2c14e", 9);
-    var after = dg.bossInfo.after.concat(["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
+    // 最強武器（2026-11-21）：紅蓮の竜をたおすとエルダースタッフ（1つだけ。試しモードではもらえない）
+    var legendLine = [];
+    Object.keys(Loot.LEGENDS).forEach(function (key) {
+      if (Loot.LEGENDS[key].from !== e.type || trial.tryMode) return;
+      var lg = GameState.newLegend(key);
+      if (!lg || run.got.some(function (x) { return x.legend === key; })) return;
+      run.got.push(lg);
+      Battle.pop(e.x, e.y - 64, lg.name + "！", "#f2c14e", 10);
+      var kindName = Loot.LEGENDS[key].slot === "armor" ? "防具" : (GameData.WEAPONS[Loot.LEGENDS[key].base] || { name: "武器" }).name;   // 幻獣は最強の防具（2026-11-22）
+      legendLine = ["", "最強の" + kindName + "「" + lg.name + "」を手に入れた！（" + Loot.LEGENDS[key].sp + "）", "（魔王城の深い階へ行くほど強くなる。鍛冶屋では強くできない）"];
+    });
+    var after = dg.bossInfo.after.concat(legendLine, ["", "称号「" + dg.bossInfo.title + "」を手に入れた！", "宝箱を開けて、出口へ進もう。"]);
     showStory(GameData.ENEMIES[e.type].name + "をたおした！", after, "つづける", null);
     snapshot();
   }
@@ -439,7 +451,7 @@
     for (var tries = 0; tries < 12 && !spot; tries++) {
       var a = Math.random() * Math.PI * 2, x = ne.x + Math.cos(a) * 22, y = ne.y + Math.sin(a) * 18;
       var ch = room.tile(Math.floor(x / T), Math.floor(y / T));
-      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
+      if (ch !== "#" && ch !== "T" && ch !== "~" && ch !== "P" && ch !== "I" && ch !== "C" && ch !== "K" && !room.hitsWall(x - 6, y - 6, 12, 12)) spot = { x: x, y: y };
     }
     if (!spot) return;
     var type = nestPick();
@@ -521,11 +533,17 @@
       if (opts.status && Math.random() < opts.status.chance) Party.addStatus(c, opts.status.type, opts.status.dur);
       return;
     }
+    // 斬り返し（2026-11-16）：構えているときに攻撃を受けると、ダメージなしで斬り返す
+    if (c.counter && Combat.counterHit(c)) return;
     // 身躱しの術（2026-10-20）：決まった確率で、敵の攻撃をよける
     var ev = Party.eff(c, "evade");
     if (ev > 0 && Math.random() < ev) { Battle.pop(A.x, A.y - 28, "よけた", "#a8d8ff", 8); A.inv = 0.35; return; }
     // cut：パッシブ「守りの誓い」「聖なる盾」。cutLow：聖なる盾の、HPが半分より少ないときの上のせ
     var cut = (c.stats.cut || 0) + (c.hp < c.stats.hp * 0.5 ? (c.stats.cutLow || 0) : 0);
+    // 2026-11-16 最上級職：守護者（仲間みんな）・ファランクスと聖槍陣（Party.eff の cut）・サンクチュアリの中・聖なる鎧（魔法の攻撃）
+    cut += Party.teamMax("teamCut") + Party.eff(c, "cut") + Combat.sanctCut();
+    if (opts.magic && c.stats.darkCut) cut += c.stats.darkCut;
+    cut = Math.min(0.8, cut);
     // 魔法の攻撃（影の魔導士・瘴気の霊。2026-10-21）は、敵の魔攻と仲間の魔防で計算する。ほかは物攻と物防
     // opts.atk：攻撃力をじかに決める（闘技場の相手のスキル。2026-10-30）
     var res = opts.magic
@@ -582,7 +600,7 @@
       if (!asleep && !para && A.busy <= 0 && A.turn <= 0) {
         A.move = Math.min(1, (A.move || 0) + dt / ACCEL_TIME); // 少しずつ速くなる
         // 部屋の敵を全滅させたら、武器をしまって走る（探索しやすいように。2026-10-17）
-        var sp = SPEED * (A.running ? CLEAR_SPEED : 1) * (c.stats.speedMul || 1);   // speedMul：パッシブ「疾走」
+        var sp = SPEED * (A.running ? CLEAR_SPEED : 1) * (c.stats.speedMul || 1) * (1 + Party.eff(c, "speed"));   // speedMul：パッシブ「疾走」。speed：アクセル
         Enemies.moveBlocked(room, A, a.x * sp * A.move * dt, a.y * sp * A.move * dt); // 敵はすり抜けない
         A.walk += dt * 8 * A.move * (A.running ? 1.8 : 1);
       }
@@ -706,7 +724,7 @@
       }
       if (b.gold) dg.hasCKey = false;
       b.opened = true;
-      var got = Loot.chest(dg.power, settings.correct, b.rare, GameData.dungeonOf(dg.dungeon).tier || 0);
+      var got = Loot.chest(dg.power, settings.correct, b.rare, GameState.dungeonTier(dg.dungeon));
       if (got.equip) run.got.push(got.equip);
       run.gold += got.gold;
       Object.keys(got.mat).forEach(function (m) { run.mat[m] = (run.mat[m] || 0) + got.mat[m]; });
@@ -767,25 +785,30 @@
         }
         continue;
       }
-      if (t.type === "ice") {
+      if (t.type === "ice" || t.type === "wet") {
         // すべる氷（白銀の霊峰、2026-11-09 保護者と決定）：ふむと、向いている向きへ少しのあいだすべっていく（突風と同じ動き。岩や壁で止まる）
         if (!(t.wait > 0)) {
           var fl = Math.sqrt(A.face.x * A.face.x + A.face.y * A.face.y) || 1;
           t.wait = 1.5;
           run.gust = { dx: A.face.x / fl, dy: A.face.y / fl, t: SLIDE_TIME, slide: true };
-          say("つるっ！ 氷ですべった！"); Sound.play("trap");
+          // ぬれた岩（水晶の鍾乳洞、2026-11-15）：すべる氷と同じ動き
+          say(t.type === "wet" ? (room.theme === "temple" ? "つるっ！ ぬれた石だたみですべった！" : "つるっ！ ぬれた岩ですべった！") : "つるっ！ 氷ですべった！"); Sound.play("trap");
         }
         continue;
       }
-      if (t.type === "rock" || t.type === "icicle") {
+      if (t.type === "rock" || t.type === "icicle" || t.type === "drip" || t.type === "geyser" || t.type === "flame" || t.type === "vbomb") {
         // 落石（黒鉄の坑道、2026-10-27 保護者の案）：踏むと、その場所に影が出て、少しあとに天井から岩が落ちてくる。
         // すぐ動けばよけられる。当たると最大HPの10%（これでたおれることはない）。同じ罠は少しのあいだ落ちない
         if (!(t.wait > 0)) {
           t.wait = 2.5;
           // つらら（白銀の霊峰、2026-11-09）：落石と同じ。上から氷のつららが落ちてくる
-          var icy = t.type === "icicle";
-          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy });
-          say(icy ? "頭の上で、つららがきしむ音がした！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
+          // 鍾乳石（水晶の鍾乳洞、2026-11-15）：落石と同じ。天井から、先に水晶のついた鍾乳石が落ちてくる
+          // 水の柱（しずみの湖底神殿、2026-11-18）：落石と同じ。足もとの石のすきまから、水がふき上がる
+          // 火の柱（紅蓮の火山、2026-11-20）：水の柱と同じ。足もとのひびから、火がふき上がる
+          // 火山弾（紅蓮の火山、2026-11-20）：落石と同じ。空から、赤く焼けた岩が落ちてくる
+          var icy = t.type === "icicle", drip = t.type === "drip", gey = t.type === "geyser", flm = t.type === "flame", vb = t.type === "vbomb";
+          run.falls.push({ x: A.x, y: A.y, t: FALL_TIME, ice: icy, drip: drip, geyser: gey || flm, flame: flm, vbomb: vb });
+          say(icy ? "頭の上で、つららがきしむ音がした！" : drip ? "頭の上で、鍾乳石がぐらりとゆれた！" : gey ? "足もとから、ごぼごぼと水の音がする！" : flm ? "足もとのひびが、赤く光った！" : vb ? "空から、ヒューッと火山弾が飛んでくる！" : "頭の上で、岩がくずれる音がした！"); Sound.play("trap");
         }
         continue;
       }
@@ -845,7 +868,7 @@
             ch.hp = Math.max(1, ch.hp - dmg);
             A.hurtT = 0.3;
             Battle.pop(A.x, A.y - 28, String(dmg), "#ef5b5b", 9);
-            say(f.ice ? "つららに当たった！" : "落石に当たった！");
+            say(f.ice ? "つららに当たった！" : f.drip ? "鍾乳石に当たった！" : f.flame ? "火の柱に焼かれた！" : f.geyser ? "水の柱にふき飛ばされた！" : f.vbomb ? "火山弾に当たった！" : "落石に当たった！");
           }
         }
       } else f.dust -= dt;
@@ -908,11 +931,27 @@
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R * (0.5 + 0.5 * k), FALL_R * (0.5 + 0.5 * k) * 0.55, 0, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "rgba(255,90,64," + (0.3 + 0.5 * k).toFixed(2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, FALL_R, FALL_R * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-        if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
+        if (f.geyser) {   // 水の柱：落ちてくるものはなく、印の中に泡がだんだん増える（火の柱は、火の粉）
+          for (var bq = 0; bq < 3 + Math.floor(k * 5); bq++) {
+            var ba = bq * 2.4 + k * 9, br = (bq % 3 + 1) * 3.5 * k;
+            Render.rect(Math.round(x + Math.cos(ba) * br) - 1, Math.round(y + Math.sin(ba) * br * 0.55) - 1 - (f.flame ? Math.round(k * (bq % 3) * 3) : 0), 2, 2, f.flame ? (bq % 2 ? "#ffd860" : "#f06a18") : bq % 2 ? "#bff4ff" : "#4ab8d8");
+          }
+        } else if (k > 0.2 && f.vbomb) {   // 火山弾：赤く焼けた岩が、ななめ上から落ちてくる（後ろに火の粉）
+          var vk = 1 - (k - 0.2) / 0.8, vx2 = x + Math.round(vk * 40), vy2 = y - Math.round(vk * 80) - 4;
+          for (var tr2 = 1; tr2 <= 4; tr2++) Render.rect(vx2 + tr2 * 4 - 1, vy2 - tr2 * 8, 2, 2, tr2 % 2 ? "rgba(255,216,96,0.8)" : "rgba(240,106,24,0.7)");
+          Render.rect(vx2 - 5, vy2 - 5, 10, 10, "#140c1c");
+          Render.rect(vx2 - 4, vy2 - 4, 8, 8, "#3a1a10");
+          Render.rect(vx2 - 3, vy2 - 2, 3, 2, "#f06a18"); Render.rect(vx2 + 1, vy2, 2, 2, "#ffd860"); Render.rect(vx2 - 1, vy2 + 2, 3, 1, "#d84410");
+        } else if (k > 0.35 && f.ice) {   // つらら：先のとがった氷が、上から落ちてくる
           var iy = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 3, iy - 10, 7, 4, "#140c1c"); Render.rect(x - 2, iy - 6, 5, 4, "#140c1c"); Render.rect(x - 1, iy - 2, 3, 3, "#140c1c"); Render.rect(x, iy + 1, 1, 2, "#140c1c");
           Render.rect(x - 2, iy - 9, 5, 3, "#b8dcf0"); Render.rect(x - 1, iy - 6, 3, 4, "#94c4e0"); Render.rect(x, iy - 2, 1, 3, "#6ea4c8");
           Render.rect(x - 1, iy - 9, 1, 5, "#f0faff");
+        } else if (k > 0.35 && f.drip) {   // 鍾乳石：灰色の石の円すいで、先が青く光る水晶
+          var dy2 = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
+          Render.rect(x - 4, dy2 - 12, 9, 4, "#140c1c"); Render.rect(x - 3, dy2 - 8, 7, 4, "#140c1c"); Render.rect(x - 2, dy2 - 4, 5, 3, "#140c1c"); Render.rect(x - 1, dy2 - 1, 3, 3, "#140c1c");
+          Render.rect(x - 3, dy2 - 11, 7, 3, "#56608a"); Render.rect(x - 2, dy2 - 8, 5, 4, "#3a4264"); Render.rect(x - 1, dy2 - 4, 3, 3, "#80d0ff"); Render.rect(x, dy2 - 1, 1, 2, "#e4faff");
+          Render.rect(x - 2, dy2 - 11, 1, 5, "#7a84aa");
         } else if (k > 0.35) {   // 岩：上から落ちてくる
           var ry = y - Math.round((1 - (k - 0.35) / 0.65) * 70) - 6;
           Render.rect(x - 5, ry - 4, 10, 8, "#140c1c");
@@ -924,7 +963,26 @@
         var kd = 1 - f.dust / 0.35;
         for (var i = 0; i < 8; i++) {
           var a = i * Math.PI / 4 + 0.3, rd = 4 + kd * 12;
-          if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
+          if (f.flame) {   // 火の柱：赤い炎の柱がふき上がって、火の粉が散る（上ほど黄色く細い）
+            if (i === 0) {
+              var fh = Math.round(48 * (1 - kd * kd)), fw = 9 - Math.round(kd * 4);
+              Render.rect(x - fw, y - fh, fw * 2, fh, "rgba(216,68,16," + (0.85 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - fw + 2, y - fh + 4, fw * 2 - 4, Math.max(0, fh - 4), "rgba(248,138,28," + (0.9 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - 2, y - fh, 4, fh, "rgba(255,224,96," + (0.9 - kd * 0.6).toFixed(2) + ")");
+            }
+            Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1 - Math.round(kd * 8), 2, 2, i % 2 ? "rgba(255,216,96," + (1 - kd).toFixed(2) + ")" : "rgba(240,106,24," + (1 - kd).toFixed(2) + ")");
+          } else if (f.vbomb) {   // 火山弾：くだけた赤い岩と火の粉
+            Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(255,154,40," + (1 - kd).toFixed(2) + ")" : "rgba(58,26,16," + (1 - kd).toFixed(2) + ")");
+          } else if (f.geyser) {   // 水の柱：太い水の柱がふき上がって、しぶきが散る
+            if (i === 0) {
+              var gh = Math.round(46 * (1 - kd * kd)), gw = 9 - Math.round(kd * 4);
+              Render.rect(x - gw, y - gh, gw * 2, gh, "rgba(74,184,216," + (0.85 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - gw + 2, y - gh, 3, gh, "rgba(191,244,255," + (0.9 - kd * 0.6).toFixed(2) + ")");
+              Render.rect(x - gw - 2, y - gh - 3, gw * 2 + 4, 4, "rgba(232,252,255," + (0.9 - kd * 0.7).toFixed(2) + ")");
+            }
+            Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(191,244,255," + (1 - kd).toFixed(2) + ")" : "rgba(74,184,216," + (1 - kd).toFixed(2) + ")");
+          } else if (f.drip) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(128,208,255," + (1 - kd).toFixed(2) + ")" : "rgba(86,96,138," + (1 - kd).toFixed(2) + ")");   // くだけた石と水晶
+          else if (f.ice) Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(240,250,255," + (1 - kd).toFixed(2) + ")" : "rgba(122,200,240," + (1 - kd).toFixed(2) + ")");   // くだけた氷
           else Render.rect(Math.round(x + Math.cos(a) * rd) - 1, Math.round(y + Math.sin(a) * rd * 0.55) - 1, 2, 2, i % 2 ? "rgba(160,150,140," + (1 - kd).toFixed(2) + ")" : "rgba(84,79,90," + (1 - kd).toFixed(2) + ")");
         }
       }
@@ -1010,6 +1068,25 @@
       } else if (t.type === "icicle") {   // つらら：落ちてわれた氷のかけらと、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#b8dcf0"); Render.rect(x + 10, y + 9, 2, 2, "#94c4e0"); Render.rect(x + 6, y + 12, 3, 1, "#e8f6ff");
         Render.rect(x + 4, y + 8, 1, 1, "#525c70"); Render.rect(x + 5, y + 9, 1, 1, "#525c70"); Render.rect(x + 6, y + 10, 2, 1, "#525c70"); Render.rect(x + 10, y + 5, 1, 2, "#525c70");
+      } else if (t.type === "wet") {   // ぬれた岩（水晶の鍾乳洞）：天井からしずくが落ちてできた、黒くつやのある水たまり。ときどき波紋
+        Render.rect(x + 1, y + 3, 14, 10, "#0a1a34"); Render.rect(x + 2, y + 4, 12, 8, "#14305a");
+        Render.rect(x + 3, y + 5, 4, 1, "#5aa0d8"); Render.rect(x + 9, y + 9, 3, 1, "#3a78b0");
+        var rp = (glow * 0.9 + i * 0.37) % 1;
+        if (rp < 0.4) { var rr2 = Math.round(1 + rp * 8); Render.rect(x + 8 - rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8 + rr2, y + 8, 1, 1, "#8ee4ff"); Render.rect(x + 8, y + 8 - Math.round(rr2 / 2), 1, 1, "#8ee4ff"); }
+      } else if (t.type === "flame") {   // 火の柱（紅蓮の火山）：赤く光る十字の割れ目と、ときどき上がる火の粉
+        Render.rect(x + 3, y + 7, 10, 2, "#3a0a04"); Render.rect(x + 7, y + 4, 2, 9, "#3a0a04"); Render.rect(x + 4, y + 7, 8, 1, "#d84410"); Render.rect(x + 7, y + 5, 1, 7, "#d84410");
+        var fp = (glow * 1.1 + i * 0.41) % 1;
+        if (fp < 0.5) { var fyy = y + 7 - Math.round(fp * 10); Render.rect(x + 7, fyy, 1, 2, "#ffd860"); if (fp > 0.2) Render.rect(x + 5, fyy + 3, 1, 1, "#f06a18"); }
+      } else if (t.type === "vbomb") {   // 火山弾：落ちてできた黒いくぼみと、まだ赤い岩のかけら
+        Render.rect(x + 3, y + 5, 10, 6, "#0e0808"); Render.rect(x + 4, y + 6, 8, 4, "#1e1210");
+        Render.rect(x + 5, y + 7, 2, 2, "#d84410"); Render.rect(x + 9, y + 8, 2, 1, "#f06a18"); Render.rect(x + 3, y + 12, 2, 1, "#584440"); Render.rect(x + 11, y + 4, 2, 1, "#584440");
+      } else if (t.type === "geyser") {   // 水の柱（しずみの湖底神殿）：石だたみの割れ目と、ときどき上がる泡
+        Render.rect(x + 3, y + 7, 10, 2, "#0a2228"); Render.rect(x + 7, y + 4, 2, 9, "#0a2228"); Render.rect(x + 4, y + 7, 8, 1, "#1e5a68");
+        var gp = (glow * 1.1 + i * 0.41) % 1;
+        if (gp < 0.5) { var gyy = y + 7 - Math.round(gp * 10); Render.rect(x + 7, gyy, 2, 2, "#bff4ff"); if (gp > 0.2) Render.rect(x + 5, gyy + 3, 1, 1, "#4ab8d8"); }
+      } else if (t.type === "drip") {   // 鍾乳石：落ちてくだけた石のかけらと水晶のかけら、床のひび
+        Render.rect(x + 3, y + 5, 3, 2, "#56608a"); Render.rect(x + 10, y + 9, 2, 2, "#80d0ff"); Render.rect(x + 6, y + 12, 3, 1, "#3a4264");
+        Render.rect(x + 4, y + 8, 1, 1, "#0e1020"); Render.rect(x + 5, y + 9, 1, 1, "#0e1020"); Render.rect(x + 6, y + 10, 2, 1, "#0e1020"); Render.rect(x + 10, y + 5, 1, 2, "#0e1020");
       } else if (t.type === "rock") {   // 落石：天井から落ちた小石と、床のひび
         Render.rect(x + 3, y + 5, 3, 2, "#706a76"); Render.rect(x + 9, y + 9, 2, 2, "#544f5a"); Render.rect(x + 6, y + 12, 3, 2, "#706a76");
         Render.rect(x + 4, y + 8, 1, 1, "#16141a"); Render.rect(x + 5, y + 9, 1, 1, "#16141a"); Render.rect(x + 6, y + 10, 2, 1, "#16141a"); Render.rect(x + 10, y + 5, 1, 2, "#16141a");
@@ -1036,7 +1113,7 @@
     }
     if (c.spring) {   // 回復の泉：石のふちと光る水（ドット絵は props.js）。のぼる光の粒も1点ずつ
       var sx = Math.round(c.spring.x - cam.x), sy = Math.round(c.spring.y - cam.y);
-      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
+      ctx.drawImage(Props.get("spring_" + (room.theme === "swamp" || room.theme === "wild" || room.theme === "cave" || room.theme === "peak" || room.theme === "snow" || room.theme === "crystal" || room.theme === "temple" || room.theme === "volcano" ? room.theme : room.theme === "peakwarm" ? "peak" : "forest") + "_" + (Math.floor(glow * 3) % 3)), sx - 15, sy - 9);
       for (var sp = 0; sp < 5; sp++) {
         var ph = (glow * 0.6 + sp / 5) % 1, px2 = sx - 8 + ((sp * 7) % 17), py2 = Math.round(sy - 2 - ph * 20);
         if (ph > 0.85) continue;
@@ -1171,8 +1248,9 @@
   }
 
   function buffName(b) {
-    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心", evade: "よける" };
-    return names[b.stat] + (b.pct > 0 ? "↑" : "↓");
+    if (b.stat === "cut") return "受けるダメージ↓";   // ファランクス・聖槍陣（2026-11-24 undefined になっていた）
+    var names = { patk: "物攻", pdef: "物防", mdef: "魔防", matk: "魔攻", wait: "待ち時間", crit: "会心", evade: "よける", speed: "速さ" };
+    return (names[b.stat] || b.stat) + (b.pct > 0 ? "↑" : "↓");
   }
 
   function drawActor() {
@@ -1185,6 +1263,13 @@
     if (!lift && A.inv > 0 && Math.floor(A.inv * 20) % 2 === 0) return;
     Render.rect(px - 6, py + 5, 12, 3, "rgba(0,0,0,0.35)");
     py -= Math.round(lift);
+    // ファランクス・聖槍陣で守っているあいだ：体のまわりに光の盾（2026-11-24 保護者「何が起きてるかわからない」）
+    if (c && Party.eff(c, "cut") > 0) {
+      var sp = 0.75 + 0.25 * Math.sin(Date.now() / 120);
+      Combat.glowDot(ctx, px, py - 6, 15, "#ffffff", "#fff2a0", 0.3 * sp);
+      ctx.strokeStyle = "rgba(255,242,160," + (0.8 * sp).toFixed(2) + ")"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(px, py - 5, 11, 13, 0, 0, Math.PI * 2); else ctx.arc(px, py - 5, 12, 0, Math.PI * 2); ctx.stroke();
+    }
     // 段階7-2b：ドット絵（sprites.js）。歩く・走る・攻撃でコマを変える
     var ph = Math.sin(A.walk), moving = A.move > 0.1;
     var frame = A.swing > 0 ? "attack" : !moving ? "stand" : A.running ? (ph > 0 ? "runA" : "runB") : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";

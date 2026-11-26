@@ -66,7 +66,19 @@ var Sprites = (function () {
   LOOK.gladiator = { from: "warrior" };
   LOOK.paladin = { from: "warrior" };
   LOOK.sage = { from: "priest" };
-  LOOK.tamer = { from: "hunter" };   // 魔物使い（まだ職はない。絵だけ）
+  LOOK.tamer = { from: "hunter" };
+  // 最上級職（2026-11-10 の試作の絵。上級職の絵を書きかえたもの。保護者の手直し待ちの暫定）
+  LOOK.knightking = { from: "warrior" };
+  LOOK.archmage = { from: "mage" };
+  LOOK.grandarcher = { from: "hunter" };
+  LOOK.swordsaint = { from: "warrior" };
+  LOOK.archbishop = { from: "priest" };
+  LOOK.wushen = { from: "fighter" };
+  LOOK.dragoon = { from: "hunter" };
+  LOOK.champion = { from: "warrior" };
+  LOOK.holylancer = { from: "warrior" };
+  LOOK.timesage = { from: "priest" };
+  LOOK.summoner = { from: "hunter" };
   function baseJob(job) { return LOOK[job] ? LOOK[job].from : job; }
   // 髪の色（顔の番号 0〜7。faces.js の顔の髪に合わせる。2026-10-18）：1 明るい・2 ふつう・3 影・4 光
   var HAIR = [
@@ -555,6 +567,116 @@ var Sprites = (function () {
       hand: ["e", "d"], sleeve: ["i", "j"]
     },
     // 騎士（かぶとなので髪の色は変わらない）
+    knightking: {
+      pal: {"d": "#a8162e", "e": "#5e0c22", "f": "#a9b3cc", "g": "#556078", "h": "#eef6ff", "i": "#ff8c39", "j": "#5e3434", "k": "#ffefde", "l": "#ffc68c", "m": "#a8781a", "n": "#ffe070", "o": "#b57575", "p": "#fff0a0", "q": "#e0a828", "r": "#8a5a10", "s": "#f4f2ea", "t": "#3a3448", "v": "#3a7ad8"},
+      map: {
+        down: ["................", "................", "....pAAppAAp....", "....qpqqqqpq....", "...AAqvqqvqAA...", "..A4112121112A..", "..A4212122112A..", "..A1212122212A..", "...122i22i222A..", "...22AAi2AA22...", "....2sAllAkA2...", "....AlAllAlA....", ".AAssAllllAsseA.", "..AAdeAiiAfdAA..", "..AhAAfggfAAhA..", "..AhfgfhhfgfhA..", ".AfmAmfggfmAmfA.", ".AghAgmnnmgAhgA.", ".AiiAAffffAAiiA.", "..AAAfhffhfAAA..", "...eAgfggfgAe...", "...eAgoAAogAe...", "....AggAAggA....", ".....AoAAoA....."],
+        up: ["................", "................", "....pAAppAAp....", "....qpqqqqpq....", "...AAqqqqqqAA...", "..A1111111112A..", "..A1121111112A..", "..A2121121122A..", "..A2122121122A..", "...2222221222...", "...A22222222A...", "....A22A222A....", ".AsssAAAAAAsssA.", "..AstststststA..", "..AedeeeeeeeeA..", "..AeeeeqqeeeeA..", ".AfeeeqppqeeefA.", ".AfeeeeqqeeeefA.", ".AideeeeeeeeeiA.", "..AdedeeedeeeA..", "...qqqqqqqqqq...", "...dAdeAAdeAe...", "....AggAAggA....", ".....AoAAoA....."],
+        side: ["................", "................", "....pAApAAp.....", "...AqpqqqpqAA...", "..A4AvqqqqA22A..", ".A11111221122A..", ".A11211222112A..", ".A21221122212A..", "..212i2122222A..", "..A2iAA22l22A...", "...AiAk22i2A....", "...AlAl2i1A.....", "...AllliAsssA...", "....AiiAAeeeA...", "....AAfgAfhAe...", "....AhhfAghAe...", "....AffgAmgAed..", "....AnmAfhfAed..", ".....AAAilfAed..", ".....fAhAAAeed..", ".....fAhffAeed..", "....AAAAggAeee..", "....AAooggA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AfAhffA.....", "...AggA.AggA....", "...AggA..AggA...", "..AoogA..AoggA..", "..AAAAA..AAAAA.."],
+      hand: ["l", "i"], sleeve: ["h", "f"]
+    },
+    archmage: {
+      pal: {"d": "#8a6ad8", "e": "#b08a28", "f": "#3e2a80", "g": "#1e1040", "h": "#ffe07a", "i": "#ff8c39", "j": "#ffc68c", "k": "#783b22", "l": "#c27126", "v": "#e03060", "w": "#8ad8ff"},
+      map: {
+        down: ["..........AA....", "........AAfgA...", ".......AdffgA...", ".....AAdffggAA..", "....AdeffefA....", "...AfeffffegA...", "...AghgffghgA...", "...AghgffghgA...", "...AgegeegegA...", "...AgehvvhegA...", "...AegA22AgeA...", "..Ahg2AiiA2ghA..", "..AhgAijjiAghA..", "..AfgAAiiAAgfA..", "..AfgAeffeAgfA..", "..AfggfhegggfA..", ".AgfAeffggeAggA.", ".AegAgeheegAweA.", ".AklAfggggfAlkA.", "..AAgfeffefwAA..", "...AgghffhggA...", "...AeweggegeA...", "....AeeheeeA....", ".....AlAAlA....."],
+        up: ["..........AA....", "........AAfgA...", ".......AdffgA...", ".....AAdffggAA..", "....AeffffeA....", "...AffeffefgA...", "...AgffhegfgA...", "...AeeeffeeeA...", "...AgfffggggA...", "...AgfggggggA...", "...AgfggggggA...", "...AgffggffgA...", "..AhhfffffghhA..", "..AfeegffgeegA..", "..AfggehheffgA..", "..AggghwwhgggA..", ".AAAAhwddwhAgAA.", ".AeAAehwwheAAeA.", ".AlAAfghhggAAlA.", "..AAgfwfffggAA..", "...AwggffgggA...", "...AggggggwgA...", "...AeeeheeeeA...", "....AkkAAkkA...."],
+        side: ["..........AAA...", "........AAfggA..", "......AAdffgA...", "....fAdffggAA...", "...AdfeggggA....", "..AffegfggfgA...", "..AfghgfgggfA...", "..AggegffggeA...", "..AggegffgegA...", "..AeeeefgeggA...", "..AA2AeeeefgA...", "...AiA2AgeggA...", "...AjjiAgAAgA...", "....AiiAeegA....", "....AAAeggfg....", "....hhefAgfgA...", "....gfffAwfgA...", "...AhheAkeeAA...", "...AgfgAklkA....", "...AgfgfAAAAA...", "...AgwggggggA...", "...AheeeeeeeA...", "...AAAlkkkAAA...", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AlkA.AlkA...."],
+      hand: ["j", "i"], sleeve: ["f", "g"]
+    },
+    grandarcher: {
+      pal: {"d": "#ff8c39", "e": "#ffefde", "f": "#ffc68c", "g": "#3a7a3e", "h": "#1a3a24", "i": "#8a5a20", "j": "#e0b040", "k": "#a87818", "l": "#ffe070", "m": "#4a2e10", "n": "#e0b040", "p": "#5ac860", "q": "#2a6a34", "r": "#e0b040"},
+      map: {
+        down: [".p..............", ".pe.............", "..pe.AA11AA.....", "..ep1221221A....", "...p22144122....", "..l2214412221...", "..12211122221...", "..A12dd2221122..", "..A22ffd22212A..", "..A22AAdAAA22A..", "...A2eAfdAeAA...", "....AfAffAfA....", "...AgAffffAhhA..", "..AAhiAddAgAgA..", "..AjAAihggAAjA..", "..AjgghihjggjA..", ".AhhAhgghhhAhhA.", ".AhiAgkkklgAihA.", ".AhiAAjggjAAihA.", "..AAAgjggjgAAA..", "....AhgggghA....", "....AhiAAihA....", "....AhhAAhhA....", ".....AiAAiA....."],
+        up: [".p..............", ".pe.............", "..pe.22AA211....", "..ep214221112...", "...p222211111A..", "..l21221111111..", "...21222221212..", "...2221221121A..", "...A212222221A..", "...A2222222AmmA.", "....A222222Anem.", ".....AAAAAAmenm.", "...AAAAAAAhmmmA.", "..AqqqqqqqhihmA.", "..AqrqqqqqqrqA..", ".AqqrqqqqqqrqqA.", ".AqqrqqqqqqrqqA.", ".AqqrqqqqqqrqqA.", "..AqrqqqqqqrqA..", "..AqqqqqqqqqqA..", "...AlllllllllA..", "....AhiAAihA....", "....AhhAAhhA....", ".....AiAAiA....."],
+        side: ["............p...", "...........ep...", ".....2AAAAep....", "...12111122p....", "..2114122222A...", "..24111222221A..", ".A11122222121A..", ".A2A221212112A..", ".A2Ad22221222A..", "..2AeAA222222A..", "...AfAe22d22Am..", "...AfAf2dd2Amm..", "...AfffdAAAnih..", "....AddAAggAqh..", "....AAggAgjAqq..", "....AjjgAgjAqq..", "....AgggAlkAqq..", "....AklAhihAqq..", ".....AAAhihqqq..", ".....gAjAAAqql..", ".....gAjggA.....", "....AAAAhhA.....", "....AAiihhA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AgAjggA.....", "...AhhA.AhhA....", "...AhhA..AhhA...", "..AiihA..AihhA..", "..AAAAA..AAAAA.."],
+      hand: ["f", "d"], sleeve: ["j", "g"]
+    },
+    swordsaint: {
+      pal: {"a": "#b9bab4", "b": "#9b7e6a", "c": "#5e3434", "d": "#ff8c39", "e": "#4a3e78", "f": "#a8162e", "g": "#ffc68c", "h": "#ffefde", "i": "#40082a", "j": "#1c1830", "k": "#3a2a50", "l": "#6a3aa0", "m": "#2a2240", "n": "#5a4a8a", "o": "#b070ff", "r": "#b070ff", "s": "#6a7088", "t": "#c8ccd8", "u": "#2a1a48", "v": "#e8d0ff"},
+      map: {
+        down: ["................", "................", ".....AAAAAA.....", "....A411122A....", "...A11111112A...", "..A4112121112A..", "..A4212122112A..", "..A1212122212A..", "..A122d22d222A..", "..A22AAd2AA22A..", "...22efggAhA2A..", "...AAgiggAgAA...", ".AttsAggggAsttA.", "..AtAhAddAjhAtA.", "..AeAAjjjjAAeA..", "..AejjklfijjeA..", ".AjjAkjrrjkAjjA.", ".AjeAjklfijAejA.", ".AjeAArjjrAAejA.", "..AAAjejjejAAA..", "..firmjjjjmrif..", "..fiAmnAAnmAif..", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", ".....AAAAAA.....", "....A412212A....", "...A11121112A...", "..A1111111112A..", "..A1121111112A..", "..A1121121112A..", "..A2122121122A..", "..A2222221222A..", "..A2222222222A..", "...A222A222AA...", ".AttsAcAAcAsttA.", "..AiiAAiiAAiiA..", "..AdfeiifiiedA..", "..AffrrfffrifA..", ".AdffiirrefifdA.", ".AdfiiierififdA.", ".AffriferifrifA.", "..ffiiferiffif..", "..ffiifreiffif..", "..ffiifreiffif..", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "................", "....AAAAAAA.....", "...A4111112AA...", "..A1111111122A..", ".A11111221122A..", ".A11211222112A..", ".A21212222212A..", "..212d2122222A..", "..A2dAA221222A..", "...Adfe221222A..", "...Agig2d122A...", "...AgggdAttshA..", "....AddAAttsA...", "....AAjjAjeAf...", "....AlfjAjeAf...", ".....jjjAjjArf..", ".....lfAjejAif..", ".....AAAjejAif..", ".....jAeAAAirf..", ".....jAejjAiff..", "....AAAAmmA.ff..", "....AAnnmmA.f...", ".....AAAAAA....."]
+      },
+      stride: ["....AjAejjAiif..", "...AmmAeAmmAff..", "...AmmAAmAmmAf..", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["g", "d"], sleeve: ["e", "j"]
+    },
+    archbishop: {
+      pal: {"d": "#e8b830", "e": "#f4f4f6", "f": "#c8c8d0", "g": "#7a7a90", "h": "#9a6a10", "i": "#ff8c39", "j": "#ffc68c", "k": "#ffefde", "l": "#ffffff", "m": "#a8162e", "v": "#c81e34"},
+      map: {
+        down: ["......Aee.......", ".....Adeefd.....", ".....devfd......", ".....dvvvdA.....", "....fdevfdgA....", "...Afdeefdf3A...", "...AgdfefdfgA...", "...AhdddddhgA...", "...h2iijii1hA...", "...A2AAkAA12A...", "...32kAjjA123...", "....2jAjjA12....", "...AgAjjjjAgA...", "..AleAAiiAAelA..", "..AegdfeffdgeA..", "..AfgheleffgfA..", ".AimAhelefdAmiA.", ".AijehfefghAjiA.", ".AijedelefdfjiA.", "..AAefeleffeAA..", "...gedelefdeg...", "...ghdfeefdhg...", "....AhddddhA....", ".....AmAAmA....."],
+        up: ["......Aff.......", ".....Ahffgh.....", ".....hffggh.....", ".....ggAAAA.....", "....AfeffggA....", "...AgfeeffggA...", "...AggfffgggA...", "...AggggggggA...", "...AhhgggghhA...", "...A33dddh33A...", "...A23333333A...", "...A23323333A...", "...AA33233AgA...", "..AfgAAAAAggfA..", "..AggggddggggA..", "..AggddddddggA..", ".AimgffddffgmiA.", ".AijAhfddfhgjiA.", ".AijAhhddhhAjiA.", "..AAAffddffAAA..", "...ggfeffffgg...", "...hhfefgfghh...", "....AhddhdhA....", ".....AmAAmA....."],
+        side: ["..Aef...........", "..eefd..........", "..eefd..........", "..eefd3AAAA.....", "..fefdfffggA....", "..feghffffggA...", "..ggghffffggA...", "..hhhhgffgggA...", "..2AiihhggggA...", "..2AjAA2hhhhA...", "..3AjAk13233A...", "..3AjAi13233A...", "..3AjjiiA233A...", "...33iiAgggAA...", "....AAfggfeg....", "....Aldfgfeg....", "....AedggffA....", "....AlgAijmA....", "....flfAijiA....", "....fedeAAAg....", "....gedeffgg....", "....gfdffggg....", "....ddhdhhhh....", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AmhA.AmhA...."],
+      hand: ["j", "i"], sleeve: ["e", "f"]
+    },
+    wushen: {
+      pal: {"d": "#ff8c39", "e": "#ffc68c", "f": "#ffefde", "g": "#9a7a30", "h": "#f0e6c8", "i": "#ffffff", "j": "#e8c050", "k": "#8a1020", "l": "#d83040", "m": "#e0b030", "n": "#ffe070", "b": "#3a2010", "c": "#8a5020"},
+      map: {
+        down: ["................", "................", "................", ".....AAAAAA.....", "....A332233A....", "...A32323323A...", "...A32323223A...", "...A32deed23A...", "...A2deeedd2A...", "...A2deeedd2A...", "...A3AAdAAA3A...", "...A3eAeeAe3A...", "...gAAdeedd3A...", "..gijbAddAbjiA..", "..gjhgcjhcghjA..", "..gjhjjhijjhjA..", ".AkhAkhijjkAhkA.", ".AdlAgkllkgAldA.", ".AdeAjhijhgAedA.", "..AAAjhijhgAAA..", "....AjhgijhA....", "....AhggghjA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", "................", ".....AAAAAA.....", "....A322223A....", "...A32222223A...", "...A32322323A...", "...A32322323A...", "...A32332323A...", "...A33333333A...", "...A33333333A...", "...A33333333A...", "...bA33b333Ab...", "..AjhA33AAAhjA..", "..AhAhAAhjgAhA..", "..AhAhhjjhgAhA..", ".AkhAghhhggAhkA.", ".AdkAgkkkkgAkdA.", ".AdeAgghhggAedA.", "..AAAghhhhgAAA..", "....ghhhghgg....", "....ghhggggg....", "....AmmAAmmA....", ".....AnAAnA....."],
+        side: ["................", "................", "................", ".....AAAA3AA....", "....A2233333A...", "...A233322233A..", "...A232223333A..", "...Aeed333333A..", "...Aeeed33333A..", "...Aeddd3e333A..", "...AeAAded333A..", "...AeAeddd333A..", "...AeeedAAA33A..", "....AddAAhjA3A..", "....AAjhAhhAA...", "...AhiijgjhA....", "...AhjjhAjhA....", "....AlkAdkkA....", "...AghhAdedA....", "...AhjhhAAA.....", "...AhgjhggA.....", "...AhggjhhA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: [null, null, null, null, "...AnmA.AnmA...."],
+      hand: ["e", "d"], sleeve: ["j", "h"]
+    },
+    dragoon: {
+      pal: {"a": "#16264a", "b": "#24508a", "c": "#3a86c0", "d": "#9ad8f8", "e": "#8a96a8", "f": "#c8d0dc", "g": "#c81e34", "h": "#ff8c39", "i": "#ffc68c", "j": "#7a4a20", "k": "#e0b030", "p": "#f0e8c8", "l": "#8a1020"},
+      map: {
+        down: ["................", "................", ".......ba.......", ".....AbbaaA.....", "...baabbaaaab...", "...bbabbaaabb...", "...AbabbaaabA...", "...AbbbbaabbA...", "...AAabbbabAA...", "...abgabbbgaa...", "...aAAgAAgAAa...", "....AaAAAAaA....", ".bbbAAbbbaAAbbb.", "..bbaaAbaAaabb..", "..aaaacAAcaaaa..", "..aabcbbbbcbaa..", "..eaAAabbaAAae..", "..bfAaeAAeaAfb..", "..biAabbbbaAib..", "..AAAbcaacbAAA..", "..llAbcaacbAll..", "..gllabaaballg..", "..g..lgAAgl..g..", ".....AjAAjA....."],
+        up: ["................", "................", ".......ba.......", ".....abbaab.....", "...bbaabaaaab...", "...bbbaaaaaaa...", "...baaaaaaaaA...", "...AabbaabbbA...", "...AAAAbbAAAA...", "...AaaAAAAAAA...", "....AaaaAAAA....", ".....AAAAAA.....", ".bbbaallllaabbb.", "..aaallllllaaa..", "..AlllglllgllA..", "..AlglglglgllA..", "..elglglglglle..", "..blglglglgllb..", "..blglglglgllb..", "..AlglglglgllA..", "...lglglgllll...", "...llllllllll...", "...l.gglAgg.l...", ".....AjAAjA....."],
+        side: ["................", ".....bb....bb...", "....bba.bbbba...", "....baabbbaa....", "...bbaabbaaaA...", "...baabbaaabaA..", "...bbbaaaabbbb..", "...Abaaaabbaaab.", "...AaaabbbAAAA..", "...AaagAaaaaAA..", "...AAgAabbaaA...", "...AAaabbaaA....", "...AabbaaAA.....", "....AaaAAbbaa...", "....AAbaaaal....", "....bbcbaaal....", "....bcbaAcbll...", "....AAAAheeAl...", "....acbAhbbAl...", ".....cbbAAAll...", ".....acbaAlll...", "......acbA..l...", ".....AjjgA......", ".....AAAAA......"]
+      },
+      stride: ["....AcbAAcbA....", "...AcbAbAbaA....", "...AbaAcbAbaA...", "..AjjgAjgAjjgA..", "..AAAAAAAAAAAA.."],
+      hand: ["i", "h"], sleeve: ["b", "a"]
+    },
+    champion: {
+      pal: {"a": "#3a2410", "b": "#b9bab4", "c": "#9b7e6a", "d": "#ff8c39", "e": "#ffc68c", "f": "#ffefde", "g": "#c08a30", "h": "#6a4410", "i": "#5a1a20", "j": "#e0b030", "k": "#fff0a0", "l": "#8a2a30", "m": "#2a1a14", "n": "#5a3a20", "p": "#e0b030", "q": "#3a8a30", "r": "#b01e30", "o": "#1c1830", "s": "#8a1020", "t": "#c81e34"},
+      map: {
+        down: ["................", "................", ".....221122.....", "....22212112....", "...2212221222...", "...2122122212...", "...212d112112...", "...22ddd1d122...", "...2AAdedAAA2...", "....AAAeAAAA....", "....AdAeeAdA....", "..AooAdeedAooA..", ".AoAooAddAooAoA.", "..odooossooAdA..", "..AeAootsooAeA..", "..AedoottoodeA..", ".AghAoossooAhgA.", ".AhgAooooooAghA.", ".AhgAAooooAAghA.", "..AAAooooooAAA..", "....AmoooomA....", "....AmnAAnmA....", "....AmmAAmmA....", ".....AnAAnA....."],
+        up: ["................", "................", ".....111111.....", "....11112111....", "...1111121211...", "...1111121111...", "...2121121212...", "...2121121222...", "...3121121223...", "....22122123....", "....33223223....", "..ooA33A333Aoo..", ".AAooAAoAAAooAA.", "..AAooooooooAA..", "..AdAoogogoAdA..", "..AdAooggooAdA..", ".AghAogogooAhgA.", ".AhgAooooooAghA.", ".AhgAAoooooAghA.", "..AAAooooooAAA..", "....AmoooomA....", "....AmnAAnmA....", "....AmmAAmmA....", "....AAnAAnAA...."],
+        side: ["................", "................", ".....1121112....", "....122222222...", "...1221111122...", "...12122111123..", "...Ad222111213..", "...Aedd1122223..", "...AfdAA2e123...", "...AeAAAed223...", "...AeAeddd23....", "...AeeddAooo....", "....AddAooAA....", ".....AAooddh....", ".....sooAdeA....", ".....tooAdeA....", ".....sooAhgA....", ".....ooohghA....", ".....ooohghA....", ".....oooAAA.....", ".....oooooA.....", "....AAAAmmA.....", "....AAnnmmA.....", ".....AAAAAA....."]
+      },
+      stride: ["....AiAliiA.....", "...AmmAlAmmA....", "...AmmAAmAmmA...", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["e", "d"], sleeve: ["e", "d"]
+    },
+    holylancer: {
+      pal: {"a": "#ffefde", "b": "#9b7e6a", "c": "#5e3434", "d": "#ff8c39", "e": "#ffffff", "f": "#ffc68c", "g": "#101850", "h": "#2040b0", "i": "#b0b4c8", "j": "#e0e4f0", "k": "#e0a020", "l": "#fff080", "m": "#551414", "p": "#f4f4ff"},
+      map: {
+        down: ["................", "................", ".....AAAAAA.....", ".p..A411122A..p.", ".ppA11111112App.", "..p4112121112p..", "..A4212122112A..", "..A1212122212A..", "...122d22d222A..", "...22AAd2AA22...", "....2eAffAaA2...", "....AfAffAfA....", ".AghhAffffAhhgA.", "..AAggAddAggAA..", "..AiAAiiiiAAiA..", "..AeijjaajjieA..", ".AklAmijjimAlkA.", ".AjeAkkiikkAejA.", ".AjeAAilliAAejA.", "..AAAjejjejAAA..", "..hgAcjiijcAgh..", "..hgAcbAAbcAgh..", "....AccAAccA....", ".....AbAAbA....."],
+        up: ["................", "................", ".....AAAAAA.....", ".p..A412212A..p.", ".ppA11121112App.", "..p1111111112p..", "..A1121111112A..", "..A2121121122A..", "..A2122121122A..", "...2222221222...", "...A22222222A...", "....A22A222A....", ".AhggAAAAAAgghA.", "..AggggggggggA..", "..AjhkgghgkhjA..", "..AhhglkklhghA..", ".AjhhggllhhghjA.", ".AjhgglhllhghjA.", ".AhhgkhhkgkgghA.", "..hhgkhhhgkhgh..", "..hhkghhhghkgh..", "..hhkghhhghkgh..", "....AccAAccA....", ".....AbAAbA....."],
+        side: ["................", "................", "....AAAAAAA.....", "...A4111112App..", "..A411111112ppp.", ".A111112211ppA..", ".A11211222112A..", ".A21221122212A..", "..212d2122222A..", "..A2dAA22f22A...", "...AdAa22d2A....", "...AfAf2d1A.....", "...AfffdAhhhgA..", "....AddAAgggA...", "....AAiiAjeAh...", "....iejiAjeAh...", "....ijimAlkAgh..", ".....lkAjejAgh..", ".....AAAjejAgh..", ".....jAeAAAggh..", ".....jAejjAghh..", ".....AAAccAghh..", "....AAbbccA.h...", ".....AAAAAA....."]
+      },
+      stride: ["....AjAejjAggh..", "...AccAeAccAhh..", "...AccAAcAccAh..", "..AbbcAbcAbccA..", "..AAAAAAAAAAAA.."],
+      hand: ["l", "k"], sleeve: ["e", "j"]
+    },
+    timesage: {
+      pal: {"a": "#592a2a", "b": "#815656", "c": "#ba8787", "d": "#f3cf76", "e": "#b39400", "f": "#ff9b53", "g": "#ffcd9a", "h": "#ffefde", "i": "#141c48", "j": "#5ab0e8", "k": "#203a78", "l": "#2a5aa0", "m": "#b54545", "n": "#5e3838"},
+      map: {
+        down: ["................", "......dddd......", ".....d....d.....", ".....AAAAAA.....", "....A214412A....", "...A2112211dA...", "...A2122241eA...", "...A11fggf4AA...", "...A1fghgg41A...", "...A1AAhAA41A...", "...21hegge412...", "...i1gdggd41i...", "...eiAggggAie...", "...jedAffAAdj...", "..AkildkldeikA..", "..AlilkedllilA..", ".AfmAiedkleAmfA.", ".AfgieldleeAgfA.", ".AfgiikekliigfA.", "..AAklkedlkiAA..", "...ikldAedlli...", "...ikieAAeiAi...", "...iAeAAAAeAi...", "...eenmAAmnee..."],
+        up: ["................", "......dddd......", ".....d....d.....", ".....AAAAAA.....", "....A144212A....", "...A11112112A...", "...Ad1111112A...", "...Ade112112A...", "...AeA112122A...", "...AA2112122A...", "...A22112222A...", "...A22222222A...", "...AA22222AiA...", "..AeiAAAAAiieA..", "..AieddddiieiA..", "..AidkAhAdeiiA..", ".AgmdkhhkdlimgA.", ".AgfdkkkkdiifgA.", ".AffiddddiiiffA.", "..AAillillliiA..", "...AilkillliA...", "...AilkliliiA...", "...AilkliliAA...", "...eedddeeeee..."],
+        side: ["................", "....dddd........", "...d....d.......", "....222AAAA.....", "...111111222....", "..A2111111222...", ".A12241111222...", ".A1Aff4111122...", ".A1Ahgf41112A...", "..1AgAA42122A...", "..2Ageh42122A...", "..2Agdf42122A...", "..2AggffA122A...", "...22ffAiAAAei..", "....AAeiilkiAe..", "....AeklilkiAi..", "....ekliillAA...", "....djiAfgmA....", "....djlAfgfAl...", "....eklkAAAli...", "....eklkllili...", "....idillkiiA...", "....iedlniiiA...", ".....Aeddeeee..."]
+      },
+      stride: [null, null, null, null, "...AnmAdAnmAe..."],
+      hand: ["g", "f"], sleeve: ["j", "k"]
+    },
+    summoner: {
+      pal: {"a": "#595959", "b": "#bababa", "c": "#818181", "d": "#ff8c39", "e": "#ffefde", "f": "#ffc68c", "g": "#2a1a5a", "h": "#6a5ab0", "i": "#7d7b18", "j": "#2b2b85", "k": "#f3d27f", "l": "#69c3e5", "m": "#5e3838", "n": "#b54545", "q": "#e0b030", "r": "#40e080", "s": "#3a2270", "t": "#8a6ad0", "u": "#6af0ff", "o": "#2a5aa0", "p": "#203a78"},
+      map: {
+        down: ["................", ".......2........", "...2..22.222....", "...22A42212.....", "...4221242241...", "...21222122122..", "..14122222122A..", "...2qqqrrqqq2...", "...212d2dd221...", "...12AA2AAA2....", "....2eAffAeA....", "..stsfAffAfAts..", ".ssstAffffAtsss.", "..AssAAddAAssA..", ".sAfstsssstsfAs.", "..AfdsttttsdfA..", ".AdiAiggggiAidA.", ".AdfAjikkijAfdA.", ".AdfAAojjoAAfdA.", "..AAApommodAAA..", "...sApommomAs...", "...sAmnAAnmAs...", "...sAmmAAmmAs...", ".....AnAAnA....."],
+        up: ["................", "........2.......", "....222.22..2...", ".....21224A22...", "...1422421224...", "..22122122212...", "...22122222141..", "...2422222122...", "...1222222212...", "...2222222221...", "....122212221...", "..stssA21A2sss..", "...Asttttssss...", "..ssssssssssss..", ".ssssssssssssss.", "..AdssssssstsA..", ".AdistssststsdA.", ".AdfstssssstsdA.", ".AdfstssststsdA.", "..AsststststsA..", "...sststssstss..", "...sststssstss..", "....Assssssss...", ".....AnAAnA....."],
+        side: ["................", "......2.........", "....2.222.......", ".22A12412222....", "..12421221222...", "..212122221122..", ".222222142222...", ".241222214222...", "..42rqqq21222...", "..12fAA22f222...", "...AfAed2d22....", "...AfAfddss.....", "...Afffdsts.....", "....Addstsss....", "....AAsssAAsA...", "....AttsAdfAs...", "....AgggAkiAs...", "....AkiAdfdAs...", ".....AAAdfdAs...", ".....jAoAAAss...", ".....oAoppAss...", "....AAAAmmAss...", "....AAnnmmAs....", ".....AAAAAA....."]
+      },
+      stride: ["....AjAljjA.....", "...AmmAfAmmA....", "...AmmAAmAmmA...", "..AnnmAnmAnmmA..", "..AAAAAAAAAAAA.."],
+      hand: ["f", "d"], sleeve: ["f", "d"]
+    },
     knight: {
       pal: { d: "#bf2626", e: "#86231a", f: "#86889e", g: "#495350", h: "#c3deff", i: "#ff8c39", j: "#5e3434", k: "#ffefde", l: "#ffc68c", m: "#6a6b1b", n: "#f3e326", o: "#b57575" },
       map: {

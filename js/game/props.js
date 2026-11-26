@@ -135,7 +135,10 @@ var Props = (function () {
     wild: ["#262a2a", "#3e4442", "#5a605a", "#7c8278", "#a2a89c"],   // 原生の秘境：苔むした石
     cave: ["#16141a", "#28252e", "#3c3842", "#544f5a", "#706a76"],   // 黒鉄の坑道：暗い岩
     peak: ["#2a2626", "#423c3a", "#5c5550", "#7a726a", "#a09888"],   // 烈風の峰：茶色がかった灰色の岩
-    snow: ["#262c3a", "#3a4254", "#525c70", "#727c90", "#98a2b4"]     // 白銀の霊峰：青みがかった灰色の岩
+    snow: ["#262c3a", "#3a4254", "#525c70", "#727c90", "#98a2b4"],   // 白銀の霊峰：青みがかった灰色の岩
+    crystal: ["#0e1020", "#1a1e34", "#282e4a", "#3a4264", "#56608a"],  // 水晶の鍾乳洞：青紫の暗い岩
+    temple: ["#16262e", "#2a4048", "#466068", "#6e8c8e", "#a8c4c0"],   // しずみの湖底神殿：青みがかった白い石
+    volcano: ["#100a0a", "#22181a", "#3a2c2c", "#584440", "#7a6058"]   // 紅蓮の火山：黒い岩
   };
   var SPRING_WATER = ["#1f4a72", "#2a6090", "#4a88b8", "#7fc8ec", "#c8f0ff", "#ffffff"];
   function buildSpring(theme, frame) {
@@ -249,7 +252,7 @@ var Props = (function () {
     else if (name === "herb") img = fromMap(HERB);
     else if (name === "mush") img = fromMap(MUSH);
     else if (name === "cure") img = fromMap(HERB, { q: "n", Q: "N", r: "o", R: "O" });   // 毒消し草：薬草の形で、水色の葉
-    // 回復の泉：spring_<forest|swamp|wild|cave|peak|snow>_<コマ0〜2>。モンスターの巣：nest_<コマ0〜3>（_hit は当たったときの白）
+    // 回復の泉：spring_<forest|swamp|wild|cave|peak|snow|crystal|temple>_<コマ0〜2>。モンスターの巣：nest_<コマ0〜3>（_hit は当たったときの白）
     else if (name.indexOf("spring_") === 0) { var sp = name.split("_"); img = buildSpring(sp[1], +sp[2]); }
     else if (name.indexOf("nest_") === 0) { var ns = name.split("_"); img = buildNest(+ns[1], ns[2] === "hit"); }
     cache[name] = img;

@@ -41,6 +41,9 @@ var GameState = (function () {
       // パッシブの枠（2026-10-19）：前はアクティブだったスキルがパッシブに変わったので、スキル1〜3から外してパッシブの枠へ
       fitPassiveSlots(h);
       h.learned = h.learned.filter(function (id) { return !!GameData.SKILL[id]; });
+      // なくなったスキルはセットBとパッシブの枠からも外す（2026-11-22 最上級職のスキルをしぼった）
+      h.setB = h.setB.map(function (id) { return id && GameData.SKILL[id] && !GameData.SKILL[id].passive ? id : null; });
+      h.pset = h.pset.map(function (id) { return id && GameData.SKILL[id] ? id : null; });
       h.set = h.set.map(function (id) {
         var sk = id && GameData.SKILL[id];
         if (!sk) return null;
@@ -56,6 +59,7 @@ var GameState = (function () {
     if (!g.parent) g.parent = defaultParent();
     if (!g.parent.perWeekend) g.parent.perWeekend = 4;   // 土日の回数（2026-10-25 に足した）
     if (!g.log) g.log = [];
+    fixLegends(g);
     if (!g.progress.dungeons) g.progress.dungeons = {};   // ダンジョンごとの進み具合（瘴気の森の段階1、2026-10-21）
     // 上級職の★1つに必要な熟練度を 60 → 75 にした（2026-10-22）。前のセーブは、★と次の★までの進み具合がそのままになるよう、上級職の熟練度を 75/60 倍にする（1回だけ）
     if (!g.masteryV2) {
@@ -66,6 +70,33 @@ var GameState = (function () {
     }
     return g;
   }
+
+  // ---------- 最強武器（2026-11-21） ----------
+  // 魔王城でいちばん深く行った階（魔王城ができるまでは 0）。最強武器はこの階で育つ
+  function castleFloor(g) {
+    g = g || game;
+    return GameData.DUNGEONS.castle ? progressOf("castle", g).deepest || 0 : 0;
+  }
+  function eachItem(g, fn) {
+    g.storage.forEach(fn);
+    g.party.forEach(function (h) { if (h.equip) ["weapon", "armor"].forEach(function (s) { if (h.equip[s]) fn(h.equip[s]); }); });
+  }
+  function hasLegend(key, g) {
+    var has = false;
+    eachItem(g || game, function (it) { if (it.legend === key) has = true; });
+    return has;
+  }
+  // 読みこむたびに強さを今の魔王城の階に合わせる。主をたおしたのに持っていない（倉庫がいっぱいだった など）ときは、ここでわたす
+  function fixLegends(g) {
+    var f = castleFloor(g);
+    eachItem(g, function (it) { if (it.legend) Loot.legendGrow(it, f); });
+    Object.keys(Loot.LEGENDS).forEach(function (key) {
+      var b = g.book && g.book.monsters && g.book.monsters[Loot.LEGENDS[key].from];
+      if (b && b.kills > 0 && !hasLegend(key, g)) { var it = Loot.makeLegend(key, f); it.id = g.nextId++; g.storage.push(it); }
+    });
+  }
+  // 冒険の中で、主をたおしたときに作る（まだ持っていなければ）
+  function newLegend(key) { return hasLegend(key) ? null : Loot.makeLegend(key, castleFloor()); }
 
   // ---------- ダンジョンごとの進み具合（2026-10-21） ----------
   // 新緑の樹海は、前からある progress.deepest・progress.bosses をそのまま使う（今までのセーブがそのまま読めるように）。
@@ -131,7 +162,7 @@ var GameState = (function () {
       v: 1,
       party: list.map(function (h) { return newHero(h.name, h.face, h.job); }),
       gold: 0, mat: { iron: 0, stone: 0, gem: 0 }, storage: [], nextId: 1,
-      items: { potion: 0, hipotion: 0, xpotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
+      items: { potion: 0, hipotion: 0, xpotion: 0, ppotion: 0, ether: 0, hiether: 0, xether: 0, revive: 0, antidote: 0, paraheal: 0, wake: 0 },
       progress: { deepest: 0, bosses: [], dungeons: {} },
       masteryV2: true,   // 上級職の熟練度は、はじめから新しい数（75）で数える
       titles: [],
@@ -150,7 +181,7 @@ var GameState = (function () {
   // 次のレベルまでの経験値。Lv25 までは前のまま（100＋48×Lv）。そこから先は少しずつふえ、半年（180日）ごろに Lv100 になる（2026-10-22。前は100日ごろに Lv100 で止まった）
   function expNeed(level) { return 100 + 48 * level + (level > 25 ? 4 * (level - 25) * (level - 25) : 0); }
   // パッシブの枠の数：基本職は2つ（上級職3・最上級職4は、上級職を作るときに）
-  function passiveSlots(h) { return GameData.tierOf(h.job) >= 2 ? 3 : 2; }
+  function passiveSlots(h) { var t = GameData.tierOf(h.job); return t >= 3 ? 4 : t >= 2 ? 3 : 2; }   // 最上級職は4つ（2026-11-16）
   // ★1つに必要な熟練度：基本職40・上級職60（2026-10-19 決定）
   function starNeed(job) { var t = GameData.tierOf(job); return t >= 3 ? STAR_NEED_TOP : t >= 2 ? STAR_NEED_UPPER : STAR_NEED; }
   function stars(h, job) { job = job || h.job; return Math.min(MAX_STAR, Math.floor((h.mastery[job] || 0) / starNeed(job))); }
@@ -168,10 +199,26 @@ var GameState = (function () {
     var J = GameData.JOBS[job];
     if (!J) return false;
     if (GameData.tierOf(job) === 1) return true;
-    var u = GameData.UPPER_JOBS.filter(function (x) { return x.id === job; })[0];
+    var top = GameData.tierOf(job) >= 3;
+    var u = (top ? GameData.TOP_JOBS : GameData.UPPER_JOBS).filter(function (x) { return x.id === job; })[0];
     if (!u) return false;
+    if (top && !region2Cleared()) return false;   // 最上級職：地方2のクリアも要る（2026-11-03 決定）
+    if (u.castle && !castleCleared(u.castle)) return false;   // 召喚士：魔王城4階の主も（2026-11-24）
     return u.need.every(function (n) { return stars(h, n[0]) >= n[1]; });
   }
+  // 地方2（フロストクレスト）をクリアしたか：白銀の霊峰の主をたおした。全開放の試しのときは、クリアしたことにする
+  function region2Cleared() {
+    if (sandbox) return true;
+    var id = "yuki", dd = GameData.dungeonOf(id);
+    return !!(game && dd && progressOf(id).deepest >= dd.floors);
+  }
+  // 魔王城のその階（主）をたおしたか。魔王城ができるまでは、デバッグ用のセーブと全開放の試しのときだけ、たおしたことにする
+  function castleCleared(floor) {
+    if (sandbox || (window.Sync && Sync.isDebug())) return true;
+    return castleFloor() >= floor;
+  }
+  // なれる最上級職の一覧（今の職はのぞく）
+  function topList(h) { return GameData.TOP_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
   function starterWeapon(job) { return GameData.JOBS[job].weapons[0]; }
   // なれる上級職の一覧（今の職はのぞく）
   function upperList(h) { return GameData.UPPER_JOBS.filter(function (u) { return u.id !== h.job && canBecome(h, u.id); }).map(function (u) { return u.id; }); }
@@ -230,7 +277,7 @@ var GameState = (function () {
       }
       if (h.level >= MAX_LEVEL) h.exp = 0;
       if (h.level > lv0) lines.push("レベルが " + lv0 + " → " + h.level + " に上がった！");
-      var st0 = stars(h), up0 = upperList(h);
+      var st0 = stars(h), up0 = upperList(h), top0 = topList(h);
       h.mastery[h.job] = (h.mastery[h.job] || 0) + Math.round(r.mastery[i] || 0);
       var st1 = stars(h);
       if (st1 > st0) lines.push(GameData.JOBS[h.job].name + "の熟練度が ★" + st1 + " になった！");
@@ -240,6 +287,10 @@ var GameState = (function () {
       upperList(h).forEach(function (j) {
         if (up0.indexOf(j) >= 0) return;
         lines.push("＠上級職「" + GameData.JOBS[j].name + "」に転職できるようになった！（転職の神殿で。上級職はパッシブの枠が3つになる）");
+      });
+      topList(h).forEach(function (j) {
+        if (top0.indexOf(j) >= 0) return;
+        lines.push("＠最上級職「" + GameData.JOBS[j].name + "」に転職できるようになった！（転職の神殿で。最上級職はパッシブの枠が4つになる）");
       });
       if (!h.setsOpen && upperOpen(h)) {
         h.setsOpen = true;
@@ -256,7 +307,8 @@ var GameState = (function () {
     }
     var lost = 0;
     (r.items || []).forEach(function (it) {
-      if (game.storage.length >= STORAGE_MAX) { lost++; return; } // 倉庫がいっぱい（200）なら持ち帰れない
+      if (it.legend && hasLegend(it.legend)) return;   // 最強武器は1つだけ
+      if (game.storage.length >= STORAGE_MAX && !it.legend) { lost++; return; } // 倉庫がいっぱい（200）なら持ち帰れない（最強武器はいっぱいでも入る）
       it.id = game.nextId++;
       game.storage.push(it);
       if (game.book.items.indexOf(it.base) < 0) game.book.items.push(it.base);
@@ -270,7 +322,7 @@ var GameState = (function () {
       learnSkills(h).forEach(function (n) { report[i].lines.push("スキル「" + n + "」を覚えた！"); });
     });
     if (r.title && game.titles.indexOf(r.title) < 0) game.titles.push(r.title);
-    var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier();
+    var open0 = GameData.DUNGEON_ORDER.filter(function (id) { return unlocked(id); }), shop0 = shopTier(), kazan0 = progressOf("kazan").deepest;
     if (r.cleared) {
       var pg = progressOf(r.dungeon);
       pg.deepest = Math.max(pg.deepest, r.floor);
@@ -284,11 +336,14 @@ var GameState = (function () {
         // 新しい地方の最初のダンジョンなら、地方への道が開けたことを知らせる（2026-10-27）
         var R = GameData.regionOf(GameData.dungeonOf(id).region);
         if (R.needs === id) {
-          report.push({ name: "", raw: true, lines: ["新しい地方「" + R.name + "」への道が開けた！（ワールドマップの北の山道から行ける）"], exp: 0 });
+          report.push({ name: "", raw: true, lines: ["新しい地方「" + R.name + "」への道が開けた！（" + (R.road || "ワールドマップの端の道から行ける") + "）"], exp: 0 });
           return;
         }
         report.push({ name: "", raw: true, lines: [GameData.dungeonOf(id).name + "への道が開けた！（ワールドマップで選べる）"], exp: 0 });
       });
+      // 紅蓮の竜をはじめてたおした（2026-11-21）：地図に、ノクトガルドへの道（まだ通れない）が見える
+      if (r.dungeon === "kazan" && r.boss && r.floor === GameData.dungeonOf("kazan").floors && kazan0 < r.floor)
+        report.push({ name: "", raw: true, lines: ["火山の向こうに、ノクトガルドへの道が見えた！（ワールドマップの右上。まだ先へは進めない）"], exp: 0 });
       var st = shopTier();
       if (st > shop0) {
         var newTools = TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) > shop0 && (TOOLS[k].tier || 0) <= st; }).map(function (k) { return TOOLS[k].name; });
@@ -320,6 +375,9 @@ var GameState = (function () {
     potion:   { name: "回復薬", price: 60, hp: 60, tier: 0, note: "HP を 60 回復" },
     hipotion: { name: "上回復薬", price: 300, hp: 150, tier: 1, note: "HP を 150 回復" },
     xpotion:  { name: "特上回復薬", price: 1000, hp: 350, tier: 2, note: "HP を 350 回復" },
+    // 極上回復薬（2026-11-19 湖底神殿の段階5）：地方3では HP が 700〜800 になり、特上（350）では半分も回復しなくなったため。
+    //   お店にはプラチナの段（水晶の大グモをたおしたあと）から並ぶ。1回復あたりの値段は特上より少し高い（2.9G → 3.6G）
+    ppotion:  { name: "極上回復薬", price: 2500, hp: 700, tier: 4, note: "HP を 700 回復" },
     ether:    { name: "MP回復薬", price: 80, mp: 20, tier: 0, note: "MP を 20 回復" },   // MP は自然に回復しない（2026-10-18 決定）
     hiether:  { name: "上MP回復薬", price: 400, mp: 50, tier: 1, note: "MP を 50 回復" },
     xether:   { name: "特上MP回復薬", price: 1200, mp: 100, tier: 2, note: "MP を 100 回復" },
@@ -328,7 +386,7 @@ var GameState = (function () {
     paraheal: { name: "しびれ治し", price: 20, note: "しびれを治す", cures: "para" },
     wake:     { name: "目覚まし", price: 20, note: "眠りを治す", cures: "sleep" }
   };
-  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
+  var TOOL_ORDER = ["potion", "hipotion", "xpotion", "ppotion", "ether", "hiether", "xether", "revive", "antidote", "paraheal", "wake"];
   // お店に並ぶ道具：強い回復薬は、ダンジョンが開くと並ぶ
   function shopTools() { var t = shopTier(); return TOOL_ORDER.filter(function (k) { return (TOOLS[k].tier || 0) <= t; }); }
   var TOOL_MAX = 99;
@@ -375,6 +433,14 @@ var GameState = (function () {
     s.mpOnHit = p.mpOnHit || 0; s.double = p.double || 0; s.speedMul = 1 + (p.speed || 0); s.backwater = p.backwater || 0; s.fervor = p.fervor || 0;
     s.autoHeal = p.autoHeal || 0; s.cutLow = p.cutLow || 0; s.autoMp = p.autoMp || 0; s.ctcut = p.ctcut || 0;
     s.castcut = p.castcut || 0;   // 魔物使い「すばやい構え」：スキルの構え・ための時間が短い（2026-10-26）
+    // 最上級職のパッシブ（2026-11-16 暫定）：剣の極意（ふつうの攻撃）・王者の威光・守護者・天の恵み（仲間みんな）・属性の極意（弱点）・風読み（遠く）・
+    //   不動心（しびれ・眠り）・魔剣の極意（属性の剣の時間・属性のダメージ）・魔力循環・竜の心（ボス）・不屈の闘魂・聖なる鎧（魔法の攻撃）・先読み・幻獣の絆
+    ["normal", "teamPdef", "teamCut", "teamRoomHp", "weak", "far", "steady", "enchantMul", "elemDmg", "mpOnKill", "bossDmg", "lastStand", "darkCut", "dodge", "summonCt"].forEach(function (k) { s[k] = p[k] || 0; });
+    // 最強武器の特別な効果（2026-11-21）
+    [h.equip.weapon, h.equip.armor].forEach(function (it) {
+      var L = it && it.legend && Loot.LEGENDS[it.legend];
+      if (L && L.fx) Object.keys(L.fx).forEach(function (k) { s[k] = (s[k] || 0) + L.fx[k]; });
+    });
     s.hp = Math.max(1, s.hp); s.mp = Math.max(0, s.mp);
     return s;
   }
@@ -494,7 +560,7 @@ var GameState = (function () {
     return { gold: sellPrice(it) + Math.floor(s.gold * 0.8), mat: matOf(it), n: dismantleCount(it) + Math.floor(s.n * 0.8) };
   }
   function release(id) {
-    var i = indexOf(id); if (i < 0) return null;
+    var i = indexOf(id); if (i < 0 || game.storage[i].legend) return null;   // 最強武器は売れない
     var v = releaseValue(game.storage[i]);
     game.storage.splice(i, 1); game.gold += v.gold; game.mat[v.mat] += v.n; save();
     return v;
@@ -512,8 +578,14 @@ var GameState = (function () {
   }
   function shopTier() {
     var t = 0;
-    GameData.DUNGEON_ORDER.forEach(function (id) { if (unlocked(id)) t = Math.max(t, GameData.dungeonOf(id).tier || 0); });
+    GameData.DUNGEON_ORDER.forEach(function (id) { if (unlocked(id)) t = Math.max(t, dungeonTier(id)); });
     return t;
+  }
+  // そのダンジョンの宝箱の段：主（いちばん下の階）をたおしていて tierAfter があれば、その段（2026-11-17。水晶の鍾乳洞 → プラチナ）
+  function dungeonTier(id) {
+    var D = GameData.dungeonOf(id);
+    if (D.tierAfter && game && progressOf(id).deepest >= D.floors) return D.tierAfter;
+    return D.tier || 0;
   }
   function shopItem(slot, base, ilv, tier) {
     tier = tier || 0;
@@ -546,7 +618,7 @@ var GameState = (function () {
   function upgradeCostAt(it, plus) { var n = plus + 1; return { mat: matOf(it), n: upgradeMatCount(plus) * ((it.tier || 0) + 1), gold: 10 * n }; }
   function upgradeCost(it) { return upgradeCostAt(it, it.plus || 0); }
   function upgradeItem(it) {
-    if ((it.plus || 0) >= Loot.PLUS_MAX) return false;
+    if ((it.plus || 0) >= Loot.PLUS_MAX || it.legend) return false;
     var c = upgradeCost(it);
     if (game.gold < c.gold || game.mat[c.mat] < c.n) return false;
     game.gold -= c.gold; game.mat[c.mat] -= c.n; it.plus = (it.plus || 0) + 1; save(); return true;
@@ -556,7 +628,7 @@ var GameState = (function () {
   // レア度を上げる（鍛冶屋。2026-10-20）：ノーマル→R 宝玉1＋200G、R→SR 宝玉2＋500G、SR→UR 宝玉4＋1000G
   // 2026-10-22：宝玉の数を 1・2・4（合わせて7こ）から 1・1・2（合わせて4こ）に下げた（ゴールドはそのまま）
   var RARITY_UP = [{ gem: 1, gold: 200 }, { gem: 1, gold: 500 }, { gem: 2, gold: 1000 }];
-  function rarityUpCost(it) { return it.r >= 3 ? null : RARITY_UP[it.r]; }
+  function rarityUpCost(it) { return it.r >= 3 || it.legend ? null : RARITY_UP[it.r]; }
   function rarityUp(it) {
     var c = rarityUpCost(it);
     if (!c || game.gold < c.gold || (game.mat.gem || 0) < c.gem) return false;
@@ -565,6 +637,7 @@ var GameState = (function () {
     save(); return true;
   }
   function rerollItem(it) {
+    if (it.legend) return false;
     if (game.gold < REROLL.gold || game.mat.stone < REROLL.stone) return false;
     game.gold -= REROLL.gold; game.mat.stone -= REROLL.stone;
     var fresh = Loot.rerollMods(it.r, it.ilv);
@@ -575,8 +648,9 @@ var GameState = (function () {
   // （前は同じ部位ならよかったが、弓から杖へ移せてしまったので、同じ種類だけにした）
   function transferCost(it) { return 10 * (it.plus || 0); }
   function transferTargets(it) {
+    if (it.legend) return [];
     return allItems().filter(function (x) {
-      return x.item !== it && x.item.slot === it.slot && x.item.base === it.base && (x.item.tier || 0) === (it.tier || 0) && (x.item.plus || 0) < (it.plus || 0);
+      return x.item !== it && !x.item.legend && x.item.slot === it.slot && x.item.base === it.base && (x.item.tier || 0) === (it.tier || 0) && (x.item.plus || 0) < (it.plus || 0);
     });
   }
   function ownerOf(it) {
@@ -672,7 +746,7 @@ var GameState = (function () {
   //   同じなら、上の段の職 → ★の大きいもの。セットBが使えるときは6枠ぜんぶ。
   //   セットA：攻撃1・攻撃2・回復　セットB：攻撃3・攻撃4・強化（セットBがないとき：攻撃1・回復・強化）
   // パッシブ：上の段の職 → ★の大きいものの順。
-  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer"];
+  var MAGIC_JOBS = ["mage", "priest", "blackmage", "whitemage", "sage", "tamer", "archmage", "archbishop", "timesage", "summoner"];
   function statOrder(h) { return MAGIC_JOBS.indexOf(h.job) >= 0 ? ["matk", "mdef", "patk", "pdef"] : ["patk", "pdef", "matk", "mdef"]; }
   function better(a, b, order) { // a が b より上なら 正
     for (var i = 0; i < order.length; i++) if (a[order[i]] !== b[order[i]]) return a[order[i]] - b[order[i]];
@@ -746,11 +820,13 @@ var GameState = (function () {
     fxList(sk).forEach(function (x) {
       var f = x.f; if (!f.mult) return;
       var n = x.n;
-      if (f.t === "shot" || f.t === "rain") n *= f.count || 1;
+      if (f.t === "shot" || f.t === "rain" || f.t === "orbs") n *= f.count || 1;
       if (f.t === "zone") n *= Math.max(1, Math.round((f.dur || 1) / (f.tick || 1)));
       if (f.orbs) n *= f.orbs;    // 何回も当たるもの（呼んだダークエルフの闇の玉6つ。2026-10-26：おすすめで選ばれなかったため）
       p += f.mult * n;
     });
+    fxList(sk).forEach(function (x) { if (x.f.t === "leap" && x.f.dive) p += x.f.dive; });
+    fxList(sk).forEach(function (x) { if (x.f.tornado) p += x.f.tornado.mult * 2; });   // ストームアローの竜巻（1体に2回くらい当たる。2026-11-24）   // とびこみの1体分（ドラゴンランス・ドラゴンダイブ。2026-11-24）
     return p;
   }
   // 回復の効き目：HP・MP の回復の割合（仲間みんななら3倍）。治す・生き返らせるも少し足す
@@ -785,8 +861,10 @@ var GameState = (function () {
       cand.sort(byRank);
       return h.pset.map(function (x, i) { return cand[i] ? cand[i].id : null; });
     }
+    // 今の職の技は ×1.5 で見る（2026-11-24 保護者：最上級職になっても、上級職の技ばかりおすすめに入ったため）
+    function own(sk) { return sk.job === h.job ? 1.5 : 1; }
     function sorted(fn) {
-      return cand.filter(function (sk) { return fn(sk) > 0; }).sort(function (a, b) { return fn(b) - fn(a) || byRank(a, b); });
+      return cand.filter(function (sk) { return fn(sk) > 0; }).sort(function (a, b) { return fn(b) * own(b) - fn(a) * own(a) || byRank(a, b); });
     }
     var used = [];
     function take(list) { for (var i = 0; i < list.length; i++) if (used.indexOf(list[i].id) < 0) { used.push(list[i].id); return list[i].id; } return null; }
@@ -954,6 +1032,32 @@ var GameState = (function () {
 
   // 1日に出発できる回数は保護者画面で決める（はじめは2回）。テスト用に外せる（この端末だけ）
   // 今日もう何回冒険したか（拠点にもどった回数で数える）
+  // 知恵の試練で急いで答えた問いが多く、扉が開かなかった（2026-11-16 保護者の希望）：出発を1回分使ったことにして記録する
+  // GAS の冒険の記録には、終わり方「quit」とメモで送る（GAS の形は変えない）
+  function logRefused(res) {
+    if (!game) return;
+    var t = todayStr();
+    game.adventureCount = { date: t, n: adventuresToday() + 1 }; game.lastAdventure = t;
+    game.log.unshift({ date: t, at: new Date().toISOString(), dungeon: res.dungeon || "forest1", floor: res.floor || 0, kind: "refused", cleared: false,
+                       correct: res.correct || 0, subjects: res.subjects || [], rushed: res.rushed || 0 });
+    if (game.log.length > LOG_MAX) game.log.length = LOG_MAX;
+    save();
+    if (window.Sync) {
+      Sync.log({ date: t, kind: "quit", floor: res.floor || 0, correct: res.correct || 0, subjects: res.subjects || [],
+                 note: (GameData.dungeonOf(res.dungeon).name || "") + "・知恵の試練で急いで答えた問いが" + (res.rushed || 0) + "つあり、扉が開かなかった" });
+      Sync.save("", "");
+    }
+  }
+  // 「わからない」と言った問いを、おうちの人と直したしるし（2026-11-16）。キーは「日付|問題ID」。最近の300こ
+  function dkTaught(k) { return !!(game && Array.isArray(game.dkTaught) && game.dkTaught.indexOf(k) >= 0); }
+  function markTaught(k) {
+    if (!game) return;
+    if (!Array.isArray(game.dkTaught)) game.dkTaught = [];
+    if (game.dkTaught.indexOf(k) < 0) game.dkTaught.push(k);
+    if (game.dkTaught.length > 300) game.dkTaught = game.dkTaught.slice(-300);
+    save();
+    if (window.Sync) Sync.save("", "");
+  }
   function adventuresToday() {
     if (!game) return 0;
     var c = game.adventureCount;
@@ -1063,18 +1167,18 @@ var GameState = (function () {
     STAR_NEED: STAR_NEED, STAR_NEED_UPPER: STAR_NEED_UPPER, STAR_NEED_TOP: STAR_NEED_TOP, MAX_STAR: MAX_STAR, MAX_LEVEL: MAX_LEVEL,
     trainingLeft: trainingLeft, addTraining: addTraining, TRAIN_SEC_PER_DAY: TRAIN_SEC_PER_DAY,
     arena: arena, arenaToday: arenaToday, arenaLeft: arenaLeft, arenaPass: arenaPass, arenaPassCount: arenaPassCount, setArenaPass: setArenaPass, ARENA_PASS_STEPS: ARENA_PASS_STEPS, ARENA_PER_DAY: ARENA_PER_DAY, recordArena: recordArena,
-    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
+    get: function () { return game; }, activeSlots: activeSlots, upperOpen: upperOpen, progressOf: progressOf, unlocked: unlocked, dungeonTier: dungeonTier, regionOpen: regionOpen, region: region, setRegion: setRegion, baseName: baseName, introSeen: introSeen, seenIntro: seenIntro, newGame: newGame, load: load, save: save, wipe: wipe, adopt: adopt, wipeLocal: wipeLocal, summary: summary,
     inSandbox: inSandbox, beginSandbox: beginSandbox, endSandbox: endSandbox,
-    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
+    todayStr: todayStr, adventuredToday: adventuredToday, adventuresToday: adventuresToday, perDayToday: perDayToday, isWeekend: isWeekend, parent: parent, setParent: setParent, restToday: restToday, log: log, logRest: logRest, logRefused: logRefused, dkTaught: dkTaught, markTaught: markTaught, beginTry: beginTry, unlimited: unlimited, setUnlimited: setUnlimited, setAdventure: setAdventure, adventure: adventure, adventureDate: adventureDate,
     history: history, restore: restore, shelfReward: shelfReward, shelfToNext: shelfToNext, SHELF_STEP: SHELF_STEP,
     expNeed: expNeed, stars: stars, starterWeapon: starterWeapon, applyAdventure: applyAdventure, setLevelForTest: setLevelForTest,
     STORAGE_MAX: STORAGE_MAX, TOOLS: TOOLS, TOOL_ORDER: TOOL_ORDER, shopTools: shopTools, TOOL_MAX: TOOL_MAX, REROLL: REROLL,
-    changeJob: changeJob, canBecome: canBecome, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
+    changeJob: changeJob, canBecome: canBecome, region2Cleared: region2Cleared, starNeed: starNeed, setSkill: setSkill, setPassive: setPassive, passiveSlots: passiveSlots, passiveFx: passiveFx, noteSeen: noteSeen, noteHit: noteHit, learnSkills: learnSkills,
     recommendEquip: recommendEquip, previewEquip: previewEquip, applyEquip: applyEquip, recommendSkills: recommendSkills, applySkills: applySkills,
     canEquip: canEquip, heroStats: heroStats, heroWeaponType: heroWeaponType, equipItem: equipItem, unequip: unequip, fixSkills: fixSkills,
     itemValue: itemValue, sellPrice: sellPrice, matOf: matOf, dismantleCount: dismantleCount, releaseValue: releaseValue, release: release,
     shopEquipList: shopEquipList, buyEquip: buyEquip, buyTool: buyTool, useTool: useTool, gainTool: gainTool,
-    rarityUpCost: rarityUpCost, rarityUp: rarityUp,
+    rarityUpCost: rarityUpCost, rarityUp: rarityUp, hasLegend: hasLegend, newLegend: newLegend, castleFloor: castleFloor, castleCleared: castleCleared,
     upgradeCost: upgradeCost, upgradeItem: upgradeItem, transferCost: transferCost, transferTargets: transferTargets, transferPlus: transferPlus, rerollItem: rerollItem, allItems: allItems
   };
 })();

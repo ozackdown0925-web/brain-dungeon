@@ -1927,6 +1927,13 @@ var Monsters = (function () {
   var BOSS_PAL = {
     roc_boss: { A: "#140c1c", "1": "#3a2414", "2": "#5e3a20", "3": "#8a5a32", "4": "#b8844a", "5": "#e0b878", f: "#2a1a10", w: "#f4f0e8", W: "#c8c4bc", g: "#8a8a96", y: "#f0c040", Y: "#b07a20", r: "#e03030", R: "#801818", b: "#6a7a8a", B: "#9aaabc" },   // 大怪鳥（2026-11-09）
     raff_boss: { A: "#140c1c", "1": "#5a1420", "2": "#8a2030", "3": "#c83a3a", "4": "#e86a5a", "5": "#f8a890", w: "#f4e8d8", W: "#c8b8a8", c: "#2a0e1a", C: "#5a2a3a", D: "#3a1626", s: "#e8d8c0", g: "#2e5c34", G: "#4e8a40", h: "#8ac85a", p: "#b46ad8", P: "#e0b0ff" },   // ラフレシア（2026-11-08）
+    spider_boss: { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a", w: "#e8e0d0" },   // 水晶の大グモ（2026-11-15）
+    wdragon_boss: { A: "#140c1c", m: "#3a8ac8", M: "#22609a", N: "#143c6a", s: "#8cd0f0", b: "#d8ecd0", B: "#a8c4a8", f: "#48c8b8", F: "#2a8a88", h: "#e8dcb0", e: "#f8e060", w: "#f0f4f8", r: "#c84a5a", k: "#140c1c" },   // 水竜（2026-11-19）
+    cerberus_gj: { A: "#140c1c", "1": "#241e34", "2": "#3a3250", "3": "#584e74", "4": "#8276a0", "5": "#a89cc4", r: "#ff3a2a", R: "#7a1420", m: "#c8304a", w: "#f4eee0", c: "#6a4a22", C: "#e8c050", y: "#fff0a0", o: "#ffa030", f: "#e8461c", F: "#9a1e10" },   // ケルベロス（幻獣。2026-11-22）
+    fdragon_boss: { A: "#140c1c", m: "#c8381c", M: "#8a2014", N: "#5a120c", s: "#f07040", b: "#f0b050", B: "#c8803a", f: "#7a1a10", F: "#a82a16", h: "#2a1a1a", e: "#ffe060", w: "#f8f0e0", r: "#ffb030", k: "#140c1c" },   // 紅蓮の竜（2026-11-20）
+    giant_boss: { A: "#140c1c", m: "#8a4430", M: "#62291e", N: "#3a1610", s: "#b8643e", g: "#ffb030", G: "#f06a18", f: "#fff2a0", F: "#ffb030", R: "#e8501a", e: "#fff2a0", k: "#2a0c08", b: "#3a2c2c", B: "#c8a040" },   // 炎の巨人（2026-11-20）
+    octo_boss: { A: "#140c1c", m: "#e08ab8", M: "#c05a8a", N: "#7a2a5a", s: "#f8c8e4", t: "#c05a8a", T: "#7a2a5a", w: "#f8d8ea", e: "#f0e060", k: "#140c1c" },   // 大ダコ（2026-11-18）
+    crab_boss: { A: "#140c1c", r: "#c84a3a", R: "#7a2424", o: "#f08a6a", p: "#d85a40", P: "#8a2a2a", w: "#ffc0a0", l: "#b04a3a", L: "#6a2020", e: "#f0e060", k: "#140c1c", c: "#5aa8e8", C: "#c8f0ff" },   // ヨロイガニ（2026-11-15）
     dwarf_boss: { A: "#140c1c", o: "#f0d070", O: "#c8a040", Q: "#8a6a2a", g: "#b8c0cc", G: "#7a8494", K: "#4a5060", s: "#e4a672", S: "#b86f50", r: "#d0502c", R: "#902a1c", c: "#a82a2a", C: "#5e1620", n: "#3e8948", N: "#265c42", b: "#8a5a32", B: "#5e3a20", e: "#3ad070", w: "#e6d5a2", W: "#a8905a" },   // ドワーフキング（2026-11-07）
     bandit_boss: { A: "#181425", B: "#193c3e", C: "#262b44", D: "#3e2731", E: "#265c42", F: "#3a4466", G: "#733e39", H: "#a22633", I: "#3e8948", J: "#ff0044", K: "#5a6988", L: "#e43b44", M: "#b86f50", N: "#f77622", O: "#8b9bb4", P: "#feae34", Q: "#f6757a", R: "#e4a672", S: "#fee761", T: "#c0cbdc" },   // 盗賊のおかしら（2026-11-03 保護者の絵）
     frog_boss: { A: "#0c0810", F: "#5a6a3a", G: "#3e4a2a", H: "#283220", I: "#141a10", J: "#7a7048", c: "#5a5236", L: "#a050d0", M: "#3a1a5a", N: "#e8c8ff", B: "#ffe070", K: "#e02020", T: "#d8d0b8", W: "#9ad040" },
@@ -3904,6 +3911,117 @@ var Monsters = (function () {
   };
   SMALL.ice_slime = SMALL.slime;
   SMALL.ice_sprite = SMALL.light_sprite;
+  // 水晶の鍾乳洞（地方3。段階2、2026-11-14 Claude が描いた）
+  // 洞くつガニ：正面の絵だけ（カニは横に歩くので、どの向きも同じ絵）。背中に水晶が光る
+  SMALL.cave_crab = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".AA..........AA.",
+      "AorA........AroA",
+      "ArrA..A..A..ArrA",
+      ".ArA.AeAAeA.ArA.",
+      "..ArAArrrrAArA..",
+      "...AArrcCrrAA...",
+      "..AorrrccrrrRA..",
+      ".AorrrrrrrrrrRA.",
+      ".ArrrrrrrrrrrRA.",
+      "..ARrrrrrrrrRA..",
+      ".A.ARRRRRRRRA.A.",
+      "A.A.AAAAAAAA.A.A",
+      "A.A..A....A..A.A",
+      "................",
+      "................",
+      "................"
+    ] };
+  SMALL_PAL.cave_crab = { A: "#140c1c", r: "#c84a3a", R: "#8a2a2a", o: "#f08a6a", e: "#f0e060", c: "#80d0ff", C: "#e4faff" };
+  // 地底の半魚人：ゴブリンの槍兵の体に、魚の頭とひれ（槍は enemies.js で三つまたにして描く）
+  SMALL.fishman = (function () {
+    var src = SMALL.goblin_spear, out = {};
+    var HEAD = [".......AA.......", "......AUTA......", ".....AUTTXA.....", "....AQRRQQOA....", "A..AQRRQQQOOA..A"];
+    var HEAD_SIDE = ["........AA......", ".......AUTA.....", "......AUTXA.....", "....AQRRQOOA....", "...AQRRQQQOOA..."];
+    ["down", "up", "side"].forEach(function (d) {
+      var rows = src[d].slice(), h = d === "side" ? HEAD_SIDE : HEAD;
+      for (var i = 0; i < h.length; i++) rows[3 + i] = h[i];
+      out[d] = rows;
+    });
+    return out;
+  })();
+  SMALL_PAL.fishman = palWith({ Q: "#3a8a8a", R: "#5ab8b0", O: "#245a60", U: "#c8f4ff", T: "#7ad0e0", X: "#4a9ab0", F: "#a8e8e0", B: "#f0e060", K: "#140c1c",
+                                C: "#4e8a40", D: "#2a5a2e", V: "#7aaa4a", Y: "#a8e8e0" });   // 腰みのは海草の緑
+  // 水晶の精は光の精、水晶コウモリは大コウモリの絵で、色だけちがう
+  SMALL.crystal_sprite = SMALL.light_sprite;
+  SMALL_PAL.crystal_sprite = palWith({ H: "#eef8ff", B: "#a8a0ff", W: "#5a4ab8" });
+  SMALL.crystal_bat = SMALL.bat;
+  SMALL_PAL.crystal_bat = palWith({ M: "#24406a", L: "#80d0ff", K: "#e4faff", H: "#ffffff" });
+  // しずみの湖底神殿（地方3。段階2、2026-11-18 Claude が描いた）
+  // しずみの神官は影の魔導士の絵で、色だけちがう
+  SMALL.stone_guard = SMALL.thief_sword;   // 盗賊の剣士の形を、青みがかった白い石の色にした（フードをかぶった剣士の像）。剣は enemies.js で重ねる
+  SMALL_PAL.stone_guard = { A: "#140c1c", l: "#6e8c8e", m: "#a8c4c0", s: "#c8dcd8", f: "#a8c4c0", n: "#6e8c8e", x: "#466068", z: "#466068", Z: "#6e8c8e",
+                            h: "#2a4048", p: "#2a4048", j: "#466068", k: "#7ff0ff", y: "#a8c4c0", o: "#6e8c8e", q: "#466068", r: "#6e8c8e" };
+  SMALL.priest = SMALL.shadow_mage;
+  SMALL_PAL.priest = palWith({ L: "#3a8ab0", M: "#1c4a6a", K: "#bff4ff", Y: "#c8a040" });
+  // 神殿ウツボ：床の石のすきまから、くねった体を出している。口を大きくあけて、歯が見える。正面の絵だけ（どの向きも同じ絵）
+  SMALL.moray = { down: [
+      "................",
+      "................",
+      "................",
+      ".....AAAAA......",
+      "....AyyyyyA.....",
+      "...AyekyyyYA....",
+      "...AyyyyyyYA....",
+      "..AwmwmwyyyA....",
+      "..AmmmmmmyyA....",
+      "..AwmwmwyyYA....",
+      "...AAAAyyyYA....",
+      "......AyYyyA....",
+      ".....AygyyYA....",
+      "....AygyyYA.....",
+      "...AygyYyA......",
+      "...AygyyyA......",
+      "...AyYyyyA......",
+      "....AgyyyYA.....",
+      ".....AgyYyyA....",
+      ".....AgyyyyA....",
+      "...AAAyyyyyAAA..",
+      "..AooAAAAAAAooA.",
+      "...AooooooooooA.",
+      "....AAAAAAAAAA.."
+    ] };
+  SMALL_PAL.moray = { A: "#140c1c", y: "#c8c048", Y: "#6a7a2a", g: "#ece88a", e: "#f8f8f0", k: "#140c1c", m: "#a03030", w: "#f8f8f0", o: "#0a2228" };
+  // 神殿クラゲ：まるいかさと、ゆれる足。正面の絵だけ（浮いているので、どの向きも同じ絵）
+  SMALL.jelly = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      ".....AAAAAA.....",
+      "...AAhhppppAA...",
+      "..AhhpppppppPA..",
+      ".AhpppppppppPPA.",
+      ".AppppppppppPPA.",
+      "AppppAppppAppPPA",
+      "APpppAppppAppPPA",
+      "APPpppppppppPPqA",
+      ".AqPPPPPPPPPPqA.",
+      ".AAqqqqqqqqqqAA.",
+      "..AtA.tA.At.AtA.",
+      "..At..tA.At..tA.",
+      "...At.At.tA.tA..",
+      "...At..tAt..tA..",
+      "..At...tAt...tA.",
+      "..At..At..tA.At.",
+      "...A..At..tA..A.",
+      "......A....A....",
+      "................",
+      "................"
+    ] };
+  SMALL_PAL.jelly = { A: "#140c1c", h: "#fff0fa", p: "#f0a0d8", P: "#c870b8", q: "#8a4a90", t: "#f8c8ec" };
   // 色（ほかの敵の色とぶつからないように、この敵だけの一覧）。雪オオカミは白い毛と青い目、風の精は白と緑
   function palWith(o) { var r = {}, k; for (k in PAL) r[k] = PAL[k]; for (k in o) r[k] = o[k]; return r; }
   SMALL_PAL.harpy = { A: "#140c1c", h: "#3a3a8a", H: "#5a5ab8", s: "#f0c8a0", S: "#c8906a", e: "#140c1c", w: "#a8b8f0", W: "#6a7ac8", v: "#3e4a90", f: "#e8e0f8", y: "#f0c040", Y: "#a07820", k: "#d04648" };
@@ -3945,6 +4063,18 @@ var Monsters = (function () {
   SMALL_PAL.ice_slime_mini = SMALL_PAL.ice_slime;
   SMALL_PAL.snowman = { A: "#140c1c", w: "#f4f8fc", W: "#c8d4e4", g: "#8a9ab4", e: "#140c1c", o: "#f08030", k: "#d04648", b: "#2a2a34", t: "#6a4a2a" };
   SMALL_PAL.ice_sprite = palWith({ H: "#d8f0ff", B: "#4aa0e0", W: "#1e4a8a" });
+  // 紅蓮の火山（地方3。段階2、2026-11-20 Claude が描いた）。どれも前の敵の絵で、色だけちがう
+  // 溶岩スライムは水のスライム、炎のコウモリは大コウモリ、炎の精は光の精、溶岩の岩人形は岩の子ゴーレム（こけのところが、光る溶岩のすじ）
+  SMALL.lava_slime = SMALL.slime;
+  SMALL_PAL.lava_slime = palWith({ H: "#ffe060", I: "#f06a18", J: "#9a1e08" });
+  SMALL.lava_slime_mini = SMALL.ice_slime_mini;
+  SMALL_PAL.lava_slime_mini = SMALL_PAL.lava_slime;
+  SMALL.flame_bat = SMALL.bat;
+  SMALL_PAL.flame_bat = palWith({ M: "#c03a14", L: "#f8a040", K: "#ffe060", H: "#ffffff" });
+  SMALL.fire_sprite = SMALL.light_sprite;
+  SMALL_PAL.fire_sprite = palWith({ H: "#ffe060", B: "#f06a18", W: "#b02a10" });
+  SMALL.magma_golem = SMALL.golem_kid;
+  SMALL_PAL.magma_golem = { A: "#140c1c", r: "#9a8478", R: "#6e5a52", q: "#4a3a36", Q: "#2e2220", m: "#f06a18", M: "#d84410", e: "#ffe060", E: "#f06a18" };
   // 保護者の絵ができるまでの仮の絵：ゴブリンの絵の色を変えて使う（PLACEHOLDER。{ base: "goblin_sword", swap: { 文字: 文字 } }）。
   // 絵が届いたら SMALL に足して、ここから消す。盗賊（2026-11-03）・ドワーフ（2026-11-07）は絵が入ったので、今は空
   var PLACEHOLDER = {};
@@ -4305,6 +4435,566 @@ var Monsters = (function () {
       "........................................................"
     ]
   };
+  // ヨロイガニ（水晶の鍾乳洞5階・中ボス。段階3、2026-11-15 Claude が描いた、56×38）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足を動かす）、pinch＝はさみを振り上げて開いた形、shell＝はさみと足と目を引っこめて、からにこもった形。
+  //   色：r・R・o＝赤いから、p・P＝はさみ、w＝はさみの先、l・L＝足、e＝目、c・C＝背中の水晶
+  var CRABB = (function () {
+    var W = 56, H = 38;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny));
+      }
+    }
+    function line(g, x0, y0, x1, y1, th, ch) {
+      var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) * 2;
+      for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (var a = 0; a < th; a++) for (var b = 0; b < th; b++) put(g, x - (th - 1) / 2 + a, y - (th - 1) / 2 + b, ch); }
+    }
+    function shell(nx, ny) { return ny > 0.5 ? "R" : (nx < -0.1 && ny < -0.2 && nx * nx + ny * ny > 0.35) ? "o" : "r"; }
+    function claw(nx, ny) { return ny > 0.35 ? "P" : (nx < -0.2 && ny < -0.1) ? "w" : "p"; }
+    // 左半分を描いて、右へうつす（mirror）
+    function half(g, f) {
+      var by = f.shell ? 28 : 25;
+      if (!f.shell) {   // 足（3本）
+        for (var i = 0; i < 3; i++) {
+          var up = (f.step === 1 && i % 2 === 0) || (f.step === 2 && i % 2 === 1) ? -2 : 0;
+          line(g, 18, by + 2 + i * 3, 9 - i, by + 7 + i * 2 + up, 2, i % 2 ? "L" : "l");
+          line(g, 9 - i, by + 7 + i * 2 + up, 7 - i, by + 11 + i + up, 1, "L");
+        }
+      } else {
+        for (var j = 0; j < 3; j++) line(g, 16, by + 4 + j * 2, 12, by + 6 + j * 2, 1, "L");   // 引っこめた足の先
+      }
+      // 背中の水晶（からの上から生える）
+      {
+        [[21, 7, 2], [24, 11, 3], [27, 15, 2]].forEach(function (s) {
+          var bx = s[0], h = s[1], w = s[2], top = by - 9 - h + (f.shell ? 2 : 0);
+          for (var yy = 0; yy <= h; yy++) { var ww = Math.max(0, Math.round(w * yy / h)); for (var xx = -ww; xx <= ww; xx++) put(g, bx + xx, top + yy, xx === 0 ? "C" : xx < 0 ? "C" : "c"); }
+        });
+      }
+      ell(g, 28, by, 18, 11, shell);   // から
+      // よろいのつなぎ目（からを横切る2本の弧）
+      for (var sx = 12; sx <= 28; sx++) {
+        var t2 = (sx - 28) / 17;
+        put(g, sx, by - 3 + Math.round(5 * t2 * t2), "R");
+        put(g, sx, by + 4 + Math.round(3 * t2 * t2), "R");
+      }
+      if (f.shell) {   // はさみを前にたたむ
+        ell(g, 21, by + 9, 6, 3.5, claw);
+        return;
+      }
+      // 目（柄の先に、黄色い目）
+      line(g, 17, by - 8, 17, by - 13, 1, "l");
+      ell(g, 17, by - 14, 1.6, 1.6, function () { return "e"; });
+      put(g, 17, by - 14, "k");
+      // うでとはさみ
+      var cx = f.pinch ? 6 : 7, cy = f.pinch ? 8 : 16, open = f.pinch ? 3 : 1;
+      line(g, 13, by + 2, cx + 2, cy + 6, 3, "P");
+      ell(g, cx, cy, 6, 5, claw);
+      for (var o = 0; o < open; o++) line(g, cx - 1, cy - 1 - o, cx + 5, cy - 5 - o, 1, ".");   // はさみのすきま
+    }
+    function make(f) {
+      var g = blank();
+      half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      // 右がわは光の当たり方を反転しない（左上から光）。から以外の o は右では r
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "o") g[y2][x2] = "r"; if (g[y2][x2] === "w") g[y2][x2] = "p"; }
+      // ふちどり
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), pinch: make({ pinch: true }), shell: make({ shell: true }) };
+  })();
+  // 大ダコ（しずみの湖底神殿6階・中ボス。段階3、2026-11-18 Claude が描いた、60×46）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足の先をくねらせる）、raise＝外がわの足を2本ふり上げた形（たたきつけ・足を床にもぐらせる）、ink＝頭をふくらませた形（墨はき）。
+  //   色：m・M・N・s＝頭（明るい→暗い・光）、t・T＝足、w＝吸盤、e・k＝目
+  var OCTOB = (function () {
+    var W = 60, H = 46;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny, x, y));
+      }
+    }
+    // 足：点をつないで、根もとが太く先が細い線。下がわに吸盤
+    function tent(g, pts, th0) {
+      var total = pts.length - 1;
+      for (var i = 0; i < total; i++) {
+        var a = pts[i], b = pts[i + 1], n = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))) * 2;
+        for (var j = 0; j <= n; j++) {
+          var u = (i + j / n) / total, x = a[0] + (b[0] - a[0]) * j / n, y = a[1] + (b[1] - a[1]) * j / n;
+          var th = Math.max(1, Math.round(th0 * (1 - u * 0.75)));
+          for (var dy = 0; dy < th; dy++) for (var dx = 0; dx < th; dx++) put(g, x - (th - 1) / 2 + dx, y - (th - 1) / 2 + dy, dx === 0 && th > 1 ? "t" : dy === th - 1 && th > 2 ? "T" : "t");
+          if (th >= 3 && j % 4 === 0) put(g, x, y + (th - 1) / 2, "w");
+        }
+      }
+    }
+    function mantle(nx, ny, x, y) {
+      if (nx < -0.25 && ny < -0.35 && nx * nx + ny * ny > 0.3) return "s";
+      if (ny > 0.6) return "N";
+      if (nx > 0.45 || ny > 0.35) return "M";
+      if ((x * 7 + y * 13) % 23 === 0) return "M";   // 小さなまだら
+      return "m";
+    }
+    function half(g, f) {
+      var sh = f.step === 1 ? 1 : f.step === 2 ? -1 : 0;
+      // 足（片がわ4本）。外から内へ
+      if (f.raise) tent(g, [[22, 26], [13, 21], [7, 13], [6, 6], [10, 3]], 5);
+      else tent(g, [[22, 26], [14, 30], [8, 36 + sh], [5, 41 + sh], [8, 44]], 5);
+      tent(g, [[25, 28], [19, 34], [15 + sh, 40], [17 + sh, 44]], 5);
+      tent(g, [[27, 29], [24, 36], [22 - sh, 41], [25 - sh, 44]], 4);
+      tent(g, [[29, 29], [28, 36], [28 + sh, 43]], 4);
+      // 頭（墨はきのときは、ふくらむ）
+      var rx = f.ink ? 16 : 14, ry = f.ink ? 15 : 13, cy = f.ink ? 13 : 15;
+      ell(g, 30, cy, rx, ry, mantle);
+      // 目（大きな黄色い目に、横長のひとみ）
+      var ey = cy + (f.ink ? 9 : 8);
+      ell(g, 22, ey, 4, 3.2, function () { return "e"; });
+      for (var px = 20; px <= 24; px++) put(g, px, ey, "k");
+      put(g, 21, ey - 2, "w");
+      // まぶた（目の上の暗い線）
+      for (var lx = 18; lx <= 25; lx++) put(g, lx, ey - 4, "N");
+    }
+    function make(f) {
+      var g = blank();
+      half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "s") g[y2][x2] = "m"; }   // 光は左上から
+      if (f.ink) {   // 墨をはく口（頭の下のまんなか）
+        for (var yy = 27; yy <= 30; yy++) for (var xx = 28; xx <= 31; xx++) g[yy][xx] = yy === 27 ? "N" : "k";
+      }
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), raise: make({ raise: true }), ink: make({ ink: true }) };
+  })();
+  // 炎の巨人（紅蓮の火山6階・中ボス。段階3、2026-11-20 Claude が描いた、56×60）。正面向き。溶岩の岩の体に、赤く光るひびと、燃える髪。
+  //   stand・walkA・walkB＝ふだん（walk は片足ずつ上げる）、raise＝両うでを上げる（地ならし・溶岩の岩投げ）、tired＝火が消えて頭を下げる（ひびも暗い）
+  //   色：m・M・N・s＝岩の体（s は光）、g・G＝光るひび、f・F・R＝髪の炎（f が芯）、e＝目、k＝口、b＝こしみの、B＝金の留め具
+  var GIANT = (function () {
+    var W = 56, H = 60;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny, x, y));
+      }
+    }
+    function rect(g, x0, y0, x1, y1, ch) { for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) put(g, x, y, ch); }
+    function rock(nx, ny, x, y) {
+      if (nx < -0.3 && ny < -0.3 && nx * nx + ny * ny > 0.35) return "s";
+      if (ny > 0.65) return "N";
+      if (nx > 0.5 || ny > 0.4) return "M";
+      if ((x * 5 + y * 3) % 19 === 0) return "G";   // 小さな光る点
+      return "m";
+    }
+    function line(g, pts, ch) {
+      for (var i = 0; i < pts.length - 1; i++) {
+        var a = pts[i], b = pts[i + 1], n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * 2;
+        for (var j = 0; j <= n; j++) put(g, a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n, ch);
+      }
+    }
+    // 炎の舌：下が太く、上へ細くなる（外が赤、中がだいだい、芯が黄色）
+    function flame(g, x, yb, h, w) {
+      for (var i = 0; i < h; i++) {
+        var u = i / h, hw = Math.max(0, w * (1 - u * u)), y = yb - i, sway = Math.round(Math.sin(u * 3 + x) * u * 1.2);
+        for (var dx = -Math.ceil(hw); dx <= Math.ceil(hw); dx++) {
+          if (Math.abs(dx) > hw + 0.3) continue;
+          var edge = Math.abs(dx) >= hw - 0.6;
+          put(g, x + dx + sway, y, edge ? "R" : (Math.abs(dx) < hw * 0.45 && u < 0.6 ? "f" : "F"));
+        }
+      }
+    }
+    function make(f) {
+      var g = blank(), hy = f.tired ? 17 : 15;
+      // ---- 左半分（あとで右へうつす） ----
+      // 髪の炎（頭のうしろ）
+      if (f.tired) { flame(g, 24, hy - 4, 3, 2); flame(g, 28, hy - 5, 4, 2.5); }
+      else {
+        var fl = f.flick ? 1 : 0;
+        flame(g, 17, hy + 1, 4 + fl, 2); flame(g, 20, hy - 1, 7 - fl, 2.5); flame(g, 24, hy - 4, 9 + fl, 3); flame(g, 28, hy - 6, 12 + fl, 3.5);
+      }
+      // かた・うで
+      ell(g, 14, 24, 6.5, 5, rock);
+      if (f.raise) {
+        ell(g, 11, 16, 4, 7, rock);
+        ell(g, 13, 8, 4, 5, rock);
+        ell(g, 16, 4, 5, 4, function (nx, ny) { return ny > 0.3 ? "M" : nx < -0.3 ? "s" : "m"; });
+      } else {
+        var sw = f.step === 1 ? -1 : f.step === 2 ? 1 : 0;
+        ell(g, 10, 31, 4, 7, rock);
+        ell(g, 9, 40 + sw, 4, 5, rock);
+        ell(g, 9, 46 + sw, 5, 4, function (nx, ny) { return ny < -0.4 ? "M" : nx < -0.3 ? "s" : "m"; });
+      }
+      // 胴（大きな胸）とひび
+      ell(g, 28, 31, 14, 11, rock);
+      if (!f.raise) ell(g, 14, 24, 6.5, 5, rock);
+      line(g, [[19, 25], [22, 30], [20, 35], [23, 39]], "g");
+      line(g, [[22, 30], [26, 32]], "G");
+      line(g, [[13, 21], [15, 25]], "g");
+      // 頭
+      ell(g, 28, hy, 7, 7, rock);
+      for (var bx = 22; bx <= 27; bx++) put(g, bx, hy - 2, "N");   // まゆ（暗い岩）
+      ell(g, 25, hy, 1.6, 1, function () { return "e"; });          // 目
+      put(g, 26, hy + 4, "k"); put(g, 27, hy + 4, "g"); put(g, 26, hy + 5, "N"); put(g, 27, hy + 5, "k");   // 口（中が光る）
+      // こし
+      rect(g, 15, 40, 27, 42, "b");
+      // ---- 右へうつす（光は左上から）----
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x] === "s" ? "m" : g[y][x];
+      // 足（左右で別々に上げる）
+      [[20, f.step === 1 ? -2 : 0], [35, f.step === 2 ? -2 : 0]].forEach(function (lg) {
+        rect(g, lg[0] - 4, 43 + lg[1], lg[0] + 4, 54 + lg[1], "m");
+        for (var yy = 43; yy <= 54; yy++) { put(g, lg[0] + 4, yy + lg[1], "M"); put(g, lg[0] - 4, yy + lg[1], lg[0] < 28 ? "s" : "M"); }
+        line(g, [[lg[0] - 1, 46 + lg[1]], [lg[0] + 1, 50 + lg[1]]], "g");
+        ell(g, lg[0], 56 + lg[1], 6, 2.6, function (nx, ny) { return ny > 0.2 ? "N" : "M"; });
+      });
+      rect(g, 22, 42, 33, 47, "b"); rect(g, 24, 48, 31, 49, "b");   // こしみの
+      rect(g, 26, 40, 29, 42, "B");                                  // 金の留め具
+      if (f.tired) for (var y2 = 0; y2 < H; y2++) for (var x2 = 0; x2 < W; x2++) { if (g[y2][x2] === "g" || g[y2][x2] === "G") g[y2][x2] = "N"; if (g[y2][x2] === "e") g[y2][x2] = "M"; }
+      // ふち
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), stand2: make({ flick: true }), walkA: make({ step: 1 }), walkB: make({ step: 2, flick: true }), raise: make({ raise: true }), raise2: make({ raise: true, flick: true }), tired: make({ tired: true }) };
+  })();
+  // 紅蓮の竜（紅蓮の火山12階・主。段階4、2026-11-20 Claude が描いた、78×62）。横向き（左向き。右を向くときは裏返す）。
+  //   4本足で立つ大きな赤い竜。2本の角・長い首・背中の大きなつばさ・とげのある長いしっぽ。
+  //   stand・walkA・walkB＝ふだん（walk は足を前後に）、open＝口を開ける（かみつき・炎の息）、roar＝首を上げてつばさを広げる（噴火・舞い上がる）、
+  //   flyA・flyB＝空を飛ぶ（足をたたみ、つばさを上げ下げ）、tired＝目を回して頭を下げる
+  //   色：m・M・N・s＝うろこ（s は光、N は向こうがわ）、b・B＝おなかの板、f・F＝つばさのまく、h＝角・とげ・つめ、e＝目、w＝きば、r＝口の中
+  var GDRAG = (function () {
+    var W = 78, H = 62;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny, x, y));
+      }
+    }
+    // 太さが変わる線（th0 から th1 へ）。shade(u, side) で色を決める（side：-1 上がわ、1 下がわ）
+    function limb(g, pts, th0, th1, shade) {
+      var total = pts.length - 1;
+      for (var i = 0; i < total; i++) {
+        var a = pts[i], b = pts[i + 1], n = Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))) * 2 + 1;
+        for (var j = 0; j <= n; j++) {
+          var u = (i + j / n) / total, x = a[0] + (b[0] - a[0]) * j / n, y = a[1] + (b[1] - a[1]) * j / n, th = th0 + (th1 - th0) * u;
+          for (var dy = -th / 2; dy <= th / 2; dy += 0.5) for (var dx = -th / 2; dx <= th / 2; dx += 0.5) {
+            if (dx * dx + dy * dy > th * th / 4) continue;
+            put(g, x + dx, y + dy, shade(u, dy < -th / 4 ? -1 : dy > th / 4 ? 1 : 0));
+          }
+        }
+      }
+    }
+    function scale(far) { return function (u, side) { return far ? (side < 0 ? "M" : "N") : side > 0 ? "M" : "m"; }; }
+    function neckScale(u, side) { return side < 0 ? "s" : side > 0 ? "M" : "m"; }
+    function tri(g, a, b, c, ch) {   // 三角形をぬる（つばさのまく）
+      var x0 = Math.floor(Math.min(a[0], b[0], c[0])), x1 = Math.ceil(Math.max(a[0], b[0], c[0])), y0 = Math.floor(Math.min(a[1], b[1], c[1])), y1 = Math.ceil(Math.max(a[1], b[1], c[1]));
+      function sd(p, q, r) { return (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1]); }
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+        var P = [x + 0.5, y + 0.5], d1 = sd(P, a, b), d2 = sd(P, b, c), d3 = sd(P, c, a);
+        if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) put(g, x, y, typeof ch === "function" ? ch(x, y) : ch);
+      }
+    }
+    function leg(g, hx, hy, fx, far, tuck) {   // 足：もも → ひざ → 足先（つめ）
+      var sh = scale(far);
+      if (tuck) { limb(g, [[hx, hy], [hx + 5, hy + 6], [hx + 9, hy + 7]], 6, 3, sh); return; }
+      limb(g, [[hx, hy], [hx + (fx - hx) * 0.5 + 2, hy + 9], [fx, 56]], 7, 4.5, sh);
+      for (var c = 0; c < 3; c++) put(g, fx - 3 + c * 2, 59, "h");
+      for (var x = fx - 3; x <= fx + 3; x++) { put(g, x, 57, far ? "N" : "M"); put(g, x, 58, far ? "N" : "M"); }
+    }
+    function make(f) {
+      var g = blank(), sw = f.step === 1 ? 3 : f.step === 2 ? -3 : 0, by = f.fly ? 30 : 36, tuck = !!f.fly;
+      // 向こうがわの足
+      leg(g, 30, by + 4, 26 - sw, true, tuck);
+      leg(g, 52, by + 4, 50 + sw, true, tuck);
+      // しっぽ（先にとげ）
+      var tl = f.fly ? [[56, by], [66, by + 2], [72, by + 8], [76, by + 6]] : [[56, by + 2], [66, by + 6], [71, by + 14], [76, by + 20]];
+      limb(g, tl, 7, 2, scale(false));
+      var tt = tl[tl.length - 1]; tri(g, [tt[0] - 3, tt[1] - 1], [tt[0] + 1, tt[1] - 5], [tt[0] + 1, tt[1] + 2], "h");
+      // 向こうがわのつばさ（少しだけ見える）
+      var wy = f.wing === "up" ? -6 : f.wing === "flat" ? 14 : f.wing === "fold" ? 18 : 2;
+      tri(g, [38, by - 8], [48, wy - 2], [58, wy + 6], "f");
+      // 体（おなかは明るい板）
+      ell(g, 33, by - 1, 9, 9, function (nx, ny) { return ny > 0.5 ? "b" : ny < -0.5 ? "s" : "m"; });   // 胸（かたのふくらみ）
+      ell(g, 42, by, 17, 11, function (nx, ny, x, y) {
+        if (ny > 0.45) return (x % 4 === 0) ? "B" : "b";
+        if (ny < -0.55 && nx < 0.3) return "s";
+        if (ny > 0.2 || nx > 0.6) return "M";
+        return (x * 3 + y * 5) % 11 === 0 ? "M" : "m";
+      });
+      // 背中のとげ
+      for (var sx = 32; sx <= 56; sx += 5) tri(g, [sx - 2, by - 8 + Math.abs(sx - 44) * 0.12], [sx, by - 13 + Math.abs(sx - 44) * 0.12], [sx + 2, by - 8 + Math.abs(sx - 44) * 0.12], "h");
+      // 手前のつばさ：ほね2本と、まく
+      var sh0 = [38, by - 7], tipA, tipB, tipC;
+      if (f.wing === "up") { tipA = [44, 0]; tipB = [60, 2]; tipC = [66, 14]; }
+      else if (f.wing === "flat") { tipA = [58, by - 14]; tipB = [74, by - 10]; tipC = [70, by]; }
+      else if (f.wing === "fold") { tipA = [46, by - 16]; tipB = [56, by - 12]; tipC = [58, by - 6]; }
+      else { tipA = [46, 6]; tipB = [62, 10]; tipC = [66, 22]; }
+      tri(g, sh0, tipA, tipB, function (x, y) { return (x + y) % 7 === 0 ? "F" : "f"; });
+      tri(g, sh0, tipB, tipC, function (x, y) { return (x * 2 + y) % 9 === 0 ? "F" : "f"; });
+      tri(g, sh0, tipC, [sh0[0] + 10, sh0[1] + 4], "f");
+      limb(g, [sh0, tipA], 2.5, 1.5, function () { return "h"; });
+      limb(g, [sh0, tipB], 2, 1, function () { return "h"; });
+      limb(g, [sh0, tipC], 2, 1, function () { return "h"; });
+      // 手前の足
+      leg(g, 32, by + 5, 30 + sw, false, tuck);
+      leg(g, 52, by + 5, 54 - sw, false, tuck);
+      // 首と頭
+      var head = f.tired ? [12, 46] : f.roar ? [12, 9] : f.fly ? [10, 18] : [11, 15];
+      var neck = f.tired ? [[30, by - 2], [20, by + 2], [head[0] + 6, head[1] - 1]] : [[30, by - 3], [22, by - 10], [head[0] + 5, head[1] + 3]];
+      limb(g, neck, 10, 7, neckScale);
+      for (var nk = 0.2; nk < 0.9; nk += 0.15) {   // 首のおなか（明るい板）
+        var ni = nk * (neck.length - 1), ia = Math.floor(ni), fr = ni - ia, nx = neck[ia][0] + (neck[ia + 1][0] - neck[ia][0]) * fr, ny = neck[ia][1] + (neck[ia + 1][1] - neck[ia][1]) * fr;
+        put(g, nx - 2, ny + 2, "b"); put(g, nx - 1, ny + 3, "b");
+      }
+      var hx = head[0], hy = head[1], op = f.open || f.roar;
+      // 角（うしろへ2本）
+      limb(g, [[hx + 4, hy - 3], [hx + 9, hy - 7], [hx + 13, hy - 8]], 2.5, 1, function () { return "h"; });
+      limb(g, [[hx + 2, hy - 4], [hx + 5, hy - 9], [hx + 8, hy - 11]], 2.5, 1, function () { return "h"; });
+      ell(g, hx + 3, hy, 7, 5.5, function (nx, ny) { return ny < -0.4 ? "s" : ny > 0.4 ? "M" : "m"; });
+      // 鼻先（上あご）
+      for (var y1 = hy - 2; y1 <= hy + 1; y1++) for (var x1 = hx - 8; x1 <= hx; x1++) put(g, x1, y1, y1 === hy - 2 ? "s" : "m");
+      put(g, hx - 7, hy - 1, "k");   // 鼻のあな
+      if (op) {   // 口を開ける：下あごが下がり、口の中ときば
+        for (var y2 = hy + 2; y2 <= hy + 4; y2++) for (var x2 = hx - 7; x2 <= hx; x2++) put(g, x2, y2, "r");
+        for (var x3 = hx - 7; x3 <= hx + 1; x3++) { put(g, x3, hy + 5, "M"); put(g, x3, hy + 6, "b"); }
+        put(g, hx - 6, hy + 2, "w"); put(g, hx - 3, hy + 2, "w"); put(g, hx - 5, hy + 4, "w");
+      } else {
+        for (var x4 = hx - 7; x4 <= hx + 1; x4++) { put(g, x4, hy + 2, "M"); put(g, x4, hy + 3, "b"); }
+        put(g, hx - 5, hy + 2, "w");
+      }
+      // 目
+      if (f.tired) { put(g, hx + 2, hy - 1, "k"); put(g, hx + 3, hy - 1, "k"); put(g, hx + 4, hy - 1, "k"); }
+      else { put(g, hx + 2, hy - 1, "e"); put(g, hx + 3, hy - 1, "e"); put(g, hx + 3, hy - 2, "e"); put(g, hx + 2, hy - 2, "k"); }
+      // ふち
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x5 = 0; x5 < W; x5++) {
+        if (g[y3][x5] !== ".") { out[y3][x5] = g[y3][x5]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x5] !== ".") || (y3 < H - 1 && g[y3 + 1][x5] !== ".") || (x5 > 0 && g[y3][x5 - 1] !== ".") || (x5 < W - 1 && g[y3][x5 + 1] !== ".");
+        if (n) out[y3][x5] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), open: make({ open: true }), roar: make({ roar: true, wing: "up" }),
+             flyA: make({ fly: true, wing: "up" }), flyB: make({ fly: true, wing: "flat" }), tired: make({ tired: true, wing: "fold" }) };
+  })();
+  // 水竜（しずみの湖底神殿12階・主。段階4、2026-11-19 Claude が描いた、64×56）。正面向き。床にとぐろを巻いて、長い首を立てた青い竜。
+  //   stand・walkA・walkB＝ふだん（首を少し上下）、open＝口を開ける（かみつき・水のブレス）、roar＝ひれを広げてほえる（もぐる・飛び出す）、tired＝目をとじて首を下げる
+  //   色：m・M・N・s＝体（青。s は光）、b・B＝おなか、f・F＝ひれ、h＝角、e＝目、w＝きば、r＝口の中
+  var WDRAG = (function () {
+    var W = 64, H = 56;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny, x, y));
+      }
+    }
+    function line(g, x0, y0, x1, y1, th, ch) {
+      var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) * 2;
+      for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (var a = 0; a < th; a++) for (var b = 0; b < th; b++) put(g, x - (th - 1) / 2 + a, y - (th - 1) / 2 + b, ch); }
+    }
+    function tri(g, a, b, c, ch) {   // 三角をぬる
+      var x0 = Math.floor(Math.min(a[0], b[0], c[0])), x1 = Math.ceil(Math.max(a[0], b[0], c[0])), y0 = Math.floor(Math.min(a[1], b[1], c[1])), y1 = Math.ceil(Math.max(a[1], b[1], c[1]));
+      function side(p, q, x, y) { return (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]); }
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+        var px = x + 0.5, py = y + 0.5, d1 = side(a, b, px, py), d2 = side(b, c, px, py), d3 = side(c, a, px, py);
+        if ((d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0)) put(g, x, y, ch);
+      }
+    }
+    function body(nx, ny, x, y) {
+      if (ny > 0.55) return "N";
+      if (nx < -0.3 && ny < -0.2) return "s";
+      if ((x + y * 3) % 6 === 0) return "M";   // うろこ
+      return ny > 0.15 ? "M" : "m";
+    }
+    function coil(nx, ny, x, y) {   // とぐろ：上は青いうろこ、下のふちにおなか（だんだん）が見える
+      if (ny > 0.7) return "N";
+      if (ny > 0.35) return (x % 3 === 0) ? "B" : "b";
+      if (ny > 0.2) return "N";
+      if (nx < -0.4 && ny < -0.2) return "s";
+      if ((x + y * 3) % 6 === 0) return "M";
+      return ny > -0.1 ? "M" : "m";
+    }
+    function half(g, f) {
+      var hy = f.step === 1 ? -1 : f.step === 2 ? 1 : f.tired ? 3 : f.roar ? -1 : 0;
+      // とぐろ（下に2段）
+      ell(g, 32, 49.5, 27, 6, coil);
+      ell(g, 32, 43.5, 20, 5.5, coil);
+      ell(g, 32, 39, 13, 4, coil);
+      // ひれの手
+      tri(g, [24, 33 + hy * 0.3], [12, f.roar ? 26 : 30], [14, 39], "f");
+      line(g, 23, 34, 13, f.roar ? 28 : 31, 1, "F"); line(g, 23, 35, 14, 37, 1, "F");
+      // 首
+      for (var y = 18 + hy; y <= 38; y++) {
+        var w = 6 + (y - 18 - hy) / (26 - hy) * 4.5;
+        for (var x = Math.round(32 - w); x < 32; x++) {
+          var ch = x <= 32 - w + 1.2 ? "s" : x <= 32 - w + 2.5 ? "m" : "M";
+          if (32 - x <= w * 0.5) ch = (y % 4 === 0) ? "B" : "b";   // おなか（だんだん）
+          put(g, x, y, ch);
+        }
+        if ((y - hy) % 7 === 3 && y > 22 && y < 40) tri(g, [32 - w, y - 2], [32 - w - 4, y - 4], [32 - w, y + 1], "f");   // 首のとげ（ひれ）
+      }
+      // ひれの耳
+      var ft = f.roar ? [7, 0] : [9, 4];
+      tri(g, [22, 8 + hy], ft, [11, 17 + hy], "f");
+      line(g, 22, 9 + hy, ft[0] + 1, ft[1] + 1, 1, "F"); line(g, 22, 11 + hy, 10, 11 + hy, 1, "F"); line(g, 22, 12 + hy, 12, 16 + hy, 1, "F");
+      // 角
+      line(g, 27, 6 + hy, 23, 1 + hy, 2, "h"); line(g, 23, 1 + hy, 20, 0 + hy, 1, "h");
+      // 頭と、はな
+      ell(g, 32, 11 + hy, 11, 8, body);
+      ell(g, 32, 18 + hy, 7.5, 4.5, function (nx, ny) { return ny > 0.4 ? "M" : nx < -0.4 && ny < 0 ? "s" : "m"; });
+      // とさか（まんなかのひれ）
+      tri(g, [29, 4 + hy], [32, -2 + hy], [32, 5 + hy], "f");
+      put(g, 30, 1 + hy, "F");
+      // 目（黄色い目に、たてのひとみ）・まゆ
+      if (f.tired) { line(g, 23, 12 + hy, 27, 12 + hy, 1, "k"); }
+      else {
+        ell(g, 25, 12 + hy, 2.6, 2.1, function () { return "e"; });
+        put(g, 25, 11 + hy, "k"); put(g, 25, 12 + hy, "k"); put(g, 24, 11 + hy, "w");
+      }
+      line(g, 22, 9 + hy, 28, 10 + hy, 1, "N");
+      put(g, 29, 18 + hy, "k");   // 鼻の穴
+      if (f.open || f.roar) {   // 口を開ける：きばと、赤い口の中、下あご
+        for (var my = 20; my <= 24; my++) for (var mx = 27; mx < 32; mx++) put(g, mx, my + hy, my === 20 ? "w" : "r");
+        put(g, 28, 21 + hy, "w"); put(g, 30, 21 + hy, "w"); put(g, 29, 23 + hy, "w");
+        ell(g, 32, 26 + hy, 6, 2.2, function (nx, ny) { return ny > 0 ? "N" : "M"; });
+      } else line(g, 27, 21 + hy, 31, 21 + hy, 1, "N");
+    }
+    function make(f) {
+      var g = blank();
+      half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "s") g[y2][x2] = "M"; }   // 光は左上から
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    return { stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), open: make({ open: true }), roar: make({ roar: true }), tired: make({ tired: true }) };
+  })();
+  // 大ダコの足（床の石のすきまから出ている足の先。16×24。正面の絵だけ）
+  SMALL.octo_arm = { down: [
+      "................",
+      "................",
+      "................",
+      "................",
+      "................",
+      ".........AA.....",
+      "........AttA....",
+      ".......AtAAtA...",
+      ".......AtA.AtA..",
+      "........A..AtA..",
+      "...........AtA..",
+      "..........AttA..",
+      ".........AtwtA..",
+      "........AttTA...",
+      ".......AtwtA....",
+      "......AttTA.....",
+      "......AtwtA.....",
+      "......AttTA.....",
+      ".....AttwtTA....",
+      ".....AtttTTA....",
+      "...AAAAAAAAAAA..",
+      "..AooooooooooooA",
+      "...AAAAAAAAAAAA.",
+      "................"
+    ] };
+  SMALL_PAL.octo_arm = { A: "#140c1c", t: "#c05a8a", T: "#7a2a5a", w: "#f8d8ea", o: "#0a2228" };
+  // 水晶の大グモ（水晶の鍾乳洞10階・主。段階4、2026-11-15 Claude が描いた、64×46）。正面向き。図形をならべてから、ふちどりをつけて1点ずつの地図にする。
+  //   stand・walkA・walkB＝ふだん（足を動かす）、rear＝前足を振り上げて、きばを開いた形（かみつき・糸はき・光線）。
+  //   色：c・C・b・B・v＝おしりの水晶（光る面と暗い面）、g・G・h＝頭と胸、l・L＝足、e＝赤い目、w＝きば
+  var SPIDERB = (function () {
+    var W = 64, H = 46;
+    function blank() { var g = []; for (var y = 0; y < H; y++) { var r = []; for (var x = 0; x < W; x++) r.push("."); g.push(r); } return g; }
+    function put(g, x, y, ch) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < g[0].length && y < g.length) g[y][x] = ch; }
+    function ell(g, cx, cy, rx, ry, shade) {
+      for (var y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (var x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        var nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;
+        if (nx * nx + ny * ny <= 1) put(g, x, y, shade(nx, ny));
+      }
+    }
+    function line(g, x0, y0, x1, y1, th, ch) {
+      var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) * 2;
+      for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (var a = 0; a < th; a++) for (var b = 0; b < th; b++) put(g, x - (th - 1) / 2 + a, y - (th - 1) / 2 + b, ch); }
+    }
+    // おしりの水晶：面ごとに明るさをかえる（左上から光）
+    function crystal(nx, ny) {
+      var a = Math.atan2(ny, nx), sec = Math.floor((a + Math.PI) / (Math.PI / 4)) % 8, r2 = nx * nx + ny * ny;
+      if (r2 < 0.12) return "C";
+      return ["c", "C", "c", "b", "B", "v", "B", "b"][sec];
+    }
+    function head(nx, ny) { return ny > 0.4 ? "G" : (nx < -0.2 && ny < -0.1) ? "h" : "g"; }
+    var LEGS = [[24, 22, 12, 8, 5, 24], [23, 26, 7, 18, 2, 34], [23, 30, 8, 31, 4, 42], [25, 33, 15, 38, 12, 45]];
+    function half(g, f) {
+      LEGS.forEach(function (L, i) {
+        var up = (f.step === 1 && i % 2 === 0) || (f.step === 2 && i % 2 === 1) ? -2 : 0;
+        var kx = L[2], ky = L[3] + up, fx = L[4], fy = L[5] + up;
+        if (f.rear && i === 0) { kx = 14; ky = 0; fx = 20; fy = 8; }   // 前足を振り上げる
+        line(g, L[0], L[1], kx, ky, 2, "l");
+        line(g, kx, ky, fx, fy, 2, "L");
+      });
+      ell(g, 32, 14, 15, 12, crystal);   // おしりの水晶
+      ell(g, 32, 31, 10, 8, head);       // 頭と胸
+      put(g, 29, 28, "e"); put(g, 30, 28, "e"); put(g, 27, 30, "e"); put(g, 30, 31, "e");   // 赤い目
+      var fo = f.rear ? 2 : 0;
+      line(g, 30 - fo, 37, 29 - fo, 41, 1, "w"); put(g, 30 - fo, 37, "w");   // きば
+    }
+    function make(f) {
+      W = f.kid ? 16 : 64; H = f.kid ? 24 : 46;
+      var g = blank();
+      if (f.kid) kid(g); else half(g, f);
+      for (var y = 0; y < H; y++) for (var x = 0; x < W / 2; x++) if (g[y][x] !== ".") g[y][W - 1 - x] = g[y][x];
+      for (var y2 = 0; y2 < H; y2++) for (var x2 = W / 2; x2 < W; x2++) { if (g[y2][x2] === "h") g[y2][x2] = "g"; }
+      // おしりの光る面は、右がわでは暗く（光は左上から）
+      for (var y4 = 0; y4 < H; y4++) for (var x4 = W / 2 + 2; x4 < W; x4++) { if (g[y4][x4] === "C" && x4 > 36) g[y4][x4] = "c"; }
+      var out = blank();
+      for (var y3 = 0; y3 < H; y3++) for (var x3 = 0; x3 < W; x3++) {
+        if (g[y3][x3] !== ".") { out[y3][x3] = g[y3][x3]; continue; }
+        var n = (y3 > 0 && g[y3 - 1][x3] !== ".") || (y3 < H - 1 && g[y3 + 1][x3] !== ".") || (x3 > 0 && g[y3][x3 - 1] !== ".") || (x3 < W - 1 && g[y3][x3 + 1] !== ".");
+        if (n) out[y3][x3] = "A";
+      }
+      return out.map(function (r) { return r.join(""); });
+    }
+    // 子グモ（16×24。ふつうの敵の大きさ）：同じ形を小さく
+    function kid(g) {
+      [[6, 15, 3, 11, 1, 15], [6, 16, 2, 16, 0, 20], [6, 17, 3, 20, 1, 23]].forEach(function (L) {
+        line(g, L[0], L[1], L[2], L[3], 1, "l"); line(g, L[2], L[3], L[4], L[5], 1, "L");
+      });
+      ell(g, 8, 13, 4, 3.5, crystal);
+      ell(g, 8, 18, 3, 2.5, head);
+      put(g, 7, 18, "e");
+    }
+    var KID = make({ kid: true });
+    W = 64; H = 46;
+    return { kid: KID, stand: make({}), walkA: make({ step: 1 }), walkB: make({ step: 2 }), rear: make({ rear: true }) };
+  })();
+  SMALL.crystal_spiderling = { down: SPIDERB.kid };   // 子グモは、大グモの絵を小さくしたもの（どの向きも同じ絵）
+  SMALL_PAL.crystal_spiderling = { A: "#140c1c", c: "#7ad8f8", C: "#e8fbff", b: "#4a8ad8", B: "#2a4a9a", v: "#8a6ad8", g: "#5a4e70", G: "#342c46", h: "#7e72a0", l: "#7a6a96", L: "#4e4266", e: "#ff3a3a" };
   // ドワーフキング（黒鉄の坑道12階・主。2026-11-07 保護者の Gemini の絵をもとに Claude が描きなおした、43×48）。stand＝ふだん（ハンマーを地面に立てる）、attack＝正面の地面へハンマーをたたきつけた形。正面向きで、盾は絵の右側
   var DWARFK = {
     stand: [
@@ -4511,6 +5201,218 @@ var Monsters = (function () {
       "........AAAAAA.....................KKAA........."
     ]
   };
+  // ケルベロス（幻獣の祠・召喚士の★2。2026-11-22 Claude が描いた試作。69x50、左向き）。3つの首・赤い目・背中の炎のたてがみ・金の首輪
+  // stand・walkA・walkB（歩く）・breath（3つの口をあけて炎をはく）
+  var CERB = {
+    stand: [
+      "...............................A12A..................................",
+      "...............................A22A..................................",
+      "...............................A223A.................................",
+      "...........................AAAAAA33A.................................",
+      "..........................A111111A4A.................................",
+      ".......................AAA11111111A4A................................",
+      "....................AAA12AAAA112222A.............................AA..",
+      "..................AA1A2222ry12222222A...........................AyyA.",
+      ".................AA12A2333Rr22233333A...........................AyyA.",
+      ".................AA22A33344423333333A...........................AoyA.",
+      "..................A233AA112233333333A..........................AfoooA",
+      "..............AAAAAA34A2Aw223333444A...........................AFfofA",
+      ".............A111111A4A11A23333444A2A..........................AFfffA",
+      "..........AAA11111111A5AAAA333344A23A..........................AFFFFA",
+      ".......AAA22AAAA122222A....AAACAC233A..........................AAAAA.",
+      ".....AA222233ry22233333A...A12ccccCA...........................A22A..",
+      "....A2A233334Rr23333333A...A122223cA..........................A222A..",
+      "....A3A33444455A3344444A...A2222333AA...A...A.................A223A..",
+      ".....AAAAAA122A1A444444AA..A2223333AyA.AyA.AyA..A...A........A223A...",
+      "......A12w2AwA12A44444A22A.A2233334AyyAyyyAyyyAAyA.AyA......A2233A...",
+      ".......A1111AA22A4444A222AAA2233334AoyyyoyyyoyyyyyAyyyA.....A233A....",
+      "........AAAAAA233A44A22233AA233334AofooofooofoooooyyoyA....A2333A....",
+      ".........AAAAAA34ACAC2C333A2333344AfffffffffffffffoofoA...A23333A....",
+      "........A111111A4Accccc333A3333444AfFFfFFFfFFFffFfffffA..A23333A.....",
+      ".....AAA11111111A5AA3333344A3334AAAAAAAAAAAAAAAAAAfFFFAAA23333A......",
+      "..AAA22AAAA122222A.A3334444A3AAA221111112222222222AAAA2A23333A.......",
+      "AA222233ry22233333AAAA444444A222221112222222222222222222A333A........",
+      "2A233334Rr23333333A122A44AAA3333333222222223333333333333A33A.........",
+      "3A3344445533344444A2222AA22333333332222233333333333333333AA..........",
+      "AAAAAA122333444444A23333A33333333332223333333333333333333A...........",
+      ".A12w2Aw233444444A3333344A3334444442333333333344444444444A...........",
+      "..A1111A33344444A333344444A344444443333333344444444444444A...........",
+      "...AAAAAA34444CAC3C44445555A444444433333344444AAAAAA4444A............",
+      ".........AAAAAccccc4AAAAAAA444444433333444444A111222A444A............",
+      ".................A4A111222A444444433334444444A112223A44AA............",
+      "..................AA112223A444444333334444444A112233A4A3A............",
+      "...................A122233A444455333344444444A122333AA33A............",
+      "...................A122333A4444A3333344444444A222334A233A............",
+      "...................A223334A444A.AAAA344444444A223334A333A............",
+      "...................A223344AAAAA.....AAAAAAAAAA233344A33A.............",
+      "..................A223344A333A..............A233344A333A.............",
+      "..................A233344A334A..............A233444A334A.............",
+      "..................A333445A334A..............A333445A334A.............",
+      "..................A334445A344A..............A334455A344A.............",
+      "..................A344455A344A..............A344455A344A.............",
+      "..................A411115A114A..............A411115A114A.............",
+      "..................A112233A2222A.............A112233A2222A............",
+      "..................A233444A3333A.............A233444A3333A............",
+      "..................wAw4w4Aw3wAA..............wAw4w4Aw3wAA.............",
+      "....................AAAA.AAA..................AAAA.AAA..............."
+    ],
+    walkA: [
+      "...............................A12A..................................",
+      "...............................A22A..................................",
+      "...............................A223A.................................",
+      "...........................AAAAAA33A.................................",
+      "..........................A111111A4A.................................",
+      ".......................AAA11111111A4A................................",
+      "....................AAA12AAAA112222A.............................AA..",
+      "..................AA1A2222ry12222222A...........................AyyA.",
+      ".................AA12A2333Rr22233333A...........................AyyA.",
+      ".................AA22A33344423333333A...........................AoyA.",
+      "..................A233AA112233333333A..........................AfoooA",
+      "..............AAAAAA34A2Aw223333444A...........................AFfofA",
+      ".............A111111A4A11A23333444A2A..........................AFfffA",
+      "..........AAA11111111A5AAAA333344A23A..........................AFFFFA",
+      ".......AAA22AAAA122222A....AAACAC233A..........................AAAAA.",
+      ".....AA222233ry22233333A...A12ccccCA...........................A22A..",
+      "....A2A233334Rr23333333A...A122223cA..........................A222A..",
+      "....A3A33444455A3344444A...A2222333AA...A...A.................A223A..",
+      ".....AAAAAA122A1A444444AA..A2223333AyA.AyA.AyA..A...A........A223A...",
+      "......A12w2AwA12A44444A22A.A2233334AyyAyyyAyyyAAyA.AyA......A2233A...",
+      ".......A1111AA22A4444A222AAA2233334AoyyyoyyyoyyyyyAyyyA.....A233A....",
+      "........AAAAAA233A44A22233AA233334AofooofooofoooooyyoyA....A2333A....",
+      ".........AAAAAA34ACAC2C333A2333344AfffffffffffffffoofoA...A23333A....",
+      "........A111111A4Accccc333A3333444AfFFfFFFfFFFffFfffffA..A23333A.....",
+      ".....AAA11111111A5AA3333344A3334AAAAAAAAAAAAAAAAAAfFFFAAA23333A......",
+      "..AAA22AAAA122222A.A3334444A3AAA221111112222222222AAAA2A23333A.......",
+      "AA222233ry22233333AAAA444444A222221112222222222222222222A333A........",
+      "2A233334Rr23333333A122A44AAA3333333222222223333333333333A33A.........",
+      "3A3344445533344444A2222AA22333333332222233333333333333333AA..........",
+      "AAAAAA122333444444A23333A33333333332223333333333333333333A...........",
+      ".A12w2Aw233444444A3333344A3334444442333333333344444444444A...........",
+      "..A1111A33344444A333344444A344444443333333344444444444444A...........",
+      "...AAAAAA34444CAC3C44445555A444444433333344444AAAAAA4444A............",
+      ".........AAAAAccccc4AAAAAAA444444433333444444A112222A444A............",
+      ".................A4A111122A444444433334444444A122223A44AA............",
+      "..................AA111222A44444433333444444A122223A44A2A............",
+      "...................A112223A44445533334444444A222233AAA23A............",
+      "...................A112233A4444A333334444444A222333A2223A............",
+      "...................A122333A444A.AAAA34444444A223334A2233A............",
+      "...................A222334AAAA......AAAAAAAAA233344A22334A...........",
+      "....................A233444AA..............A233344AA23334A...........",
+      "....................A333445AA..............A333444AA23344A...........",
+      "....................A334455AA..............A334444AA33344A...........",
+      "....................A344455AA..............A344445AA33444A...........",
+      "....................A444555A..............A344445A.A33444A...........",
+      "....................A411115A..............A411115A.A31114A...........",
+      "....................A112233AA.............A112233AA1112222A..........",
+      "....................A233444AA.............A233444AA1223333A..........",
+      "....................wAw4w4AA..............wAw4w4A..wAw3wAA...........",
+      "......................AAAA..................AAAA.....AAA............."
+    ],
+    walkB: [
+      "...............................A12A..................................",
+      "...............................A22A..................................",
+      "...............................A223A.................................",
+      "...........................AAAAAA33A.................................",
+      "..........................A111111A4A.................................",
+      ".......................AAA11111111A4A................................",
+      "....................AAA12AAAA112222A.............................AA..",
+      "..................AA1A2222ry12222222A...........................AyyA.",
+      ".................AA12A2333Rr22233333A...........................AyyA.",
+      ".................AA22A33344423333333A...........................AoyA.",
+      "..................A233AA112233333333A..........................AfoooA",
+      "..............AAAAAA34A2Aw223333444A...........................AFfofA",
+      ".............A111111A4A11A23333444A2A..........................AFfffA",
+      "..........AAA11111111A5AAAA333344A23A..........................AFFFFA",
+      ".......AAA22AAAA122222A....AAACAC233A..........................AAAAA.",
+      ".....AA222233ry22233333A...A12ccccCA...........................A22A..",
+      "....A2A233334Rr23333333A...A122223cA..........................A222A..",
+      "....A3A33444455A3344444A...A2222333AA...A...A.................A223A..",
+      ".....AAAAAA122A1A444444AA..A2223333AyA.AyA.AyA..A...A........A223A...",
+      "......A12w2AwA12A44444A22A.A2233334AyyAyyyAyyyAAyA.AyA......A2233A...",
+      ".......A1111AA22A4444A222AAA2233334AoyyyoyyyoyyyyyAyyyA.....A233A....",
+      "........AAAAAA233A44A22233AA233334AofooofooofoooooyyoyA....A2333A....",
+      ".........AAAAAA34ACAC2C333A2333344AfffffffffffffffoofoA...A23333A....",
+      "........A111111A4Accccc333A3333444AfFFfFFFfFFFffFfffffA..A23333A.....",
+      ".....AAA11111111A5AA3333344A3334AAAAAAAAAAAAAAAAAAfFFFAAA23333A......",
+      "..AAA22AAAA122222A.A3334444A3AAA221111112222222222AAAA2A23333A.......",
+      "AA222233ry22233333AAAA444444A222221112222222222222222222A333A........",
+      "2A233334Rr23333333A122A44AAA3333333222222223333333333333A33A.........",
+      "3A3344445533344444A2222AA22333333332222233333333333333333AA..........",
+      "AAAAAA122333444444A23333A33333333332223333333333333333333A...........",
+      ".A12w2Aw233444444A3333344A3334444442333333333344444444444A...........",
+      "..A1111A33344444A333344444A344444443333333344444444444444A...........",
+      "...AAAAAA34444CAC3C44445555A444444433333344444AAAAAA4444A............",
+      ".........AAAAAccccc4AAAAAAA444444433333444444A111122A444A............",
+      ".................A4A112223A444444433334444444A111222A44A.............",
+      "..................AA122233A444444333334444444A111223A4AA.............",
+      "..................A122233A4444455333344444444A112233AA3A.............",
+      "..................A222333A44444A3333344444444A122233A33A.............",
+      "..................A223333A4444A.AAAA344444444A222333A33A.............",
+      "..................A233334AAAAAA.....AAAAAAAAAA223334A3A..............",
+      ".................A233334AA23334A..............A333444AA..............",
+      ".................A333344AA23344A..............A334445AA..............",
+      ".................A333444AA33344A..............A334455AA..............",
+      ".................A334445AA33444A..............A344555AA..............",
+      "................A334445A.A33444A..............A444555A...............",
+      "................A311115A.A31114A..............A411115A...............",
+      "................A112233AA1112222A.............A112233AA..............",
+      "................A233444AA1223333A.............A233444AA..............",
+      "................wAw4w4A..wAw3wAA..............wAw4w4AA...............",
+      "..................AAAA.....AAA..................AAAA................."
+    ],
+    breath: [
+      "...............................A12A..................................",
+      "...............................A22A..................................",
+      "...............................A223A.................................",
+      "...........................AAAAAA33A.................................",
+      "..........................A111111A4A.................................",
+      ".......................AAA11111111A4A................................",
+      "....................AAA12AAAA112222A.............................AA..",
+      "..................AA1A2222ry12222222A...........................AyyA.",
+      ".................AA12A2333Rr22233333A...........................AyyA.",
+      ".................AA22A33344423333333A...........................AoyA.",
+      "..................A233AA112233333333A..........................AfoooA",
+      "..............AAAAAA34AwRwRwR333444A...........................AFfofA",
+      ".............A111111A4Ammmmmm33444A2A..........................AFfffA",
+      "..........AAA11111111A5A1wAw33344A23A..........................AFFFFA",
+      ".......AAA22AAAA122222A11AAAAACAC233A..........................AAAAA.",
+      ".....AA222233ry22233333AA..A12ccccCA...........................A22A..",
+      "....A2A233334Rr23333333A...A122223cA..........................A222A..",
+      "....A3A33444455A3344444A...A2222333AA...A...A.................A223A..",
+      ".....AAAAAA122A1A444444AA..A2223333AyA.AyA.AyA..A...A........A223A...",
+      "........wRwRwA12A44444A22A.A2233334AyyAyyyAyyyAAyA.AyA......A2233A...",
+      "........mmmmmA22A4444A222AAA2233334AoyyyoyyyoyyyyyAyyyA.....A233A....",
+      ".......AmmmmmA233A44A22233AA233334AofooofooofoooooyyoyA....A2333A....",
+      "......A2wAAAAAA34ACAC2C333A2333344AfffffffffffffffoofoA...A23333A....",
+      ".......AA111111A4Accccc333A3333444AfFFfFFFfFFFffFfffffA..A23333A.....",
+      ".....AAA11111111A5AA3333344A3334AAAAAAAAAAAAAAAAAAfFFFAAA23333A......",
+      "..AAA22AAAA122222A.A3334444A3AAA221111112222222222AAAA2A23333A.......",
+      "AA222233ry22233333AAAA444444A222221112222222222222222222A333A........",
+      "2A233334Rr23333333A122A44AAA3333333222222223333333333333A33A.........",
+      "3A3344445533344444A2222AA22333333332222233333333333333333AA..........",
+      "AAAAAA122333444444A23333A33333333332223333333333333333333A...........",
+      "...wRwRwRwR444444A3333344A3334444442333333333344444444444A...........",
+      "..Ammmmmmmm44444A333344444A344444443333333344444444444444A...........",
+      ".A2w2w1wAw4444CAC3C44445555A444444433333344444AAAAAA4444A............",
+      ".A21111AAAAAAAccccc4AAAAAAA444444433333444444A111222A444A............",
+      "..A1AAA..........A4A111222A444444433334444444A112223A44AA............",
+      "...A..............AA112223A444444333334444444A112233A4A3A............",
+      "...................A122233A444455333344444444A122333AA33A............",
+      "...................A122333A4444A3333344444444A222334A233A............",
+      "...................A223334A444A.AAAA344444444A223334A333A............",
+      "...................A223344AAAAA.....AAAAAAAAAA233344A33A.............",
+      "..................A223344A333A..............A233344A333A.............",
+      "..................A233344A334A..............A233444A334A.............",
+      "..................A333445A334A..............A333445A334A.............",
+      "..................A334445A344A..............A334455A344A.............",
+      "..................A344455A344A..............A344455A344A.............",
+      "..................A411115A114A..............A411115A114A.............",
+      "..................A112233A2222A.............A112233A2222A............",
+      "..................A233444A3333A.............A233444A3333A............",
+      "..................wAw4w4Aw3wAA..............wAw4w4Aw3wAA.............",
+      "....................AAAA.AAA..................AAAA.AAA..............."
+    ]
+  };
   var cache = {};
   function grid(r) { return r.map(function (s) { return s.split(""); }); }
   // x0〜x1 の列の足（下から5行）を1点上げる（歩く）
@@ -4549,7 +5451,7 @@ var Monsters = (function () {
     if (sw) g = g.map(function (row) { return row.map(function (ch) { return sw[ch] || ch; }); });
     var kd = GameData.ENEMIES[type] ? GameData.ENEMIES[type].kind : "";
     // 足を動かさない敵：つる草・蜂やコウモリ（飛ぶ）・はねる敵・浮く敵・魔導士・岩の虫（はう）・スライム
-    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "snowman" && type !== "raff_bud") {
+    if (frame !== "stand" && type !== "vine" && kd !== "bee" && kd !== "frog" && kd !== "wisp" && type !== "dark_wisp" && type !== "shadow_mage" && type !== "rock_worm" && type !== "moray" && type !== "priest" && type !== "wind_sprite" && type !== "ice_sprite" && type !== "crystal_sprite" && type !== "fire_sprite" && type !== "snowman" && type !== "raff_bud") {
       var a = frame === "walkA";
       if (dir === "side") { if (a) lift(g, 0, 7); else lift(g, 8, 15); }
       else { if (a) lift(g, 2, 7); else lift(g, 8, 13); }
@@ -4562,7 +5464,7 @@ var Monsters = (function () {
     var d = dirOf(e.face), ph = Math.sin(e.walk || 0), moving = e.def.speed > 0 && (e.state === "chase" || e.state === "charge");
     var frame = !moving ? "stand" : ph > 0.3 ? "walkA" : ph < -0.3 ? "walkB" : "stand";
     if (e.type === "vine" || e.type === "raff_bud") d = { dir: "down", flip: false };
-    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
+    if (e.def.kind === "bee") frame = Math.floor(Date.now() / (e.type === "bat" || e.type === "crystal_bat" || e.type === "flame_bat" || e.type === "harpy" ? 110 : 70)) % 2 ? "flap" : "stand";   // 蜂と大コウモリとハーピーは、いつもはばたく
     var img = small(e.type, d.dir, frame, e.flash > 0);
     ctx.save();
     if (d.flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -8, Math.round(y) - img.height); }
@@ -4573,7 +5475,7 @@ var Monsters = (function () {
   function boss(kind, frame, white) {
     var k = kind + "|" + frame + "|" + (white ? 1 : 0);
     if (cache[k]) return cache[k];
-    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : TREE;
+    var set = kind === "wolf_boss" || kind === "icefang_boss" ? WOLF : kind === "frog_boss" ? FROGB : kind === "witch_boss" ? WITCH : kind === "golem_boss" || kind === "snowgolem_boss" ? GOLEM : kind === "elf_boss" ? ELF : kind === "bandit_boss" ? BANDIT : kind === "dwarf_boss" ? DWARFK : kind === "crab_boss" ? CRABB : kind === "spider_boss" ? SPIDERB : kind === "octo_boss" ? OCTOB : kind === "giant_boss" ? GIANT : kind === "wdragon_boss" ? WDRAG : kind === "fdragon_boss" ? GDRAG : kind === "raff_boss" ? RAFF : kind === "roc_boss" ? ROC : kind === "cerberus_gj" ? CERB : TREE;
     cache[k] = toCanvas(grid(set[frame] || set.stand), false, white, BOSS_PAL[kind]);
     return cache[k];
   }
@@ -4582,7 +5484,9 @@ var Monsters = (function () {
     var img = boss(e.def.kind, frame, e.flash > 0);
     var flip = ((e.def.kind === "wolf_boss" || e.def.kind === "icefang_boss" || e.def.kind === "elf_boss") && e.face.x > 0) ||   // ダークエルフの絵は、弓を左へ向けている
                (e.def.kind === "bandit_boss" && e.face.x < 0) ||                                 // おかしらの絵は右向き
-               (e.def.kind === "dwarf_boss" && e.face.x < -0.2);                                 // ドワーフキングは正面向き。盾（絵の右）をこちらの側へ向ける
+               (e.def.kind === "dwarf_boss" && e.face.x < -0.2) ||                                 // ドワーフキングは正面向き。盾（絵の右）をこちらの側へ向ける
+               (e.def.kind === "fdragon_boss" && e.face.x > 0) ||                                 // 紅蓮の竜の絵は左向き
+               (e.def.kind === "cerberus_gj" && e.face.x > 0);                                  // ケルベロスの絵も左向き
     ctx.save();
     if (flip) { ctx.translate(Math.round(x), 0); ctx.scale(-1, 1); ctx.drawImage(img, -Math.round(img.width / 2), Math.round(y) - img.height); }
     else ctx.drawImage(img, Math.round(x) - Math.round(img.width / 2), Math.round(y) - img.height);
@@ -4590,6 +5494,6 @@ var Monsters = (function () {
   }
 
   // ボスの絵の足もと：ボスのまんなか（e.y）から何点下か
-  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : 18; }
+  function bossFoot(kind) { return kind === "wolf_boss" ? 11 : kind === "icefang_boss" ? 14 : kind === "frog_boss" ? 14 : kind === "witch_boss" ? 14 : kind === "golem_boss" || kind === "snowgolem_boss" ? 16 : kind === "elf_boss" ? 14 : kind === "bandit_boss" ? 14 : kind === "dwarf_boss" ? 14 : kind === "crab_boss" ? 12 : kind === "spider_boss" ? 14 : kind === "octo_boss" ? 14 : kind === "giant_boss" ? 14 : kind === "wdragon_boss" || kind === "fdragon_boss" ? 14 : kind === "raff_boss" ? 16 : kind === "roc_boss" ? 12 : kind === "cerberus_gj" ? 14 : 18; }
   return { drawSmall: drawSmall, drawBoss: drawBoss, small: small, boss: boss, bossFoot: bossFoot };
 })();
