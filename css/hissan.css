@@ -1,0 +1,87 @@
+/* 筆算パッド（js/game/hissan.js。2026-11-27）：試練・書庫の問題の上にうかぶ、マスに数字を入れる筆算の紙。
+   色は trial.css の紙の色（--sheet・--ink など）を使う。 */
+.temple-head .hissan-open { position: absolute; right: 0; top: 4px; }
+.temple-head .hissan-open[aria-pressed="true"] { border-color: #f2c14e; background: #5a4a1a; }
+@media (max-height: 560px) { .temple-head .hissan-open { top: 0; } }
+
+.hissan { position: fixed; top: 8px; bottom: 8px; z-index: 40; width: 460px; max-width: calc(50vw - 12px);
+  display: flex; flex-direction: column; background: var(--sheet); color: var(--ink);
+  border: 2px solid var(--math); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  font-family: var(--font-display); -webkit-user-select: none; user-select: none; overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px); }
+.hissan.left { left: 8px; left: calc(8px + env(safe-area-inset-left, 0px)); }
+.hissan.right { right: 8px; right: calc(8px + env(safe-area-inset-right, 0px)); }
+@media (max-width: 600px) { .hissan { max-width: none; left: 8px; right: 8px; width: auto; } }
+
+.hs-b { appearance: none; -webkit-appearance: none; font: inherit; font-size: 0.9rem; border: 2px solid var(--rule); background: var(--paper); color: var(--ink);
+  border-radius: 999px; padding: 2px 10px; min-height: 36px; cursor: pointer; touch-action: manipulation; }
+.hs-b:active { border-color: var(--math); }
+.hs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+.hs-title { color: var(--math); font-size: 1.05rem; }
+.hs-expr { font-size: 1rem; font-weight: 700; }
+.hs-sep { flex: 1; }
+.hs-close { border-color: var(--ink-soft); }
+
+.hs-area { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 8px; min-height: 0; }
+
+/* 数を入れる */
+.hs-setup { display: grid; gap: 8px; }
+.hs-ops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.hs-op { border-radius: 10px; font-weight: 700; font-size: 0.95rem; padding: 4px 2px; }
+.hs-op[aria-pressed="true"] { background: var(--math); border-color: var(--math); color: var(--sheet); }
+.hs-field { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 4px 12px; min-height: 48px; text-align: left; }
+.hs-field[aria-pressed="true"] { border-color: var(--math); box-shadow: 0 0 0 3px rgba(42,100,201,0.2); }
+.hs-flabel { font-size: 0.9rem; color: var(--ink-soft); width: 6.5em; }
+.hs-fval { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.08em; }
+.hs-msg { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+.hs-go { background: var(--math); border-color: var(--math); color: var(--sheet); font-weight: 700; font-size: 1.05rem; min-height: 44px; border-radius: 10px; }
+
+/* マス */
+.hs-gwrap { display: grid; justify-items: center; gap: 6px; }
+.hs-grid { display: inline-block; --cw: 42px; }
+.hs-row { display: flex; }
+.hs-cell { position: relative; width: var(--cw); height: 46px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem; font-weight: 700; box-sizing: border-box; font-family: "BIZ UDPGothic", "Hiragino Sans", sans-serif; }
+.hs-cell.small { height: 26px; font-size: 0.95rem; color: var(--ng); }
+.hs-cell.k-in { background: #fff; border: 1px dashed #b9c8d8; cursor: pointer; color: var(--math); }
+.hs-cell.small.k-in { color: var(--ng); border-style: dotted; background: #fffafa; }
+.hs-cell.k-fix { color: var(--ink); }
+.hs-cell.k-op { color: var(--ink); font-size: 1.4rem; }
+.hs-cell.k-brk { font-size: 2.3rem; font-weight: 400; transform: scaleY(1.25); color: var(--ink); }
+.hs-cell.line { border-bottom: 3px solid var(--ink); }
+.hs-cell.k-in.line { border-bottom: 3px solid var(--ink); }
+.hs-cell.top { border-top: 3px solid var(--ink); }
+.hs-cell.k-in.top { border-top: 3px solid var(--ink); }
+.hs-cell.sel { outline: 3px solid var(--math); outline-offset: -3px; background: #eaf1fc; z-index: 1; }
+.hs-cell.small.sel { outline-color: var(--ng); background: #fdecea; }
+.hs-cell.can { cursor: pointer; }
+.hs-cell.strike::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; border-top: 3px solid var(--ng); transform: rotate(-35deg); }
+.hs-cell.dot::after { content: ""; position: absolute; right: -4px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); z-index: 2; }
+.hs-amari { align-items: center; margin-top: 10px; gap: 0; }
+.hs-alabel { font-size: 1rem; margin-right: 8px; color: var(--ink-soft); }
+.hs-more { display: block; margin: 8px auto 0; font-size: 0.85rem; }
+.hs-hint { margin: 0; font-size: 0.8rem; color: var(--ink-soft); text-align: center; font-family: var(--font-body, sans-serif); }
+
+/* 数字のボタン：1 2 3 4 5 ⌫ ／ 6 7 8 9 0 . ／ ◀ ▲ ▼ ▶ */
+.hs-keys { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 6px 8px 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--rule); background: var(--sheet); }
+.hs-keys .hs-b { border-radius: 10px; font-size: 1.35rem; font-weight: 700; min-height: 46px; padding: 0; }
+.hs-keys .hs-arrow { grid-column: span 1; font-size: 1rem; min-height: 38px; }
+.hs-keys .hs-arrow:first-of-type { grid-column: 2 / span 1; }
+.hs-bar { flex-wrap: nowrap; }
+.hs-expr { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hs-bar .hs-b { flex: 0 0 auto; white-space: nowrap; }
+/* 低い画面（スマホの横向き）では、数字のボタンを2段にまとめる：1〜8 ／ 9 0 . ⌫ ◀ ▲ ▼ ▶ */
+@media (max-height: 560px) {
+  .hs-keys { grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 4px 6px 6px; }
+  .hs-keys .hs-b { min-height: 34px; font-size: 1.05rem; }
+  .hs-keys .hs-arrow, .hs-keys .hs-arrow:first-of-type { grid-column: auto; min-height: 34px; font-size: 0.85rem; }
+  .hs-keys [data-k="back"] { order: 3; } .hs-keys [data-k="6"], .hs-keys [data-k="7"], .hs-keys [data-k="8"] { order: 1; }
+  .hs-keys [data-k="9"], .hs-keys [data-k="0"], .hs-keys [data-k="dot"] { order: 2; }
+  .hs-keys .hs-arrow { order: 4; }
+  .hs-bar { padding: 3px 6px; }
+  .hs-bar .hs-b { min-height: 30px; font-size: 0.8rem; padding: 0 8px; }
+  .hs-area { padding: 4px; }
+  .hs-cell { height: 38px; font-size: 1.4rem; }
+  .hs-cell.small { height: 22px; }
+  .hs-grid { --cw: 36px; }
+}

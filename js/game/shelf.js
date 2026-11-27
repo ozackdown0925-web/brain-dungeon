@@ -434,17 +434,20 @@ var Shelf = (function () {
     Sound.bgm("trial");
     queue = p.list.slice();
     pos = 0; sessionDone = 0; sessionOk = 0; sessionGot = [];
+    Hissan.reset();
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = $(id); if (e) e.hidden = true; });
     notice("");
     show();
   }
   function close() {
+    Hissan.close();
     screen.hidden = true;
     Sound.bgm("town");
     Town.open("book");
   }
   $("shelfBack").addEventListener("click", close);
+  Hissan.attach("shelfHissan");   // 筆算パッド（2026-11-27）
 
   function show() {
     var card = $("shelfCard"), ans = $("shelfAnswer"), done = $("shelfDone");
