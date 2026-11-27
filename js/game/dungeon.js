@@ -639,6 +639,16 @@ var Dungeon = (function () {
     if (fromDir === "e") x -= T * 1.2;
     if (fromDir === "n") y += T * 1.2;
     if (fromDir === "s") y -= T * 1.2;
+    // そこが水や壁にかかるときは、近くの立てる場所にずらす（2026-11-28：鍾乳洞の「地底の川」に西や東から入ると、川の中に出て動けなくなったため）
+    var R = 6;
+    if (room.hitsWall(x - R, y - R, R * 2, R * 2)) {
+      var found = null;
+      for (var rad = 2; rad <= 96 && !found; rad += 2) for (var a = 0; a < 32 && !found; a++) {
+        var nx = Math.round(x + Math.cos(a / 32 * Math.PI * 2) * rad), ny = Math.round(y + Math.sin(a / 32 * Math.PI * 2) * rad);
+        if (nx > R && ny > R && nx < room.pxW - R && ny < room.pxH - R && !room.hitsWall(nx - R, ny - R, R * 2, R * 2)) found = { x: nx, y: ny };
+      }
+      if (found) { x = found.x; y = found.y; }
+    }
     return { x: x, y: y, face: { x: -DIRS[fromDir].dx, y: -DIRS[fromDir].dy } };
   }
 
