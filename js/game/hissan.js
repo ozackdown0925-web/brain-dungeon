@@ -96,18 +96,21 @@ var Hissan = (function () {
       var q = add(placeStart("q", qs));
       var nr = add(placeEnd("n", last)); nr.top = true;
       var dp = placeEnd("d", -2); nr.divisor = dp.cells; nr.dstart = dp.start;
-      // i番目の「ひく数」は商のi番目の0でない数字の下。「のこり」（引き算の答え）はひく数の真下に右から入れ、
-      // その右に、次の0でない商の数字の列まで、わられる数の数字を自動で「おろす」（うすい字。2026-11-28 保護者の感想から）
-      var nz = [], qLast = q.n ? q.end : last, nAll = placeEnd("n", last).cells, prevEnd = null;
-      for (i = 0; i < qd.length; i++) if (qd[i] !== "0" && qd[i] !== " ") nz.push(q.start + i);
+      // 商を1けたずつ書きながら進めても、先に全部書いてもそろうように（2026-11-28 保護者の感想）：
+      //  1番目の「ひく数」は商のはじめの数字の列（わる数以上になるところ）の下で右はしをそろえる。
+      //  「のこり」（引き算の答え）はひく数の真下。その右に、わられる数の次の数字を1つ自動で「おろす」（うすい字）。
+      //  おろした列の上の商が0なら（まだわれない）、もう1つおろす。次の「ひく数」は、おろした数の右はしにそろえる。
+      var nAll = placeEnd("n", last).cells, nEnd = last;
+      for (var cn in nAll) if (+cn > nEnd) nEnd = +cn;
+      var qAt = function (col) { var x = q.cells[col]; return x ? x.ch : ""; };
+      var se = Math.min(qs, last);
       for (i = 1; i <= st.steps; i++) {
-        var se = nz[i - 1] != null ? nz[i - 1] : (prevEnd != null ? prevEnd : Math.min(qs, last));
-        var te = nz[i] != null ? nz[i] : (q.n ? qLast : se + 1);
         r = add(placeEnd("s" + i, se)); r.line = true;
-        var tr = add(placeEnd("t" + i, se));
-        // おろした数字は、その「のこり」を入れ終えて次へ進んでから出す（入れているあいだは、わくと重ならないように）
-        if (st.cur !== "t" + i) for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
-        prevEnd = te > se ? te : se;
+        var tr = add(placeEnd("t" + i, se)), te = se;
+        if (se < nEnd) { te = se + 1; while (te < nEnd && qAt(te) === "0") te++; }
+        for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
+        tr.down = te > se;
+        se = te;
       }
       r = add(placeStart("r", 0)); r.free = true;   // あまりは下に別に書く
     }
@@ -116,6 +119,7 @@ var Hissan = (function () {
       row.caret = rtl(row.key) ? row.end - p : row.start + p;
       // わり算のひく数・のこりは右はしでそろうので、まだ空のときは、わくをその右はしに出す
       if (!row.n && st.op === "div" && /^[st]\d/.test(row.key)) row.caret = row.end;
+      if (row.n && row.down) row.caret = null;   // おろした数字の上にはわくを出さない（行全体が光っているので、どこに入るかは分かる）
     });
     return rows;
   }
@@ -175,6 +179,7 @@ var Hissan = (function () {
   function markAt(key, t) {
     var r = rowOf(key); if (!r || r.free) return;
     var col = r.caret, x = r.cells[col];
+    if (col == null) return;
     if (!st[t][key]) st[t][key] = {};
     if (t === "mk") {
       if (!x || !x.ch || x.ghost) return;   // 線を引くのは数字だけ
@@ -211,8 +216,15 @@ var Hissan = (function () {
     if (k === "fix" || k === "carry") { markAt(key, k === "fix" ? "mk" : "ca"); render(); return; }
     if (k === "next") {
       var o = order(), i = o.indexOf(key);
-      if (st.op === "div" && key === "t" + st.steps) { st.steps++; o = order(); }   // わり算は「のこり」のあとに次の組をふやす
-      if (i >= 0 && i + 1 < o.length) st.cur = o[i + 1];
+      if (st.op === "div" && key.charAt(0) === "t") {
+        // わり算：「のこり」のあとは商にもどって次の数字を書く（商をもう書いてあれば、もう一度「つぎへ」で次のひく数へ）
+        if (key === "t" + st.steps) st.steps++;
+        st.cur = "q"; st.pos.q = val("q").d.length;
+      } else if (st.op === "div" && key === "q") {
+        var j = 1; while (j <= st.steps && val("s" + j).d.length) j++;
+        if (j > st.steps) st.steps = j;
+        st.cur = "s" + j;
+      } else if (i >= 0 && i + 1 < o.length) st.cur = o[i + 1];
     } else if (k === "left" || k === "right") moveCaret(key, k === "left" ? -1 : 1);
     else if (k === "clear") { st.v[key] = { d: [], dot: -1 }; st.pos[key] = 0; st.mk[key] = {}; st.ca[key] = {}; }
     else if (k === "back") backspace(key);
