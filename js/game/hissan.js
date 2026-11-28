@@ -36,13 +36,13 @@ var Hissan = (function () {
     var o = st.op, i, list;
     if (o === "add" || o === "sub") return ["a", "b", "ans"];
     if (o === "mul") { list = ["a", "b"]; for (i = 1; i <= partCount(); i++) list.push("p" + i); list.push("ans"); return list; }
-    list = ["d", "n", "q"];
+    list = ["n", "d", "q"];   // わられる数 → わる数 → 商（いつもの書く順。2026-11-28）
     for (i = 1; i <= st.steps; i++) { list.push("s" + i); list.push("t" + i); }
     list.push("r");
     return list;
   }
-  function rtl(k) {        // 右から入る箱（わり算の「ひく数」「のこり」も、引き算と同じく右から。2026-11-28）
-    if (st.op === "div") return k.charAt(0) === "s" || k.charAt(0) === "t";
+  function rtl(k) {        // 右から入る箱（わり算はすべて左から。2026-11-28 保護者の希望）
+    if (st.op === "div") return false;
     return k === "ans" || k.charAt(0) === "p";
   }
   function label(k) {
@@ -105,7 +105,8 @@ var Hissan = (function () {
         var te = nz[i] != null ? nz[i] : (q.n ? qLast : se + 1);
         r = add(placeEnd("s" + i, se)); r.line = true;
         var tr = add(placeEnd("t" + i, se));
-        for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
+        // おろした数字は、その「のこり」を入れ終えて次へ進んでから出す（入れているあいだは、わくと重ならないように）
+        if (st.cur !== "t" + i) for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
         prevEnd = te > se ? te : se;
       }
       r = add(placeStart("r", 0)); r.free = true;   // あまりは下に別に書く
@@ -113,7 +114,8 @@ var Hissan = (function () {
     rows.forEach(function (row) {   // 入れる場所（わく）の列
       var p = st.pos[row.key] || 0;
       row.caret = rtl(row.key) ? row.end - p : row.start + p;
-      if (!row.n && !rtl(row.key)) row.caret = row.start + p;
+      // わり算のひく数・のこりは右はしでそろうので、まだ空のときは、わくをその右はしに出す
+      if (!row.n && st.op === "div" && /^[st]\d/.test(row.key)) row.caret = row.end;
     });
     return rows;
   }
