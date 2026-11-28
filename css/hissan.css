@@ -78,3 +78,105 @@
   .hs-keys .hs-shift, .hs-keys .hs-clear, .hs-keys .hs-fix { order: 4; font-size: 0.7rem; }
   .hs-keys .hs-next { order: 5; grid-column: span 1; font-size: 0.75rem; min-height: 34px; white-space: normal; line-height: 1.1; }
 }
+
+/* 道具のタブ（筆算・すだれ算・樹形図。js/game/dogu.js。2026-11-28） */
+.hs-tabs { padding-bottom: 4px; }
+.hs-tab { border-radius: 10px; font-weight: 700; }
+.hs-tab[aria-pressed="true"] { background: var(--math); border-color: var(--math); color: var(--sheet); }
+.hs-opw { min-width: 0; font-size: 0.85rem; padding: 0 8px; }
+.hs-keys .hs-w2 { grid-column: span 2; }
+.hs-keys .hs-w3 { grid-column: span 3; }
+.hs-keys .hs-w4 { grid-column: span 4; }
+.hs-keys .hs-w6 { grid-column: span 6; }
+.hs-keys .hs-b:disabled { opacity: 0.3; }
+.hs-bar { flex-wrap: wrap; }
+
+/* すだれ算 */
+.sd-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.sd-grid { display: grid; align-items: end; }
+.sd-box { position: relative; display: block; min-width: 64px; height: 46px; line-height: 46px; padding: 0 8px; box-sizing: border-box; text-align: right;
+  font-size: 1.65rem; font-weight: 700; font-family: "BIZ UDPGothic", "Hiragino Sans", sans-serif; cursor: pointer; color: var(--ink); }
+.sd-box.sd-d { min-width: 52px; color: var(--math); padding-right: 18px; }
+.sd-box.sd-d.brk::after { content: ")"; position: absolute; right: 0; top: -2px; font-size: 2.2rem; font-weight: 400; color: var(--ink); transform: scaleY(1.2); }
+.sd-box.sd-v.line { border-bottom: 3px solid var(--ink); }
+.sd-box.caret::before { content: ""; position: absolute; left: 4px; right: 4px; top: 5px; bottom: 5px; border: 2px dashed var(--math); border-radius: 6px; background: rgba(42,100,201,0.07); }
+.sd-box.sd-d.caret::before { right: 16px; }
+.sd-arow { display: flex; align-items: center; gap: 6px; }
+.sd-box.sd-a { min-width: 150px; text-align: left; border-bottom: 2px solid var(--rule); font-size: 1.4rem; }
+
+/* 樹形図 */
+.jk-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.jk-box { position: relative; flex: none; }
+.jk-lines { position: absolute; left: 0; top: 0; }
+.jk-ln { stroke: var(--ink); stroke-width: 2.5; fill: none; stroke-linecap: round; }
+.jk-ln.first { stroke: var(--ink-soft); stroke-width: 1.5; stroke-dasharray: 3 4; }
+.jk-ln.ghost { stroke: var(--math); stroke-dasharray: 4 4; stroke-width: 2; }
+.jk-ln.dead { stroke: var(--ink-soft); opacity: 0.35; }
+.jk-head { position: absolute; top: 2px; font-size: 0.7rem; color: var(--ink-soft); text-align: center; font-family: var(--font-body, sans-serif); }
+.jk-root { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-soft); cursor: pointer; }
+.jk-root.sel { background: #f2c14e; box-shadow: 0 0 0 3px #c49a2c; }
+.jk-node { position: absolute; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 8px; cursor: pointer; background: var(--sheet);
+  font-size: 1.35rem; font-weight: 700; font-family: "BIZ UDPGothic", "Hiragino Sans", sans-serif; color: var(--ink); }
+.jk-node.sel { background: #fff4cf; box-shadow: 0 0 0 3px #f2c14e; }
+.jk-node.ghost { border: 2px dashed var(--math); box-sizing: border-box; background: rgba(42,100,201,0.07); cursor: default; }
+.jk-node.dead { opacity: 0.35; }
+.jk-node.x { color: var(--ink-soft); }
+.jk-node.x::after { content: "✕"; position: absolute; left: 0; right: 0; top: 0; color: var(--ng); font-size: 1.6rem; line-height: 32px; }
+.jk-ans { padding-left: 8px; }
+.jk-a { min-width: 80px !important; text-align: center !important; }
+.jk-tori { font-size: 1rem; }
+@media (max-height: 560px) {
+  .sd-box { height: 36px; line-height: 36px; font-size: 1.3rem; }
+  .hs-tab { font-size: 0.8rem; }
+}
+
+/* 書く順番の手引き・声かけ（2026-11-28） */
+.dg-guide { border-bottom: 1px solid var(--rule); padding: 4px 10px 6px; font-family: var(--font-body, sans-serif); font-size: 0.78rem; color: var(--ink-soft); max-height: 30%; overflow: auto; flex: none; }
+.dg-guide ol { margin: 0; padding-left: 1.4em; }
+.dg-guide li { line-height: 1.45; }
+.dg-guide li.done { opacity: 0.55; }
+.dg-guide li.now { color: var(--math); font-weight: 700; }
+.dg-say { margin: 4px 0 0; padding: 4px 8px; border-radius: 8px; background: #fff1dc; color: #8a4a00; font-weight: 700; }
+.sd-box.hl, .jk-node.hl { background: #fff1b8; border-radius: 8px; }
+.sd-box.sd-d.hl { color: #b06a00; }
+.dg-pages { grid-column: 1 / -1; display: flex; gap: 4px; }
+.hs-keys .dg-pages .hs-b { flex: 1; font-size: 0.8rem; min-height: 32px; font-weight: 700; }
+.dg-pg[aria-pressed="true"] { background: var(--math); border-color: var(--math); color: var(--sheet); }
+.hs-keys .dg-sm { font-size: 0.85rem; }
+.dg-kbd { grid-column: 1 / -1; display: flex; gap: 6px; }
+.dg-kbd input { flex: 1; min-width: 0; font: inherit; font-size: 1.1rem; padding: 6px 10px; border: 2px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); }
+.hs-keys .dg-kbd .hs-b { padding: 0 14px; font-size: 1rem; }
+.hs-fix[aria-pressed="true"] { background: #fdecea; border-color: var(--ng); }
+
+/* 式メモ */
+.mm-sheet { display: flex; flex-direction: column; gap: 2px; }
+.mm-line { display: flex; align-items: flex-start; min-height: 46px; border-bottom: 1px solid var(--rule); cursor: text; padding: 2px 0 12px; }
+.mm-line.cur { background: #eaf1fc; border-radius: 8px; }
+.mm-no { flex: none; width: 22px; font-size: 0.7rem; color: var(--ink-soft); padding-top: 12px; text-align: right; margin-right: 6px; font-family: var(--font-body, sans-serif); }
+.mm-toks { display: flex; flex-wrap: wrap; align-items: center; min-width: 0; }
+.mm-t { position: relative; display: inline-block; font-size: 1.5rem; font-weight: 700; line-height: 40px; padding: 0 1px; font-family: "BIZ UDPGothic", "Hiragino Sans", sans-serif; cursor: pointer; }
+.mm-t.op { color: var(--math); padding: 0 3px; }
+.mm-t.w { font-size: 1.1rem; }
+.mm-rank { position: absolute; left: 50%; top: 32px; transform: translateX(-50%); font-size: 0.85rem; color: #c46a00; line-height: 1; }
+.mm-caret { display: inline-block; width: 3px; height: 30px; background: var(--math); border-radius: 2px; margin: 0 1px; animation: mmBlink 1s steps(1) infinite; }
+@keyframes mmBlink { 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .mm-caret { animation: none; } }
+
+/* 線分図 */
+.sb-wrap { overflow-x: auto; }
+.sb-sheet { position: relative; display: flex; flex-direction: column; gap: 22px; padding: 26px 70px 10px 0; width: max-content; }
+.sb-row { display: flex; align-items: center; }
+.sb-name { flex: none; width: 56px; margin-right: 8px; text-align: right; font-weight: 700; font-size: 1.1rem; cursor: pointer; position: relative; padding: 4px 4px; }
+.sb-name.empty, .sb-total.empty { color: var(--ink-soft); opacity: 0.6; font-weight: 400; font-size: 0.85rem; }
+.sb-line { display: flex; }
+.sb-seg { position: relative; height: 14px; border-top: 3px solid var(--ink); border-left: 3px solid var(--ink); box-sizing: border-box; cursor: pointer; margin-top: 10px; }
+.sb-seg:last-child { border-right: 3px solid var(--ink); }
+.sb-seg.dash { border-top-style: dashed; }
+.sb-seg.sel { background: #fff4cf; box-shadow: 0 0 0 2px #f2c14e; }
+.sb-lab { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-weight: 700; font-size: 1rem; white-space: nowrap; color: var(--math); }
+.sb-seg::before { content: ""; position: absolute; left: -3px; right: -3px; top: -3px; height: 22px; }
+.sb-name.caret, .sb-total.caret { outline: 2px dashed var(--math); outline-offset: 2px; border-radius: 6px; }
+.sb-sheet.many::after { content: ""; position: absolute; left: var(--brace-left); top: 34px; bottom: 14px; width: 8px; border: 2px solid var(--ink); border-left: none; border-radius: 0 10px 10px 0; }
+.sb-total { position: absolute; top: 50%; transform: translateY(-30%); font-weight: 700; font-size: 1.05rem; color: var(--math); cursor: pointer; padding: 2px 4px; white-space: nowrap; }
+.hs-tabs { gap: 4px; }
+.hs-tabs .hs-b { padding: 2px 8px; font-size: 0.85rem; }

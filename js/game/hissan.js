@@ -21,7 +21,11 @@ var Hissan = (function () {
 
   // 状態。v[箱]＝{ d: 数字の列（左から。" " は空き）, dot: 小数点の左にある数字の数（-1 はなし） }
   // pos[箱]＝入れる場所。右から入る箱は右から数えて何番目、左から入る箱は左から数えて何番目
-  var st = null, side = "right", panel = null, openers = [];   // はじめは右（左の問いが見えるように）
+  var st = null, side = "right", panel = null, openers = [];
+  // 道具（2026-11-28 保護者の希望）：筆算のほかに、すだれ算（連除法）と樹形図（js/game/dogu.js）。上のタブで切りかえる
+  var TOOLS = [{ key: "memo", name: "式メモ" }, { key: "hissan", name: "筆算" }, { key: "sudare", name: "すだれ算" }, { key: "jukei", name: "樹形図" }, { key: "senbun", name: "線分図" }];
+  var tool = "hissan";
+  function other() { return tool !== "hissan" && typeof KeisanDogu !== "undefined" ? KeisanDogu.get(tool) : null; }   // はじめは右（左の問いが見えるように）
   // mk[箱][列]＝右上の小さい数（ななめの線つき）、ca[箱][列]＝左上の小さい数（くり上がり。線なし）、mark＝いま小さい数を入れている所 { t: "mk"|"ca", key, col }
   function fresh(op) { st = { op: op || (st ? st.op : "add"), v: {}, pos: {}, cur: "", steps: 1, mk: {}, ca: {}, mark: null, pend: null }; st.cur = order()[0]; }
   function val(k) { if (!st.v[k]) st.v[k] = { d: [], dot: -1 }; return st.v[k]; }
@@ -241,6 +245,8 @@ var Hissan = (function () {
     var pend = st.pend; if (k !== "side") st.pend = null;   // いちばん上のけたのくり上がりは、すぐ次の数字のときだけ
     if (k === "close") { close(); return; }
     if (k === "side") { side = side === "left" ? "right" : "left"; render(); return; }
+    if (k.indexOf("tool:") === 0) { tool = k.slice(5); render(); return; }
+    if (other()) { other().act(k); render(); return; }
     if (k.indexOf("op:") === 0) { fresh(k.slice(3)); render(); return; }
     if (k === "new") { fresh(st.op); render(); return; }
     if (k.indexOf("box:") === 0) { dropEmptyCarry(); st.cur = k.slice(4); st.mark = null; render(); return; }
@@ -295,7 +301,7 @@ var Hissan = (function () {
       if (!panel || panel.hidden) return;
       var tg = e.target && e.target.tagName;
       if ((tg === "INPUT" || tg === "TEXTAREA") && !e.target.readOnly) return;
-      var map = { Backspace: "back", Delete: "clear", ".": "dot", Enter: "next", ArrowLeft: "left", ArrowRight: "right", Escape: "close" };
+      var map = { Backspace: "back", Delete: "clear", ".": "dot", Enter: "next", ArrowLeft: "left", ArrowRight: "right", Escape: "close", "*": "times", "=": "eq", x: "x", "(": "t:(", ")": "t:)", "+": "t:＋", "-": "t:－", "/": "t:÷" };
       var k = /^\d$/.test(e.key) ? e.key : map[e.key];
       if (!k) return;
       e.preventDefault(); e.stopPropagation();
@@ -307,16 +313,34 @@ var Hissan = (function () {
     if (!panel) return;
     panel.className = "hissan " + side;
     panel.textContent = "";
+    var tabs = el("div", "hs-bar hs-tabs"), ot = other();
+    TOOLS.forEach(function (x) {
+      var b = btn(x.name, "tool:" + x.key, "hs-tab"); b.setAttribute("aria-pressed", String(x.key === tool)); tabs.appendChild(b);
+    });
+    tabs.appendChild(el("span", "hs-sep"));
+    var sd = btn(side === "left" ? "▶" : "◀", "side"); sd.setAttribute("aria-label", side === "left" ? "右へうごかす" : "左へうごかす");
+    tabs.appendChild(sd);
+    tabs.appendChild(btn("とじる", "close", "hs-close"));
+    panel.appendChild(tabs);
     var bar = el("div", "hs-bar");
+    if (ot) {   // すだれ算・樹形図
+      ot.bar(bar);
+      panel.appendChild(bar);
+      if (ot.steps) panel.appendChild(ot.steps());   // 書く順番の手引き
+      var oa = el("div", "hs-area hs-" + tool); oa.appendChild(ot.sheet()); panel.appendChild(oa);
+      var ow = el("div", "hs-kwrap"), okp = el("div", "hs-keys");
+      ow.appendChild(el("p", "hs-now", ot.hint())); ot.keys(okp); ow.appendChild(okp);
+      panel.appendChild(ow);
+      var oc = oa.querySelector(".caret, .sel");
+      if (oc && oc.scrollIntoView) { try { oc.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) { /* 古い Safari */ } }
+      return;
+    }
     OPS.forEach(function (x) {
       var b = btn(x.sign, "op:" + x.key, "hs-op"); b.setAttribute("aria-label", x.name);
       b.setAttribute("aria-pressed", String(x.key === st.op)); bar.appendChild(b);
     });
     bar.appendChild(el("span", "hs-sep"));
     bar.appendChild(btn("あたらしく", "new"));
-    var sd = btn(side === "left" ? "▶" : "◀", "side"); sd.setAttribute("aria-label", side === "left" ? "右へうごかす" : "左へうごかす");
-    bar.appendChild(sd);
-    bar.appendChild(btn("とじる", "close", "hs-close"));
     panel.appendChild(bar);
 
     var area = el("div", "hs-area");
@@ -425,7 +449,7 @@ var Hissan = (function () {
   }
   function toggle() { if (panel && !panel.hidden) close(); else open(); }
   // 新しい試練・書庫をひらいたときに白紙にもどす
-  function reset() { close(); st = null; }
+  function reset() { close(); st = null; if (typeof KeisanDogu !== "undefined") KeisanDogu.reset(); }
   // 画面の「筆算」ボタンをつなぐ
   function attach(id) {
     var b = $(id); if (!b) return;
@@ -434,5 +458,7 @@ var Hissan = (function () {
     b.addEventListener("click", toggle);
   }
 
-  return { open: open, close: close, reset: reset, attach: attach };
+  // メモは問いごとに1枚（key＝問いを見分ける文字。試練なら教科、書庫なら問いの id）
+  function memoKey(k) { if (typeof KeisanDogu !== "undefined") KeisanDogu.memoKey(k); if (panel && !panel.hidden && tool === "memo") render(); }
+  return { open: open, close: close, reset: reset, attach: attach, memoKey: memoKey };
 })();
