@@ -41,8 +41,8 @@ var Hissan = (function () {
     list.push("r");
     return list;
   }
-  function rtl(k) {        // 右から入る箱
-    if (st.op === "div") return false;
+  function rtl(k) {        // 右から入る箱（わり算の「ひく数」「のこり」も、引き算と同じく右から。2026-11-28）
+    if (st.op === "div") return k.charAt(0) === "s" || k.charAt(0) === "t";
     return k === "ans" || k.charAt(0) === "p";
   }
   function label(k) {
@@ -96,14 +96,17 @@ var Hissan = (function () {
       var q = add(placeStart("q", qs));
       var nr = add(placeEnd("n", last)); nr.top = true;
       var dp = placeEnd("d", -2); nr.divisor = dp.cells; nr.dstart = dp.start;
-      // i番目の「ひく数」は商のi番目の0でない数字の下、「のこり」は次の0でない数字の下でそろえる
-      var nz = [], qLast = q.n ? q.end : last;
+      // i番目の「ひく数」は商のi番目の0でない数字の下。「のこり」（引き算の答え）はひく数の真下に右から入れ、
+      // その右に、次の0でない商の数字の列まで、わられる数の数字を自動で「おろす」（うすい字。2026-11-28 保護者の感想から）
+      var nz = [], qLast = q.n ? q.end : last, nAll = placeEnd("n", last).cells, prevEnd = null;
       for (i = 0; i < qd.length; i++) if (qd[i] !== "0" && qd[i] !== " ") nz.push(q.start + i);
       for (i = 1; i <= st.steps; i++) {
-        var se = nz[i - 1] != null ? nz[i - 1] : (i === 1 ? Math.min(qs, last) : qLast);
-        var te = nz[i] != null ? nz[i] : qLast;
+        var se = nz[i - 1] != null ? nz[i - 1] : (prevEnd != null ? prevEnd : Math.min(qs, last));
+        var te = nz[i] != null ? nz[i] : (q.n ? qLast : se + 1);
         r = add(placeEnd("s" + i, se)); r.line = true;
-        add(placeEnd("t" + i, te));
+        var tr = add(placeEnd("t" + i, se));
+        for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
+        prevEnd = te > se ? te : se;
       }
       r = add(placeStart("r", 0)); r.free = true;   // あまりは下に別に書く
     }
@@ -302,6 +305,7 @@ var Hissan = (function () {
           else {
             d = cellEl(x ? x.ch : "", x && x.dot, cur);
             if (x && x.ghost) d.className += " ghost";
+            if (x && x.down) d.className += " down";
             if (cur && c === r.caret && (!st.mark || st.mark.t === "ca")) d.className += " caret";
             d.setAttribute("data-k", "cell:" + r.key + ":" + c);
             if (mks[c] != null) {

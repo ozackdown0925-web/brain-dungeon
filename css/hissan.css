@@ -34,6 +34,7 @@
 .hs-cell { position: relative; display: inline-block; vertical-align: top; width: var(--cw); height: var(--ch); line-height: var(--ch); text-align: center;
   font-size: 1.65rem; font-weight: 700; font-family: "BIZ UDPGothic", "Hiragino Sans", sans-serif; box-sizing: border-box; }
 .hs-cell.on { color: var(--math); }
+.hs-cell.down { color: #8a97a8; }   /* わり算で自動でおろした数字 */
 .hs-cell.ghost { color: var(--ink-soft); opacity: 0.5; }
 .hs-cell.sign { font-size: 1.3rem; }
 .hs-cell.brk { font-size: 2.2rem; font-weight: 400; transform: scaleY(1.2); }
