@@ -43,13 +43,12 @@
 .hs-cell.caret::before { content: ""; position: absolute; left: 6px; right: 6px; top: 6px; bottom: 6px; border: 2px dashed var(--math); border-radius: 6px; }
 
 /* くり上がり・なおす（2026-11-28） */
-.hs-row.carry .hs-lab { color: var(--ng); }
-.hs-cell.small { height: 26px; line-height: 26px; font-size: 1rem; color: var(--ng); }
-.hs-cell.tap { border: 1px dotted #e3b5ae; border-radius: 4px; cursor: pointer; }
-.hs-cell.mking, .hs-sm.mking { outline: 2px solid var(--ng); outline-offset: -2px; background: #fdecea; border-radius: 4px; }
+.hs-sm.mking { outline: 2px solid var(--ng); outline-offset: -2px; background: #fdecea; border-radius: 4px; }
 .hs-row.mk .hs-cells { padding-top: 14px; }
 .hs-cell.x::before { content: ""; position: absolute; left: 7px; right: 7px; top: 50%; border-top: 3px solid var(--ng); transform: rotate(-40deg); }
 .hs-sm { position: absolute; right: -6px; top: -16px; min-width: 18px; height: 20px; line-height: 20px; padding: 0 2px; font-size: 0.95rem; color: var(--ng); text-align: center; z-index: 3; }
+.hs-sm.ca { right: auto; left: -6px; color: #c46a00; }
+.hs-sm.ca:empty { border-color: #c46a00; }
 .hs-sm:empty { border: 1px dashed var(--ng); border-radius: 4px; }
 
 /* 数字のボタン：1〜5 ⌫ ／ 6〜0 . ／ ◀ ▶ 消す つぎへ */
@@ -59,8 +58,9 @@
 .hs-keys .hs-b { min-width: 0; overflow: hidden; border-radius: 10px; font-size: 1.35rem; font-weight: 700; min-height: 46px; padding: 0; }
 .hs-keys .hs-shift { font-size: 1rem; }
 .hs-keys .hs-clear { font-size: 0.95rem; }
-.hs-keys .hs-fix { font-size: 0.85rem; color: var(--ng); }
-.hs-keys .hs-next { grid-column: span 2; font-size: 1.1rem; background: var(--math); border-color: var(--math); color: var(--sheet); }
+.hs-keys .hs-fix { font-size: 0.8rem; color: var(--ng); white-space: normal; line-height: 1.1; }
+.hs-keys .hs-ca { color: #c46a00; }
+.hs-keys .hs-next { grid-column: span 1; font-size: 1.1rem; background: var(--math); border-color: var(--math); color: var(--sheet); }
 /* 低い画面（スマホの横向き）では小さく */
 @media (max-height: 560px) {
   .hs-bar { padding: 3px 6px; }
@@ -70,12 +70,11 @@
   .hs-sheet { --cw: 28px; --ch: 34px; }
   .hs-cell { font-size: 1.3rem; }
   .hs-now { display: none; }
-  .hs-keys { grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .hs-keys { grid-template-columns: repeat(9, 1fr); gap: 4px; }
   .hs-keys .hs-b { min-height: 34px; font-size: 1.05rem; }
-  .hs-keys [data-k="6"], .hs-keys [data-k="7"], .hs-keys [data-k="8"] { order: 1; }
-  .hs-keys [data-k="9"], .hs-keys [data-k="0"], .hs-keys [data-k="dot"] { order: 2; }
+  .hs-keys [data-k="6"], .hs-keys [data-k="7"], .hs-keys [data-k="8"], .hs-keys [data-k="9"] { order: 1; }
+  .hs-keys [data-k="0"], .hs-keys [data-k="dot"] { order: 2; }
   .hs-keys [data-k="back"] { order: 3; }
-  .hs-keys .hs-shift, .hs-keys .hs-clear, .hs-keys .hs-fix { order: 4; font-size: 0.8rem; }
-  .hs-cell.small { height: 22px; line-height: 22px; }
-  .hs-keys .hs-next { order: 5; grid-column: 1 / -1; font-size: 0.9rem; min-height: 30px; }
+  .hs-keys .hs-shift, .hs-keys .hs-clear, .hs-keys .hs-fix { order: 4; font-size: 0.7rem; }
+  .hs-keys .hs-next { order: 5; grid-column: span 1; font-size: 0.75rem; min-height: 34px; white-space: normal; line-height: 1.1; }
 }
