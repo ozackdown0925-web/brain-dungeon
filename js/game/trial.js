@@ -56,7 +56,7 @@ var Trial = (function () {
     dungeonId = (opts && opts.dungeon) || "";
     round = Math.max(1, (opts && opts.round) || 1);
     // 新しい試練になったら、メモを白紙にする
-    if (memoFor !== today + "#" + round) { clearMemos(); memoFor = today + "#" + round; spent = {}; timing = null; }
+    if (memoFor !== today + "#" + round) { clearMemos(); memoFor = today + "#" + round; spent = {}; timing = null; Hissan.reset(); }
     key = BDApi.getKey("player");
     screen.hidden = false;
     ["base", "worldScreen", "town"].forEach(function (id) { var e = document.getElementById(id); if (e) e.hidden = true; }); // 下の画面がかぶさらないように
@@ -72,7 +72,8 @@ var Trial = (function () {
     if (!key) { close(); Sync.reconnect(""); return; }
     load();
   }
-  function close() { stopTimer(); screen.hidden = true; }
+  function close() { stopTimer(); Hissan.close(); screen.hidden = true; }
+  Hissan.attach("trialHissan");   // 筆算パッド（2026-11-27）
   $("trialBack").addEventListener("click", function () { close(); Base.showBase(null); });
 
   // 問題が読みこめないとき：「もう一度」と、問題をとばしてダンジョンに入るボタン（2026-10-22 保護者の希望。加護なし・正解0問あつかい）
