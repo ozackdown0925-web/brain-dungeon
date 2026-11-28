@@ -71,7 +71,11 @@ var Hissan = (function () {
     if (v.dot === 0 && n) cells[start - 1] = { ch: "0", dot: true, ghost: true };   // 「.5」のように始めたとき
     return { key: k, cells: cells, start: start, end: end, n: n };
   }
-  function placeStart(k, start) { return placeEnd(k, start + Math.max(val(k).d.length, 1) - 1); }
+  function placeStart(k, start) {   // 最初の数字が列 start に来るようにならべる（商・あまり）。空のときも、わくは start に出す
+    var r = placeEnd(k, start + Math.max(val(k).d.length, 1) - 1);
+    r.start = start;
+    return r;
+  }
 
   function layout() {
     var o = st.op, rows = [], i, r;
