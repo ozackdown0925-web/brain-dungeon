@@ -3,7 +3,7 @@
 // 1つの箱に好きなけた数の数を入れて「つぎへ」で次の箱へ進む。けたの縦は自動でそろう（2026-11-28 保護者の案）。
 // 答えの行（たし算・ひき算の答え、かけ算のとちゅうの行と答え）は、筆算と同じように右から入る。◀ ▶ は入れる場所（わく）を動かす。
 // くり上がり・くり下がり（2026-11-28 保護者の案）：どの数字も、わくを合わせて（またはタップして）
-//   「＋ くり上がり」を押すと左上に小さい数（線は引かない。かけ算のとちゅうの行でも使える）、
+//   「くり上がり」を押すと右上に小さい数（線は引かない。かけ算のとちゅうの行でも使える）、
 //   「✕ なおす」を押すと、ななめの線が引かれて右上に小さい数（ひき算のくり下がりなど）を入れられる。
 // 答え合わせはしない（自分で計算するための紙のかわり。答えを出す電卓にはしない）。記録も送らない。
 // iPadOS 16 の Safari で動くように、新しい構文（?. や ?? など）は使わない。
@@ -22,7 +22,7 @@ var Hissan = (function () {
   // 状態。v[箱]＝{ d: 数字の列（左から。" " は空き）, dot: 小数点の左にある数字の数（-1 はなし） }
   // pos[箱]＝入れる場所。右から入る箱は右から数えて何番目、左から入る箱は左から数えて何番目
   var st = null, side = "right", panel = null, openers = [];   // はじめは右（左の問いが見えるように）
-  // mk[箱][列]＝右上の小さい数（ななめの線つき）、ca[箱][列]＝左上の小さい数（くり上がり）、mark＝いま小さい数を入れている所 { t: "mk"|"ca", key, col }
+  // mk[箱][列]＝右上の小さい数（ななめの線つき）、ca[箱][列]＝右上の小さい数（くり上がり。線なし）、mark＝いま小さい数を入れている所 { t: "mk"|"ca", key, col }
   function fresh(op) { st = { op: op || (st ? st.op : "add"), v: {}, pos: {}, cur: "", steps: 1, mk: {}, ca: {}, mark: null }; st.cur = order()[0]; }
   function val(k) { if (!st.v[k]) st.v[k] = { d: [], dot: -1 }; return st.v[k]; }
   function digitsStr(k) { return val(k).d.join("").replace(/ /g, "0"); }
@@ -133,12 +133,17 @@ var Hissan = (function () {
     }
     st.pos[k] = p + 1;   // 次のマスへ（右から入る箱は左へ、左から入る箱は右へ）
   }
-  function backspace(k) {   // 1つもどって消す
-    var v = val(k), p = st.pos[k] || 0;
-    if (p <= 0) return;
-    p--; st.pos[k] = p;
-    var i = rtl(k) ? v.d.length - 1 - p : p;
-    if (i >= 0 && i < v.d.length) v.d[i] = " ";
+  // ⌫：わくの所の数字を消して、あいた所を詰める（2026-11-28 保護者の希望）。わくが数字のないところ（入れた数のとなり）なら、1つ前の数字を消す。
+  // 1つの数字だけ直したいときは、わくをそこに合わせて新しい数字を押せば書きかわる（消さなくてよい）
+  function backspace(k) {
+    var v = val(k), p = st.pos[k] || 0, n = v.d.length;
+    if (p >= n) { if (p <= 0) return; p = n - 1; }
+    var i = rtl(k) ? n - 1 - p : p;
+    if (i < 0 || i >= n) return;
+    v.d.splice(i, 1);
+    if (v.dot > i) v.dot--;
+    if (v.dot > v.d.length) v.dot = -1;
+    st.pos[k] = Math.min(p, v.d.length);
     trim(k);
   }
   function moveCaret(k, dir) {   // dir：-1 左・+1 右
@@ -160,7 +165,7 @@ var Hissan = (function () {
     var n = val(key).d.length, p = rtl(key) ? r.end - col : col - r.start;
     st.pos[key] = Math.max(0, Math.min(p, n));
   }
-  // t："mk"＝わくの数字に、ななめの線と右上の小さい数／"ca"＝左上にくり上がりの小さい数。もう一度押すと消す
+  // t："mk"＝わくの数字に、ななめの線と右上の小さい数／"ca"＝右上にくり上がりの小さい数（線なし）。もう一度押すと消す
   function markAt(key, t) {
     var r = rowOf(key); if (!r) return;
     var col = r.caret, x = r.cells[col];
@@ -295,7 +300,7 @@ var Hissan = (function () {
               d.appendChild(sm);
             }
             if (cas[c] != null) {
-              var sc = el("span", "hs-sm ca", cas[c]);
+              var sc = el("span", "hs-sm ca" + (mks[c] != null ? " left" : ""), cas[c]);   // 「なおす」の数と重なるときは左上
               if (st.mark && st.mark.t === "ca" && st.mark.key === r.key && st.mark.col === c) sc.className += " mking";
               d.appendChild(sc);
             }
@@ -323,7 +328,7 @@ var Hissan = (function () {
     kp.appendChild(btn("✕ なおす", "fix", "hs-fix"));
     kp.appendChild(btn("消す", "clear", "hs-clear"));
     kp.appendChild(btn("つぎへ ↵", "next", "hs-next"));
-    var now = el("p", "hs-now", st.mark ? (st.mark.t === "ca" ? "左上にくり上がりの数を入れる" : "右上に小さい数を入れる（10 などの2けたも）") :
+    var now = el("p", "hs-now", st.mark ? (st.mark.t === "ca" ? "右上にくり上がりの数を入れる" : "右上に小さい数を入れる（10 などの2けたも）") :
       "いま：" + label(st.cur) + (rtl(st.cur) ? "（右から入る）" : "") + "　◀ ▶ でわくを動かせる");
     var wrap = el("div", "hs-kwrap"); wrap.appendChild(now); wrap.appendChild(kp);
     return wrap;

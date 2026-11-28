@@ -47,7 +47,8 @@
 .hs-row.mk .hs-cells { padding-top: 14px; }
 .hs-cell.x::before { content: ""; position: absolute; left: 7px; right: 7px; top: 50%; border-top: 3px solid var(--ng); transform: rotate(-40deg); }
 .hs-sm { position: absolute; right: -6px; top: -16px; min-width: 18px; height: 20px; line-height: 20px; padding: 0 2px; font-size: 0.95rem; color: var(--ng); text-align: center; z-index: 3; }
-.hs-sm.ca { right: auto; left: -6px; color: #c46a00; }
+.hs-sm.ca { color: #c46a00; }
+.hs-sm.ca.left { right: auto; left: -6px; }
 .hs-sm.ca:empty { border-color: #c46a00; }
 .hs-sm:empty { border: 1px dashed var(--ng); border-radius: 4px; }
 
