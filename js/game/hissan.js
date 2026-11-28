@@ -41,8 +41,11 @@ var Hissan = (function () {
     list.push("r");
     return list;
   }
-  function rtl(k) {        // 右から入る箱（わり算はすべて左から。2026-11-28 保護者の希望）
-    if (st.op === "div") return false;
+  // 入れる向きは、その数をどう計算するかで決める（2026-11-28 保護者の案）：
+  //   たし算・ひき算・かけ算の答え（わり算の「ひく数」＝かけ算、「のこり」＝ひき算もふくむ）は一の位から → 右から入り、わくは左へ進む
+  //   問題の数（わられる数・わる数など）と商は → 左から入り、わくは右へ進む
+  function rtl(k) {
+    if (st.op === "div") return k.charAt(0) === "s" || k.charAt(0) === "t";
     return k === "ans" || k.charAt(0) === "p";
   }
   function label(k) {
@@ -119,7 +122,6 @@ var Hissan = (function () {
       row.caret = rtl(row.key) ? row.end - p : row.start + p;
       // わり算のひく数・のこりは右はしでそろうので、まだ空のときは、わくをその右はしに出す
       if (!row.n && st.op === "div" && /^[st]\d/.test(row.key)) row.caret = row.end;
-      if (row.n && row.down) row.caret = null;   // おろした数字の上にはわくを出さない（行全体が光っているので、どこに入るかは分かる）
     });
     return rows;
   }
