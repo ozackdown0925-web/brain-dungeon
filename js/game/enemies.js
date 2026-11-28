@@ -970,7 +970,8 @@ var Enemies = (function () {
         var e = live[i], min = e.r + p.r;
         var nx = p.x - e.x, ny = p.y - e.y, bx = ox - e.x, by = oy - e.y;
         var nd = nx * nx + ny * ny, bd = bx * bx + by * by;
-        if (nd < min * min && nd < bd) { p.x = ox; p.y = oy; return; } // 近づいてめりこむなら、動かない
+        // もうめりこんでいるとき（ボスが上に乗ってきたときなど）は止めない。水ぎわや壁ぎわで、ボスと水のあいだにはさまって動けなくならないように（2026-11-28）
+        if (nd < min * min && nd < bd && bd >= min * min) { p.x = ox; p.y = oy; return; } // 近づいてめりこむなら、動かない
       }
     }
     // 大きく動くとき（うしろとびなど）に敵を飛びこえないよう、4ドットずつに分けて動かす
