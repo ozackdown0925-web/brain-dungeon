@@ -23,7 +23,7 @@ var Hissan = (function () {
   // pos[箱]＝入れる場所。右から入る箱は右から数えて何番目、左から入る箱は左から数えて何番目
   var st = null, side = "right", panel = null, openers = [];   // はじめは右（左の問いが見えるように）
   // mk[箱][列]＝右上の小さい数（ななめの線つき）、ca[箱][列]＝左上の小さい数（くり上がり。線なし）、mark＝いま小さい数を入れている所 { t: "mk"|"ca", key, col }
-  function fresh(op) { st = { op: op || (st ? st.op : "add"), v: {}, pos: {}, cur: "", steps: 1, mk: {}, ca: {}, mark: null }; st.cur = order()[0]; }
+  function fresh(op) { st = { op: op || (st ? st.op : "add"), v: {}, pos: {}, cur: "", steps: 1, mk: {}, ca: {}, mark: null, pend: null }; st.cur = order()[0]; }
   function val(k) { if (!st.v[k]) st.v[k] = { d: [], dot: -1 }; return st.v[k]; }
   function digitsStr(k) { return val(k).d.join("").replace(/ /g, "0"); }
 
@@ -194,12 +194,35 @@ var Hissan = (function () {
     } else if (st.ca[key][col] == null) st.ca[key][col] = "";
     st.mark = { t: t, key: key, col: col };
   }
+  // 答えの行の数字が、どの数から計算されるか（その数の数字がある列を返す）。いちばん上のけたを見分けるのにつかう
+  function srcCols(key) {
+    var cols = {}, o = st.op, i, c, r, src = [], shift = 0;
+    function put(k, sh) { var rr = rowOf(k); if (!rr) return; for (var cc in rr.cells) if (rr.cells[cc].ch && !rr.cells[cc].ghost) cols[+cc + sh] = true; }
+    if (o === "add" && key === "ans") src = ["a", "b"];
+    else if (o === "mul" && key === "ans" && partCount()) { for (i = 1; i <= partCount(); i++) src.push("p" + i); }
+    else if (o === "mul" && (key === "ans" || key.charAt(0) === "p")) { src = ["a"]; shift = key === "ans" ? 0 : -(+key.slice(1) - 1); }
+    else if (o === "div" && key.charAt(0) === "s") {   // ひく数＝わる数×商の1けた。わる数を右はしでそろえて見る
+      r = rowOf(key); var nr = rowOf("n");
+      if (!r || !nr || !nr.divisor) return null;
+      for (c in nr.divisor) if (nr.divisor[c].ch) cols[+c + r.end + 2] = true;
+      c = 0; for (i in cols) c++;
+      return c ? cols : null;
+    }
+    else return null;
+    for (i = 0; i < src.length; i++) put(src[i], shift);
+    c = 0; for (i in cols) c++;
+    return c ? cols : null;
+  }
+  // いちばん上のけた：その列には数があって、1つ左の列にはない
+  function isTopCol(key, col) { var s = srcCols(key); return !!(s && s[col] && !s[col - 1]); }
   function typeMark(k) {
     var m = st.mark, o = st[m.t][m.key] || {}, cur = o[m.col] || "";
     if (o[m.col] == null) return;
     if (m.t === "ca") {   // くり上がり：1けただけ入れて、マスへの入力にもどる。⌫ はくり上がりを消す
       if (k === "back") delete o[m.col]; else o[m.col] = k;
       st.mark = null;
+      // いちばん上のけたなら、次にマスの数字を入れたとき、くり上がりの数をそのまま左のマスに入れる（8＋5 の 13 など。2026-11-28 保護者の希望）
+      if (k !== "back" && isTopCol(m.key, m.col)) st.pend = { key: m.key, col: m.col, pos: st.pos[m.key] || 0, d: k };
       return;
     }
     if (k === "back") cur = cur.slice(0, -1); else cur = cur.length >= 2 ? k : cur + k;   // 2けたまで（10・12 など）
@@ -210,6 +233,7 @@ var Hissan = (function () {
     if (m && m.t === "ca" && st.ca[m.key] && st.ca[m.key][m.col] === "") delete st.ca[m.key][m.col];
   }
   function act(k) {
+    var pend = st.pend; if (k !== "side") st.pend = null;   // いちばん上のけたのくり上がりは、すぐ次の数字のときだけ
     if (k === "close") { close(); return; }
     if (k === "side") { side = side === "left" ? "right" : "left"; render(); return; }
     if (k.indexOf("op:") === 0) { fresh(k.slice(3)); render(); return; }
@@ -235,7 +259,11 @@ var Hissan = (function () {
     else if (k === "clear") { st.v[key] = { d: [], dot: -1 }; st.pos[key] = 0; st.mk[key] = {}; st.ca[key] = {}; }
     else if (k === "back") backspace(key);
     else if (k === "dot") toggleDot(key);
-    else if (/^\d$/.test(k)) typeDigit(key, k);
+    else if (/^\d$/.test(k)) {
+      var top = pend && pend.key === key && (st.pos[key] || 0) === pend.pos;
+      typeDigit(key, k);
+      if (top) { if (st.ca[key]) delete st.ca[key][pend.col]; typeDigit(key, pend.d); }   // 13 のように左のマスへ
+    }
     render();
   }
 
