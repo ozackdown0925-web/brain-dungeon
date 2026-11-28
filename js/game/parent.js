@@ -96,8 +96,8 @@ var Parent = (function () {
 
     // 冒険の決まり
     fillSelect("parentMinutes", [3, 5, 7, 10, 15], p.minutes, function (n) { return n + "分"; });
-    fillSelect("parentPerDay", [1, 2, 3], p.perDay, function (n) { return n + "回"; });
-    fillSelect("parentPerWeekend", [1, 2, 3, 4], p.perWeekend || 4, function (n) { return n + "回"; });
+    fillSelect("parentPerDay", [1, 2, 3, 4, 5, 6, 7, 8, 9], p.perDay, function (n) { return n + "回"; });
+    fillSelect("parentPerWeekend", [1, 2, 3, 4, 5, 6, 7, 8, 9], p.perWeekend || 4, function (n) { return n + "回"; });
     document.getElementById("parentToday").textContent = "今日の出発：" + GameState.adventuresToday() + " / " + GameState.perDayToday() + " 回" +
       (GameState.isWeekend() ? "（土日）" : "") +
       (GameState.restToday() ? "　（今日は休みの日）" : "") +
