@@ -37,7 +37,7 @@ var Hissan = (function () {
     if (o === "add" || o === "sub") return ["a", "b", "ans"];
     if (o === "mul") { list = ["a", "b"]; for (i = 1; i <= partCount(); i++) list.push("p" + i); list.push("ans"); return list; }
     list = ["n", "d", "q"];   // わられる数 → わる数 → 商（いつもの書く順。2026-11-28）
-    for (i = 1; i <= st.steps; i++) { list.push("s" + i); list.push("t" + i); }
+    for (i = 1; i <= st.steps; i++) { list.push("s" + i); list.push("t" + i); list.push("o" + i); }
     list.push("r");
     return list;
   }
@@ -45,7 +45,7 @@ var Hissan = (function () {
   //   たし算・ひき算・かけ算の答え（わり算の「ひく数」＝かけ算、「のこり」＝ひき算もふくむ）は一の位から → 右から入り、わくは左へ進む
   //   問題の数（わられる数・わる数など）と商は → 左から入り、わくは右へ進む
   function rtl(k) {
-    if (st.op === "div") return k.charAt(0) === "s" || k.charAt(0) === "t";
+    if (st.op === "div") return k.charAt(0) === "s" || k.charAt(0) === "t";   // おろす数（o）は左から
     return k === "ans" || k.charAt(0) === "p";
   }
   function label(k) {
@@ -59,6 +59,7 @@ var Hissan = (function () {
     if (k.charAt(0) === "p") return "とちゅう" + k.slice(1);
     if (k.charAt(0) === "s") return "ひく数";
     if (k.charAt(0) === "t") return "のこり";
+    if (k.charAt(0) === "o") return "おろす数";
     return k;
   }
 
@@ -105,18 +106,22 @@ var Hissan = (function () {
       var dp = placeEnd("d", -2); nr.divisor = dp.cells; nr.dstart = dp.start;
       // 商を1けたずつ書きながら進めても、先に全部書いてもそろうように（2026-11-28 保護者の感想）：
       //  1番目の「ひく数」は商のはじめの数字の列（わる数以上になるところ）の下で右はしをそろえる。
-      //  「のこり」（引き算の答え）はひく数の真下。その右に、わられる数の次の数字を1つ自動で「おろす」（うすい字）。
-      //  おろした列の上の商が0なら（まだわれない）、もう1つおろす。次の「ひく数」は、おろした数の右はしにそろえる。
+      //  「のこり」（引き算の答え）はひく数の真下。その右に、わられる数の次の数字を自分で「おろす」（おろす数の箱 o。2026-11-28 保護者の希望。
+      //  前は自動でおろしていた）。次の「ひく数」は、おろした数の右はしにそろえる。
+      //  まだおろしていないときは、前と同じ見当（1つ。その列の上の商が0なら、もう1つ）でそろえておく。
       var nAll = placeEnd("n", last).cells, nEnd = last;
       for (var cn in nAll) if (+cn > nEnd) nEnd = +cn;
       var qAt = function (col) { var x = q.cells[col]; return x ? x.ch : ""; };
       var se = Math.min(qs, last);
       for (i = 1; i <= st.steps; i++) {
         r = add(placeEnd("s" + i, se)); r.line = true;
-        var tr = add(placeEnd("t" + i, se)), te = se;
+        var tr = add(placeEnd("t" + i, se)), te = se, od = val("o" + i);
         if (se < nEnd) { te = se + 1; while (te < nEnd && qAt(te) === "0") te++; }
-        for (var c2 = se + 1; c2 <= te; c2++) if (nAll[c2]) tr.cells[c2] = { ch: nAll[c2].ch, dot: nAll[c2].dot, down: true };
-        tr.down = te > se;
+        // おろす数は「のこり」と同じ行で、そのすぐ右から左から入る（ほかの行には出さない）
+        var orow = placeStart("o" + i, se + 1); orow.merged = true; orow.left = se < nEnd; orow.nEnd = nEnd;
+        for (var c2 in orow.cells) tr.cells[c2] = orow.cells[c2];
+        tr.o = orow; add(orow);
+        if (od.d.length) te = se + od.d.length;
         se = te;
       }
       r = add(placeStart("r", 0)); r.free = true;   // あまりは下に別に書く
@@ -183,7 +188,7 @@ var Hissan = (function () {
   // t："mk"＝わくの数字に、ななめの線と右上の小さい数（もう一度押すと消す）
   //    "ca"＝わくのマスの左上にくり上がりの小さい数。次に押す数字が左上へ、その次の数字はふつうにマスへ入る
   function markAt(key, t) {
-    var r = rowOf(key); if (!r || r.free) return;
+    var r = rowOf(key); if (!r || r.free || r.merged) return;
     var col = r.caret, x = r.cells[col];
     if (col == null) return;
     if (!st[t][key]) st[t][key] = {};
@@ -247,13 +252,20 @@ var Hissan = (function () {
     if (k === "next") {
       var o = order(), i = o.indexOf(key);
       if (st.op === "div" && key.charAt(0) === "t") {
-        // わり算：「のこり」のあとは商にもどって次の数字を書く（商をもう書いてあれば、もう一度「つぎへ」で次のひく数へ）
-        if (key === "t" + st.steps) st.steps++;
+        // わり算：「のこり」のあとは、おろす数へ（もうおろす数字がなければ、あまりへ）
+        var orr = rowOf("o" + key.slice(1));
+        if (orr && orr.left) { st.cur = "o" + key.slice(1); st.pos[st.cur] = val(st.cur).d.length; }
+        else st.cur = "r";
+      } else if (st.op === "div" && key.charAt(0) === "o") {
+        // おろしたら商にもどって次の数字を書く（商をもう書いてあれば、もう一度「つぎへ」で次のひく数へ）
+        if (key === "o" + st.steps) st.steps++;
         st.cur = "q"; st.pos.q = val("q").d.length;
       } else if (st.op === "div" && key === "q") {
         var j = 1; while (j <= st.steps && val("s" + j).d.length) j++;
-        if (j > st.steps) st.steps = j;
-        st.cur = "s" + j;
+        // 商に0を書いたら（まだわれない）、もう1つおろしにもどる
+        var po = rowOf("o" + (j - 1)), qd = val("q").d;
+        if (po && po.n && qd[qd.length - 1] === "0" && po.start + po.n - 1 < po.nEnd) { st.cur = po.key; st.pos[po.key] = po.n; }
+        else { if (j > st.steps) st.steps = j; st.cur = "s" + j; }
       } else if (i >= 0 && i + 1 < o.length) st.cur = o[i + 1];
     } else if (k === "left" || k === "right") moveCaret(key, k === "left" ? -1 : 1);
     else if (k === "clear") { st.v[key] = { d: [], dot: -1 }; st.pos[key] = 0; st.mk[key] = {}; st.ca[key] = {}; }
@@ -319,7 +331,7 @@ var Hissan = (function () {
     var rows = layout(), lo = 0, hi = 0, i;
     lastRows = rows;
     rows.forEach(function (r) {
-      if (r.free) return;
+      if (r.free || (r.merged && !r.n && r.key !== st.cur)) return;   // まだ空のおろす数は、はばに入れない
       for (var c in r.cells) { c = +c; if (c < lo) lo = c; if (c > hi) hi = c; }
       if (r.end > hi) hi = r.end; if (r.start < lo) lo = r.start;
       if (r.key === st.cur) { if (r.caret < lo) lo = r.caret; if (r.caret > hi) hi = r.caret; }
@@ -329,11 +341,12 @@ var Hissan = (function () {
     if (signCol != null) lo = signCol;
     var box = el("div", "hs-sheet hs-" + st.op);
     rows.forEach(function (r) {
-      var cur = r.key === st.cur;
+      if (r.merged) return;   // おろす数は「のこり」の行の中に出す
+      var cur = r.key === st.cur, oCur = !!(r.o && r.o.key === st.cur);
       var mks = st.mk[r.key] || {}, cas = st.ca[r.key] || {}, hasMk = false;
       for (var mm in mks) hasMk = true;
       for (mm in cas) hasMk = true;
-      var line = el("div", "hs-row" + (cur ? " cur" : "") + (r.free ? " free" : "") + (hasMk ? " mk" : ""));
+      var line = el("div", "hs-row" + (cur || oCur ? " cur" : "") + (r.free ? " free" : "") + (hasMk ? " mk" : ""));
       line.setAttribute("data-k", "box:" + r.key);
       line.appendChild(el("span", "hs-lab", label(r.key)));
       var cellsBox = el("span", "hs-cells");
@@ -351,11 +364,12 @@ var Hissan = (function () {
           else if (r.divisor && c === -1) { d = cellEl(")", false, false); d.className += " brk"; }
           else if (r.divisor && r.divisor[c]) d = cellEl(r.divisor[c].ch, r.divisor[c].dot, false);
           else {
-            d = cellEl(x ? x.ch : "", x && x.dot, cur);
+            var inO = !!(r.o && c >= r.o.start && (c <= r.o.end || c === r.o.caret));
+            d = cellEl(x ? x.ch : "", x && x.dot, inO ? oCur : cur);
             if (x && x.ghost) d.className += " ghost";
-            if (x && x.down) d.className += " down";
             if (cur && c === r.caret && (!st.mark || st.mark.t === "ca")) d.className += " caret";
-            d.setAttribute("data-k", "cell:" + r.key + ":" + c);
+            if (oCur && c === r.o.caret) d.className += " caret";
+            d.setAttribute("data-k", "cell:" + (inO ? r.o.key : r.key) + ":" + c);
             if (mks[c] != null) {
               d.className += " x";
               var sm = el("span", "hs-sm", mks[c]);
@@ -392,7 +406,7 @@ var Hissan = (function () {
     kp.appendChild(btn("消す", "clear", "hs-clear"));
     kp.appendChild(btn("つぎへ ↵", "next", "hs-next"));
     var now = el("p", "hs-now", st.mark ? (st.mark.t === "ca" ? "くり上がりの数 → マスの数 の順に押す（8×3 なら 2 → 4）" : "右上に小さい数を入れる（10 などの2けたも）") :
-      "いま：" + label(st.cur) + (rtl(st.cur) ? "（右から入る）" : "") + "　◀ ▶ でわくを動かせる");
+      "いま：" + label(st.cur) + (rtl(st.cur) ? "（右から入る）" : st.cur.charAt(0) === "o" && st.op === "div" ? "（わられる数から、次の数字をおろす）" : "") + "　◀ ▶ でわくを動かせる");
     var wrap = el("div", "hs-kwrap"); wrap.appendChild(now); wrap.appendChild(kp);
     return wrap;
   }
