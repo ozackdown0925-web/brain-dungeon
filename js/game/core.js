@@ -567,6 +567,17 @@
     }
   }
 
+  // キャラが水や壁にめりこんでいたら、近くの立てる場所に出す（2026-11-28：水晶の鍾乳洞で水にはまって動けなくなったため。
+  // どの動きでめりこんでも、そのままにならないようにする保険）
+  function unstick() {
+    var R = A.r || 6;
+    if (!room || !room.hitsWall(A.x - R, A.y - R, R * 2, R * 2)) return;
+    for (var rad = 2; rad <= 160; rad += 2) for (var k = 0; k < 32; k++) {
+      var x = Math.round(A.x + Math.cos(k / 32 * Math.PI * 2) * rad), y = Math.round(A.y + Math.sin(k / 32 * Math.PI * 2) * rad);
+      if (x > R && y > R && x < room.pxW - R && y < room.pxH - R && !room.hitsWall(x - R, y - R, R * 2, R * 2)) { A.x = x; A.y = y; return; }
+    }
+    if (run && run.entry) { A.x = run.entry.x; A.y = run.entry.y; }
+  }
   // ---------- 更新 ----------
   function update(dt) {
     if (Input.pressed("menu")) { setPaused(true); return; }
@@ -580,6 +591,7 @@
     if (A.act) A.act.el += dt;   // 行動のゲージ（skills.js の actStart）
     A.hidden = Math.max(0, (A.hidden || 0) - dt);   // 隠れみの術
 
+    unstick();
     var asleep = !!c.status.sleep, para = !!c.status.para;
     var nAlive = Enemies.alive().length;
     A.running = nAlive === 0 && !dg.arena; // 部屋の敵を全滅させたら走る（闘技場では走らない）
